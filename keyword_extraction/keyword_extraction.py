@@ -86,7 +86,7 @@ class KeywordExtractionConfig:
 
     # Canonicalisation / Stage 2.5
     apply_alias_map: bool = False
-    alias_strategy: str = "none"  # Supported: "none", "llm", "cache_only", "load_only", "prev_top_df"
+    alias_strategy: str = "none"  # Supported: "none", "llm", "llm_candidates", "cache_only", "load_only", "prev_top_df"
     alias_model: str = "gpt-oss:120b"
     alias_base_url: Optional[str] = None
     alias_api_key: Optional[str] = None
@@ -165,6 +165,11 @@ class KeywordExtractionConfig:
     use_polars: bool = True
     use_pyarrow_streaming: bool = True
     verbose: bool = False
+
+    # Candidate allowlist for Stage 2.5 (alias_strategy="llm_candidates")
+    alias_candidate_column: str = "candidates"
+    alias_candidate_max: int = 15
+    alias_candidate_enforce: bool = True
 
     def build_stopword_set(self) -> set[str]:
         base = set(ENGLISH_STOP_WORDS) if self.use_default_stopwords else set()
@@ -550,6 +555,11 @@ class KeywordExtractionPipeline:
 
     def _alias_batch_hash(self, cluster_id: int, subset: pd.DataFrame) -> str:
         key_fields = self.config.alias_cache_key_fields or ("term", "frequency", "doc_coverage", "score")
+        alias_strategy = (self.config.alias_strategy or "none").lower()
+        if alias_strategy == "llm_candidates":
+            cand_col = str(self.config.alias_candidate_column or "candidates")
+            if cand_col and cand_col not in key_fields and cand_col in subset.columns:
+                key_fields = tuple([*key_fields, cand_col])
         records: List[Dict[str, object]] = []
         for row in subset.itertuples(index=False):
             entry: Dict[str, object] = {"cluster_id": int(cluster_id)}
@@ -557,13 +567,19 @@ class KeywordExtractionPipeline:
                 value = getattr(row, field, None)
                 if isinstance(value, np.generic):
                     value = value.item()
+                if isinstance(value, np.ndarray):
+                    value = value.tolist()
                 entry[field] = value
             records.append(entry)
         records_sorted = sorted(records, key=lambda x: json.dumps(x, sort_keys=True))
         payload = {
             "alias_model": self.config.alias_model,
+            "alias_strategy": alias_strategy,
             "alias_stopword_strictness": self.config.alias_stopword_strictness,
             "alias_allow_translation": self.config.alias_allow_translation,
+            "alias_candidate_column": self.config.alias_candidate_column,
+            "alias_candidate_max": int(self.config.alias_candidate_max),
+            "alias_candidate_enforce": bool(self.config.alias_candidate_enforce),
             "records": records_sorted,
         }
         payload_str = json.dumps(payload, sort_keys=True, default=str)
@@ -1142,8 +1158,15 @@ class KeywordExtractionPipeline:
                         }
                     records.append(entry)
             return pd.DataFrame.from_records(records, columns=columns) if records else pd.DataFrame(columns=columns)
-        if strategy != "llm":
+        if strategy not in {"llm", "llm_candidates"}:
             raise ValueError(f"Unsupported alias_strategy '{cfg.alias_strategy}'.")
+        if strategy == "llm_candidates":
+            cand_col = str(cfg.alias_candidate_column or "candidates")
+            if cand_col not in top_df.columns:
+                raise KeyError(
+                    f"alias_strategy='llm_candidates' requires a '{cand_col}' column in top_df "
+                    f"(each row: list[str] or JSON-encoded list of candidate canonical terms)."
+                )
 
         client = self._get_alias_client()
         max_terms = max(1, int(cfg.alias_max_terms_per_prompt))
@@ -1176,7 +1199,10 @@ class KeywordExtractionPipeline:
                         raw_response = cached_response
                         payload = None
                     else:
-                        messages, payload = self._build_alias_messages(cluster_id, chunk)
+                        if strategy == "llm_candidates":
+                            messages, payload = self._build_alias_messages_candidates(cluster_id, chunk)
+                        else:
+                            messages, payload = self._build_alias_messages(cluster_id, chunk)
                         raw_response = None
                         last_error: Optional[Exception] = None
                         attempts = max(1, int(cfg.alias_retry))
@@ -1352,19 +1378,38 @@ class KeywordExtractionPipeline:
             return
         for cluster_id, group in top_df.groupby("cluster_id", sort=False):
             cluster_id = int(cluster_id)
-            mapping = self._load_alias_mapping(cluster_id)
+            mapping: Dict[str, Dict[str, object]] = {}
             cache_dir = self._alias_cache_dir / str(cluster_id)
             if cache_dir.exists():
                 for cache_file in sorted(cache_dir.glob("*.json")):
                     try:
                         data = json.loads(cache_file.read_text(encoding="utf-8"))
                         raw = data.get("raw_response", "")
+                        payload = data.get("payload", {}) if isinstance(data, dict) else {}
                     except Exception:
                         continue
                     if not raw:
                         continue
+                    # Reconstruct the subset that was sent to the model from the cached payload, so that
+                    # `_parse_alias_items` can (a) default-fill only for that batch and (b) enforce candidate allowlists.
+                    subset_records: List[Dict[str, object]] = []
+                    if isinstance(payload, Mapping):
+                        terms_payload = payload.get("terms")
+                        if isinstance(terms_payload, list):
+                            for term_obj in terms_payload:
+                                if not isinstance(term_obj, Mapping):
+                                    continue
+                                term = str(term_obj.get("term", "")).strip()
+                                if not term:
+                                    continue
+                                rec: Dict[str, object] = {"term": term}
+                                for col in ("score", "frequency", "doc_coverage", str(self.config.alias_candidate_column or "candidates")):
+                                    if col in term_obj:
+                                        rec[col] = term_obj.get(col)
+                                subset_records.append(rec)
+                    subset_df = pd.DataFrame.from_records(subset_records) if subset_records else group
                     try:
-                        parsed_items = self._parse_alias_items(cluster_id, raw, group)
+                        parsed_items = self._parse_alias_items(cluster_id, raw, subset_df)
                     except Exception:
                         continue
                     for item in parsed_items:
@@ -1505,6 +1550,134 @@ class KeywordExtractionPipeline:
         ]
         return messages, payload
 
+    def _build_alias_messages_candidates(
+        self, cluster_id: int, subset: pd.DataFrame
+    ) -> Tuple[List[Dict[str, str]], Dict[str, object]]:
+        cfg = self.config
+        cand_col = str(cfg.alias_candidate_column or "candidates")
+        if cand_col not in subset.columns:
+            raise KeyError(f"Missing candidate column '{cand_col}' for alias_strategy='llm_candidates'.")
+
+        allow_translation = "yes" if cfg.alias_allow_translation else "no"
+        stopwords = self.stopwords_set or ENGLISH_STOP_WORDS
+        stopword_examples = sorted(list(stopwords))[:20]
+        stopword_instruction = (
+            " Pure stopword phrases (e.g., "
+            + ", ".join(repr(w) for w in stopword_examples)
+            + ") must be returned with action 'drop'."
+        )
+
+        def _candidate_objects(value: object) -> List[Dict[str, object]]:
+            if value is None:
+                return []
+            if isinstance(value, np.ndarray):
+                value = value.tolist()
+            if isinstance(value, list):
+                out: List[Dict[str, object]] = []
+                for item in value:
+                    if isinstance(item, Mapping):
+                        term = str(item.get("term", "")).strip()
+                        if not term:
+                            continue
+                        out.append({"term": term, **{k: v for k, v in item.items() if k != "term"}})
+                    else:
+                        term = str(item).strip()
+                        if not term:
+                            continue
+                        out.append({"term": term})
+                return out
+            if isinstance(value, (tuple, set)):
+                out = []
+                for item in value:
+                    term = str(item).strip()
+                    if term:
+                        out.append({"term": term})
+                return out
+            if isinstance(value, str):
+                raw = value.strip()
+                if not raw:
+                    return []
+                try:
+                    decoded = json.loads(raw)
+                    if isinstance(decoded, list):
+                        return _candidate_objects(decoded)
+                except Exception:
+                    pass
+                # Fallback: allow pipe/comma separated lists.
+                sep = "|" if "|" in raw else ("," if "," in raw else None)
+                if sep:
+                    return [{"term": part.strip()} for part in raw.split(sep) if part.strip()]
+                return [{"term": raw}]
+            return []
+
+        candidate_max = int(cfg.alias_candidate_max) if int(cfg.alias_candidate_max) > 0 else 0
+
+        system_prompt = dedent(
+            """
+            You are a scientific terminology normalisation assistant.
+            For each keyword decide one action: keep, merge_into, translate, or drop.
+
+            - keep: the term is already a good canonical form.
+            - merge_into: merge this term into ONE canonical form chosen from the provided candidates list for that term ONLY.
+              Use merge_into ONLY when the candidate is clearly an equivalent spelling/variant/synonym of the same concept
+              (e.g., plural/singular, hyphen/spacing, minor spelling variations, abbreviation expansion when unambiguous).
+              Do NOT merge when the candidate looks like a broader term, a subtype, a related topic, or a contextual phrase
+              (e.g., 'hiv' vs 'hiv 1', 'apoptosis' vs 'cell apoptosis').
+              If candidates are provided with frequencies/df, prefer the candidate with higher df when merging.
+              If the candidates list is empty or no candidate is appropriate, do not use merge_into; use keep instead.
+            - translate: supply an English canonical form for non-English terms (allowed: {allow_translation}).
+            - drop: remove junk terms (isolated stopwords, markup artefacts, etc.).{stopword_instruction}
+
+            Respond with strict JSON only; no commentary.
+            """
+        ).format(allow_translation=allow_translation, stopword_instruction=stopword_instruction).strip()
+
+        terms_payload: List[Dict[str, object]] = []
+        for row in subset.itertuples(index=False):
+            candidates = _candidate_objects(getattr(row, cand_col, None))
+            if candidate_max and candidates:
+                candidates = candidates[:candidate_max]
+            terms_payload.append(
+                {
+                    "term": str(row.term),
+                    "score": float(row.score),
+                    "frequency": int(row.frequency),
+                    "doc_coverage": int(getattr(row, "doc_coverage", 0)),
+                    "candidates": candidates,
+                }
+            )
+
+        payload = {
+            "cluster_id": int(cluster_id),
+            "allow_translation": allow_translation,
+            "stopword_strictness": self.config.alias_stopword_strictness,
+            "stopwords_hint": stopword_examples,
+            "terms": terms_payload,
+            "schema": {
+                "fields": ["term", "action", "canonical", "notes", "reason"],
+                "actions": ["keep", "merge_into", "translate", "drop"],
+                "example": {
+                    "term": "artificial intelligence",
+                    "action": "keep",
+                    "canonical": "artificial intelligence",
+                    "notes": "",
+                    "reason": "already canonical",
+                },
+            },
+            "constraints": {
+                "merge_into_requires_candidates": True,
+                "candidate_column": cand_col,
+                "candidate_max": candidate_max,
+            },
+        }
+
+        user_content = json.dumps(payload, ensure_ascii=False)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        return messages, payload
+
     def _invoke_alias_model(self, client, messages: List[Dict[str, str]]) -> str:
         cfg = self.config
         response = client.chat.completions.create(
@@ -1521,6 +1694,7 @@ class KeywordExtractionPipeline:
         raw_response: str,
         subset: pd.DataFrame,
     ) -> List[Dict[str, object]]:
+        cfg = self.config
         parsed = self._safe_json_loads(raw_response)
         if isinstance(parsed, dict):
             if isinstance(parsed.get("items"), list):
@@ -1571,6 +1745,228 @@ class KeywordExtractionPipeline:
                         "reason": "default_keep",
                     }
                 )
+
+        # Enforce candidate allowlist (and guardrails) for merge_into if enabled.
+        cand_col = str(cfg.alias_candidate_column or "candidates")
+        if (
+            bool(cfg.alias_candidate_enforce)
+            and isinstance(subset, pd.DataFrame)
+            and not subset.empty
+            and cand_col in subset.columns
+        ):
+                sep_re = re.compile(r"[-_/]+")
+                digit_re = re.compile(r"\d+")
+                alpha_single_re = re.compile(r"^[a-z]$", flags=re.IGNORECASE)
+                roman_re = re.compile(r"^(?=[ivxlcdm]+$)[ivxlcdm]+$", flags=re.IGNORECASE)
+                greek_names = {
+                    "alpha",
+                    "beta",
+                    "gamma",
+                    "delta",
+                    "epsilon",
+                    "zeta",
+                    "eta",
+                    "theta",
+                    "iota",
+                    "kappa",
+                    "lambda",
+                    "mu",
+                    "nu",
+                    "xi",
+                    "omicron",
+                    "pi",
+                    "rho",
+                    "sigma",
+                    "tau",
+                    "upsilon",
+                    "phi",
+                    "chi",
+                    "psi",
+                    "omega",
+                }
+                greek_symbols = {
+                    "α",
+                    "β",
+                    "γ",
+                    "δ",
+                    "ε",
+                    "ζ",
+                    "η",
+                    "θ",
+                    "ι",
+                    "κ",
+                    "λ",
+                    "μ",
+                    "ν",
+                    "ξ",
+                    "ο",
+                    "π",
+                    "ρ",
+                    "σ",
+                    "τ",
+                    "υ",
+                    "φ",
+                    "χ",
+                    "ψ",
+                    "ω",
+                }
+
+                def _candidate_key(text: str) -> str:
+                    cleaned = _normalize_text_basic(text or "")
+                    if cfg.lowercase:
+                        cleaned = cleaned.lower()
+                    cleaned = cleaned.strip()
+                    cleaned = cleaned.replace("µ", "u").replace("μ", "u")
+                    cleaned = sep_re.sub(" ", cleaned)
+                    return " ".join(cleaned.split())
+
+                def _candidate_list(value: object) -> List[str]:
+                    if value is None:
+                        return []
+                    if isinstance(value, np.ndarray):
+                        value = value.tolist()
+                    if isinstance(value, list):
+                        out: List[str] = []
+                        for item in value:
+                            if isinstance(item, Mapping):
+                                term = str(item.get("term", "")).strip()
+                                if term:
+                                    out.append(term)
+                            else:
+                                term = str(item).strip()
+                                if term:
+                                    out.append(term)
+                        return out
+                    if isinstance(value, (tuple, set)):
+                        return [str(item).strip() for item in value if str(item).strip()]
+                    if isinstance(value, str):
+                        raw = value.strip()
+                        if not raw:
+                            return []
+                        try:
+                            decoded = json.loads(raw)
+                            if isinstance(decoded, list):
+                                return _candidate_list(decoded)
+                        except Exception:
+                            pass
+                        sep = "|" if "|" in raw else ("," if "," in raw else None)
+                        if sep:
+                            return [part.strip() for part in raw.split(sep) if part.strip()]
+                        return [raw]
+                    return []
+
+                def _append_reason(existing: str, extra: str) -> str:
+                    existing = (existing or "").strip()
+                    extra = (extra or "").strip()
+                    if not existing:
+                        return extra
+                    if not extra:
+                        return existing
+                    if extra in existing:
+                        return existing
+                    return f"{existing};{extra}"
+
+                def _specifier_set(text: str) -> set[str]:
+                    """Extract specifier tokens that should not be dropped when merging.
+
+                    Examples: digits (e.g., IL-6), single-letter classes (IgG), Greek letters (alpha/β), roman numerals (II).
+                    """
+                    key = _candidate_key(text or "")
+                    if not key:
+                        return set()
+                    specs: set[str] = set()
+                    for tok in key.split():
+                        if not tok:
+                            continue
+                        if digit_re.search(tok):
+                            specs.update(digit_re.findall(tok))
+                            continue
+                        tok_lower = tok.lower()
+                        if alpha_single_re.fullmatch(tok_lower):
+                            specs.add(tok_lower)
+                            continue
+                        if tok_lower in greek_names:
+                            specs.add(tok_lower)
+                            continue
+                        if tok in greek_symbols:
+                            specs.add(tok)
+                            continue
+                        if len(tok_lower) >= 2 and roman_re.fullmatch(tok_lower):
+                            specs.add(tok_lower)
+                    return specs
+
+                candidate_max = int(cfg.alias_candidate_max) if int(cfg.alias_candidate_max) > 0 else 0
+                term_key_to_terms: Dict[str, List[str]] = defaultdict(list)
+                candidates_by_term: Dict[str, Dict[str, str]] = {}
+                for row in subset.itertuples(index=False):
+                    term_raw = str(getattr(row, "term", "")).strip()
+                    if not term_raw:
+                        continue
+                    term_key_to_terms[_candidate_key(term_raw)].append(term_raw)
+                    candidates = _candidate_list(getattr(row, cand_col, None))
+                    if candidate_max and candidates:
+                        candidates = candidates[:candidate_max]
+                    cand_map: Dict[str, str] = {}
+                    for cand in candidates:
+                        cand_key = _candidate_key(cand)
+                        if cand_key and cand_key not in cand_map:
+                            cand_map[cand_key] = cand
+                    candidates_by_term[term_raw] = cand_map
+
+                for inst in instructions:
+                    action = str(inst.get("action", "keep")).strip().lower()
+                    if action != "merge_into":
+                        continue
+                    original = str(inst.get("original", "")).strip()
+                    if not original:
+                        continue
+                    canonical = str(inst.get("canonical", "")).strip()
+
+                    # Locate the original term in this subset (exact or normalized unique match).
+                    source_term: Optional[str] = original if original in candidates_by_term else None
+                    if source_term is None:
+                        key = _candidate_key(original)
+                        matches = term_key_to_terms.get(key) or []
+                        if len(matches) == 1:
+                            source_term = matches[0]
+                    if source_term is None:
+                        continue
+
+                    cand_map = candidates_by_term.get(source_term) or {}
+                    if not cand_map:
+                        inst["action"] = "keep"
+                        inst["canonical"] = source_term
+                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "no_candidates")
+                        continue
+
+                    if not canonical:
+                        inst["action"] = "keep"
+                        inst["canonical"] = source_term
+                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "empty_canonical")
+                        continue
+
+                    if _candidate_key(canonical) == _candidate_key(source_term):
+                        inst["action"] = "keep"
+                        inst["canonical"] = source_term
+                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "merge_into_self")
+                        continue
+
+                    cand_key = _candidate_key(canonical)
+                    if cand_key not in cand_map:
+                        inst["action"] = "keep"
+                        inst["canonical"] = source_term
+                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "canonical_not_in_candidates")
+                        continue
+
+                    # Snap canonical to the exact candidate string.
+                    snapped = cand_map[cand_key]
+                    if _specifier_set(source_term) != _specifier_set(snapped):
+                        inst["action"] = "keep"
+                        inst["canonical"] = source_term
+                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "specifier_mismatch")
+                        continue
+                    inst["canonical"] = snapped
+
         return instructions
 
     def _apply_alias_instructions(self, top_df: pd.DataFrame, alias_df: pd.DataFrame) -> pd.DataFrame:
