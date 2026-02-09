@@ -17,7 +17,7 @@ import leidenalg as la
 from .config import EnsembleConfig, LeidenConfig
 from .graph import build_graph, giant_component
 from .io import load_edge_table
-from .tuning import partition_class
+from .partitioning import partition_class
 from .logging import write_progress_event, PROGRESS_LOG_FILE
 
 
@@ -185,7 +185,7 @@ class EnsembleResult:
                 continue
             df = pl.read_parquet(aggregated)
             seed_cols = [c for c in df.columns if c.startswith("membership_seed_")]
-            long = df.melt(id_vars=["uid"], value_vars=seed_cols, variable_name="seed_col", value_name="cluster")
+            long = df.unpivot(on=seed_cols, index=["uid"], variable_name="seed_col", value_name="cluster")
             long = long.with_columns(
                 pl.lit(gamma).alias("gamma"),
                 pl.col("seed_col")
@@ -193,18 +193,18 @@ class EnsembleResult:
                 .cast(pl.Int64)
                 .alias("seed"),
             ).drop("seed_col")
-        if gamma in gamma_map:
-            counts_map = {int(s): v[0] for s, v in gamma_map[gamma].items()}
-            quality_map = {int(s): v[1] for s, v in gamma_map[gamma].items()}
-            long = long.with_columns(
-                pl.col("seed")
-                .map_elements(lambda s: counts_map.get(int(s), None), return_dtype=pl.Float64)
-                .alias("cluster_count"),
-                pl.col("seed")
-                .map_elements(lambda s: quality_map.get(int(s), None), return_dtype=pl.Float64)
-                .alias("quality"),
-            )
-        frames.append(long)
+            if gamma in gamma_map:
+                counts_map = {int(s): v[0] for s, v in gamma_map[gamma].items()}
+                quality_map = {int(s): v[1] for s, v in gamma_map[gamma].items()}
+                long = long.with_columns(
+                    pl.col("seed")
+                    .map_elements(lambda s: counts_map.get(int(s), None), return_dtype=pl.Float64)
+                    .alias("cluster_count"),
+                    pl.col("seed")
+                    .map_elements(lambda s: quality_map.get(int(s), None), return_dtype=pl.Float64)
+                    .alias("quality"),
+                )
+            frames.append(long)
 
         return pl.concat(frames) if frames else pl.DataFrame()
 

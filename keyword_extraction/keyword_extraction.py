@@ -21,7 +21,7 @@ import math
 import os
 import re
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from textwrap import dedent
 
 import numpy as np
@@ -531,7 +531,7 @@ class KeywordExtractionPipeline:
             and self.config.alias_cache_enabled
         ):
             if self.config.alias_cache_path is None:
-                timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
                 default_base = Path("artifacts") / "canonicalise" / timestamp
                 self.config.alias_cache_path = default_base
             base = Path(self.config.alias_cache_path)
@@ -626,7 +626,7 @@ class KeywordExtractionPipeline:
                     "alias_model": self.config.alias_model,
                     "alias_stopword_strictness": self.config.alias_stopword_strictness,
                     "alias_allow_translation": self.config.alias_allow_translation,
-                    "created_at": datetime.utcnow().isoformat() + "Z",
+                    "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "payload": payload,
                     "raw_response": raw_response,
                 },
@@ -682,7 +682,7 @@ class KeywordExtractionPipeline:
             )
         payload = {
             "cluster_id": int(cluster_id),
-            "updated_at": datetime.utcnow().isoformat() + "Z",
+            "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "items": items,
         }
         path = self._mapping_path(cluster_id)
@@ -2647,7 +2647,8 @@ class KeywordExtractionPipeline:
             from openai import OpenAI  # type: ignore
         except ImportError as exc:  # pragma: no cover
             raise ImportError(
-                "openai package is required for alias_strategy='llm'. Install via `pip install openai`."
+                "openai package is required for alias_strategy in {'llm', 'llm_candidates'}. "
+                "Install via `pip install openai`."
             ) from exc
         kwargs: Dict[str, object] = {}
         if self.config.alias_base_url:
