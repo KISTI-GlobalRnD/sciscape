@@ -560,16 +560,29 @@ class KeywordExtractionPipeline:
             cand_col = str(self.config.alias_candidate_column or "candidates")
             if cand_col and cand_col not in key_fields and cand_col in subset.columns:
                 key_fields = tuple([*key_fields, cand_col])
+
+        def _json_safe(value: object) -> object:
+            """Make values stable+JSON-serialisable for cache keys (e.g., sets, numpy scalars)."""
+            if isinstance(value, np.generic):
+                return value.item()
+            if isinstance(value, np.ndarray):
+                return value.tolist()
+            if isinstance(value, Mapping):
+                return {str(k): _json_safe(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_json_safe(v) for v in value]
+            if isinstance(value, tuple):
+                return [_json_safe(v) for v in value]
+            if isinstance(value, set):
+                items = [_json_safe(v) for v in value]
+                return sorted(items, key=lambda x: json.dumps(x, sort_keys=True, default=str))
+            return value
+
         records: List[Dict[str, object]] = []
         for row in subset.itertuples(index=False):
             entry: Dict[str, object] = {"cluster_id": int(cluster_id)}
             for field in key_fields:
-                value = getattr(row, field, None)
-                if isinstance(value, np.generic):
-                    value = value.item()
-                if isinstance(value, np.ndarray):
-                    value = value.tolist()
-                entry[field] = value
+                entry[field] = _json_safe(getattr(row, field, None))
             records.append(entry)
         records_sorted = sorted(records, key=lambda x: json.dumps(x, sort_keys=True))
         payload = {
@@ -1396,6 +1409,7 @@ class KeywordExtractionPipeline:
                     if isinstance(payload, Mapping):
                         terms_payload = payload.get("terms")
                         if isinstance(terms_payload, list):
+                            cand_col = str(self.config.alias_candidate_column or "candidates")
                             for term_obj in terms_payload:
                                 if not isinstance(term_obj, Mapping):
                                     continue
@@ -1403,9 +1417,14 @@ class KeywordExtractionPipeline:
                                 if not term:
                                     continue
                                 rec: Dict[str, object] = {"term": term}
-                                for col in ("score", "frequency", "doc_coverage", str(self.config.alias_candidate_column or "candidates")):
+                                for col in ("score", "frequency", "doc_coverage"):
                                     if col in term_obj:
                                         rec[col] = term_obj.get(col)
+                                # Cached payload uses a stable key ("candidates") even if the input column name differs.
+                                if "candidates" in term_obj:
+                                    rec[cand_col] = term_obj.get("candidates")
+                                elif cand_col in term_obj:
+                                    rec[cand_col] = term_obj.get(cand_col)
                                 subset_records.append(rec)
                     subset_df = pd.DataFrame.from_records(subset_records) if subset_records else group
                     try:
@@ -1587,10 +1606,21 @@ class KeywordExtractionPipeline:
                         out.append({"term": term})
                 return out
             if isinstance(value, (tuple, set)):
-                out = []
-                for item in value:
-                    term = str(item).strip()
-                    if term:
+                if isinstance(value, set):
+                    iterable = sorted(value, key=lambda x: json.dumps(x, sort_keys=True, default=str))
+                else:
+                    iterable = value
+                out: List[Dict[str, object]] = []
+                for item in iterable:
+                    if isinstance(item, Mapping):
+                        term = str(item.get("term", "")).strip()
+                        if not term:
+                            continue
+                        out.append({"term": term, **{k: v for k, v in item.items() if k != "term"}})
+                    else:
+                        term = str(item).strip()
+                        if not term:
+                            continue
                         out.append({"term": term})
                 return out
             if isinstance(value, str):
@@ -1754,218 +1784,236 @@ class KeywordExtractionPipeline:
             and not subset.empty
             and cand_col in subset.columns
         ):
-                sep_re = re.compile(r"[-_/]+")
-                digit_re = re.compile(r"\d+")
-                alpha_single_re = re.compile(r"^[a-z]$", flags=re.IGNORECASE)
-                roman_re = re.compile(r"^(?=[ivxlcdm]+$)[ivxlcdm]+$", flags=re.IGNORECASE)
-                greek_names = {
-                    "alpha",
-                    "beta",
-                    "gamma",
-                    "delta",
-                    "epsilon",
-                    "zeta",
-                    "eta",
-                    "theta",
-                    "iota",
-                    "kappa",
-                    "lambda",
-                    "mu",
-                    "nu",
-                    "xi",
-                    "omicron",
-                    "pi",
-                    "rho",
-                    "sigma",
-                    "tau",
-                    "upsilon",
-                    "phi",
-                    "chi",
-                    "psi",
-                    "omega",
-                }
-                greek_symbols = {
-                    "α",
-                    "β",
-                    "γ",
-                    "δ",
-                    "ε",
-                    "ζ",
-                    "η",
-                    "θ",
-                    "ι",
-                    "κ",
-                    "λ",
-                    "μ",
-                    "ν",
-                    "ξ",
-                    "ο",
-                    "π",
-                    "ρ",
-                    "σ",
-                    "τ",
-                    "υ",
-                    "φ",
-                    "χ",
-                    "ψ",
-                    "ω",
-                }
+            sep_re = re.compile(r"[-_/]+")
+            boundary_re = re.compile(r"(?<=[A-Za-z])(?=\d)|(?<=\d)(?=[A-Za-z])")
+            digit_re = re.compile(r"\d+")
+            alpha_single_re = re.compile(r"^[a-z]$", flags=re.IGNORECASE)
+            roman_re = re.compile(r"^(?=[ivxlcdm]+$)[ivxlcdm]+$", flags=re.IGNORECASE)
+            greek_symbol_to_name = {
+                "\u03b1": "alpha",
+                "\u03b2": "beta",
+                "\u03b3": "gamma",
+                "\u03b4": "delta",
+                "\u03b5": "epsilon",
+                "\u03b6": "zeta",
+                "\u03b7": "eta",
+                "\u03b8": "theta",
+                "\u03b9": "iota",
+                "\u03ba": "kappa",
+                "\u03bb": "lambda",
+                "\u03bc": "mu",
+                "\u03bd": "nu",
+                "\u03be": "xi",
+                "\u03bf": "omicron",
+                "\u03c0": "pi",
+                "\u03c1": "rho",
+                "\u03c3": "sigma",
+                "\u03c4": "tau",
+                "\u03c5": "upsilon",
+                "\u03c6": "phi",
+                "\u03c7": "chi",
+                "\u03c8": "psi",
+                "\u03c9": "omega",
+                "\u0391": "alpha",
+                "\u0392": "beta",
+                "\u0393": "gamma",
+                "\u0394": "delta",
+                "\u0395": "epsilon",
+                "\u0396": "zeta",
+                "\u0397": "eta",
+                "\u0398": "theta",
+                "\u0399": "iota",
+                "\u039a": "kappa",
+                "\u039b": "lambda",
+                "\u039c": "mu",
+                "\u039d": "nu",
+                "\u039e": "xi",
+                "\u039f": "omicron",
+                "\u03a0": "pi",
+                "\u03a1": "rho",
+                "\u03a3": "sigma",
+                "\u03a4": "tau",
+                "\u03a5": "upsilon",
+                "\u03a6": "phi",
+                "\u03a7": "chi",
+                "\u03a8": "psi",
+                "\u03a9": "omega",
+            }
+            greek_names = set(greek_symbol_to_name.values())
 
-                def _candidate_key(text: str) -> str:
-                    cleaned = _normalize_text_basic(text or "")
-                    if cfg.lowercase:
-                        cleaned = cleaned.lower()
-                    cleaned = cleaned.strip()
-                    cleaned = cleaned.replace("µ", "u").replace("μ", "u")
-                    cleaned = sep_re.sub(" ", cleaned)
-                    return " ".join(cleaned.split())
+            def _candidate_key(text: str) -> str:
+                cleaned = _normalize_text_basic(text or "")
+                if cfg.lowercase:
+                    cleaned = cleaned.lower()
+                cleaned = cleaned.strip()
+                # Normalise micro symbols to ASCII (common in units).
+                cleaned = cleaned.replace("µ", "u").replace("μ", "u")
+                # Map Greek symbols to names so beta/β etc match.
+                for sym, name in greek_symbol_to_name.items():
+                    if sym in cleaned:
+                        cleaned = cleaned.replace(sym, f" {name} ")
+                cleaned = boundary_re.sub(" ", cleaned)
+                cleaned = sep_re.sub(" ", cleaned)
+                return " ".join(cleaned.split())
 
-                def _candidate_list(value: object) -> List[str]:
-                    if value is None:
-                        return []
-                    if isinstance(value, np.ndarray):
-                        value = value.tolist()
-                    if isinstance(value, list):
-                        out: List[str] = []
-                        for item in value:
-                            if isinstance(item, Mapping):
-                                term = str(item.get("term", "")).strip()
-                                if term:
-                                    out.append(term)
-                            else:
-                                term = str(item).strip()
-                                if term:
-                                    out.append(term)
-                        return out
-                    if isinstance(value, (tuple, set)):
-                        return [str(item).strip() for item in value if str(item).strip()]
-                    if isinstance(value, str):
-                        raw = value.strip()
-                        if not raw:
-                            return []
-                        try:
-                            decoded = json.loads(raw)
-                            if isinstance(decoded, list):
-                                return _candidate_list(decoded)
-                        except Exception:
-                            pass
-                        sep = "|" if "|" in raw else ("," if "," in raw else None)
-                        if sep:
-                            return [part.strip() for part in raw.split(sep) if part.strip()]
-                        return [raw]
+            def _candidate_list(value: object) -> List[str]:
+                if value is None:
                     return []
+                if isinstance(value, np.ndarray):
+                    value = value.tolist()
+                if isinstance(value, list):
+                    out: List[str] = []
+                    for item in value:
+                        if isinstance(item, Mapping):
+                            term = str(item.get("term", "")).strip()
+                            if term:
+                                out.append(term)
+                        else:
+                            term = str(item).strip()
+                            if term:
+                                out.append(term)
+                    return out
+                if isinstance(value, (tuple, set)):
+                    iterable = (
+                        sorted(value, key=lambda x: json.dumps(x, sort_keys=True, default=str))
+                        if isinstance(value, set)
+                        else value
+                    )
+                    out = []
+                    for item in iterable:
+                        if isinstance(item, Mapping):
+                            term = str(item.get("term", "")).strip()
+                            if term:
+                                out.append(term)
+                        else:
+                            term = str(item).strip()
+                            if term:
+                                out.append(term)
+                    return out
+                if isinstance(value, str):
+                    raw = value.strip()
+                    if not raw:
+                        return []
+                    try:
+                        decoded = json.loads(raw)
+                        if isinstance(decoded, list):
+                            return _candidate_list(decoded)
+                    except Exception:
+                        pass
+                    sep = "|" if "|" in raw else ("," if "," in raw else None)
+                    if sep:
+                        return [part.strip() for part in raw.split(sep) if part.strip()]
+                    return [raw]
+                return []
 
-                def _append_reason(existing: str, extra: str) -> str:
-                    existing = (existing or "").strip()
-                    extra = (extra or "").strip()
-                    if not existing:
-                        return extra
-                    if not extra:
-                        return existing
-                    if extra in existing:
-                        return existing
-                    return f"{existing};{extra}"
+            def _append_reason(existing: str, extra: str) -> str:
+                existing = (existing or "").strip()
+                extra = (extra or "").strip()
+                if not existing:
+                    return extra
+                if not extra:
+                    return existing
+                if extra in existing:
+                    return existing
+                return f"{existing};{extra}"
 
-                def _specifier_set(text: str) -> set[str]:
-                    """Extract specifier tokens that should not be dropped when merging.
+            def _specifier_set(text: str) -> set[str]:
+                """Extract specifier tokens that should not be dropped when merging.
 
-                    Examples: digits (e.g., IL-6), single-letter classes (IgG), Greek letters (alpha/β), roman numerals (II).
-                    """
-                    key = _candidate_key(text or "")
-                    if not key:
-                        return set()
-                    specs: set[str] = set()
-                    for tok in key.split():
-                        if not tok:
-                            continue
-                        if digit_re.search(tok):
-                            specs.update(digit_re.findall(tok))
-                            continue
-                        tok_lower = tok.lower()
-                        if alpha_single_re.fullmatch(tok_lower):
-                            specs.add(tok_lower)
-                            continue
-                        if tok_lower in greek_names:
-                            specs.add(tok_lower)
-                            continue
-                        if tok in greek_symbols:
-                            specs.add(tok)
-                            continue
-                        if len(tok_lower) >= 2 and roman_re.fullmatch(tok_lower):
-                            specs.add(tok_lower)
-                    return specs
-
-                candidate_max = int(cfg.alias_candidate_max) if int(cfg.alias_candidate_max) > 0 else 0
-                term_key_to_terms: Dict[str, List[str]] = defaultdict(list)
-                candidates_by_term: Dict[str, Dict[str, str]] = {}
-                for row in subset.itertuples(index=False):
-                    term_raw = str(getattr(row, "term", "")).strip()
-                    if not term_raw:
+                Examples: digits (e.g., IL-6), single-letter classes (IgG), Greek letters (alpha/beta), roman numerals (II).
+                """
+                key = _candidate_key(text or "")
+                if not key:
+                    return set()
+                specs: set[str] = set()
+                for tok in key.split():
+                    if not tok:
                         continue
-                    term_key_to_terms[_candidate_key(term_raw)].append(term_raw)
-                    candidates = _candidate_list(getattr(row, cand_col, None))
-                    if candidate_max and candidates:
-                        candidates = candidates[:candidate_max]
-                    cand_map: Dict[str, str] = {}
-                    for cand in candidates:
-                        cand_key = _candidate_key(cand)
-                        if cand_key and cand_key not in cand_map:
-                            cand_map[cand_key] = cand
-                    candidates_by_term[term_raw] = cand_map
+                    if digit_re.search(tok):
+                        specs.update(digit_re.findall(tok))
+                        continue
+                    tok_lower = tok.lower()
+                    if alpha_single_re.fullmatch(tok_lower):
+                        specs.add(tok_lower)
+                        continue
+                    if tok_lower in greek_names:
+                        specs.add(tok_lower)
+                        continue
+                    if len(tok_lower) >= 2 and roman_re.fullmatch(tok_lower):
+                        specs.add(tok_lower)
+                return specs
 
-                for inst in instructions:
-                    action = str(inst.get("action", "keep")).strip().lower()
-                    if action != "merge_into":
-                        continue
-                    original = str(inst.get("original", "")).strip()
-                    if not original:
-                        continue
-                    canonical = str(inst.get("canonical", "")).strip()
+            candidate_max = int(cfg.alias_candidate_max) if int(cfg.alias_candidate_max) > 0 else 0
+            term_key_to_terms: Dict[str, List[str]] = defaultdict(list)
+            candidates_by_term: Dict[str, Dict[str, str]] = {}
+            for row in subset.itertuples(index=False):
+                term_raw = str(getattr(row, "term", "")).strip()
+                if not term_raw:
+                    continue
+                term_key_to_terms[_candidate_key(term_raw)].append(term_raw)
+                candidates = _candidate_list(getattr(row, cand_col, None))
+                if candidate_max and candidates:
+                    candidates = candidates[:candidate_max]
+                cand_map: Dict[str, str] = {}
+                for cand in candidates:
+                    cand_key = _candidate_key(cand)
+                    if cand_key and cand_key not in cand_map:
+                        cand_map[cand_key] = cand
+                candidates_by_term[term_raw] = cand_map
 
-                    # Locate the original term in this subset (exact or normalized unique match).
-                    source_term: Optional[str] = original if original in candidates_by_term else None
-                    if source_term is None:
-                        key = _candidate_key(original)
-                        matches = term_key_to_terms.get(key) or []
-                        if len(matches) == 1:
-                            source_term = matches[0]
-                    if source_term is None:
-                        continue
+            for inst in instructions:
+                action = str(inst.get("action", "keep")).strip().lower()
+                if action != "merge_into":
+                    continue
+                original = str(inst.get("original", "")).strip()
+                if not original:
+                    continue
+                canonical = str(inst.get("canonical", "")).strip()
 
-                    cand_map = candidates_by_term.get(source_term) or {}
-                    if not cand_map:
-                        inst["action"] = "keep"
-                        inst["canonical"] = source_term
-                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "no_candidates")
-                        continue
+                # Locate the original term in this subset (exact or normalized unique match).
+                source_term: Optional[str] = original if original in candidates_by_term else None
+                if source_term is None:
+                    key = _candidate_key(original)
+                    matches = term_key_to_terms.get(key) or []
+                    if len(matches) == 1:
+                        source_term = matches[0]
+                if source_term is None:
+                    continue
 
-                    if not canonical:
-                        inst["action"] = "keep"
-                        inst["canonical"] = source_term
-                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "empty_canonical")
-                        continue
+                cand_map = candidates_by_term.get(source_term) or {}
+                if not cand_map:
+                    inst["action"] = "keep"
+                    inst["canonical"] = source_term
+                    inst["reason"] = _append_reason(str(inst.get("reason", "")), "no_candidates")
+                    continue
 
-                    if _candidate_key(canonical) == _candidate_key(source_term):
-                        inst["action"] = "keep"
-                        inst["canonical"] = source_term
-                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "merge_into_self")
-                        continue
+                if not canonical:
+                    inst["action"] = "keep"
+                    inst["canonical"] = source_term
+                    inst["reason"] = _append_reason(str(inst.get("reason", "")), "empty_canonical")
+                    continue
 
-                    cand_key = _candidate_key(canonical)
-                    if cand_key not in cand_map:
-                        inst["action"] = "keep"
-                        inst["canonical"] = source_term
-                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "canonical_not_in_candidates")
-                        continue
+                if canonical.strip() == source_term.strip():
+                    inst["action"] = "keep"
+                    inst["canonical"] = source_term
+                    inst["reason"] = _append_reason(str(inst.get("reason", "")), "merge_into_self")
+                    continue
 
-                    # Snap canonical to the exact candidate string.
-                    snapped = cand_map[cand_key]
-                    if _specifier_set(source_term) != _specifier_set(snapped):
-                        inst["action"] = "keep"
-                        inst["canonical"] = source_term
-                        inst["reason"] = _append_reason(str(inst.get("reason", "")), "specifier_mismatch")
-                        continue
-                    inst["canonical"] = snapped
+                cand_key = _candidate_key(canonical)
+                if cand_key not in cand_map:
+                    inst["action"] = "keep"
+                    inst["canonical"] = source_term
+                    inst["reason"] = _append_reason(str(inst.get("reason", "")), "canonical_not_in_candidates")
+                    continue
+
+                # Snap canonical to the exact candidate string.
+                snapped = cand_map[cand_key]
+                if _specifier_set(source_term) != _specifier_set(snapped):
+                    inst["action"] = "keep"
+                    inst["canonical"] = source_term
+                    inst["reason"] = _append_reason(str(inst.get("reason", "")), "specifier_mismatch")
+                    continue
+                inst["canonical"] = snapped
 
         return instructions
 
