@@ -76,6 +76,20 @@ keywords = run_keyword_pipeline(cfg)
 keywords.to_parquet("Output/cluster_keywords.parquet", index=False)
 ```
 
+### (선택) Stage 2.5: LLM 기반 용어 정규화(alias merge/drop/translate)
+
+`KeywordExtractionConfig`에서 `apply_alias_map=True`를 켜고 `alias_strategy`를 지정하면,
+추출된 키워드를 canonical form으로 정규화할 수 있습니다.
+
+- `alias_strategy="llm"`: LLM 호출로 `keep / merge_into / translate / drop` 결정(기본 chunking)
+- `alias_strategy="llm_candidates"`: term별 `candidates`(후보 canonical allowlist)를 제공하는 방식  
+  - `merge_into`는 해당 term의 후보 목록 안에서만 선택하도록 강제(대규모 vocabulary에서 안전성↑)
+
+관련 옵션(일부):
+- `alias_cache_path`: raw response + mapping 저장 경로
+- `alias_max_terms_per_prompt`: 한 번에 보낼 term 개수
+- `alias_candidate_column` / `alias_candidate_max` / `alias_candidate_enforce`: `llm_candidates`용 후보 컬럼/제약
+
 ## 개발/검증
 
 ```bash
