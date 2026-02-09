@@ -12,7 +12,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 import igraph as ig
 import leidenalg as la
 
-from .clustering import partition_class
+from .partitioning import partition_class
 from .config import PostprocessConfig
 from .postprocess import merge_small_clusters
 from .runner import LeidenRunner
@@ -521,6 +521,3 @@ __all__ = [
     "ResolutionScanResult",
     "scan_resolution_grid",
 ]
-
-
-__all__ = ["resolve_resolution_schedule", "ResolutionResult"]

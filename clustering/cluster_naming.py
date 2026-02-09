@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 import json
+import re
 
 try:
     from openai import OpenAI
@@ -15,7 +16,7 @@ except ImportError:  # pragma: no cover - optional dependency
 from .core_documents import ClusterDocument
 
 DEFAULT_MODEL = "gpt-oss:20b"
-DEFAULT_BASE_URL = "http://172.16.2.42:11434/v1"
+DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_API_KEY = "ollama"
 DEFAULT_MAX_DOCUMENTS = 8
 
@@ -140,7 +141,9 @@ def create_client(
 
     settings = _determine_settings(base_url=base_url, api_key=api_key, model=model)
     client = OpenAI(base_url=settings["base_url"], api_key=settings["api_key"])
+    # Backward-compat: older internal code referred to this as "leiden_module".
     client._leiden_module_model = settings["model"]  # type: ignore[attr-defined]
+    client._sciscape_model = settings["model"]  # type: ignore[attr-defined]
     return client
 
 
@@ -181,14 +184,29 @@ def detect_and_translate(
         user_content=text,
     )
 
-    for _ in range(3):
-        try:
-            result = json.loads(raw)
-            break
-        except json.JSONDecodeError:
-            raw = raw.strip()
-    else:
+    def _safe_json_loads(payload: str) -> Optional[object]:
+        if payload is None:
+            return None
+        content = str(payload).strip()
+        if not content:
+            return None
+        if content.startswith("```"):
+            content = re.sub(r"^```[\w-]*\s*", "", content, count=1)
+            content = re.sub(r"\s*```$", "", content, count=1).strip()
+        candidates = [content]
+        if "{" in content:
+            candidates.append(content[content.find("{") :])
+        for cand in candidates:
+            try:
+                return json.loads(cand)
+            except Exception:
+                continue
+        return None
+
+    parsed = _safe_json_loads(raw)
+    if not isinstance(parsed, dict):
         return {"lang": "Invalid JSON", "text": raw}
+    result: Dict[str, str] = {str(k): str(v) for k, v in parsed.items()}
 
     if result.get("lang") == "en" and not result.get("text"):
         result["text"] = text

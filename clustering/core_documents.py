@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TYPE_CHECKING, Union
 
@@ -703,7 +703,7 @@ def select_core_documents(
             break
 
     valid_years = [r["pubyear"] for r in cleaned if r["pubyear"]]
-    latest_year = max(valid_years) if valid_years else datetime.utcnow().year
+    latest_year = max(valid_years) if valid_years else datetime.now(timezone.utc).year
     start_year = latest_year - recent_years + 1
 
     for year in range(latest_year, start_year - 1, -1):
