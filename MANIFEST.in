@@ -1,0 +1,39 @@
+include pyproject.toml
+include AGENTS.md
+include README.md
+include sciscape/README.md
+
+recursive-include sciscape *.py
+recursive-include sciscape *.md
+recursive-include sos *.py
+
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__/*
+
+global-exclude *.ipynb
+global-exclude *.parquet
+global-exclude *.zip
+global-exclude *.png
+global-exclude *.jpg
+global-exclude *.jpeg
+global-exclude *.gif
+global-exclude *.pdf
+global-exclude *.hwp
+global-exclude *.log
+global-exclude .env
+global-exclude .env.*
+
+prune .venv
+prune Data
+prune Output
+prune Figure
+prune artifacts
+prune final_report_site
+prune final_report_site.bak
+prune final_report_site_ghpages
+prune notebooks
+prune Local_Map_Analysis
+prune Focused_Reports
+prune ensemble_output
+prune ensemble_gamma_Final
