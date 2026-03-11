@@ -4,7 +4,7 @@ from pathlib import Path
 
 import polars as pl
 
-from clustering.ensemble import EnsembleResult
+from sciscape.clustering.ensemble import EnsembleResult
 
 
 def test_ensemble_to_frame_reads_all_gamma_dirs(tmp_path: Path) -> None:

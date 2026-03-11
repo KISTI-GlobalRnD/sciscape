@@ -9,7 +9,7 @@
 
 호환을 위해 기존 `sos.*` import도 shim으로 유지합니다.
 
-## KRISS 보고서 산출물
+## Scope
 
-- 최종보고서/데이터북 머지, DOCX↔HWPX 변환, 검토용 PDF 생성: `final_report_site/print/README.md`
-- 중요 버전업 로그(오탈자/표기 통일/리포트 재생성 등): `final_report_site/web_home.qmd` (홈 하단 업데이트 로그)
+이 저장소는 네트워크 기반 클러스터링/키워드 추출 파이프라인(`sciscape`)만 포함합니다.
+보고서 생성(문서 머지/변환/웹 리포트 등) 파이프라인은 별도 프로젝트에서 관리합니다.

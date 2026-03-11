@@ -76,6 +76,23 @@ keywords = run_keyword_pipeline(cfg)
 keywords.to_parquet("Output/cluster_keywords.parquet", index=False)
 ```
 
+## (Optional) Before/After Scoring (e.g., Stage 2 vs Stage 2.5)
+
+If you run the pipeline twice (e.g., alias/canonicalisation off vs on), you can score the change:
+
+```python
+from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline, score_before_after
+
+cfg_before = KeywordExtractionConfig(..., apply_alias_map=False)
+before = run_keyword_pipeline(cfg_before)
+
+cfg_after = KeywordExtractionConfig(..., apply_alias_map=True, alias_strategy="llm_candidates")
+after = run_keyword_pipeline(cfg_after)
+
+report = score_before_after(before, after, sample_clusters=50, seed=0)
+print(report["total_score"])
+```
+
 ### (선택) Stage 2.5: LLM 기반 용어 정규화(alias merge/drop/translate)
 
 `KeywordExtractionConfig`에서 `apply_alias_map=True`를 켜고 `alias_strategy`를 지정하면,

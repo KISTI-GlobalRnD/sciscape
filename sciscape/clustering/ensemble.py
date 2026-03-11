@@ -194,16 +194,18 @@ class EnsembleResult:
                 .alias("seed"),
             ).drop("seed_col")
             if gamma in gamma_map:
-                counts_map = {int(s): v[0] for s, v in gamma_map[gamma].items()}
-                quality_map = {int(s): v[1] for s, v in gamma_map[gamma].items()}
-                long = long.with_columns(
-                    pl.col("seed")
-                    .map_elements(lambda s: counts_map.get(int(s), None), return_dtype=pl.Float64)
-                    .alias("cluster_count"),
-                    pl.col("seed")
-                    .map_elements(lambda s: quality_map.get(int(s), None), return_dtype=pl.Float64)
-                    .alias("quality"),
-                )
+                rows = []
+                for seed, (cluster_count, quality) in gamma_map[gamma].items():
+                    rows.append(
+                        {
+                            "seed": int(seed),
+                            "cluster_count": int(cluster_count) if cluster_count is not None else None,
+                            "quality": float(quality) if quality is not None else None,
+                        }
+                    )
+                if rows:
+                    metrics = pl.DataFrame(rows)
+                    long = long.join(metrics, on="seed", how="left")
             frames.append(long)
 
         return pl.concat(frames) if frames else pl.DataFrame()
