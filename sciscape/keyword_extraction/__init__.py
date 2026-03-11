@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from .config import CORE_COLUMNS, KeywordExtractionConfig, KeywordRecord
 from .diagnostics import KeywordDiagnostics, keyword_diagnostics, score_before_after
-from .keyword_extraction import KeywordExtractionConfig, KeywordExtractionPipeline, run_keyword_pipeline
+from .keyword_extraction import KeywordExtractionPipeline, run_keyword_pipeline
 
 __all__ = [
+    "CORE_COLUMNS",
     "KeywordDiagnostics",
     "KeywordExtractionConfig",
     "KeywordExtractionPipeline",
+    "KeywordRecord",
     "keyword_diagnostics",
     "run_keyword_pipeline",
     "score_before_after",
