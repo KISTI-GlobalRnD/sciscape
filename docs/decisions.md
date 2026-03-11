@@ -25,6 +25,14 @@ Standalone function would need 6+ parameters.
 Clean separation: extraction.py = data loading + math utils, pipeline.py = orchestration.
 llm_canonicalize.py keeps its own local _normalize_text_basic copy (avoids circular import).
 
+## [2026-03-12] [Phase B] DECISION: Two-level normalization strategy
+**REASON**: Vocabulary merge (Stage 2, pre-scoring) and keyword normalization (Stage 5,
+post-scoring) serve different purposes. Vocab merge operates on sparse matrix columns
+(safe, reversible, no semantic judgment). Keyword normalization operates on scored terms
+(Greek letters, abbreviation expansion, edit-distance merge).
+**KEY DESIGN**: Edit-distance merge only fires when minor-form frequency is very low
+(< 1% of major form) to avoid merging distinct concepts like "model"/"modal".
+
 ## [2026-03-11] [Phase A.5+A.7] DECISION: Combine pipeline.py creation and keyword_extraction.py thinning
 **REASON**: After extracting utilities (A.2), llm_canonicalize (A.3), temporal (A.4),
 keyword_extraction.py contained ONLY the Pipeline class. No intermediate step needed.
