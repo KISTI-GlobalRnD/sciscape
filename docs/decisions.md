@@ -33,6 +33,23 @@ post-scoring) serve different purposes. Vocab merge operates on sparse matrix co
 **KEY DESIGN**: Edit-distance merge only fires when minor-form frequency is very low
 (< 1% of major form) to avoid merging distinct concepts like "model"/"modal".
 
+## [2026-03-12] [Phase C] DECISION: Blocking strategy for term network
+**REASON**: O(n^2) pairwise comparison is infeasible for 100K+ terms. Token-based
+blocking groups terms sharing any word. Special "_abbrev" block pairs short terms
+(<=5 chars) with multi-word terms for abbreviation detection.
+**BUG FIX**: Abbreviation initials must use original word ORDER (list), not set iteration
+which has non-deterministic order in Python.
+
+## [2026-03-12] [Phase C] DECISION: PMI normalization for co-occurrence layer
+**REASON**: Raw co-occurrence counts are biased by term frequency. Symmetric normalization
+D^{-1/2} * C * D^{-1/2} produces values in [0,1] comparable across term pairs.
+
+## [2026-03-12] [Phase D] DECISION: Quantile-based depth levels
+**REASON**: Fixed thresholds would break across datasets with different score distributions.
+Quantile-based assignment (np.digitize on quantile boundaries) is robust and adaptive.
+**SIGNALS**: doc_coverage (inverted), cross_cluster_count (inverted), ngram_length,
+co-occurrence asymmetry P(A|B) vs P(B|A). All min-max normalized before combination.
+
 ## [2026-03-11] [Phase A.5+A.7] DECISION: Combine pipeline.py creation and keyword_extraction.py thinning
 **REASON**: After extracting utilities (A.2), llm_canonicalize (A.3), temporal (A.4),
 keyword_extraction.py contained ONLY the Pipeline class. No intermediate step needed.
