@@ -118,6 +118,19 @@ class KeywordExtractionConfig:
     # Vocabulary merge (Stage 2)
     vocab_merge: Optional["VocabMergeConfig"] = None
 
+    # Post-top-K normalization (Stage 5)
+    normalization_enabled: bool = False
+    norm_max_edit_distance: int = 2
+    norm_min_frequency_ratio: float = 0.01
+
+    # Co-occurrence & term network (Stages 6-7)
+    cooccurrence_enabled: bool = False
+    cooccurrence_min_count: int = 3
+    term_network: Optional[object] = None  # TermNetworkConfig (avoids circular import)
+
+    # Depth estimation (Stage 9)
+    depth: Optional[object] = None  # DepthConfig (avoids circular import)
+
     # Execution
     n_jobs: int = -1
     use_polars: bool = True

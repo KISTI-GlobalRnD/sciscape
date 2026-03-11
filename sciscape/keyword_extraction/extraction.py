@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Iterator, List, MutableMapping, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import math
-import re
 
 import numpy as np
 import pandas as pd
@@ -15,6 +14,7 @@ from scipy import sparse as sp
 from sklearn.feature_extraction.text import CountVectorizer
 
 from .config import KeywordExtractionConfig
+from .utils import _normalize_text_basic
 
 try:  # optional dependency
     import polars as pl
@@ -27,22 +27,6 @@ try:  # optional dependency for row-group streaming
 except Exception:  # pragma: no cover
     pq = None
     _HAS_ARROW = False
-
-
-TokenCounter = Counter[str]
-YearCounter = Counter[int]
-TermYearCounter = MutableMapping[str, YearCounter]
-ClusterTermYearCounter = MutableMapping[int, TermYearCounter]
-
-_HTML_TAG_RE = re.compile(r"</?[^<>]+>")
-
-
-def _normalize_text_basic(text: object) -> str:
-    """Cheap normalisation shared across stages."""
-    if not isinstance(text, str):
-        return ""
-    text = _HTML_TAG_RE.sub(" ", text)
-    return " ".join(text.replace("\r", " ").replace("\n", " ").split())
 
 
 def _effective_n_jobs(n_jobs: Optional[int]) -> int:

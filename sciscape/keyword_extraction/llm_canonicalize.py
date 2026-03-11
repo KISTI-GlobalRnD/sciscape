@@ -18,17 +18,9 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
+from .utils import _normalize_text_basic
+
 logger = logging.getLogger(__name__)
-
-_HTML_TAG_RE = re.compile(r"</?[^<>]+>")
-
-
-def _normalize_text_basic(text: object) -> str:
-    """Cheap normalisation shared across stages."""
-    if not isinstance(text, str):
-        return ""
-    text = _HTML_TAG_RE.sub(" ", text)
-    return " ".join(text.replace("\r", " ").replace("\n", " ").split())
 
 
 class LLMCanonicalizeMixin:

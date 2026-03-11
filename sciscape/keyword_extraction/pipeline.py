@@ -30,8 +30,12 @@ from .extraction import (
     _mmr_jaccard_select,
     _suppress_subphrases,
 )
+from .cooccurrence import collect_cooccurrence
+from .depth import DepthConfig, estimate_depth
 from .llm_canonicalize import LLMCanonicalizeMixin
+from .normalization import normalize_keywords
 from .temporal import TemporalMixin
+from .term_network import TermNetwork, TermNetworkConfig
 from .vocab_merge import apply_merge_map, build_merge_map
 
 logger = logging.getLogger(__name__)
@@ -79,20 +83,28 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         self._alias_client = None
         self.cluster_year_token_denoms: Dict[int, Counter[int]] = defaultdict(Counter)
         self._alias_cache_dir: Optional[Path] = None
-        if (
-            self.config.apply_alias_map
-            and (self.config.alias_strategy or "none").lower() != "none"
-            and self.config.alias_cache_enabled
-        ):
-            if self.config.alias_cache_path is None:
-                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-                default_base = Path("artifacts") / "canonicalise" / timestamp
-                self.config.alias_cache_path = default_base
-            base = Path(self.config.alias_cache_path)
-            base.mkdir(parents=True, exist_ok=True)
-            self._alias_cache_dir = base
         self._builtin_alias_cache: Optional[Dict[str, str]] = None
+        self._init_alias_cache()
+
+        # Optional stage artifacts (populated during run)
+        self.cooc_matrix: Optional[sp.csr_matrix] = None
+        self.merge_candidates: Optional[List[Dict]] = None
+
         self._log("Initialised pipeline for %d clusters (n_jobs=%d)", self.K, self.n_jobs_effective)
+
+    def _init_alias_cache(self) -> None:
+        """Set up alias cache directory if caching is enabled."""
+        cfg = self.config
+        if not (cfg.apply_alias_map
+                and (cfg.alias_strategy or "none").lower() != "none"
+                and cfg.alias_cache_enabled):
+            return
+        if cfg.alias_cache_path is None:
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            cfg.alias_cache_path = Path("artifacts") / "canonicalise" / timestamp
+        base = Path(cfg.alias_cache_path)
+        base.mkdir(parents=True, exist_ok=True)
+        self._alias_cache_dir = base
 
     def _log(self, message: str, *args) -> None:
         if self.config.verbose:
@@ -210,25 +222,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         if DF_phrase is not None:
             DF_phrase = DF_phrase.tocsr()
 
-        if C_phrase is not None and C_phrase.shape[1] > 0 and self.config.phrase_min_count_per_cluster > 1:
-            max_per_col_matrix = C_phrase.max(axis=0)
-            if sp.issparse(max_per_col_matrix):
-                max_per_col = max_per_col_matrix.toarray().ravel()
-            elif hasattr(max_per_col_matrix, "A1"):
-                max_per_col = max_per_col_matrix.A1
-            else:
-                max_per_col = np.asarray(max_per_col_matrix).ravel()
-            thresh = int(self.config.phrase_min_count_per_cluster)
-            keep = max_per_col >= thresh
-            if keep.size == 0 or not keep.any():
-                C_phrase = sp.csr_matrix((K, 0), dtype=np.int64)
-                DF_phrase = sp.csr_matrix((K, 0), dtype=np.int64) if DF_phrase is not None else None
-                self.feature_names_phrase = np.array([], dtype=str)
-            elif not np.all(keep):
-                C_phrase = C_phrase[:, keep]
-                if DF_phrase is not None:
-                    DF_phrase = DF_phrase[:, keep]
-                self.feature_names_phrase = self.feature_names_phrase[keep]  # type: ignore
+        C_phrase, DF_phrase = self._filter_rare_phrases(C_phrase, DF_phrase, K)
 
         self.C_uni = C_uni
         self.C_phrase = C_phrase
@@ -242,6 +236,38 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             self.K,
             int(C_uni.sum()) + int(C_phrase.sum()) if C_phrase is not None else int(C_uni.sum()),
         )
+
+    # ----- Stage 1.5: optional vocabulary merge -----
+
+    def _filter_rare_phrases(
+        self,
+        C_phrase: Optional[sp.csr_matrix],
+        DF_phrase: Optional[sp.csr_matrix],
+        K: int,
+    ) -> Tuple[Optional[sp.csr_matrix], Optional[sp.csr_matrix]]:
+        """Drop phrase columns below min count threshold."""
+        if C_phrase is None or C_phrase.shape[1] == 0 or self.config.phrase_min_count_per_cluster <= 1:
+            return C_phrase, DF_phrase
+        max_per_col_matrix = C_phrase.max(axis=0)
+        if sp.issparse(max_per_col_matrix):
+            max_per_col = max_per_col_matrix.toarray().ravel()
+        elif hasattr(max_per_col_matrix, "A1"):
+            max_per_col = max_per_col_matrix.A1
+        else:
+            max_per_col = np.asarray(max_per_col_matrix).ravel()
+        thresh = int(self.config.phrase_min_count_per_cluster)
+        keep = max_per_col >= thresh
+        if keep.size == 0 or not keep.any():
+            self.feature_names_phrase = np.array([], dtype=str)
+            return sp.csr_matrix((K, 0), dtype=np.int64), (
+                sp.csr_matrix((K, 0), dtype=np.int64) if DF_phrase is not None else None
+            )
+        if not np.all(keep):
+            C_phrase = C_phrase[:, keep]
+            if DF_phrase is not None:
+                DF_phrase = DF_phrase[:, keep]
+            self.feature_names_phrase = self.feature_names_phrase[keep]  # type: ignore
+        return C_phrase, DF_phrase
 
     # ----- Stage 1.5: optional vocabulary merge -----
 
@@ -568,16 +594,106 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             self._log("Final cleanup: dropped %d stopword-only terms", dropped)
         return filtered
 
+    # ----- Optional stages (no-op when disabled) -----
+
+    def _stage_normalization(self, top_df: pd.DataFrame) -> pd.DataFrame:
+        """Stage 5: post-top-K keyword normalization."""
+        if not self.config.normalization_enabled or top_df.empty:
+            return top_df
+        self._log("Stage 5: normalizing %d keywords", len(top_df))
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases=self.config.builtin_aliases,
+            stopwords=self.stopwords_set,
+            max_edit_distance=self.config.norm_max_edit_distance,
+            min_frequency_ratio=self.config.norm_min_frequency_ratio,
+        )
+        self._log("Stage 5: %d -> %d keywords after normalization", len(top_df), len(result))
+        return result
+
+    def _stage_cooccurrence(self, selected_terms: List[str]) -> None:
+        """Stage 6: collect term co-occurrence matrix."""
+        if not self.config.cooccurrence_enabled or not selected_terms:
+            return
+        self._log("Stage 6: collecting co-occurrence for %d terms", len(selected_terms))
+
+        def text_batches():
+            for batch in self._data.batch_iter():
+                yield batch["text"].tolist()
+
+        self.cooc_matrix = collect_cooccurrence(
+            texts_iter=text_batches(),
+            selected_terms=selected_terms,
+            lowercase=self.config.lowercase,
+            token_pattern=self.config.token_pattern,
+            strip_accents=self.config.strip_accents,
+            stopwords=self.stopwords_list,
+            min_cooc_count=self.config.cooccurrence_min_count,
+        )
+        self._log("Stage 6: co-occurrence matrix %s, nnz=%d",
+                   self.cooc_matrix.shape, self.cooc_matrix.nnz)
+
+    def _stage_term_network(self, selected_terms: List[str], top_df: pd.DataFrame) -> None:
+        """Stage 7: build similarity network and find merge groups."""
+        tn_cfg = self.config.term_network
+        if tn_cfg is None or not getattr(tn_cfg, "enabled", False) or not selected_terms:
+            return
+        self._log("Stage 7: building term network for %d terms", len(selected_terms))
+        network = TermNetwork(tn_cfg)
+
+        layers, weights = [], []
+        if "string" in tn_cfg.layers:
+            layers.append(network.build_layer_string(selected_terms))
+            weights.append(tn_cfg.layer_weights.get("string", 1.0))
+        if "token" in tn_cfg.layers:
+            layers.append(network.build_layer_token(selected_terms))
+            weights.append(tn_cfg.layer_weights.get("token", 0.8))
+        if "cooccurrence" in tn_cfg.layers and self.cooc_matrix is not None:
+            layers.append(network.build_layer_cooccurrence(self.cooc_matrix))
+            weights.append(tn_cfg.layer_weights.get("cooccurrence", 0.6))
+
+        if not layers:
+            return
+
+        combined = network.combine_layers(layers, weights)
+        groups = network.find_merge_groups(combined, selected_terms)
+        self.merge_candidates = network.generate_candidate_sets(groups, top_df)
+        self._log("Stage 7: found %d merge groups", len(groups))
+
+    def _stage_depth(self, top_df: pd.DataFrame, selected_terms: List[str]) -> pd.DataFrame:
+        """Stage 9: estimate conceptual depth for each keyword."""
+        depth_cfg = self.config.depth
+        if depth_cfg is None or not getattr(depth_cfg, "enabled", False) or top_df.empty:
+            return top_df
+        self._log("Stage 9: estimating depth for %d keywords", len(top_df))
+        return estimate_depth(
+            top_df,
+            cooc_matrix=self.cooc_matrix,
+            selected_terms=selected_terms if self.cooc_matrix is not None else None,
+            config=depth_cfg,
+        )
+
     # ----- Public API -----
 
     def run(self) -> pd.DataFrame:
         self._log("Pipeline run started")
-        self._fit_vectorizers()
-        self._aggregate_counts()
-        self._apply_vocab_merge()
-        top_df = self._stage_scores_and_topk()
-        top_df = self._maybe_canonicalise(top_df)
-        term_year = self._compute_year_series(top_df)
+
+        # Pass 1: vectorization → aggregation → scoring
+        self._fit_vectorizers()                          # Stage 1
+        self._aggregate_counts()                         # Stage 3
+        self._apply_vocab_merge()                        # Stage 2 (vocab merge)
+        top_df = self._stage_scores_and_topk()           # Stage 4 (scoring)
+
+        # Pass 2: normalization → network → canonicalization
+        top_df = self._stage_normalization(top_df)       # Stage 5
+        selected_terms = top_df["term"].unique().tolist() if not top_df.empty else []
+        self._stage_cooccurrence(selected_terms)         # Stage 6
+        self._stage_term_network(selected_terms, top_df) # Stage 7
+        top_df = self._maybe_canonicalise(top_df)        # Stage 8
+
+        # Pass 3: depth → temporal
+        top_df = self._stage_depth(top_df, selected_terms)  # Stage 9
+        term_year = self._compute_year_series(top_df)       # Stage 10
         if not top_df.empty:
             top_df = top_df.assign(
                 pub_year_series=[
@@ -589,6 +705,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             top_df = top_df.assign(pub_year_series=[])
         top_df = self._build_time_series_metrics(top_df, term_year)
         top_df = self._filter_stopword_only_terms(top_df)
+
         self.final_keywords = top_df
         self._log("Pipeline run complete: final rows = %d", len(top_df))
         return top_df

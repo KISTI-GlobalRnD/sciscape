@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, OrderedDict, defaultdict
-from typing import Dict, List, MutableMapping, Tuple
+from typing import Dict, List, Tuple
 
 import math
 
@@ -11,10 +11,7 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
-TokenCounter = Counter[str]
-YearCounter = Counter[int]
-TermYearCounter = MutableMapping[str, YearCounter]
-ClusterTermYearCounter = MutableMapping[int, TermYearCounter]
+from .utils import ClusterTermYearCounter
 
 
 class TemporalMixin:
