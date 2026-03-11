@@ -32,6 +32,7 @@ from .extraction import (
 )
 from .llm_canonicalize import LLMCanonicalizeMixin
 from .temporal import TemporalMixin
+from .vocab_merge import apply_merge_map, build_merge_map
 
 logger = logging.getLogger(__name__)
 
@@ -241,6 +242,35 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             self.K,
             int(C_uni.sum()) + int(C_phrase.sum()) if C_phrase is not None else int(C_uni.sum()),
         )
+
+    # ----- Stage 1.5: optional vocabulary merge -----
+
+    def _apply_vocab_merge(self) -> None:
+        """Merge vocabulary columns for plural/hyphen variants on aggregated matrices."""
+        vm_cfg = self.config.vocab_merge
+        if vm_cfg is None or not vm_cfg.enabled:
+            return
+        if self.feature_names_uni is None or self.C_uni is None:
+            return
+
+        merge_map = build_merge_map(self.feature_names_uni, vm_cfg)
+        if not merge_map:
+            self._log("Vocab merge: no mergeable pairs found")
+            return
+
+        orig_size = len(self.feature_names_uni)
+        self._log("Vocab merge: merging %d pairs in unigram vocabulary", len(merge_map))
+
+        # Apply same merge_map to both count and doc-frequency matrices
+        self.C_uni, self.feature_names_uni = apply_merge_map(
+            self.C_uni, self.feature_names_uni, merge_map
+        )
+        if self.DF_uni is not None:
+            # Use a dummy names array since we already updated feature_names_uni above
+            dummy_names = np.arange(self.DF_uni.shape[1])
+            self.DF_uni, _ = apply_merge_map(self.DF_uni, dummy_names, merge_map)
+
+        self._log("Vocab merge: unigram vocabulary %d -> %d terms", orig_size, len(self.feature_names_uni))
 
     # ----- Stage 2: compute c-TF-IDF and select top terms -----
 
@@ -544,6 +574,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         self._log("Pipeline run started")
         self._fit_vectorizers()
         self._aggregate_counts()
+        self._apply_vocab_merge()
         top_df = self._stage_scores_and_topk()
         top_df = self._maybe_canonicalise(top_df)
         term_year = self._compute_year_series(top_df)

@@ -115,6 +115,9 @@ class KeywordExtractionConfig:
     w_ctfidf: float = 1.0
     w_llr: float = 0.0
 
+    # Vocabulary merge (Stage 2)
+    vocab_merge: Optional["VocabMergeConfig"] = None
+
     # Execution
     n_jobs: int = -1
     use_polars: bool = True
@@ -139,6 +142,16 @@ class KeywordExtractionConfig:
 
 
 @dataclass
+class VocabMergeConfig:
+    """Configuration for Stage 2 vocabulary-level merging (post-vectorizer)."""
+
+    enabled: bool = False
+    plural_to_singular: bool = True
+    hyphen_normalize: bool = True
+    merge_frequency_ratio: float = 0.01  # skip if minor form > this ratio of major
+
+
+@dataclass
 class KeywordRecord:
     """Final keyword representation for export."""
 
@@ -156,5 +169,6 @@ CORE_COLUMNS = ["cluster_id", "term", "score", "frequency"]
 __all__ = [
     "KeywordExtractionConfig",
     "KeywordRecord",
+    "VocabMergeConfig",
     "CORE_COLUMNS",
 ]
