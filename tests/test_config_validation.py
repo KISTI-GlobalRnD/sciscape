@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from sciscape.keyword_extraction.config import KeywordExtractionConfig
+from sciscape.keyword_extraction.depth import DepthConfig
+from sciscape.keyword_extraction.term_network import TermNetworkConfig
 
 
 # Use dummy paths (validation doesn't check file existence)
@@ -65,6 +67,10 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="alias_candidate_max"):
             KeywordExtractionConfig(**_DUMMY, alias_candidate_max=0)
 
+    def test_scoring_weights_both_zero(self):
+        with pytest.raises(ValueError, match="w_ctfidf.*w_llr"):
+            KeywordExtractionConfig(**_DUMMY, w_ctfidf=0.0, w_llr=0.0)
+
     def test_boundary_values_pass(self):
         """Edge values at boundaries should pass."""
         cfg = KeywordExtractionConfig(
@@ -76,3 +82,39 @@ class TestConfigValidation:
             auto_merge_min_similarity=1.0,
         )
         assert cfg.mmr_jaccard_lambda == 0.0
+
+
+class TestDepthConfigValidation:
+    def test_valid_defaults(self):
+        cfg = DepthConfig(enabled=True)
+        assert cfg.n_levels == 4
+
+    def test_n_levels_too_small(self):
+        with pytest.raises(ValueError, match="n_levels"):
+            DepthConfig(n_levels=1)
+
+    def test_temporal_fraction_out_of_range(self):
+        with pytest.raises(ValueError, match="temporal_recent_fraction"):
+            DepthConfig(temporal_recent_fraction=1.5)
+
+
+class TestTermNetworkConfigValidation:
+    def test_valid_defaults(self):
+        cfg = TermNetworkConfig(enabled=True)
+        assert cfg.max_group_size == 5
+
+    def test_max_block_size_zero(self):
+        with pytest.raises(ValueError, match="max_block_size"):
+            TermNetworkConfig(max_block_size=0)
+
+    def test_max_group_size_one(self):
+        with pytest.raises(ValueError, match="max_group_size"):
+            TermNetworkConfig(max_group_size=1)
+
+    def test_merge_threshold_out_of_range(self):
+        with pytest.raises(ValueError, match="merge_threshold"):
+            TermNetworkConfig(merge_threshold=2.0)
+
+    def test_invalid_blocking_strategy(self):
+        with pytest.raises(ValueError, match="blocking_strategy"):
+            TermNetworkConfig(blocking_strategy="random")

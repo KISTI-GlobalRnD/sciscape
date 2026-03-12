@@ -34,6 +34,14 @@ class DepthConfig:
     asymmetry_threshold: float = 0.3  # minimum asymmetry to count
     temporal_recent_fraction: float = 0.4  # top N% of years = "recent"
 
+    def __post_init__(self) -> None:
+        if self.n_levels < 2:
+            raise ValueError(f"n_levels must be >= 2, got {self.n_levels}")
+        if not (0.0 <= self.temporal_recent_fraction <= 1.0):
+            raise ValueError(
+                f"temporal_recent_fraction must be in [0.0, 1.0], got {self.temporal_recent_fraction}"
+            )
+
 
 def _compute_cross_cluster_counts(top_df: pd.DataFrame) -> pd.Series:
     """Count how many distinct clusters each term appears in."""

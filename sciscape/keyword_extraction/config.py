@@ -233,6 +233,10 @@ class KeywordExtractionConfig:
             raise ValueError(
                 f"alias_candidate_max must be >= 1, got {self.alias_candidate_max}"
             )
+        if self.w_ctfidf + self.w_llr <= 0:
+            raise ValueError(
+                f"w_ctfidf + w_llr must be > 0 (got {self.w_ctfidf} + {self.w_llr} = {self.w_ctfidf + self.w_llr})"
+            )
 
 
 @dataclass

@@ -165,6 +165,20 @@ class TestMMRJaccardSelect:
     def test_empty_candidates(self):
         assert _mmr_jaccard_select([], {}, lambda_=0.5, top_k=5) == []
 
+    def test_all_zero_scores_no_crash(self):
+        """All terms with zero scores should not crash."""
+        cands = ["a", "b", "c"]
+        scores = {"a": 0.0, "b": 0.0, "c": 0.0}
+        result = _mmr_jaccard_select(cands, scores, lambda_=0.5, top_k=2)
+        assert len(result) == 2
+
+    def test_missing_scores_no_crash(self):
+        """Terms not in score dict should not crash (default 0.0)."""
+        cands = ["x", "y"]
+        scores = {}
+        result = _mmr_jaccard_select(cands, scores, lambda_=0.5, top_k=2)
+        assert len(result) == 2
+
 
 # ---------------------------------------------------------------------------
 # _suppress_subphrases

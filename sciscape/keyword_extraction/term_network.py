@@ -46,6 +46,21 @@ class TermNetworkConfig:
     # Merge group limits
     max_group_size: int = 5  # split oversized connected components
 
+    def __post_init__(self) -> None:
+        if self.max_block_size < 1:
+            raise ValueError(f"max_block_size must be >= 1, got {self.max_block_size}")
+        if self.max_group_size < 2:
+            raise ValueError(f"max_group_size must be >= 2, got {self.max_group_size}")
+        if not (0.0 <= self.merge_threshold <= 1.0):
+            raise ValueError(
+                f"merge_threshold must be in [0.0, 1.0], got {self.merge_threshold}"
+            )
+        valid_strategies = ("token", "prefix")
+        if self.blocking_strategy not in valid_strategies:
+            raise ValueError(
+                f"blocking_strategy must be one of {valid_strategies}, got {self.blocking_strategy!r}"
+            )
+
 
 def _char_ngrams(s: str, n: int = 3) -> set:
     """Generate character n-grams from a string."""
@@ -327,7 +342,8 @@ class TermNetwork:
             # Split oversized group: extract subgraph, remove weakest edges
             sub_idx = np.array(member_indices)
             sub_mat = thresholded[np.ix_(sub_idx, sub_idx)].tolil()
-            while True:
+            max_iter = sub_mat.nnz // 2 + 1  # upper bound: remove all edges
+            for _split_iter in range(max_iter):
                 n_sub, sub_labels = sp.csgraph.connected_components(
                     sub_mat.tocsr(), directed=False, return_labels=True
                 )

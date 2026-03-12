@@ -93,8 +93,10 @@ def _mmr_jaccard_select(candidates: List[str], scores: Dict[str, float], lambda_
             if mmr > best_score:
                 best_score = mmr
                 best_term = term
-        selected.append(best_term)  # type: ignore[arg-type]
-        cand.remove(best_term)  # type: ignore[arg-type]
+        if best_term is None:
+            break
+        selected.append(best_term)
+        cand.remove(best_term)
     return selected
 
 
