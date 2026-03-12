@@ -184,6 +184,56 @@ class KeywordExtractionConfig:
             base.update(extras)
         return base
 
+    def __post_init__(self) -> None:
+        if self.ngram_min > self.ngram_max:
+            raise ValueError(
+                f"ngram_min ({self.ngram_min}) must be <= ngram_max ({self.ngram_max})"
+            )
+        if self.top_n_keywords < 1:
+            raise ValueError(
+                f"top_n_keywords must be >= 1, got {self.top_n_keywords}"
+            )
+        if self.top_n_unigrams < 1:
+            raise ValueError(
+                f"top_n_unigrams must be >= 1, got {self.top_n_unigrams}"
+            )
+        if not (0.0 <= self.mmr_jaccard_lambda <= 1.0):
+            raise ValueError(
+                f"mmr_jaccard_lambda must be in [0.0, 1.0], got {self.mmr_jaccard_lambda}"
+            )
+        if self.mmr_pool_factor < 1.0:
+            raise ValueError(
+                f"mmr_pool_factor must be >= 1.0, got {self.mmr_pool_factor}"
+            )
+        if self.norm_max_edit_distance < 0:
+            raise ValueError(
+                f"norm_max_edit_distance must be >= 0, got {self.norm_max_edit_distance}"
+            )
+        if not (0.0 <= self.norm_min_frequency_ratio <= 1.0):
+            raise ValueError(
+                f"norm_min_frequency_ratio must be in [0.0, 1.0], got {self.norm_min_frequency_ratio}"
+            )
+        if self.cross_cluster_penalty_min_count < 1:
+            raise ValueError(
+                f"cross_cluster_penalty_min_count must be >= 1, got {self.cross_cluster_penalty_min_count}"
+            )
+        if self.cross_cluster_penalty_fn not in ("inverse", "log_inverse"):
+            raise ValueError(
+                f"cross_cluster_penalty_fn must be 'inverse' or 'log_inverse', got {self.cross_cluster_penalty_fn!r}"
+            )
+        if self.short_term_expansion_mode not in ("annotate", "replace", "both"):
+            raise ValueError(
+                f"short_term_expansion_mode must be 'annotate', 'replace', or 'both', got {self.short_term_expansion_mode!r}"
+            )
+        if not (0.0 <= self.auto_merge_min_similarity <= 1.0):
+            raise ValueError(
+                f"auto_merge_min_similarity must be in [0.0, 1.0], got {self.auto_merge_min_similarity}"
+            )
+        if self.alias_candidate_max < 1:
+            raise ValueError(
+                f"alias_candidate_max must be >= 1, got {self.alias_candidate_max}"
+            )
+
 
 @dataclass
 class VocabMergeConfig:

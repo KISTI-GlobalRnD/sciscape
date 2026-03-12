@@ -34,7 +34,7 @@ def _effective_n_jobs(n_jobs: Optional[int]) -> int:
         return 1
     try:
         n = int(n_jobs)
-    except Exception:
+    except (ValueError, TypeError):
         return 1
     if n == -1:
         import os
@@ -184,7 +184,7 @@ class _DataSource:
         term_col = cfg.author_keyword_term_col
         try:
             keywords = pd.read_parquet(path, columns=[uid_col, term_col])
-        except Exception:
+        except (KeyError, ValueError):
             keywords = pd.read_parquet(path)
             missing = {uid_col, term_col} - set(keywords.columns)
             if missing:
@@ -200,7 +200,7 @@ class _DataSource:
         uid_dtype = membership.index.dtype
         try:
             keywords[uid_col] = keywords[uid_col].astype(uid_dtype, copy=False)
-        except Exception:
+        except (ValueError, TypeError):
             # fallback to string if dtype conversion fails
             keywords[uid_col] = keywords[uid_col].astype(str)
 
@@ -278,7 +278,7 @@ class _DataSource:
         if cfg.use_polars and pl is not None:
             try:
                 table = pl.scan_parquet(str(cfg.abstract_path)).select(columns).collect(streaming=False)
-            except Exception:
+            except Exception:  # polars schema errors vary by version
                 table = pl.scan_parquet(str(cfg.abstract_path)).select([uid, abstract_col, year_col]).collect(streaming=False)
             return table.to_pandas()
         return pd.read_parquet(cfg.abstract_path, columns=columns)

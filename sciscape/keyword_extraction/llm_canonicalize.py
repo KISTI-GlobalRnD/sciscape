@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 import hashlib
 import json
@@ -130,7 +130,7 @@ class LLMCanonicalizeMixin:
             return {}
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
+        except (json.JSONDecodeError, OSError):
             return {}
         items = payload.get("items", [])
         mapping: Dict[str, Dict[str, object]] = {}
@@ -367,7 +367,7 @@ class LLMCanonicalizeMixin:
                 manual_df = pd.read_json(path, lines=suffix == ".jsonl")
             else:
                 manual_df = pd.read_csv(path)
-        except Exception as exc:
+        except (OSError, ValueError, pd.errors.ParserError) as exc:
             logger.error("Failed to load manual alias file %s: %s", path, exc)
             return pd.DataFrame(columns=columns)
 
@@ -459,7 +459,7 @@ class LLMCanonicalizeMixin:
                         data = json.loads(cache_file.read_text(encoding="utf-8"))
                         raw = data.get("raw_response", "")
                         payload = data.get("payload", {}) if isinstance(data, dict) else {}
-                    except Exception:
+                    except (json.JSONDecodeError, OSError):
                         continue
                     if not raw:
                         continue
@@ -489,7 +489,7 @@ class LLMCanonicalizeMixin:
                     subset_df = pd.DataFrame.from_records(subset_records) if subset_records else group
                     try:
                         parsed_items = self._parse_alias_items(cluster_id, raw, subset_df)
-                    except Exception:
+                    except (json.JSONDecodeError, ValueError, KeyError, TypeError):
                         continue
                     for item in parsed_items:
                         term = str(item.get("original") or "").strip()
@@ -518,7 +518,7 @@ class LLMCanonicalizeMixin:
                 prev_df = pd.read_json(artifact_path, lines=suffix == ".jsonl")
             else:
                 prev_df = pd.read_csv(artifact_path)
-        except Exception as exc:
+        except (OSError, ValueError, pd.errors.ParserError) as exc:
             logger.warning("Failed to load previous_top_df artifact %s: %s", artifact_path, exc)
             return
 
@@ -542,7 +542,7 @@ class LLMCanonicalizeMixin:
                     decoded = json.loads(value)
                     if isinstance(decoded, list):
                         return [str(item).strip() for item in decoded if str(item).strip()]
-                except Exception:
+                except (json.JSONDecodeError, TypeError):
                     pass
                 return [value]
             return []
@@ -550,7 +550,7 @@ class LLMCanonicalizeMixin:
         for cluster_id, group in prev_df.groupby("cluster_id", sort=False):
             try:
                 cluster_id = int(cluster_id)
-            except Exception:
+            except (ValueError, TypeError):
                 continue
             mapping = self._load_alias_mapping(cluster_id)
             for row in group.itertuples(index=False):
@@ -691,7 +691,7 @@ class LLMCanonicalizeMixin:
                     decoded = json.loads(raw)
                     if isinstance(decoded, list):
                         return _candidate_objects(decoded)
-                except Exception:
+                except (json.JSONDecodeError, TypeError):
                     pass
                 # Fallback: allow pipe/comma separated lists.
                 sep = "|" if "|" in raw else ("," if "," in raw else None)
@@ -958,7 +958,7 @@ class LLMCanonicalizeMixin:
                         decoded = json.loads(raw)
                         if isinstance(decoded, list):
                             return _candidate_list(decoded)
-                    except Exception:
+                    except (json.JSONDecodeError, TypeError):
                         pass
                     sep = "|" if "|" in raw else ("," if "," in raw else None)
                     if sep:
@@ -1317,11 +1317,11 @@ class LLMCanonicalizeMixin:
                         for k, v in value.items():
                             try:
                                 key_int = int(k)
-                            except Exception:
+                            except (ValueError, TypeError):
                                 continue
                             try:
                                 merged[key_int] = merged.get(key_int, 0.0) + float(v)
-                            except Exception:
+                            except (ValueError, TypeError):
                                 continue
                 if merged:
                     merged_int = {int(k): int(v) if float(v).is_integer() else float(v) for k, v in merged.items()}
@@ -1404,7 +1404,7 @@ class LLMCanonicalizeMixin:
         for row in canonical_df.itertuples(index=False):
             try:
                 cid = int(row.cluster_id)
-            except Exception:
+            except (ValueError, TypeError):
                 continue
             term_key = str(row.term)
             if term_key:
@@ -1524,7 +1524,7 @@ class LLMCanonicalizeMixin:
             for cid, term in zip(reranked["cluster_id"], reranked["term"]):
                 try:
                     key = (int(cid), str(term))
-                except Exception:
+                except (ValueError, TypeError):
                     mask_allowed.append(False)
                     continue
                 mask_allowed.append(key in allowed_pairs)
@@ -1615,7 +1615,7 @@ class LLMCanonicalizeMixin:
                     str(k).strip().lower(): str(v).strip()
                     for k, v in self.config.builtin_aliases.items()
                 }
-            except Exception:
+            except (AttributeError, TypeError):
                 self._builtin_alias_cache = {}
         key = str(value).strip().lower()
         return self._builtin_alias_cache.get(key)
@@ -1679,7 +1679,7 @@ class LLMCanonicalizeMixin:
         for candidate in candidates:
             try:
                 return json.loads(candidate)
-            except Exception:  # pragma: no cover
+            except (json.JSONDecodeError, TypeError):  # pragma: no cover
                 continue
         return None
 
