@@ -53,6 +53,15 @@ ACADEMIC_STOPWORDS: frozenset = frozenset({
     "considered", "problem", "solution", "technique", "framework",
     "scheme", "process", "different", "similar", "large", "high",
     "low", "new", "first", "two", "three",
+    "data", "time", "effect", "important", "report", "describe",
+    "demonstrate", "significant", "observed", "determine", "evaluate",
+    "increase", "decrease", "achieve", "present", "provide",
+    "suggest", "indicate", "require", "include", "total",
+    "various", "possible", "recent", "current", "particular",
+    "general", "several", "certain", "good", "best", "order",
+    "found", "given", "known", "made", "taken", "number",
+    "information", "set", "case", "condition", "range",
+    "accuracy", "proposed method",
 })
 
 
@@ -828,7 +837,9 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
 
         combined = network.combine_layers(layers, weights)
         groups = network.find_merge_groups(combined, selected_terms)
-        self.merge_candidates = network.generate_candidate_sets(groups, top_df)
+        self.merge_candidates = network.generate_candidate_sets(
+            groups, top_df, combined=combined, terms_list=selected_terms,
+        )
         self._log("Stage 7: found %d merge groups", len(groups))
 
     def _bridge_merge_candidates(self, top_df: pd.DataFrame) -> pd.DataFrame:
@@ -905,21 +916,31 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             if term_total == 0:
                 continue
 
-            best_expansion = None
-            best_ratio = 0.0
+            best_substring = None   # partner that contains the short term
+            best_sub_ratio = 0.0
+            best_cooc = None       # highest cooccurrence partner (fallback)
+            best_cooc_ratio = 0.0
 
             for partner_idx, count in zip(cooc_row.indices, cooc_row.data):
                 partner = selected_terms[partner_idx]
+                if len(partner) <= max_len:
+                    continue  # skip other short terms
                 ratio = float(count) / term_total
-                if ratio <= best_ratio or ratio < min_ratio:
+                if ratio < min_ratio:
                     continue
-                # Check if partner contains the short term (substring match)
-                if term.lower() in partner.lower() and len(partner) > len(term):
-                    best_expansion = partner
-                    best_ratio = ratio
+                # Prefer substring match (e.g., "mg" in "mgh2")
+                if term.lower() in partner.lower():
+                    if ratio > best_sub_ratio:
+                        best_substring = partner
+                        best_sub_ratio = ratio
+                # Track best overall cooccurrence partner as fallback
+                if ratio > best_cooc_ratio:
+                    best_cooc = partner
+                    best_cooc_ratio = ratio
 
-            if best_expansion is not None:
-                expansions[term] = best_expansion
+            expansion = best_substring or best_cooc
+            if expansion is not None:
+                expansions[term] = expansion
 
         if expansions:
             if mode in ("annotate", "both"):

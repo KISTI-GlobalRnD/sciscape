@@ -96,16 +96,17 @@ def main():
 
         # P6: cross-cluster penalty
         cross_cluster_penalty_enabled=True,
-        cross_cluster_penalty_min_count=3,
+        cross_cluster_penalty_min_count=2,
 
         # P4: short-term abbreviation expansion
         short_term_expansion_enabled=True,
         short_term_max_length=2,
-        short_term_min_cooc_ratio=0.3,
+        short_term_min_cooc_ratio=0.05,
         short_term_expansion_mode="annotate",
 
-        # P3: auto-merge (disabled — needs LLM similarity data)
-        auto_merge_enabled=False,
+        # P3: auto-merge high-confidence pairs from term network
+        auto_merge_enabled=True,
+        auto_merge_min_similarity=0.85,
 
         # Execution
         n_jobs=4,

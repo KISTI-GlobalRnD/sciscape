@@ -155,7 +155,7 @@ class KeywordExtractionConfig:
     # Short-term abbreviation expansion (P4)
     short_term_expansion_enabled: bool = False
     short_term_max_length: int = 2
-    short_term_min_cooc_ratio: float = 0.3
+    short_term_min_cooc_ratio: float = 0.05
     short_term_expansion_mode: str = "annotate"  # "annotate" | "replace" | "both"
 
     # Auto-merge without LLM (P3)

@@ -315,16 +315,22 @@ class TermNetwork:
         self,
         groups: List[List[str]],
         top_df: Optional["pd.DataFrame"] = None,
+        combined: Optional[sp.csr_matrix] = None,
+        terms_list: Optional[Sequence[str]] = None,
     ) -> List[Dict]:
         """Format merge groups for downstream processing.
 
         Returns a list of dicts with group info for each merge candidate set.
+        When *combined* and *terms_list* are provided, includes per-pair
+        similarity scores for auto-merge confidence gating (P3).
         """
         import pandas as pd
 
+        term_to_idx = {t: i for i, t in enumerate(terms_list)} if terms_list is not None else {}
+
         candidates = []
         for group_id, group_terms in enumerate(groups):
-            entry = {
+            entry: Dict = {
                 "group_id": group_id,
                 "terms": group_terms,
                 "size": len(group_terms),
@@ -343,6 +349,17 @@ class TermNetwork:
                 # Highest-frequency term as suggested canonical
                 if freq_map:
                     entry["suggested_canonical"] = max(freq_map, key=freq_map.get)
+
+            # Per-pair similarities for P3 auto-merge
+            if combined is not None and term_to_idx:
+                pair_sims: Dict[Tuple[str, str], float] = {}
+                for i, ta in enumerate(group_terms):
+                    for tb in group_terms[i + 1:]:
+                        ia = term_to_idx.get(ta)
+                        ib = term_to_idx.get(tb)
+                        if ia is not None and ib is not None:
+                            pair_sims[(ta, tb)] = float(combined[ia, ib])
+                entry["pair_similarities"] = pair_sims
 
             candidates.append(entry)
 
