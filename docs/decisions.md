@@ -87,3 +87,38 @@ run_from_checkpoint resumes from the next stage. Legacy API preserved as thin wr
 Tier 3 output schema now includes it. Useful for downstream analysis (bridge terms
 between research communities).
 
+## [2026-03-12] [Quality] DECISION: 6 quality filters (P1–P6)
+**REASON**: KRISS pilot (10K docs, 5 clusters) revealed 17% of keywords were academic
+boilerplate ("based", "using", "results"), 17 plural-duplicate pairs, and artifacts.
+**P1** Academic stopword filter: domain-agnostic single+multi-word removal. Multi-word
+terms filtered only when ALL tokens are academic stopwords ("proposed method" → filtered,
+"fault diagnosis" → kept). ~40 common academic verbs/nouns in builtin set.
+**P2** Plural merge in Stage 5: `_phrase_singular` singularizes last word of phrases
+("point clouds" → "point cloud"). Reuses `_simple_singular` from vocab_merge.
+**P3** Auto-merge high-confidence term network groups without LLM: merges when all pair
+similarities exceed `auto_merge_min_similarity` (default 0.85).
+**P4** Short-term abbreviation expansion via cooccurrence: for len≤2 terms, finds best
+cooccurrence partner (substring match preferred, fallback to any long partner).
+Threshold lowered to 0.05 because 2-char terms have dispersed cooccurrence.
+**P5** Artifact filter: regex patterns for LaTeX noise, pure numbers, single chars.
+**P6** Cross-cluster score penalty: `score /= cross_cluster_count` when term appears
+in ≥ min_count clusters. Applied pre-ranking in Stage 4.
+**ALTERNATIVES**: Topic-model-based stopword detection (too heavy). TF-IDF Z-score
+filtering (already partly handled by c-TF-IDF). Chose lightweight config-driven approach.
+
+## [2026-03-12] [Quality] DECISION: British/American spelling variant normalization
+**REASON**: "disk"/"disc" occupied 4 slots in cluster 26 (disk, disc, disks, discs).
+Generic same-length edit-distance-1 rule was too aggressive (incorrectly merged
+"model"/"modal"). Replaced with explicit dictionary of ~35 British→American mappings
+applied per-word in Stage 5. Combined with plural merge: disc→disk, discs→disks→disk.
+**ALTERNATIVES**: (a) Heuristic same-length-dist-1 rule — rejected, false positives.
+(b) LLM-based canonicalization — overkill for known spelling patterns.
+
+## [2026-03-12] [Quality] DECISION: max_group_size limit for term network
+**REASON**: Connected components in term network grew unbounded via sub-phrase chains
+("point cloud" → "point cloud data" → "point cloud classification" → 12 members).
+Added max_group_size (default 5) that splits oversized groups by iteratively removing
+weakest edges. Reduces candidate noise for downstream LLM canonicalization.
+**ALTERNATIVES**: (a) Max-depth BFS — more complex, similar result.
+(b) Minimum spanning tree pruning — overkill for this use case.
+

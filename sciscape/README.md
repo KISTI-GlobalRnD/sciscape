@@ -76,6 +76,34 @@ keywords = run_keyword_pipeline(cfg)
 keywords.to_parquet("Output/cluster_keywords.parquet", index=False)
 ```
 
+### 3) Quality Filters
+
+파이프라인에 내장된 6가지 품질 필터로 도메인 특화 키워드 품질을 높입니다.
+
+```python
+cfg = KeywordExtractionConfig(
+    ...,
+    # P1: 학술 보일러플레이트 제거 (based, using, results, proposed method 등)
+    academic_stopwords_enabled=True,
+    # P2: 복수형 자동 병합 (point clouds→point cloud, transformers→transformer)
+    normalization_enabled=True,
+    norm_plural_merge_enabled=True,
+    # P5: 아티팩트 제거 (LaTeX 잔여물, 순수 숫자, 단일문자)
+    artifact_filter_enabled=True,
+    # P6: 여러 클러스터에 공통으로 등장하는 비특이적 용어 패널티
+    cross_cluster_penalty_enabled=True,
+    cross_cluster_penalty_min_count=2,
+    # P4: 짧은 약어(2글자 이하) 맥락 확장 (cooccurrence 기반)
+    cooccurrence_enabled=True,
+    short_term_expansion_enabled=True,
+    # P3: LLM 없이 term network 기반 고신뢰도 동의어 자동 병합
+    term_network=TermNetworkConfig(enabled=True, layers=["string", "token", "cooccurrence"]),
+    auto_merge_enabled=True,
+)
+```
+
+British/American 철자 변이(disc→disk, colour→color 등 35종)는 정규화에서 자동 처리됩니다.
+
 ## (Optional) Before/After Scoring (e.g., Stage 2 vs Stage 2.5)
 
 If you run the pipeline twice (e.g., alias/canonicalisation off vs on), you can score the change:
