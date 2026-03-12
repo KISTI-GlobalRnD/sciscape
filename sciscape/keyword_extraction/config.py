@@ -260,13 +260,25 @@ class KeywordRecord:
     pub_year_series: Mapping[int, int]
 
 
-# Output schema tiers
+# Output schema tiers — columns that may appear in run() output.
+# CORE: always present after scoring (Stage 4+).
 CORE_COLUMNS = ["cluster_id", "term", "score", "frequency"]
+# TIER2: present when corresponding stages are enabled.
+#   doc_coverage: Stage 4 (scoring, when DF_all computed)
+#   source_terms: Stage 8 (canonicalization)
+#   pub_year_series, ppm_series, loglift_series, bayesian_log_odds_series,
+#     year_denominators: Stage 10 (temporal)
 TIER2_COLUMNS = ["doc_coverage", "source_terms", "pub_year_series",
                  "ppm_series", "loglift_series", "bayesian_log_odds_series",
                  "year_denominators"]
+# TIER3: present when advanced stages/filters are enabled.
+#   depth_score, depth_level, cross_cluster_count: Stage 9 (depth)
+#   candidates: Stage 7→8 bridge (term_network)
+#   expanded_from: P4 (short_term_expansion, annotate/both mode)
+#   alias_actions, alias_notes, alias_reason: Stage 8 (canonicalization)
 TIER3_COLUMNS = ["depth_score", "depth_level", "cross_cluster_count",
-                 "candidates"]
+                 "candidates", "expanded_from",
+                 "alias_actions", "alias_notes", "alias_reason"]
 
 
 __all__ = [
