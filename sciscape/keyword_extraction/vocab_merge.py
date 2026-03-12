@@ -20,6 +20,11 @@ from scipy import sparse as sp
 from .config import VocabMergeConfig
 
 
+_INVARIANT_PLURALS = frozenset({
+    "series", "species", "chassis", "diabetes", "rabies",
+})
+
+
 def _simple_singular(word: str) -> Optional[str]:
     """Heuristic plural -> singular for English.
 
@@ -29,8 +34,10 @@ def _simple_singular(word: str) -> Optional[str]:
     """
     if len(word) <= 3:
         return None
+    if word.lower() in _INVARIANT_PLURALS:
+        return None
     if word.endswith("ies") and len(word) > 4:
-        # "batteries" -> "battery", but not "series"
+        # "batteries" -> "battery"
         candidate = word[:-3] + "y"
         return candidate
     if word.endswith("ses") and len(word) > 4:

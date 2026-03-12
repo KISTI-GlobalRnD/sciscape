@@ -62,6 +62,11 @@ ACADEMIC_STOPWORDS: frozenset = frozenset({
     "found", "given", "known", "made", "taken", "number",
     "information", "set", "case", "condition", "range",
     "accuracy", "proposed method",
+    # Generic measurement / description terms (from pilot review)
+    "real", "systems", "degrees", "angle", "level", "value",
+    "type", "form", "part", "area", "point", "rate", "state",
+    "small", "simple", "complex", "related", "specific",
+    "potential", "major", "main", "key", "based method",
 })
 
 

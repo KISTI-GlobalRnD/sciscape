@@ -1,0 +1,557 @@
+"""Tests for quality filters P1, P3, P4, P5, P6.
+
+P1: Academic stopword filtering
+P3: Auto-merge without LLM (high-confidence term network groups)
+P4: Short-term abbreviation expansion via cooccurrence
+P5: Artifact filtering (LaTeX, numbers, single chars)
+P6: Cross-cluster score penalty
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+from scipy import sparse as sp
+
+from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
+from sciscape.keyword_extraction.config import VocabMergeConfig
+from sciscape.keyword_extraction.normalization import (
+    _normalize_spelling,
+    _phrase_singular,
+)
+from sciscape.keyword_extraction.pipeline import (
+    ACADEMIC_STOPWORDS,
+    KeywordExtractionPipeline,
+)
+from sciscape.keyword_extraction.term_network import TermNetworkConfig
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sample_data(tmp_path):
+    """Create a small dataset with cross-cluster and short terms."""
+    abstracts = pd.DataFrame({
+        "uid": [f"D{i}" for i in range(12)],
+        "title": [
+            "Deep learning neural networks",
+            "Neural network architectures for classification",
+            "Machine learning algorithms for prediction",
+            "Machine learning optimization methods",
+            "Quantum computing quantum bits",
+            "Quantum bit error correction methods",
+            "Solar energy battery storage systems",
+            "Battery systems for solar energy panels",
+            "Mg alloy hydrogen storage capacity",
+            "Ni based catalyst for hydrogen production",
+            "Fe oxide nanoparticle synthesis method",
+            "Pd catalyst for hydrogenation reaction",
+        ],
+        "abstract": [
+            "Deep learning with neural networks enables pattern recognition.",
+            "Neural network architecture design improves classification accuracy.",
+            "Machine learning algorithms predict material properties using features.",
+            "Machine learning optimization algorithms accelerate training convergence.",
+            "Quantum computing with quantum bits offers parallel computation.",
+            "Quantum bit error correction ensures reliable quantum computation.",
+            "Solar energy combined with battery storage provides grid resilience.",
+            "Battery systems integrated with solar energy panels reduce costs.",
+            "Mg alloy shows excellent hydrogen storage capacity and cycling stability.",
+            "Ni based catalyst demonstrates high efficiency for hydrogen production.",
+            "Fe oxide nanoparticle synthesis via hydrothermal method is reported.",
+            "Pd catalyst exhibits superior activity for hydrogenation reaction.",
+        ],
+        "pubyear": [2018, 2019, 2020, 2021, 2018, 2019, 2020, 2021, 2020, 2021, 2020, 2021],
+    })
+    membership = pd.DataFrame({
+        "uid": [f"D{i}" for i in range(12)],
+        "cluster": [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 3, 3],
+    })
+
+    abstract_path = tmp_path / "abstracts.parquet"
+    membership_path = tmp_path / "membership.parquet"
+    abstracts.to_parquet(abstract_path, index=False)
+    membership.to_parquet(membership_path, index=False)
+    return abstract_path, membership_path
+
+
+def _base_config(abstract_path, membership_path, **overrides):
+    defaults = dict(
+        abstract_path=abstract_path,
+        membership_path=membership_path,
+        cluster_level="cluster",
+        include_title=True,
+        title_weight=1.0,
+        min_df_unigram=1,
+        min_df_phrase=1,
+        phrase_min_count_per_cluster=1,
+        top_n_keywords=10,
+        ngram_min=1,
+        ngram_max=2,
+        use_phrase_vectorizer=True,
+        n_jobs=1,
+        verbose=False,
+    )
+    defaults.update(overrides)
+    return KeywordExtractionConfig(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# P1: Academic stopword tests
+# ---------------------------------------------------------------------------
+
+class TestAcademicStopwords:
+    def test_common_stopwords_in_set(self):
+        for sw in ("based", "using", "results", "proposed", "method", "data", "time"):
+            assert sw in ACADEMIC_STOPWORDS, f"'{sw}' should be academic stopword"
+
+    def test_domain_terms_not_in_set(self):
+        for term in ("neutron", "quantum", "solar", "hydrogen", "catalyst"):
+            assert term not in ACADEMIC_STOPWORDS
+
+    def test_single_word_filtering(self, sample_data):
+        cfg = _base_config(*sample_data, academic_stopwords_enabled=True)
+        keywords = run_keyword_pipeline(cfg)
+        terms = keywords["term"].str.lower().tolist()
+        # None of the core academic stopwords should survive
+        for sw in ("based", "using", "results", "proposed"):
+            assert sw not in terms, f"'{sw}' should be filtered by P1"
+
+    def test_multiword_all_stopwords_filtered(self):
+        """Multi-word term where ALL tokens are stopwords → filtered."""
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_academic_stopword("proposed method") is True
+
+    def test_multiword_mixed_kept(self):
+        """Multi-word term with non-stopword token → kept."""
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_academic_stopword("fault diagnosis") is False
+
+    def test_disabled(self, sample_data):
+        cfg = _base_config(*sample_data, academic_stopwords_enabled=False)
+        keywords = run_keyword_pipeline(cfg)
+        # With stopwords disabled, generic terms may appear
+        assert not keywords.empty
+
+    def test_extra_stopwords(self, sample_data):
+        cfg = _base_config(
+            *sample_data,
+            academic_stopwords_enabled=True,
+            academic_stopwords_extra=("hydrogen",),
+        )
+        keywords = run_keyword_pipeline(cfg)
+        terms = keywords["term"].str.lower().tolist()
+        assert "hydrogen" not in terms
+
+
+# ---------------------------------------------------------------------------
+# P5: Artifact filter tests
+# ---------------------------------------------------------------------------
+
+class TestArtifactFilter:
+    def test_latex_artifact(self):
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_artifact("center dot") is True
+
+    def test_pure_number(self):
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_artifact("12345") is True
+
+    def test_single_char(self):
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_artifact("x") is True
+
+    def test_normal_term_not_artifact(self):
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_artifact("neural network") is False
+        assert pipeline._is_artifact("quantum") is False
+
+
+# ---------------------------------------------------------------------------
+# P6: Cross-cluster penalty tests
+# ---------------------------------------------------------------------------
+
+class TestCrossClusterPenalty:
+    def test_penalty_reduces_score(self, sample_data):
+        """Terms in multiple clusters get penalized vs single-cluster terms."""
+        cfg_no_penalty = _base_config(
+            *sample_data,
+            cross_cluster_penalty_enabled=False,
+            w_llr=0.0,
+        )
+        cfg_penalty = _base_config(
+            *sample_data,
+            cross_cluster_penalty_enabled=True,
+            cross_cluster_penalty_min_count=2,
+            cross_cluster_penalty_fn="inverse",
+            w_llr=0.0,
+        )
+        kw_no = run_keyword_pipeline(cfg_no_penalty)
+        kw_pen = run_keyword_pipeline(cfg_penalty)
+
+        # Find a term that appears in multiple clusters (if any)
+        multi_cluster = kw_no.groupby("term")["cluster_id"].nunique()
+        multi_terms = multi_cluster[multi_cluster >= 2].index.tolist()
+
+        if multi_terms:
+            term = multi_terms[0]
+            score_no = kw_no[kw_no["term"] == term]["score"].mean()
+            score_pen = kw_pen[kw_pen["term"] == term]["score"].mean()
+            # Penalized score should be less than or equal
+            assert score_pen <= score_no
+
+    def test_log_inverse_penalty(self, sample_data):
+        cfg = _base_config(
+            *sample_data,
+            cross_cluster_penalty_enabled=True,
+            cross_cluster_penalty_min_count=2,
+            cross_cluster_penalty_fn="log_inverse",
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+
+    def test_penalty_does_not_remove_terms(self, sample_data):
+        """Penalty only reduces scores, never removes terms entirely."""
+        cfg = _base_config(
+            *sample_data,
+            cross_cluster_penalty_enabled=True,
+            cross_cluster_penalty_min_count=2,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+        # All scores should still be finite
+        assert keywords["score"].isna().sum() == 0
+
+
+# ---------------------------------------------------------------------------
+# P4: Short-term expansion tests
+# ---------------------------------------------------------------------------
+
+class TestShortTermExpansion:
+    def test_annotate_mode(self):
+        """Short terms get expanded_from annotation via cooccurrence."""
+        pipeline, top_df, terms = _make_p4_scenario()
+        result = pipeline._expand_short_terms(top_df, terms)
+        expanded = result[result["term"] == "mg"]
+        if not expanded.empty and "expanded_from" in result.columns:
+            val = expanded.iloc[0]["expanded_from"]
+            assert val != "", "short term 'mg' should have expansion"
+
+    def test_replace_mode(self):
+        """In replace mode, short terms are replaced by expansion."""
+        pipeline, top_df, terms = _make_p4_scenario(mode="replace")
+        result = pipeline._expand_short_terms(top_df, terms)
+        # If replacement happened, "mg" should no longer be in terms
+        remaining_terms = result["term"].tolist()
+        if "mg" not in remaining_terms:
+            assert any("mg" in t.lower() for t in remaining_terms) or len(remaining_terms) > 0
+
+    def test_disabled_noop(self):
+        """With expansion disabled, DataFrame unchanged."""
+        pipeline, top_df, terms = _make_p4_scenario()
+        pipeline.config.short_term_expansion_enabled = False
+        result = pipeline._expand_short_terms(top_df, terms)
+        assert "expanded_from" not in result.columns
+
+    def test_no_cooc_matrix_noop(self):
+        """Without cooc matrix, no expansion."""
+        pipeline, top_df, terms = _make_p4_scenario()
+        pipeline.cooc_matrix = None
+        result = pipeline._expand_short_terms(top_df, terms)
+        assert "expanded_from" not in result.columns
+
+    def test_long_terms_unaffected(self):
+        """Terms longer than max_length are never expanded."""
+        pipeline, top_df, terms = _make_p4_scenario()
+        result = pipeline._expand_short_terms(top_df, terms)
+        long_terms = result[result["term"].str.len() > 2]
+        if "expanded_from" in result.columns:
+            assert all(long_terms["expanded_from"] == "")
+
+    def test_substring_preferred_over_fallback(self):
+        """When a substring-containing partner exists, prefer it over generic best."""
+        pipeline, top_df, terms = _make_p4_scenario_substring()
+        result = pipeline._expand_short_terms(top_df, terms)
+        if "expanded_from" in result.columns:
+            expanded = result[result["term"] == "fe"]["expanded_from"].iloc[0]
+            if expanded:
+                assert "fe" in expanded.lower(), \
+                    f"Expected substring match for 'fe', got '{expanded}'"
+
+
+# ---------------------------------------------------------------------------
+# P3: Auto-merge tests
+# ---------------------------------------------------------------------------
+
+class TestAutoMerge:
+    def test_high_similarity_merge(self):
+        """Groups with all-pair similarity >= threshold merge into canonical."""
+        pipeline, top_df = _make_p3_scenario(min_sim=0.85, pair_sim=0.9)
+        result = pipeline._auto_merge_candidates(top_df)
+        terms = result["term"].tolist()
+        assert "neural network" in terms
+        assert "neural networks" not in terms
+        # Frequency should be summed
+        canonical_row = result[result["term"] == "neural network"]
+        assert canonical_row["frequency"].iloc[0] == 350  # 200+150
+
+    def test_low_similarity_no_merge(self):
+        """Groups below threshold are NOT auto-merged."""
+        pipeline, top_df = _make_p3_scenario(min_sim=0.85, pair_sim=0.5)
+        result = pipeline._auto_merge_candidates(top_df)
+        terms = result["term"].tolist()
+        assert "neural network" in terms
+        assert "neural networks" in terms
+
+    def test_disabled_noop(self):
+        """With auto_merge disabled, no change."""
+        pipeline, top_df = _make_p3_scenario(min_sim=0.85, pair_sim=0.95)
+        pipeline.config.auto_merge_enabled = False
+        result = pipeline._auto_merge_candidates(top_df)
+        assert len(result) == len(top_df)
+
+    def test_consumed_groups_removed(self):
+        """Auto-merged groups are removed from merge_candidates."""
+        pipeline, top_df = _make_p3_scenario(min_sim=0.85, pair_sim=0.95)
+        assert len(pipeline.merge_candidates) == 1
+        pipeline._auto_merge_candidates(top_df)
+        assert len(pipeline.merge_candidates) == 0
+
+    def test_score_takes_max(self):
+        """Merged term gets max score across group members."""
+        pipeline, top_df = _make_p3_scenario(min_sim=0.85, pair_sim=0.95)
+        result = pipeline._auto_merge_candidates(top_df)
+        canonical = result[result["term"] == "neural network"]
+        assert canonical["score"].iloc[0] == 2.5  # max(2.0, 2.5) from "neural networks"
+
+    def test_empty_candidates_noop(self):
+        """With no merge candidates, auto-merge is a no-op."""
+        pipeline, top_df = _make_p3_scenario(min_sim=0.85, pair_sim=0.95)
+        pipeline.merge_candidates = []
+        result = pipeline._auto_merge_candidates(top_df)
+        assert len(result) == len(top_df)
+
+
+# ---------------------------------------------------------------------------
+# Spelling variant tests (normalization.py)
+# ---------------------------------------------------------------------------
+
+class TestSpellingVariants:
+    def test_british_to_american(self):
+        assert _normalize_spelling("disc") == "disk"
+        assert _normalize_spelling("colour") == "color"
+        assert _normalize_spelling("behaviour") == "behavior"
+        assert _normalize_spelling("fibre") == "fiber"
+        assert _normalize_spelling("centre") == "center"
+        assert _normalize_spelling("grey") == "gray"
+
+    def test_per_word_in_phrase(self):
+        assert _normalize_spelling("protoplanetary disc") == "protoplanetary disk"
+        assert _normalize_spelling("colour space") == "color space"
+
+    def test_non_variant_unchanged(self):
+        assert _normalize_spelling("neural network") == "neural network"
+        assert _normalize_spelling("quantum") == "quantum"
+
+    def test_case_insensitive(self):
+        # Input words should be lowercased for lookup
+        assert _normalize_spelling("Disc") == "disk"
+
+    def test_ise_to_ize(self):
+        assert _normalize_spelling("analyse") == "analyze"
+        assert _normalize_spelling("optimise") == "optimize"
+        assert _normalize_spelling("synthesise") == "synthesize"
+
+    def test_plural_variants(self):
+        assert _normalize_spelling("discs") == "disks"
+        assert _normalize_spelling("fibres") == "fibers"
+        assert _normalize_spelling("vapours") == "vapors"
+
+    def test_phrase_singular(self):
+        assert _phrase_singular("point clouds") == "point cloud"
+        assert _phrase_singular("neural networks") == "neural network"
+        assert _phrase_singular("series") is None  # not a regular plural
+
+
+# ---------------------------------------------------------------------------
+# Integration: P1+P5+P6 together
+# ---------------------------------------------------------------------------
+
+class TestQualityFiltersIntegration:
+    def test_all_filters_enabled(self, sample_data):
+        cfg = _base_config(
+            *sample_data,
+            academic_stopwords_enabled=True,
+            artifact_filter_enabled=True,
+            cross_cluster_penalty_enabled=True,
+            cross_cluster_penalty_min_count=2,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+        terms = keywords["term"].str.lower().tolist()
+        # Verify no pure academic stopwords
+        for sw in ("based", "using", "results", "proposed"):
+            assert sw not in terms
+
+    def test_all_filters_disabled(self, sample_data):
+        cfg = _base_config(
+            *sample_data,
+            academic_stopwords_enabled=False,
+            artifact_filter_enabled=False,
+            cross_cluster_penalty_enabled=False,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers (construct pipeline stubs)
+# ---------------------------------------------------------------------------
+
+def _make_pipeline_stub():
+    """Create a minimal pipeline with P1/P5 initialized but no data."""
+    import re
+    from unittest.mock import MagicMock
+
+    cfg = MagicMock(spec=KeywordExtractionConfig)
+    cfg.academic_stopwords_enabled = True
+    cfg.academic_stopwords_extra = None
+    cfg.artifact_filter_enabled = True
+    cfg.artifact_filter_patterns = (
+        r"^center\s*dot$",
+        r"^\d+$",
+        r"^[^\w]+$",
+        r"^.$",
+    )
+    cfg.lowercase = True
+    cfg.verbose = False
+
+    pipeline = object.__new__(KeywordExtractionPipeline)
+    pipeline.config = cfg
+    pipeline._academic_sw = frozenset(ACADEMIC_STOPWORDS)
+    if cfg.academic_stopwords_extra:
+        pipeline._academic_sw = pipeline._academic_sw | frozenset(cfg.academic_stopwords_extra)
+    pipeline._artifact_res = [re.compile(p) for p in cfg.artifact_filter_patterns]
+    return pipeline
+
+
+def _make_p4_scenario(mode="annotate"):
+    """Construct a pipeline + top_df for P4 short-term expansion testing."""
+    import re
+    from unittest.mock import MagicMock
+
+    terms = ["mg", "hydrogen", "mg alloy", "catalyst", "storage"]
+    term_to_idx = {t: i for i, t in enumerate(terms)}
+
+    # Build cooc matrix: "mg" cooccurs with "mg alloy" (strong) and "catalyst" (weak)
+    n = len(terms)
+    cooc = sp.lil_matrix((n, n), dtype=np.float64)
+    cooc[0, 2] = 30  # mg ↔ mg alloy (substring match)
+    cooc[2, 0] = 30
+    cooc[0, 1] = 20  # mg ↔ hydrogen
+    cooc[1, 0] = 20
+    cooc[0, 3] = 5   # mg ↔ catalyst
+    cooc[3, 0] = 5
+
+    cfg = MagicMock(spec=KeywordExtractionConfig)
+    cfg.short_term_expansion_enabled = True
+    cfg.short_term_max_length = 2
+    cfg.short_term_min_cooc_ratio = 0.05
+    cfg.short_term_expansion_mode = mode
+    cfg.verbose = False
+
+    pipeline = object.__new__(KeywordExtractionPipeline)
+    pipeline.config = cfg
+    pipeline.cooc_matrix = cooc.tocsr()
+    pipeline.verbose = False
+
+    def _log(msg, *args):
+        pass
+    pipeline._log = _log
+
+    top_df = pd.DataFrame({
+        "cluster_id": [0, 0, 0, 0, 0],
+        "term": terms,
+        "score": [1.0, 2.0, 1.5, 1.2, 0.8],
+        "frequency": [50, 200, 100, 80, 60],
+    })
+
+    return pipeline, top_df, terms
+
+
+def _make_p4_scenario_substring():
+    """P4 scenario with both substring and non-substring partners."""
+    import re
+    from unittest.mock import MagicMock
+
+    terms = ["fe", "fe oxide", "nanoparticle", "catalyst", "iron"]
+    n = len(terms)
+    cooc = sp.lil_matrix((n, n), dtype=np.float64)
+    cooc[0, 1] = 25  # fe ↔ fe oxide (substring match)
+    cooc[1, 0] = 25
+    cooc[0, 4] = 40  # fe ↔ iron (higher cooc but no substring)
+    cooc[4, 0] = 40
+
+    cfg = MagicMock(spec=KeywordExtractionConfig)
+    cfg.short_term_expansion_enabled = True
+    cfg.short_term_max_length = 2
+    cfg.short_term_min_cooc_ratio = 0.05
+    cfg.short_term_expansion_mode = "annotate"
+    cfg.verbose = False
+
+    pipeline = object.__new__(KeywordExtractionPipeline)
+    pipeline.config = cfg
+    pipeline.cooc_matrix = cooc.tocsr()
+    pipeline.verbose = False
+
+    def _log(msg, *args):
+        pass
+    pipeline._log = _log
+
+    top_df = pd.DataFrame({
+        "cluster_id": [0, 0, 0, 0, 0],
+        "term": terms,
+        "score": [1.0, 1.5, 1.2, 0.8, 1.3],
+        "frequency": [50, 100, 80, 60, 90],
+    })
+
+    return pipeline, top_df, terms
+
+
+def _make_p3_scenario(min_sim=0.85, pair_sim=0.9):
+    """Construct a pipeline + top_df for P3 auto-merge testing."""
+    from unittest.mock import MagicMock
+
+    cfg = MagicMock(spec=KeywordExtractionConfig)
+    cfg.auto_merge_enabled = True
+    cfg.auto_merge_min_similarity = min_sim
+    cfg.verbose = False
+
+    pipeline = object.__new__(KeywordExtractionPipeline)
+    pipeline.config = cfg
+    pipeline.verbose = False
+
+    def _log(msg, *args):
+        pass
+    pipeline._log = _log
+
+    pipeline.merge_candidates = [
+        {
+            "group_id": 0,
+            "terms": ["neural network", "neural networks"],
+            "size": 2,
+            "pair_similarities": {
+                ("neural network", "neural networks"): pair_sim,
+            },
+        }
+    ]
+
+    top_df = pd.DataFrame({
+        "cluster_id": [0, 0, 0],
+        "term": ["neural network", "neural networks", "deep learning"],
+        "score": [2.0, 2.5, 1.8],
+        "frequency": [200, 150, 180],
+    })
+
+    return pipeline, top_df

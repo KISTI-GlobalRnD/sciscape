@@ -8,6 +8,7 @@ from scipy import sparse as sp
 from sciscape.keyword_extraction.depth import (
     DepthConfig,
     _compute_cross_cluster_counts,
+    _compute_temporal_trend,
     _normalize_signal,
     estimate_depth,
 )
@@ -45,6 +46,40 @@ class TestCrossClusterCounts:
         counts = _compute_cross_cluster_counts(df)
         assert counts["neutron"] == 2
         assert counts["proton"] == 1
+
+
+class TestTemporalTrend:
+    def test_rising_trend(self):
+        df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["emerging"],
+            "pub_year_series": [{2015: 5, 2016: 10, 2017: 20, 2018: 40, 2019: 80}],
+        })
+        trend = _compute_temporal_trend(df, recent_fraction=0.4)
+        assert trend.iloc[0] > 1.0  # recent > early
+
+    def test_declining_trend(self):
+        df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["declining"],
+            "pub_year_series": [{2015: 80, 2016: 40, 2017: 20, 2018: 10, 2019: 5}],
+        })
+        trend = _compute_temporal_trend(df, recent_fraction=0.4)
+        assert trend.iloc[0] < 1.0
+
+    def test_no_year_data(self):
+        df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["nodata"],
+            "pub_year_series": [{}],
+        })
+        trend = _compute_temporal_trend(df)
+        assert trend.iloc[0] == 0.0
+
+    def test_missing_column(self):
+        df = pd.DataFrame({"cluster_id": [0], "term": ["x"]})
+        trend = _compute_temporal_trend(df)
+        assert trend.iloc[0] == 0.0
 
 
 class TestEstimateDepth:
@@ -152,6 +187,46 @@ class TestEstimateDepth:
         # Should have levels 0-3
         assert result["depth_level"].min() >= 0
         assert result["depth_level"].max() <= 3
+
+    def test_temporal_trend_signal(self):
+        """Rising terms get higher depth score than declining ones."""
+        df = _make_df([
+            (0, "established", 2.0, 500, 100),
+            (0, "emerging", 1.5, 200, 50),
+        ])
+        # established: mostly early publications
+        df["pub_year_series"] = [
+            {2015: 100, 2016: 90, 2017: 80, 2018: 70, 2019: 60},
+            {2015: 10, 2016: 20, 2017: 40, 2018: 80, 2019: 150},
+        ]
+        config = DepthConfig(
+            enabled=True,
+            weight_doc_coverage=0.0,
+            weight_cross_cluster=0.0,
+            weight_ngram_length=0.0,
+            weight_cooc_asymmetry=0.0,
+            weight_temporal_trend=1.0,
+        )
+        result = estimate_depth(df, config=config)
+        # "emerging" has rising trend → higher depth
+        assert result.iloc[1]["depth_score"] > result.iloc[0]["depth_score"]
+
+    def test_temporal_trend_no_data(self):
+        """Without pub_year_series, temporal signal is skipped gracefully."""
+        df = _make_df([
+            (0, "alpha", 2.0, 500, 100),
+            (0, "beta", 1.5, 200, 50),
+        ])
+        config = DepthConfig(
+            enabled=True,
+            weight_temporal_trend=1.0,
+            weight_doc_coverage=0.0,
+            weight_cross_cluster=0.0,
+            weight_ngram_length=0.0,
+            weight_cooc_asymmetry=0.0,
+        )
+        result = estimate_depth(df, config=config)
+        assert "depth_score" in result.columns
 
     def test_no_doc_coverage_column(self):
         """Should work even without doc_coverage column."""

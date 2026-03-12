@@ -27,10 +27,12 @@ class DepthConfig:
     enabled: bool = False
     n_levels: int = 4  # 0, 1, 2, 3
     weight_doc_coverage: float = 0.3
-    weight_cross_cluster: float = 0.3
+    weight_cross_cluster: float = 0.25
     weight_ngram_length: float = 0.1
-    weight_cooc_asymmetry: float = 0.3
+    weight_cooc_asymmetry: float = 0.25
+    weight_temporal_trend: float = 0.1  # rising terms → deeper (emerging sub-topics)
     asymmetry_threshold: float = 0.3  # minimum asymmetry to count
+    temporal_recent_fraction: float = 0.4  # top N% of years = "recent"
 
 
 def _compute_cross_cluster_counts(top_df: pd.DataFrame) -> pd.Series:
@@ -93,6 +95,36 @@ def _normalize_signal(values: pd.Series) -> pd.Series:
     return (values - vmin) / (vmax - vmin)
 
 
+def _compute_temporal_trend(top_df: pd.DataFrame, recent_fraction: float = 0.4) -> pd.Series:
+    """Compute recent/early publication ratio per term.
+
+    Uses ``pub_year_series`` column (dict year→count).  Higher values mean
+    the term is emerging (more publications in recent years).
+    Returns 0.0 when temporal data is unavailable.
+    """
+    if "pub_year_series" not in top_df.columns:
+        return pd.Series(0.0, index=top_df.index)
+
+    trends = []
+    for _, row in top_df.iterrows():
+        ys = row.get("pub_year_series")
+        if not isinstance(ys, dict) or not ys:
+            trends.append(0.0)
+            continue
+        years = sorted(ys.keys())
+        if len(years) < 2:
+            trends.append(0.0)
+            continue
+        split = years[max(1, int(len(years) * (1 - recent_fraction)))]
+        early = sum(v for y, v in ys.items() if y < split)
+        recent = sum(v for y, v in ys.items() if y >= split)
+        if early == 0:
+            trends.append(float(recent))
+        else:
+            trends.append(recent / early)
+    return pd.Series(trends, index=top_df.index, dtype=float)
+
+
 def estimate_depth(
     top_df: pd.DataFrame,
     cooc_matrix: Optional[sp.csr_matrix] = None,
@@ -152,6 +184,13 @@ def estimate_depth(
         asym = _compute_asymmetry_scores(top_df, cooc_matrix, term_to_idx, config.asymmetry_threshold)
         signals.append(_normalize_signal(asym))
         weights.append(config.weight_cooc_asymmetry)
+
+    # Signal 5: temporal trend (rising terms = emerging sub-topics = deeper)
+    if config.weight_temporal_trend > 0:
+        trend = _compute_temporal_trend(top_df, config.temporal_recent_fraction)
+        if trend.sum() > 0:  # only include if data exists
+            signals.append(_normalize_signal(trend))
+            weights.append(config.weight_temporal_trend)
 
     if not signals:
         return top_df.assign(

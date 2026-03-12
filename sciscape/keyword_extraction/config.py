@@ -146,7 +146,7 @@ class KeywordExtractionConfig:
         r"^.$",                # single characters
     )
     cross_cluster_penalty_enabled: bool = False
-    cross_cluster_penalty_min_count: int = 3
+    cross_cluster_penalty_min_count: int = 2
     cross_cluster_penalty_fn: str = "inverse"  # "inverse" or "log_inverse"
 
     # Plural merging in normalization (P2)
