@@ -86,26 +86,24 @@ def collect_cooccurrence(
         if not batch_texts:
             continue
 
-        # Get binary presence vectors for each document
-        present_indices_per_doc: List[List[int]] = []
+        n_docs = len(batch_texts)
+        present_indices_per_doc: List[List[int]] = [[] for _ in range(n_docs)]
 
         if vec_uni is not None:
             X_uni = vec_uni.transform(batch_texts)
             for doc_idx in range(X_uni.shape[0]):
                 row = X_uni.getrow(doc_idx)
-                terms_found = [term_to_idx[uni_terms[j]] for j in row.indices]
-                if len(present_indices_per_doc) <= doc_idx:
-                    present_indices_per_doc.extend([] for _ in range(doc_idx + 1 - len(present_indices_per_doc)))
-                present_indices_per_doc[doc_idx] = terms_found
+                present_indices_per_doc[doc_idx] = [
+                    term_to_idx[uni_terms[j]] for j in row.indices
+                ]
 
         if vec_phrase is not None:
             X_phrase = vec_phrase.transform(batch_texts)
             for doc_idx in range(X_phrase.shape[0]):
                 row = X_phrase.getrow(doc_idx)
-                terms_found = [term_to_idx[phrase_terms[j]] for j in row.indices]
-                if len(present_indices_per_doc) <= doc_idx:
-                    present_indices_per_doc.extend([] for _ in range(doc_idx + 1 - len(present_indices_per_doc)))
-                present_indices_per_doc[doc_idx].extend(terms_found)
+                present_indices_per_doc[doc_idx].extend(
+                    term_to_idx[phrase_terms[j]] for j in row.indices
+                )
 
         # For each document, count co-occurrences between present terms
         for indices in present_indices_per_doc:

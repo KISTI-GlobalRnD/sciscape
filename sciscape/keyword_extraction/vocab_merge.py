@@ -52,14 +52,37 @@ def _simple_singular(word: str) -> Optional[str]:
 def build_merge_map(
     feature_names: np.ndarray,
     config: VocabMergeConfig,
+    C: Optional[sp.spmatrix] = None,
 ) -> Dict[int, int]:
     """Analyze vocabulary and return col_idx -> col_idx merge mapping.
 
     For each mergeable pair, the higher-frequency form (by global count) is
     kept as the target. The returned dict maps source_idx -> target_idx.
+
+    When *C* (the aggregated count matrix) is provided, pairs where the minor
+    form's total count exceeds ``config.merge_frequency_ratio`` times the major
+    form's count are skipped.  This prevents false merges such as
+    "aids" (HIV/AIDS) -> "aid" (assistance).
     """
     name_to_idx = {name: i for i, name in enumerate(feature_names)}
     merge: Dict[int, int] = {}
+
+    # Pre-compute per-column totals for frequency gating
+    col_sums: Optional[np.ndarray] = None
+    if C is not None:
+        col_sums = np.asarray(C.sum(axis=0)).ravel()
+
+    def _freq_ok(src_idx: int, tgt_idx: int) -> bool:
+        """Return True if the merge passes the frequency-ratio gate."""
+        if col_sums is None:
+            return True
+        src_freq = col_sums[src_idx]
+        tgt_freq = col_sums[tgt_idx]
+        major = max(src_freq, tgt_freq)
+        minor = min(src_freq, tgt_freq)
+        if major == 0:
+            return True
+        return (minor / major) <= config.merge_frequency_ratio
 
     if config.plural_to_singular:
         for name in feature_names:
@@ -75,9 +98,12 @@ def build_merge_map(
             singular_idx = name_to_idx[singular]
             if plural_idx == singular_idx:
                 continue
+            if plural_idx in merge or singular_idx in merge:
+                continue
+            if not _freq_ok(plural_idx, singular_idx):
+                continue
             # Always merge plural -> singular (singular is the canonical form)
-            if plural_idx not in merge and singular_idx not in merge:
-                merge[plural_idx] = singular_idx
+            merge[plural_idx] = singular_idx
 
     if config.hyphen_normalize:
         for name in feature_names:
@@ -90,8 +116,11 @@ def build_merge_map(
             space_idx = name_to_idx[space_form]
             if hyphen_idx == space_idx:
                 continue
-            if hyphen_idx not in merge and space_idx not in merge:
-                merge[hyphen_idx] = space_idx
+            if hyphen_idx in merge or space_idx in merge:
+                continue
+            if not _freq_ok(hyphen_idx, space_idx):
+                continue
+            merge[hyphen_idx] = space_idx
 
     return merge
 

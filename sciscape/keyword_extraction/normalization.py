@@ -7,9 +7,30 @@ frequency-based heuristic merging of near-duplicate terms.
 
 from __future__ import annotations
 
-from typing import Dict, Mapping, Optional, Set
+from collections import defaultdict
+from typing import Dict, List, Mapping, Optional, Set, Tuple
 
 import pandas as pd
+
+from .utils import _edit_distance
+from .vocab_merge import _simple_singular
+
+
+def _phrase_singular(term: str) -> Optional[str]:
+    """Attempt to singularize the *last* word of a multi-word term.
+
+    Returns the singular form if the last word is a regular English plural,
+    otherwise returns None.  Handles both unigrams and phrases:
+      "point clouds"  -> "point cloud"
+      "transformers"  -> "transformer"
+      "series"        -> None  (not a regular plural)
+    """
+    words = term.split()
+    last = words[-1]
+    singular = _simple_singular(last)
+    if singular is None:
+        return None
+    return " ".join(words[:-1] + [singular]) if len(words) > 1 else singular
 
 
 def _expand_abbreviations(
@@ -54,20 +75,36 @@ def _normalize_notation(term: str) -> str:
     return result
 
 
-def _edit_distance(a: str, b: str) -> int:
-    """Levenshtein edit distance between two strings."""
-    if len(a) < len(b):
-        return _edit_distance(b, a)
-    if len(b) == 0:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a):
-        curr = [i + 1]
-        for j, cb in enumerate(b):
-            cost = 0 if ca == cb else 1
-            curr.append(min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost))
-        prev = curr
-    return prev[len(b)]
+def _build_norm_blocks(
+    terms: List[str],
+    max_edit_distance: int,
+    prefix_len: int = 3,
+) -> Dict[str, List[int]]:
+    """Group term indices into blocks for edit-distance comparison.
+
+    Terms in different blocks cannot be within ``max_edit_distance`` of each
+    other, so we skip those pairs entirely.  Blocking keys:
+    - Multi-word terms: each word token (so "machine learning" is in both
+      the "machine" and "learning" blocks)
+    - Single-word terms: first ``prefix_len`` characters
+
+    A term may appear in multiple blocks; the merge loop de-duplicates via
+    the ``merged_into`` dict.
+    """
+    blocks: Dict[str, List[int]] = defaultdict(list)
+    for idx, term in enumerate(terms):
+        lower = term.lower()
+        words = lower.split()
+        if len(words) > 1:
+            for w in words:
+                blocks[w].append(idx)
+        else:
+            key = lower[:prefix_len] if len(lower) >= prefix_len else lower
+            blocks[key].append(idx)
+            # Short terms go into a shared block so they can be compared with each other
+            if len(lower) < prefix_len:
+                blocks["_short"].append(idx)
+    return dict(blocks)
 
 
 def normalize_keywords(
@@ -76,12 +113,14 @@ def normalize_keywords(
     stopwords: Optional[Set[str]] = None,
     max_edit_distance: int = 2,
     min_frequency_ratio: float = 0.01,
+    plural_merge_enabled: bool = True,
 ) -> pd.DataFrame:
     """Post-top-K keyword normalization.
 
     Steps:
     1. Expand known abbreviations (builtin_aliases)
     2. Normalize notation (Greek letters, hyphens)
+    2b. Merge plural forms into singular (phrase-level)
     3. Merge near-duplicates by edit distance within each cluster
 
     Returns a new DataFrame with normalized terms and merged frequencies.
@@ -105,31 +144,64 @@ def normalize_keywords(
                 t = term  # revert if normalization produced a stopword
             normalized[i] = t.strip()
 
+        # Step 2b: plural merge — merge "Xs" into "X" when both present
+        if plural_merge_enabled:
+            norm_lower_to_idx: Dict[str, int] = {}
+            for i in range(len(terms)):
+                norm_lower_to_idx.setdefault(normalized[i].lower(), i)
+            for i in range(len(terms)):
+                singular = _phrase_singular(normalized[i])
+                if singular is None:
+                    continue
+                target_idx = norm_lower_to_idx.get(singular.lower())
+                if target_idx is not None and target_idx != i:
+                    # Point the plural's normalized form to the singular
+                    # (actual merging happens in step 3a exact-match)
+                    normalized[i] = normalized[target_idx]
+
         # Step 3: merge near-duplicates (greedy, high-freq absorbs low-freq)
         # Sort by frequency descending so higher-freq terms are canonical
         order = sorted(range(len(terms)), key=lambda i: -freqs[i])
         merged_into: Dict[int, int] = {}  # source_idx -> target_idx
 
-        for i in range(len(order)):
-            idx_i = order[i]
-            if idx_i in merged_into:
-                continue
-            term_i = normalized[idx_i]
-            for j in range(i + 1, len(order)):
-                idx_j = order[j]
-                if idx_j in merged_into:
-                    continue
-                term_j = normalized[idx_j]
-                if term_i == term_j:
-                    # Exact match after normalization
-                    merged_into[idx_j] = idx_i
-                    continue
-                if max_edit_distance > 0 and len(term_i) > 3 and len(term_j) > 3:
-                    dist = _edit_distance(term_i.lower(), term_j.lower())
-                    if dist <= max_edit_distance:
-                        # Check frequency ratio to avoid merging distinct terms
-                        if freqs[idx_j] <= min_frequency_ratio * freqs[idx_i]:
-                            merged_into[idx_j] = idx_i
+        # 3a: exact-match pass (always O(n) via dict lookup)
+        norm_to_first: Dict[str, int] = {}
+        for idx in order:
+            key = normalized[idx].lower()
+            if key in norm_to_first:
+                merged_into[idx] = norm_to_first[key]
+            else:
+                norm_to_first[key] = idx
+
+        # 3b: edit-distance pass with blocking to avoid O(n²)
+        if max_edit_distance > 0:
+            norm_list = [normalized[i] for i in range(len(terms))]
+            blocks = _build_norm_blocks(norm_list, max_edit_distance)
+
+            for block_indices in blocks.values():
+                # Within each block, compare pairs (sorted by frequency desc)
+                block_order = [i for i in order if i in set(block_indices)]
+                for bi in range(len(block_order)):
+                    idx_i = block_order[bi]
+                    if idx_i in merged_into:
+                        continue
+                    term_i = normalized[idx_i]
+                    if len(term_i) <= 3:
+                        continue
+                    for bj in range(bi + 1, len(block_order)):
+                        idx_j = block_order[bj]
+                        if idx_j in merged_into:
+                            continue
+                        term_j = normalized[idx_j]
+                        if len(term_j) <= 3:
+                            continue
+                        # Length filter: edit distance can't be smaller than length diff
+                        if abs(len(term_i) - len(term_j)) > max_edit_distance:
+                            continue
+                        dist = _edit_distance(term_i.lower(), term_j.lower())
+                        if dist <= max_edit_distance:
+                            if freqs[idx_j] <= min_frequency_ratio * freqs[idx_i]:
+                                merged_into[idx_j] = idx_i
 
         # Build merged output
         canonical_freqs: Dict[int, int] = {}

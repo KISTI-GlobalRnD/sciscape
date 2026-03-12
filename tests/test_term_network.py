@@ -9,7 +9,7 @@ from sciscape.keyword_extraction.term_network import (
     TermNetworkConfig,
     _build_blocks,
     _char_ngrams,
-    _edit_distance_fast,
+    _edit_distance,
     _jaccard,
 )
 
@@ -42,10 +42,10 @@ class TestJaccard:
 
 class TestEditDistance:
     def test_identical(self):
-        assert _edit_distance_fast("hello", "hello") == 0
+        assert _edit_distance("hello", "hello") == 0
 
     def test_one_edit(self):
-        assert _edit_distance_fast("cat", "bat") == 1
+        assert _edit_distance("cat", "bat") == 1
 
 
 class TestBuildBlocks:

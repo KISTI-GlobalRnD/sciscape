@@ -59,3 +59,31 @@ keyword_extraction.py becomes 13-line re-export shim for backward compatibility.
   llm_canonicalize.py (1712), temporal.py (218),
   diagnostics.py (397), keyword_extraction.py (13 shim)
 
+## [2026-03-12] [Algorithm] DECISION: Stage 7→8 bridge injects candidates column
+**REASON**: term_network (Stage 7) produces group-based merge_candidates, but
+llm_canonicalize (Stage 8) expects per-row "candidates" column. Bridge method
+`_bridge_merge_candidates` converts between formats without modifying either stage's
+internal logic. Harmless when no merge groups exist.
+
+## [2026-03-12] [Algorithm] DECISION: vocab_merge frequency ratio gate
+**REASON**: `build_merge_map` now accepts the count matrix and checks
+`minor_freq / major_freq <= merge_frequency_ratio`. Prevents false merges like
+"aids" (HIV/AIDS) → "aid" (assistance) when both forms have comparable frequency.
+Backward-compatible: without count matrix, all merges pass.
+
+## [2026-03-12] [Algorithm] DECISION: Normalization blocking strategy
+**REASON**: O(n²) pairwise edit-distance was infeasible at scale. Token-based blocking
+groups terms by shared words (multi-word) or prefix (single-word). Length filter
+provides additional O(1) pruning. Preserves correctness since edit distance ≥ length diff.
+
+## [2026-03-12] [Phase A.8] DECISION: Generalized checkpoint system
+**REASON**: Existing save/load_stage2_snapshot only supported one stage boundary.
+New system supports arbitrary stage names (scoring, normalization, cooccurrence,
+term_network, canonicalize). Dict/list columns serialized as JSON for parquet compat.
+run_from_checkpoint resumes from the next stage. Legacy API preserved as thin wrappers.
+
+## [2026-03-12] [Output] DECISION: Expose cross_cluster_count in depth output
+**REASON**: cross_cluster_count was computed internally in depth.py but not exposed.
+Tier 3 output schema now includes it. Useful for downstream analysis (bridge terms
+between research communities).
+

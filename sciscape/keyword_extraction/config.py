@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Mapping, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, Mapping, Optional, Tuple, Union
 
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+if TYPE_CHECKING:
+    from .depth import DepthConfig
+    from .term_network import TermNetworkConfig
 
 
 @dataclass
@@ -126,10 +130,37 @@ class KeywordExtractionConfig:
     # Co-occurrence & term network (Stages 6-7)
     cooccurrence_enabled: bool = False
     cooccurrence_min_count: int = 3
-    term_network: Optional[object] = None  # TermNetworkConfig (avoids circular import)
+    term_network: Optional[TermNetworkConfig] = None
 
     # Depth estimation (Stage 9)
-    depth: Optional[object] = None  # DepthConfig (avoids circular import)
+    depth: Optional[DepthConfig] = None
+
+    # Quality filters (P1 + P5 + P6)
+    academic_stopwords_enabled: bool = True
+    academic_stopwords_extra: Optional[Tuple[str, ...]] = None
+    artifact_filter_enabled: bool = True
+    artifact_filter_patterns: Tuple[str, ...] = (
+        r"^center\s*dot$",     # LaTeX center-dot artifact
+        r"^\d+$",              # pure numbers
+        r"^[^\w]+$",           # pure punctuation/symbols
+        r"^.$",                # single characters
+    )
+    cross_cluster_penalty_enabled: bool = False
+    cross_cluster_penalty_min_count: int = 3
+    cross_cluster_penalty_fn: str = "inverse"  # "inverse" or "log_inverse"
+
+    # Plural merging in normalization (P2)
+    norm_plural_merge_enabled: bool = True
+
+    # Short-term abbreviation expansion (P4)
+    short_term_expansion_enabled: bool = False
+    short_term_max_length: int = 2
+    short_term_min_cooc_ratio: float = 0.3
+    short_term_expansion_mode: str = "annotate"  # "annotate" | "replace" | "both"
+
+    # Auto-merge without LLM (P3)
+    auto_merge_enabled: bool = False
+    auto_merge_min_similarity: float = 0.85
 
     # Execution
     n_jobs: int = -1
@@ -177,6 +208,11 @@ class KeywordRecord:
 
 # Output schema tiers
 CORE_COLUMNS = ["cluster_id", "term", "score", "frequency"]
+TIER2_COLUMNS = ["doc_coverage", "source_terms", "pub_year_series",
+                 "ppm_series", "loglift_series", "bayesian_log_odds_series",
+                 "year_denominators"]
+TIER3_COLUMNS = ["depth_score", "depth_level", "cross_cluster_count",
+                 "candidates"]
 
 
 __all__ = [
@@ -184,4 +220,6 @@ __all__ = [
     "KeywordRecord",
     "VocabMergeConfig",
     "CORE_COLUMNS",
+    "TIER2_COLUMNS",
+    "TIER3_COLUMNS",
 ]

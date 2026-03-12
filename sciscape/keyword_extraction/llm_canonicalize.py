@@ -177,7 +177,7 @@ class LLMCanonicalizeMixin:
         strategy = (cfg.alias_strategy or "none").lower()
         if not cfg.apply_alias_map or strategy == "none":
             self._log(
-                "Stage 2.5: skipping canonicalisation (apply_alias_map=%s, strategy=%s)",
+                "Stage 8 (canonicalize): skipping canonicalisation (apply_alias_map=%s, strategy=%s)",
                 cfg.apply_alias_map,
                 strategy,
             )
@@ -185,7 +185,7 @@ class LLMCanonicalizeMixin:
                 return top_df.assign(source_terms=top_df["term"].apply(lambda t: [str(t)]))
             return top_df
 
-        self._log("Stage 2.5: canonicalising %d rows using strategy '%s'", len(top_df), strategy)
+        self._log("Stage 8 (canonicalize): canonicalising %d rows using strategy '%s'", len(top_df), strategy)
         alias_df = self._request_alias_actions(top_df)
         if alias_df.empty:
             logger.warning("Alias map requested but no instructions received; retaining original terms.")
@@ -200,7 +200,7 @@ class LLMCanonicalizeMixin:
         result = self._apply_alias_instructions(top_df, alias_df)
         result = self._rescore_with_aliases(result)
         result = self._enforce_forbidden(result)
-        self._log("Stage 2.5: canonicalisation complete -> %d rows", len(result))
+        self._log("Stage 8 (canonicalize): canonicalisation complete -> %d rows", len(result))
         return result
 
     def _request_alias_actions(self, top_df: pd.DataFrame) -> pd.DataFrame:
@@ -245,7 +245,7 @@ class LLMCanonicalizeMixin:
         max_terms = max(1, int(cfg.alias_max_terms_per_prompt))
         records: List[Dict[str, object]] = []
         self._log(
-            "Stage 2.5: requesting alias actions for %d clusters (batch size %d)",
+            "Stage 8 (canonicalize): requesting alias actions for %d clusters (batch size %d)",
             top_df["cluster_id"].nunique(),
             max_terms,
         )
@@ -344,7 +344,7 @@ class LLMCanonicalizeMixin:
             return pd.DataFrame(columns=columns)
         result = pd.DataFrame.from_records(records, columns=columns)
         self._log(
-            "Stage 2.5: received alias instructions for %d terms",
+            "Stage 8 (canonicalize): received alias instructions for %d terms",
             len(result),
         )
         return result
@@ -1205,7 +1205,7 @@ class LLMCanonicalizeMixin:
         result = pd.DataFrame.from_records(records)
         result = self._merge_equivalent_source_terms(result)
         self._log(
-            "Stage 2.5: aggregated %d rows from %d input rows",
+            "Stage 8 (canonicalize): aggregated %d rows from %d input rows",
             len(result),
             len(top_df),
         )
@@ -1476,7 +1476,7 @@ class LLMCanonicalizeMixin:
             }
 
         if not alias_targets:
-            self._log("Stage 2.5: no canonical columns to rescore; keeping existing scores")
+            self._log("Stage 8 (canonicalize): no canonical columns to rescore; keeping existing scores")
             return canonical_df
 
         from scipy import sparse as sp
@@ -1700,5 +1700,5 @@ class LLMCanonicalizeMixin:
         kwargs["api_key"] = api_key
         client = OpenAI(**kwargs)
         self._alias_client = client
-        self._log("Stage 2.5: alias client created (model=%s)", self.config.alias_model)
+        self._log("Stage 8 (canonicalize): alias client created (model=%s)", self.config.alias_model)
         return client

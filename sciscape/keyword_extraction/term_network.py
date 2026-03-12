@@ -11,11 +11,16 @@ detected for downstream canonicalization.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from scipy import sparse as sp
+
+from .utils import _edit_distance
 
 
 @dataclass
@@ -55,23 +60,6 @@ def _jaccard(a: set, b: set) -> float:
     union = len(a | b)
     return intersection / union if union > 0 else 0.0
 
-
-def _edit_distance_fast(a: str, b: str) -> int:
-    """Levenshtein edit distance with early termination."""
-    if abs(len(a) - len(b)) > 3:
-        return abs(len(a) - len(b))
-    if len(a) < len(b):
-        a, b = b, a
-    if len(b) == 0:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a):
-        curr = [i + 1]
-        for j, cb in enumerate(b):
-            cost = 0 if ca == cb else 1
-            curr.append(min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost))
-        prev = curr
-    return prev[len(b)]
 
 
 def _build_blocks(terms: Sequence[str], strategy: str, prefix_length: int = 3) -> Dict[str, List[int]]:
@@ -139,8 +127,12 @@ class TermNetwork:
         rows, cols, vals = [], [], []
         seen = set()
 
-        for block_indices in blocks.values():
+        for block_key, block_indices in blocks.items():
             if len(block_indices) > cfg.max_block_size:
+                logger.warning(
+                    "String layer: skipping block '%s' (%d terms > max_block_size=%d)",
+                    block_key, len(block_indices), cfg.max_block_size,
+                )
                 continue
             for ii in range(len(block_indices)):
                 for jj in range(ii + 1, len(block_indices)):
@@ -151,7 +143,7 @@ class TermNetwork:
                     seen.add(pair)
 
                     # Edit distance similarity
-                    dist = _edit_distance_fast(terms[i].lower(), terms[j].lower())
+                    dist = _edit_distance(terms[i].lower(), terms[j].lower())
                     max_len = max(len(terms[i]), len(terms[j]))
                     if max_len == 0:
                         continue
@@ -188,8 +180,12 @@ class TermNetwork:
         rows, cols, vals = [], [], []
         seen = set()
 
-        for block_indices in blocks.values():
+        for block_key, block_indices in blocks.items():
             if len(block_indices) > cfg.max_block_size:
+                logger.warning(
+                    "Token layer: skipping block '%s' (%d terms > max_block_size=%d)",
+                    block_key, len(block_indices), cfg.max_block_size,
+                )
                 continue
             for ii in range(len(block_indices)):
                 for jj in range(ii + 1, len(block_indices)):

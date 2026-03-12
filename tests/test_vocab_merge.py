@@ -71,6 +71,47 @@ class TestBuildMergeMap:
         merge = build_merge_map(names, cfg)
         assert merge == {}
 
+    def test_frequency_ratio_blocks_false_merge(self):
+        """'aids' and 'aid' both have high frequency — should NOT merge."""
+        names = np.array(["aid", "aids", "model"])
+        # Both "aid" and "aids" have comparable frequency
+        C = sp.csr_matrix(np.array([
+            [50, 45, 10],  # cluster 0
+            [30, 40, 20],  # cluster 1
+        ]))
+        cfg = VocabMergeConfig(
+            enabled=True,
+            plural_to_singular=True,
+            merge_frequency_ratio=0.3,  # skip if minor/major > 30%
+        )
+        merge = build_merge_map(names, cfg, C=C)
+        # aids(85 total) / aid(80 total) = 0.94 > 0.3 → blocked
+        assert 1 not in merge
+
+    def test_frequency_ratio_allows_legitimate_plural(self):
+        """'networks' is rare vs 'network' — should merge."""
+        names = np.array(["network", "networks", "model"])
+        C = sp.csr_matrix(np.array([
+            [100, 2, 50],  # cluster 0
+            [80, 1, 30],   # cluster 1
+        ]))
+        cfg = VocabMergeConfig(
+            enabled=True,
+            plural_to_singular=True,
+            merge_frequency_ratio=0.1,  # skip if minor/major > 10%
+        )
+        merge = build_merge_map(names, cfg, C=C)
+        # networks(3) / network(180) = 0.017 < 0.1 → allowed
+        assert merge == {1: 0}
+
+    def test_frequency_ratio_without_matrix_allows_all(self):
+        """Without count matrix, frequency gating is skipped."""
+        names = np.array(["aid", "aids"])
+        cfg = VocabMergeConfig(enabled=True, plural_to_singular=True, merge_frequency_ratio=0.01)
+        merge = build_merge_map(names, cfg)  # no C provided
+        # No frequency info → merge proceeds
+        assert merge == {1: 0}
+
 
 class TestApplyMergeMap:
     def test_merge_columns(self):

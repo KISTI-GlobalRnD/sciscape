@@ -121,7 +121,7 @@ def estimate_depth(
         config = DepthConfig()
 
     if top_df.empty:
-        return top_df.assign(depth_score=[], depth_level=[])
+        return top_df.assign(depth_score=[], depth_level=[], cross_cluster_count=[])
 
     signals = []
     weights = []
@@ -134,9 +134,9 @@ def estimate_depth(
         weights.append(config.weight_doc_coverage)
 
     # Signal 2: cross-cluster count (inverted — many clusters = broad)
+    cross_counts = _compute_cross_cluster_counts(top_df)
+    per_row_cross = top_df["term"].map(cross_counts).fillna(1).astype(float)
     if config.weight_cross_cluster > 0:
-        cross_counts = _compute_cross_cluster_counts(top_df)
-        per_row_cross = top_df["term"].map(cross_counts).fillna(1).astype(float)
         signals.append(_normalize_signal(per_row_cross.max() - per_row_cross))
         weights.append(config.weight_cross_cluster)
 
@@ -154,7 +154,11 @@ def estimate_depth(
         weights.append(config.weight_cooc_asymmetry)
 
     if not signals:
-        return top_df.assign(depth_score=0.5, depth_level=0)
+        return top_df.assign(
+            depth_score=0.5,
+            depth_level=0,
+            cross_cluster_count=per_row_cross.astype(int).values,
+        )
 
     # Weighted combination
     total_weight = sum(weights)
@@ -169,4 +173,5 @@ def estimate_depth(
     return top_df.assign(
         depth_score=depth_score.values,
         depth_level=depth_level,
+        cross_cluster_count=per_row_cross.astype(int).values,
     )

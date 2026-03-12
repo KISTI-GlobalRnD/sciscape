@@ -20,6 +20,28 @@ ClusterTermYearCounter = MutableMapping[int, TermYearCounter]
 _HTML_TAG_RE = re.compile(r"</?[^<>]+>")
 
 
+def _edit_distance(a: str, b: str) -> int:
+    """Levenshtein edit distance between two strings.
+
+    Includes early termination when the length difference alone
+    exceeds a practical threshold (3).
+    """
+    if abs(len(a) - len(b)) > 3:
+        return abs(len(a) - len(b))
+    if len(a) < len(b):
+        a, b = b, a
+    if len(b) == 0:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a):
+        curr = [i + 1]
+        for j, cb in enumerate(b):
+            cost = 0 if ca == cb else 1
+            curr.append(min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost))
+        prev = curr
+    return prev[len(b)]
+
+
 def _normalize_text_basic(text: object) -> str:
     """Cheap normalisation shared across stages."""
     if not isinstance(text, str):

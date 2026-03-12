@@ -118,12 +118,28 @@ class TestEstimateDepth:
         result = estimate_depth(df, cooc_matrix=cooc, selected_terms=terms, config=config)
         assert "depth_score" in result.columns
 
+    def test_cross_cluster_count_in_output(self):
+        df = _make_df([
+            (0, "model", 2.0, 300, 80),
+            (1, "model", 1.8, 250, 70),
+            (0, "lstm", 1.5, 50, 15),
+        ])
+        result = estimate_depth(df, config=DepthConfig(enabled=True))
+        assert "cross_cluster_count" in result.columns
+        # "model" appears in 2 clusters
+        model_ccc = result[result["term"] == "model"]["cross_cluster_count"].iloc[0]
+        assert model_ccc == 2
+        # "lstm" appears in 1 cluster
+        lstm_ccc = result[result["term"] == "lstm"]["cross_cluster_count"].iloc[0]
+        assert lstm_ccc == 1
+
     def test_empty_df(self):
         df = _make_df([])
         result = estimate_depth(df)
         assert result.empty
         assert "depth_score" in result.columns
         assert "depth_level" in result.columns
+        assert "cross_cluster_count" in result.columns
 
     def test_n_levels(self):
         df = _make_df([

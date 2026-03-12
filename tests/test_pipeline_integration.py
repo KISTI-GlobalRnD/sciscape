@@ -125,6 +125,25 @@ class TestPipelineWithTermNetwork:
         keywords = pipeline.run()
         assert not keywords.empty
 
+    def test_merge_candidates_injected_as_column(self, sample_data):
+        """Stage 7→8 bridge: merge_candidates become per-term candidates column."""
+        tn_cfg = TermNetworkConfig(enabled=True, layers=["string", "token"], merge_threshold=0.3)
+        cfg = _base_config(
+            *sample_data,
+            cooccurrence_enabled=True,
+            cooccurrence_min_count=1,
+            term_network=tn_cfg,
+        )
+        from sciscape.keyword_extraction.pipeline import KeywordExtractionPipeline
+        pipeline = KeywordExtractionPipeline(cfg)
+        keywords = pipeline.run()
+        assert not keywords.empty
+        # candidates column should always exist after bridge (possibly empty lists)
+        assert "candidates" in keywords.columns
+        # Each entry should be a list
+        for cands in keywords["candidates"]:
+            assert isinstance(cands, list)
+
 
 class TestPipelineWithDepth:
     def test_depth_enabled(self, sample_data):
@@ -169,4 +188,65 @@ class TestPipelineAllStages:
         assert not keywords.empty
         assert "depth_score" in keywords.columns
         assert "depth_level" in keywords.columns
+        assert "cross_cluster_count" in keywords.columns
         assert pipeline.cooc_matrix is not None
+
+
+class TestCheckpointSystem:
+    def test_save_and_resume_from_scoring(self, sample_data, tmp_path):
+        """Save checkpoint after scoring, resume and get same final shape."""
+        cfg = _base_config(*sample_data)
+        from sciscape.keyword_extraction.pipeline import KeywordExtractionPipeline
+        pipeline = KeywordExtractionPipeline(cfg)
+
+        # Full run for reference
+        full_result = pipeline.run()
+
+        # Save checkpoint after scoring
+        ckpt_dir = tmp_path / "ckpt_scoring"
+        top_df = pipeline._stage_scores_and_topk()
+        pipeline.save_checkpoint(ckpt_dir, top_df, stage="scoring")
+
+        # Resume from checkpoint
+        pipeline2 = KeywordExtractionPipeline(cfg)
+        resumed = pipeline2.run_from_checkpoint(ckpt_dir)
+
+        assert not resumed.empty
+        assert set(full_result.columns) == set(resumed.columns)
+
+    def test_backward_compat_stage2_snapshot(self, sample_data, tmp_path):
+        """Legacy save_stage2_snapshot / run_from_stage2_snapshot still works."""
+        cfg = _base_config(*sample_data)
+        from sciscape.keyword_extraction.pipeline import KeywordExtractionPipeline
+        pipeline = KeywordExtractionPipeline(cfg)
+        pipeline.run()
+
+        # Use legacy API
+        top_df = pipeline._stage_scores_and_topk()
+        ckpt_dir = tmp_path / "legacy_ckpt"
+        pipeline.save_stage2_snapshot(ckpt_dir, top_df)
+
+        pipeline2 = KeywordExtractionPipeline(cfg)
+        result = pipeline2.run_from_stage2_snapshot(ckpt_dir)
+        assert not result.empty
+        assert "term" in result.columns
+
+    def test_checkpoint_preserves_cooc_matrix(self, sample_data, tmp_path):
+        """Co-occurrence matrix is saved and restored from checkpoint."""
+        cfg = _base_config(
+            *sample_data,
+            cooccurrence_enabled=True,
+            cooccurrence_min_count=1,
+        )
+        from sciscape.keyword_extraction.pipeline import KeywordExtractionPipeline
+        pipeline = KeywordExtractionPipeline(cfg)
+        keywords = pipeline.run()
+
+        # Save checkpoint after cooccurrence
+        ckpt_dir = tmp_path / "ckpt_cooc"
+        pipeline.save_checkpoint(ckpt_dir, keywords, stage="cooccurrence")
+
+        # Resume — should have cooc_matrix restored
+        pipeline2 = KeywordExtractionPipeline(cfg)
+        pipeline2.load_checkpoint(ckpt_dir)
+        assert pipeline2.cooc_matrix is not None

@@ -22,7 +22,7 @@ class TemporalMixin:
             return defaultdict(lambda: defaultdict(Counter))
 
         cfg = self.config
-        self._log("Stage 3: computing year series for %d rows", len(top_df))
+        self._log("Stage 10: computing year series for %d rows", len(top_df))
         token_to_targets_uni: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
         token_to_targets_phrase: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
 
@@ -122,7 +122,7 @@ class TemporalMixin:
                         term_year[cid][canonical][int(year)] += int(v)
 
         self.cluster_year_token_denoms = denom_tokens
-        self._log("Stage 3: year series computed for %d clusters", len(term_year))
+        self._log("Stage 10: year series computed for %d clusters", len(term_year))
         return term_year
 
     def _build_time_series_metrics(self, top_df: pd.DataFrame, term_year: ClusterTermYearCounter) -> pd.DataFrame:
