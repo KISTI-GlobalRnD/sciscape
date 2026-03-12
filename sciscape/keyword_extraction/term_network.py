@@ -43,6 +43,8 @@ class TermNetworkConfig:
     blocking_strategy: str = "token"  # "token" | "prefix"
     max_block_size: int = 500
     prefix_length: int = 3
+    # Merge group limits
+    max_group_size: int = 5  # split oversized connected components
 
 
 def _char_ngrams(s: str, n: int = 3) -> set:
@@ -288,11 +290,17 @@ class TermNetwork:
         terms: Sequence[str],
         threshold: Optional[float] = None,
     ) -> List[List[str]]:
-        """Find connected components above threshold as merge groups."""
+        """Find connected components above threshold as merge groups.
+
+        Groups larger than ``max_group_size`` are split by iteratively
+        removing the weakest edge until all sub-components are within
+        the size limit.
+        """
         if combined.shape[0] == 0:
             return []
 
         thresh = threshold if threshold is not None else self.config.merge_threshold
+        max_size = self.config.max_group_size
 
         # Threshold the similarity matrix
         thresholded = combined.copy()
@@ -304,12 +312,58 @@ class TermNetwork:
             thresholded, directed=False, return_labels=True
         )
 
-        groups: Dict[int, List[str]] = {}
+        groups_idx: Dict[int, List[int]] = {}
         for idx, label in enumerate(labels):
-            groups.setdefault(label, []).append(terms[idx])
+            groups_idx.setdefault(label, []).append(idx)
 
-        # Only return groups with 2+ members
-        return [g for g in groups.values() if len(g) > 1]
+        result: List[List[str]] = []
+        for member_indices in groups_idx.values():
+            if len(member_indices) < 2:
+                continue
+            if len(member_indices) <= max_size:
+                result.append([terms[i] for i in member_indices])
+                continue
+
+            # Split oversized group: extract subgraph, remove weakest edges
+            sub_idx = np.array(member_indices)
+            sub_mat = thresholded[np.ix_(sub_idx, sub_idx)].tolil()
+            while True:
+                n_sub, sub_labels = sp.csgraph.connected_components(
+                    sub_mat.tocsr(), directed=False, return_labels=True
+                )
+                # Check if all components are within limit
+                comp_sizes = {}
+                for si, sl in enumerate(sub_labels):
+                    comp_sizes[sl] = comp_sizes.get(sl, 0) + 1
+                if all(s <= max_size for s in comp_sizes.values()):
+                    break
+                # Find and remove weakest edge in any oversized component
+                min_val, min_i, min_j = float("inf"), -1, -1
+                csr = sub_mat.tocsr()
+                for i in range(csr.shape[0]):
+                    row = csr.getrow(i)
+                    for j, v in zip(row.indices, row.data):
+                        if j > i and 0 < v < min_val:
+                            # Only consider edges within oversized components
+                            if comp_sizes.get(sub_labels[i], 0) > max_size:
+                                min_val, min_i, min_j = v, i, j
+                if min_i < 0:
+                    break
+                sub_mat[min_i, min_j] = 0
+                sub_mat[min_j, min_i] = 0
+
+            # Collect final sub-components
+            n_sub, sub_labels = sp.csgraph.connected_components(
+                sub_mat.tocsr(), directed=False, return_labels=True
+            )
+            sub_groups: Dict[int, List[str]] = {}
+            for si, sl in enumerate(sub_labels):
+                sub_groups.setdefault(sl, []).append(terms[sub_idx[si]])
+            for sg in sub_groups.values():
+                if len(sg) >= 2:
+                    result.append(sg)
+
+        return result
 
     def generate_candidate_sets(
         self,

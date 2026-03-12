@@ -44,6 +44,52 @@ def _expand_abbreviations(
     return term
 
 
+# British/American and common spelling variants — maps variant → canonical.
+# Applied per-word so "protoplanetary disc" → "protoplanetary disk".
+_SPELLING_VARIANTS: Dict[str, str] = {
+    "disc": "disk",
+    "discs": "disks",
+    "colour": "color",
+    "colours": "colors",
+    "behaviour": "behavior",
+    "behaviours": "behaviors",
+    "modelling": "modeling",
+    "analyse": "analyze",
+    "optimise": "optimize",
+    "characterise": "characterize",
+    "utilise": "utilize",
+    "recognise": "recognize",
+    "minimise": "minimize",
+    "maximise": "maximize",
+    "catalyse": "catalyze",
+    "synthesise": "synthesize",
+    "fibre": "fiber",
+    "fibres": "fibers",
+    "centre": "center",
+    "centres": "centers",
+    "metre": "meter",
+    "metres": "meters",
+    "litre": "liter",
+    "litres": "liters",
+    "defence": "defense",
+    "licence": "license",
+    "aluminium": "aluminum",
+    "sulphur": "sulfur",
+    "vapour": "vapor",
+    "vapours": "vapors",
+    "tumour": "tumor",
+    "tumours": "tumors",
+    "grey": "gray",
+}
+
+
+def _normalize_spelling(term: str) -> str:
+    """Normalize known British/American spelling variants per word."""
+    words = term.split()
+    normalized = [_SPELLING_VARIANTS.get(w.lower(), w) for w in words]
+    return " ".join(normalized)
+
+
 def _normalize_notation(term: str) -> str:
     """Normalize Greek letters, units, and common notation variants."""
     replacements = {
@@ -140,6 +186,7 @@ def normalize_keywords(
         for i, term in enumerate(terms):
             t = _expand_abbreviations(term, builtin_aliases)
             t = _normalize_notation(t)
+            t = _normalize_spelling(t)
             if stopwords and t.lower() in stopwords:
                 t = term  # revert if normalization produced a stopword
             normalized[i] = t.strip()

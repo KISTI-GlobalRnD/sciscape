@@ -162,12 +162,15 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         return any(pat.search(term) for pat in self._artifact_res)
 
     def _is_academic_stopword(self, term: str) -> bool:
-        """P1: Check if a *single-token* term is academic boilerplate.
+        """P1: Check if term is academic boilerplate.
 
-        Multi-word terms like "fault diagnosis" pass through even if they
-        contain an academic stopword token.
+        Single-word: exact match against the stopword set.
+        Multi-word: filtered only if *every* token is an academic stopword
+        (e.g., "proposed method" → all tokens generic → filtered,
+         "fault diagnosis" → "fault" is not generic → kept).
         """
-        return " " not in term and term.lower() in self._academic_sw
+        tokens = term.lower().split()
+        return all(t in self._academic_sw for t in tokens)
 
     # ----- Stage 1 (vectorization): fit vectorisers on streamed text -----
 
