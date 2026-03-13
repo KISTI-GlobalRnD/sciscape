@@ -26,6 +26,8 @@ def _phrase_singular(term: str) -> Optional[str]:
       "series"        -> None  (not a regular plural)
     """
     words = term.split()
+    if not words:
+        return None
     last = words[-1]
     singular = _simple_singular(last)
     if singular is None:

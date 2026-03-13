@@ -403,6 +403,11 @@ class TestSpellingVariants:
         assert _phrase_singular("neural networks") == "neural network"
         assert _phrase_singular("series") is None  # not a regular plural
 
+    def test_phrase_singular_empty(self):
+        """Empty string should not crash (regression)."""
+        assert _phrase_singular("") is None
+        assert _phrase_singular("   ") is None
+
 
 # ---------------------------------------------------------------------------
 # Integration: P1+P5+P6 together
