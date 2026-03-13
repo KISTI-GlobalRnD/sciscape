@@ -37,7 +37,7 @@ from .depth import estimate_depth
 from .llm_canonicalize import LLMCanonicalizeMixin
 from .normalization import normalize_keywords
 from .temporal import TemporalMixin
-from .term_network import TermNetwork, TermNetworkConfig
+from .term_network import TermNetwork
 from .vocab_merge import apply_merge_map, build_merge_map
 
 logger = logging.getLogger(__name__)

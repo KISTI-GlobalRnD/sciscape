@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 
 import math
@@ -11,8 +9,6 @@ import math
 import numpy as np
 import pandas as pd
 from scipy import sparse as sp
-from sklearn.feature_extraction.text import CountVectorizer
-
 from .config import KeywordExtractionConfig
 from .utils import _normalize_text_basic
 

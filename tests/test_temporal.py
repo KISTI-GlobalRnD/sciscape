@@ -1,7 +1,11 @@
 """Tests for temporal metrics computation (Stage 10)."""
 
+import math
+from collections import Counter, defaultdict
 from pathlib import Path
+from unittest.mock import MagicMock
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -60,6 +64,139 @@ def _cfg(abs_path, mem_path, **overrides):
     )
     defaults.update(overrides)
     return KeywordExtractionConfig(**defaults)
+
+
+def _make_temporal_stub(term_year, cluster_denoms):
+    """Create a minimal TemporalMixin stub for _build_time_series_metrics."""
+    pipeline = object.__new__(KeywordExtractionPipeline)
+    pipeline.cluster_year_token_denoms = cluster_denoms
+
+    def _log(msg, *args):
+        pass
+    pipeline._log = _log
+    return pipeline
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for _build_time_series_metrics
+# ---------------------------------------------------------------------------
+
+class TestBuildTimeSeriesMetrics:
+    def test_basic_metrics(self):
+        """Basic case: one cluster, one term, two years."""
+        term_year = defaultdict(lambda: defaultdict(Counter))
+        term_year[0]["alpha"] = Counter({2020: 10, 2021: 20})
+        denoms = {0: Counter({2020: 100, 2021: 200})}
+
+        stub = _make_temporal_stub(term_year, denoms)
+        top_df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["alpha"],
+            "score": [1.0],
+            "frequency": [30],
+        })
+        result = stub._build_time_series_metrics(top_df, term_year)
+        assert "ppm_series" in result.columns
+        assert "loglift_series" in result.columns
+        assert "bayesian_log_odds_series" in result.columns
+        assert "year_denominators" in result.columns
+
+        ppm = result["ppm_series"].iloc[0]
+        assert 2020 in ppm
+        assert ppm[2020] == pytest.approx(1e6 * 10 / 100)
+
+    def test_empty_dataframe(self):
+        """Empty top_df returns empty columns."""
+        stub = _make_temporal_stub({}, {})
+        top_df = pd.DataFrame(columns=["cluster_id", "term", "score", "frequency"])
+        result = stub._build_time_series_metrics(top_df, {})
+        assert "ppm_series" in result.columns
+        assert len(result) == 0
+
+    def test_zero_denominator_gives_nan(self):
+        """PPM should be NaN when denominator is zero."""
+        term_year = defaultdict(lambda: defaultdict(Counter))
+        term_year[0]["alpha"] = Counter({2020: 5})
+        denoms = {0: Counter()}  # no denom for 2020
+
+        stub = _make_temporal_stub(term_year, denoms)
+        top_df = pd.DataFrame({
+            "cluster_id": [0], "term": ["alpha"],
+            "score": [1.0], "frequency": [5],
+        })
+        result = stub._build_time_series_metrics(top_df, term_year)
+        ppm = result["ppm_series"].iloc[0]
+        assert math.isnan(ppm[2020])
+
+    def test_multi_cluster_isolation(self):
+        """Metrics use per-cluster denominators, not global."""
+        term_year = defaultdict(lambda: defaultdict(Counter))
+        term_year[0]["alpha"] = Counter({2020: 10})
+        term_year[1]["alpha"] = Counter({2020: 5})
+        denoms = {0: Counter({2020: 100}), 1: Counter({2020: 50})}
+
+        stub = _make_temporal_stub(term_year, denoms)
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 1],
+            "term": ["alpha", "alpha"],
+            "score": [1.0, 1.0],
+            "frequency": [10, 5],
+        })
+        result = stub._build_time_series_metrics(top_df, term_year)
+        ppm_c0 = result["ppm_series"].iloc[0][2020]
+        ppm_c1 = result["ppm_series"].iloc[1][2020]
+        # Both should be 100,000 PPM (10/100 and 5/50 = same ratio)
+        assert ppm_c0 == pytest.approx(1e5)
+        assert ppm_c1 == pytest.approx(1e5)
+
+    def test_loglift_positive_when_concentrated(self):
+        """When a term is more concentrated in a cluster than globally, loglift > 0."""
+        term_year = defaultdict(lambda: defaultdict(Counter))
+        term_year[0]["alpha"] = Counter({2020: 50})
+        term_year[1]["beta"] = Counter({2020: 5})
+        denoms = {0: Counter({2020: 100}), 1: Counter({2020: 1000})}
+
+        stub = _make_temporal_stub(term_year, denoms)
+        top_df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["alpha"],
+            "score": [1.0],
+            "frequency": [50],
+        })
+        result = stub._build_time_series_metrics(top_df, term_year)
+        loglift = result["loglift_series"].iloc[0]
+        # alpha: 50/100 in cluster, 50/1100 globally → loglift > 0
+        assert loglift[2020] > 0
+
+    def test_term_not_in_year_data(self):
+        """A term with no year data should get empty series."""
+        term_year = defaultdict(lambda: defaultdict(Counter))
+        denoms = {0: Counter({2020: 100})}
+
+        stub = _make_temporal_stub(term_year, denoms)
+        top_df = pd.DataFrame({
+            "cluster_id": [0], "term": ["unknown"],
+            "score": [1.0], "frequency": [10],
+        })
+        result = stub._build_time_series_metrics(top_df, term_year)
+        assert result["ppm_series"].iloc[0] == {}
+        assert result["loglift_series"].iloc[0] == {}
+
+    def test_pre_existing_pub_year_series(self):
+        """If top_df already has pub_year_series, use it."""
+        term_year = defaultdict(lambda: defaultdict(Counter))
+        denoms = {0: Counter({2020: 100})}
+
+        stub = _make_temporal_stub(term_year, denoms)
+        top_df = pd.DataFrame({
+            "cluster_id": [0], "term": ["alpha"],
+            "score": [1.0], "frequency": [10],
+            "pub_year_series": [{2020: 10}],
+        })
+        result = stub._build_time_series_metrics(top_df, term_year)
+        ppm = result["ppm_series"].iloc[0]
+        assert 2020 in ppm
+        assert ppm[2020] == pytest.approx(1e5)
 
 
 class TestTemporalOutput:

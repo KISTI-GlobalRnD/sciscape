@@ -8,7 +8,7 @@ frequency-based heuristic merging of near-duplicate terms.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, Mapping, Optional, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Set
 
 import pandas as pd
 
