@@ -1120,3 +1120,10 @@ def run_keyword_pipeline(config: KeywordExtractionConfig) -> pd.DataFrame:
     """Convenience entry point returning the keyword dataframe."""
     pipeline = KeywordExtractionPipeline(config)
     return pipeline.run()
+
+
+__all__ = [
+    "ACADEMIC_STOPWORDS",
+    "KeywordExtractionPipeline",
+    "run_keyword_pipeline",
+]

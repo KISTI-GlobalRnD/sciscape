@@ -164,3 +164,6 @@ def apply_merge_map(
     names_merged = feature_names[keep_mask]
 
     return X_merged, names_merged
+
+
+__all__ = ["build_merge_map", "apply_merge_map"]

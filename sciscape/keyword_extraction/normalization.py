@@ -284,3 +284,6 @@ def normalize_keywords(
     cols = [c for c in top_df.columns if c in result.columns]
     extra = [c for c in result.columns if c not in top_df.columns]
     return result[cols + extra].reset_index(drop=True)
+
+
+__all__ = ["normalize_keywords"]

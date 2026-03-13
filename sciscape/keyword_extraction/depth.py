@@ -222,3 +222,6 @@ def estimate_depth(
         depth_level=depth_level,
         cross_cluster_count=per_row_cross.astype(int).values,
     )
+
+
+__all__ = ["DepthConfig", "estimate_depth"]

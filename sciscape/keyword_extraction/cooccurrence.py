@@ -123,3 +123,6 @@ def collect_cooccurrence(
         result.eliminate_zeros()
 
     return result
+
+
+__all__ = ["collect_cooccurrence"]
