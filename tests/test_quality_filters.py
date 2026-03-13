@@ -332,6 +332,36 @@ class TestAutoMerge:
         result = pipeline._auto_merge_candidates(top_df)
         assert len(result) == len(top_df)
 
+    def test_cross_cluster_no_contamination(self):
+        """Merge must not leak frequency across clusters.
+
+        Regression: previously target_rows matched globally, so merging
+        'neural networks' → 'neural network' in cluster 0 would add
+        cluster 1's frequency too.
+        """
+        pipeline, _ = _make_p3_scenario(min_sim=0.85, pair_sim=0.95)
+        # Both clusters have the same terms but independent frequencies
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0, 1, 1],
+            "term": [
+                "neural network", "neural networks",
+                "neural network", "neural networks",
+            ],
+            "score": [2.0, 2.5, 1.0, 1.5],
+            "frequency": [200, 150, 80, 60],
+        })
+        result = pipeline._auto_merge_candidates(top_df)
+        # Cluster 0: 200 + 150 = 350
+        c0 = result[
+            (result["term"] == "neural network") & (result["cluster_id"] == 0)
+        ]
+        assert c0["frequency"].iloc[0] == 350
+        # Cluster 1: 80 + 60 = 140 (NOT 350+140 or similar)
+        c1 = result[
+            (result["term"] == "neural network") & (result["cluster_id"] == 1)
+        ]
+        assert c1["frequency"].iloc[0] == 140
+
 
 # ---------------------------------------------------------------------------
 # Spelling variant tests (normalization.py)

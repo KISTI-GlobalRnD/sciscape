@@ -1000,14 +1000,18 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         if not merge_actions:
             return top_df
 
-        # Apply merges: sum frequencies, keep max score
+        # Apply merges per cluster: sum frequencies, keep max score
         top_df = top_df.copy()
         rows_to_drop = []
         for idx, row in top_df.iterrows():
             target = merge_actions.get(row["term"])
             if target is None:
                 continue
-            target_rows = top_df[top_df["term"] == target]
+            # Match target within the SAME cluster to avoid cross-cluster contamination
+            cluster_id = row["cluster_id"]
+            target_rows = top_df[
+                (top_df["term"] == target) & (top_df["cluster_id"] == cluster_id)
+            ]
             if target_rows.empty:
                 continue
             tidx = target_rows.index[0]
