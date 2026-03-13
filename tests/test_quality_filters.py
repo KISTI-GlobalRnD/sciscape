@@ -590,3 +590,178 @@ def _make_p3_scenario(min_sim=0.85, pair_sim=0.9):
     })
 
     return pipeline, top_df
+
+
+# ---------------------------------------------------------------------------
+# Pipeline method unit tests: _is_stopword_ngram, _filter_stopword_only_terms,
+# _bridge_merge_candidates, _filter_rare_phrases
+# ---------------------------------------------------------------------------
+
+class TestIsStopwordNgram:
+    def test_single_stopword(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset(["the", "and", "of", "in"])
+        assert stub._is_stopword_ngram("the") is True
+        assert stub._is_stopword_ngram("quantum") is False
+
+    def test_multi_word_all_stopwords(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset(["the", "and", "of", "in", "is"])
+        assert stub._is_stopword_ngram("the and") is True
+        assert stub._is_stopword_ngram("in the") is True
+
+    def test_multi_word_mixed(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset(["the", "and", "of"])
+        assert stub._is_stopword_ngram("the model") is False
+        assert stub._is_stopword_ngram("machine learning") is False
+
+    def test_empty_string(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset(["the"])
+        assert stub._is_stopword_ngram("") is False
+
+    def test_case_sensitive_mode(self):
+        stub = _make_pipeline_stub()
+        stub.config.lowercase = False
+        stub.stopwords_set = frozenset(["the", "and"])
+        # With lowercase=False, still checks .lower()
+        assert stub._is_stopword_ngram("The") is True
+
+
+class TestFilterStopwordOnlyTerms:
+    def test_drops_stopword_only(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset(["the", "and", "of", "in", "is"])
+        stub.config.verbose = False
+        df = pd.DataFrame({
+            "cluster_id": [0, 0, 0],
+            "term": ["quantum", "the and", "machine learning"],
+            "score": [1.0, 0.5, 1.5],
+            "frequency": [10, 5, 20],
+        })
+        result = stub._filter_stopword_only_terms(df)
+        assert "the and" not in result["term"].tolist()
+        assert "quantum" in result["term"].tolist()
+        assert "machine learning" in result["term"].tolist()
+
+    def test_empty_df(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset()
+        df = pd.DataFrame(columns=["cluster_id", "term", "score", "frequency"])
+        result = stub._filter_stopword_only_terms(df)
+        assert result.empty
+
+    def test_whitespace_only_term(self):
+        stub = _make_pipeline_stub()
+        stub.stopwords_set = frozenset(["the"])
+        df = pd.DataFrame({
+            "cluster_id": [0, 0],
+            "term": ["   ", "quantum"],
+            "score": [1.0, 1.0],
+            "frequency": [5, 10],
+        })
+        result = stub._filter_stopword_only_terms(df)
+        assert len(result) == 1
+        assert result["term"].iloc[0] == "quantum"
+
+
+class TestBridgeMergeCandidates:
+    def _make_bridge_stub(self, merge_candidates):
+        from unittest.mock import MagicMock
+        cfg = MagicMock(spec=KeywordExtractionConfig)
+        cfg.alias_candidate_column = "candidates"
+        cfg.verbose = False
+        pipeline = object.__new__(KeywordExtractionPipeline)
+        pipeline.config = cfg
+        pipeline.merge_candidates = merge_candidates
+        pipeline.verbose = False
+        def _log(msg, *args): pass
+        pipeline._log = _log
+        return pipeline
+
+    def test_basic_injection(self):
+        stub = self._make_bridge_stub([
+            {"group_id": 0, "terms": ["neural network", "neural networks"]},
+        ])
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0, 0],
+            "term": ["neural network", "neural networks", "deep learning"],
+            "score": [2.0, 2.5, 1.8],
+            "frequency": [200, 150, 180],
+        })
+        result = stub._bridge_merge_candidates(top_df)
+        assert "candidates" in result.columns
+        nn_row = result[result["term"] == "neural network"].iloc[0]
+        assert "neural networks" in nn_row["candidates"]
+        dl_row = result[result["term"] == "deep learning"].iloc[0]
+        assert dl_row["candidates"] == []
+
+    def test_empty_merge_candidates(self):
+        stub = self._make_bridge_stub([])
+        top_df = pd.DataFrame({
+            "cluster_id": [0], "term": ["alpha"],
+            "score": [1.0], "frequency": [10],
+        })
+        result = stub._bridge_merge_candidates(top_df)
+        assert "candidates" not in result.columns  # no change
+
+    def test_empty_dataframe(self):
+        stub = self._make_bridge_stub([
+            {"group_id": 0, "terms": ["a", "b"]},
+        ])
+        top_df = pd.DataFrame(columns=["cluster_id", "term", "score", "frequency"])
+        result = stub._bridge_merge_candidates(top_df)
+        assert result.empty
+
+    def test_multi_group_merge(self):
+        stub = self._make_bridge_stub([
+            {"group_id": 0, "terms": ["a", "b"]},
+            {"group_id": 1, "terms": ["a", "c"]},
+        ])
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0, 0],
+            "term": ["a", "b", "c"],
+            "score": [1.0, 1.0, 1.0],
+            "frequency": [10, 10, 10],
+        })
+        result = stub._bridge_merge_candidates(top_df)
+        a_cands = result[result["term"] == "a"]["candidates"].iloc[0]
+        assert "b" in a_cands
+        assert "c" in a_cands
+
+
+class TestFilterRarePhrases:
+    def _make_stub(self, min_count):
+        from unittest.mock import MagicMock
+        cfg = MagicMock(spec=KeywordExtractionConfig)
+        cfg.phrase_min_count_per_cluster = min_count
+        pipeline = object.__new__(KeywordExtractionPipeline)
+        pipeline.config = cfg
+        def _log(msg, *args): pass
+        pipeline._log = _log
+        return pipeline
+
+    def test_drops_rare_columns(self):
+        stub = self._make_stub(min_count=5)
+        stub.feature_names_phrase = np.array(["alpha beta", "gamma delta", "rare term"])
+        # 2 clusters, 3 phrase columns; column 2 has max count < 5
+        C = sp.csr_matrix(np.array([[10, 8, 2], [6, 3, 1]]))
+        DF = sp.csr_matrix(np.array([[5, 4, 1], [3, 2, 1]]))
+        C_out, DF_out = stub._filter_rare_phrases(C, DF, K=2)
+        assert C_out.shape[1] == 2  # column 2 dropped
+        assert DF_out.shape[1] == 2
+        assert len(stub.feature_names_phrase) == 2
+
+    def test_none_input(self):
+        stub = self._make_stub(min_count=5)
+        C_out, DF_out = stub._filter_rare_phrases(None, None, K=2)
+        assert C_out is None
+        assert DF_out is None
+
+    def test_min_count_one_keeps_all(self):
+        stub = self._make_stub(min_count=1)
+        C = sp.csr_matrix(np.array([[10, 1, 3]]))
+        DF = sp.csr_matrix(np.array([[5, 1, 2]]))
+        C_out, DF_out = stub._filter_rare_phrases(C, DF, K=1)
+        assert C_out.shape[1] == 3
