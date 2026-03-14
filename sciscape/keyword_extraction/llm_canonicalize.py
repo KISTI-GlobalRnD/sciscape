@@ -1694,9 +1694,18 @@ class LLMCanonicalizeMixin:
                 "Install via `pip install openai`."
             ) from exc
         kwargs: Dict[str, object] = {}
-        if self.config.alias_base_url:
-            kwargs["base_url"] = self.config.alias_base_url
-        api_key = self.config.alias_api_key or os.getenv("OPENAI_API_KEY", "ollama")
+        base_url = (
+            self.config.alias_base_url
+            or os.getenv("SCISCAPE_LLM_BASE_URL")
+            or os.getenv("OLLAMA_BASE_URL")
+        )
+        if base_url:
+            kwargs["base_url"] = base_url
+        api_key = (
+            self.config.alias_api_key
+            or os.getenv("SCISCAPE_LLM_API_KEY")
+            or os.getenv("OPENAI_API_KEY", "ollama")
+        )
         kwargs["api_key"] = api_key
         client = OpenAI(**kwargs)
         self._alias_client = client

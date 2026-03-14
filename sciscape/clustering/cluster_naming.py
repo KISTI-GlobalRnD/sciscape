@@ -20,10 +20,15 @@ DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_API_KEY = "ollama"
 DEFAULT_MAX_DOCUMENTS = 8
 
-ENV_BASE_URL = "OLLAMA_BASE_URL"
-ENV_API_KEY = "OLLAMA_API_KEY"
-ENV_MODEL = "OLLAMA_MODEL"
+# Unified env vars (preferred) with legacy fallbacks
+ENV_BASE_URL = "SCISCAPE_LLM_BASE_URL"
+ENV_API_KEY = "SCISCAPE_LLM_API_KEY"
+ENV_MODEL = "SCISCAPE_LLM_MODEL"
 ENV_CONFIG_PATH = "OLLAMA_CONFIG"
+
+_LEGACY_ENV_BASE_URL = "OLLAMA_BASE_URL"
+_LEGACY_ENV_API_KEY = "OLLAMA_API_KEY"
+_LEGACY_ENV_MODEL = "OLLAMA_MODEL"
 
 LANGUAGE_PROMPT = """
 You are a language detection and translation assistant.
@@ -94,9 +99,13 @@ def _determine_settings(
         if path.exists():
             config.update(_load_env_file(path))
 
-    config.setdefault("base_url", environ.get(ENV_BASE_URL, DEFAULT_BASE_URL))
-    config.setdefault("api_key", environ.get(ENV_API_KEY, DEFAULT_API_KEY))
-    config.setdefault("model", environ.get(ENV_MODEL, DEFAULT_MODEL))
+    # Prefer SCISCAPE_LLM_* → fall back to OLLAMA_*
+    config.setdefault("base_url", environ.get(
+        ENV_BASE_URL, environ.get(_LEGACY_ENV_BASE_URL, DEFAULT_BASE_URL)))
+    config.setdefault("api_key", environ.get(
+        ENV_API_KEY, environ.get(_LEGACY_ENV_API_KEY, DEFAULT_API_KEY)))
+    config.setdefault("model", environ.get(
+        ENV_MODEL, environ.get(_LEGACY_ENV_MODEL, DEFAULT_MODEL)))
 
     if base_url:
         config["base_url"] = base_url

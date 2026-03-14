@@ -63,7 +63,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ---- convert ----
     cv = sub.add_parser("convert", help="Convert external data to SciScape abstract parquet")
-    cv.add_argument("source", choices=["wos", "scopus", "openalex"],
+    cv.add_argument("source", choices=["wos", "scopus", "openalex", "bibtex"],
                      help="Data source format")
     cv.add_argument("input_file", type=Path, help="Input file path")
     cv.add_argument("-o", "--output", type=Path, default=Path("abstracts.parquet"),
@@ -78,7 +78,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _run_convert(args: argparse.Namespace) -> None:
-    from sciscape.adapters import read_wos, read_scopus, read_openalex
+    from sciscape.adapters import read_wos, read_scopus, read_openalex, read_bibtex
 
     common = dict(drop_no_abstract=not args.keep_no_abstract)
     if args.encoding:
@@ -90,6 +90,8 @@ def _run_convert(args: argparse.Namespace) -> None:
         df = read_scopus(args.input_file, **common)
     elif args.source == "openalex":
         df = read_openalex(args.input_file, **common)
+    elif args.source == "bibtex":
+        df = read_bibtex(args.input_file, **common)
     else:
         raise ValueError(f"Unknown source: {args.source}")
 

@@ -4,17 +4,20 @@ Supported sources:
     wos         Web of Science tab-delimited / CSV exports
     scopus      Scopus CSV exports
     openalex    OpenAlex JSON / CSV (API or snapshot)
+    bibtex      BibTeX (.bib) files
 
 Each adapter produces a standardised abstract parquet with columns:
     uid, title, abstract, pubyear
 """
 
-from .wos import read_wos
-from .scopus import read_scopus
+from .bibtex import read_bibtex
 from .openalex import read_openalex
+from .scopus import read_scopus
+from .wos import read_wos
 
 __all__ = [
-    "read_wos",
-    "read_scopus",
+    "read_bibtex",
     "read_openalex",
+    "read_scopus",
+    "read_wos",
 ]

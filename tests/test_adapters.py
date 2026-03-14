@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from sciscape.adapters.bibtex import read_bibtex
 from sciscape.adapters.wos import read_wos
 from sciscape.adapters.scopus import read_scopus
 from sciscape.adapters.openalex import read_openalex, _reconstruct_abstract
@@ -238,3 +239,91 @@ class TestConvertCLI:
         main(["convert", "openalex", str(openalex_jsonl), "-o", str(out)])
         df = pd.read_parquet(out)
         assert len(df) == 2
+
+    def test_bibtex_convert(self, tmp_path):
+        from sciscape.cli import main
+        bib = tmp_path / "refs.bib"
+        bib.write_text(textwrap.dedent("""\
+            @article{smith2023,
+              title = {Deep Learning},
+              abstract = {A survey of deep learning methods.},
+              year = {2023},
+            }
+        """))
+        out = tmp_path / "out.parquet"
+        main(["convert", "bibtex", str(bib), "-o", str(out)])
+        df = pd.read_parquet(out)
+        assert len(df) == 1
+
+
+# ---------------------------------------------------------------------------
+# BibTeX adapter
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def bib_file(tmp_path: Path) -> Path:
+    content = textwrap.dedent("""\
+        @article{smith2023neural,
+          author = {Smith, John and Doe, Jane},
+          title = {Neural Network Architectures},
+          abstract = {We propose a novel architecture for deep learning.},
+          year = {2023},
+          journal = {Nature ML},
+        }
+
+        @inproceedings{lee2024quantum,
+          author = {Lee, Alice},
+          title = {Quantum Computing Survey},
+          abstract = {A comprehensive review of quantum algorithms.},
+          year = {2024},
+          booktitle = {ICQC},
+        }
+
+        @article{no_abstract,
+          title = {Missing Abstract Paper},
+          year = {2022},
+        }
+    """)
+    p = tmp_path / "refs.bib"
+    p.write_text(content, encoding="utf-8")
+    return p
+
+
+class TestReadBibtex:
+    def test_basic(self, bib_file):
+        df = read_bibtex(bib_file)
+        assert set(df.columns) == {"uid", "title", "abstract", "pubyear"}
+        assert len(df) == 2  # no_abstract dropped
+
+    def test_keep_no_abstract(self, bib_file):
+        df = read_bibtex(bib_file, drop_no_abstract=False)
+        assert len(df) == 3
+
+    def test_uid_is_cite_key(self, bib_file):
+        df = read_bibtex(bib_file)
+        assert "smith2023neural" in df["uid"].values
+        assert "lee2024quantum" in df["uid"].values
+
+    def test_pubyear_type(self, bib_file):
+        df = read_bibtex(bib_file)
+        assert df["pubyear"].dtype.name == "Int64"
+
+    def test_nested_braces(self, tmp_path):
+        content = textwrap.dedent("""\
+            @article{test1,
+              title = {A {B}rief {H}istory},
+              abstract = {Text with {nested} braces inside.},
+              year = {2020},
+            }
+        """)
+        p = tmp_path / "nested.bib"
+        p.write_text(content)
+        df = read_bibtex(p)
+        assert len(df) == 1
+        assert "nested" in df.iloc[0]["abstract"]
+
+    def test_empty_file(self, tmp_path):
+        p = tmp_path / "empty.bib"
+        p.write_text("")
+        df = read_bibtex(p)
+        assert len(df) == 0
