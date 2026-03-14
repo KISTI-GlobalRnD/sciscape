@@ -27,6 +27,9 @@ llm = ["openai>=1.0"]
 mysql = ["pymysql>=1.0"]
 dev = ["pytest>=8", "build>=1.2"]
 
+[project.scripts]
+sciscape = "sciscape.cli:main"
+
 [tool.setuptools]
 include-package-data = false
 
