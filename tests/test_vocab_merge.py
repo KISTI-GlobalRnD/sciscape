@@ -36,6 +36,19 @@ class TestSimpleSingular:
         assert _simple_singular("stress") is None
         assert _simple_singular("loss") is None
 
+    def test_latin_greek_suffixes_skipped(self):
+        """Words ending in -sis, -us, -is, -os are not English plurals."""
+        assert _simple_singular("analysis") is None
+        assert _simple_singular("synthesis") is None
+        assert _simple_singular("diagnosis") is None
+        assert _simple_singular("thesis") is None
+        assert _simple_singular("basis") is None
+        assert _simple_singular("status") is None
+        assert _simple_singular("focus") is None
+        assert _simple_singular("radius") is None
+        assert _simple_singular("axis") is None
+        assert _simple_singular("chaos") is None
+
 
 class TestBuildMergeMap:
     def test_plural_merge(self):

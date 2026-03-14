@@ -19,9 +19,11 @@ from sciscape.keyword_extraction import (
     CORE_COLUMNS,
     TIER2_COLUMNS,
     TIER3_COLUMNS,
+    export_dashboard,
 )
 from sciscape.keyword_extraction.config import VocabMergeConfig
 from sciscape.keyword_extraction.depth import DepthConfig
+from sciscape.keyword_extraction.keyword_extraction import KeywordExtractionPipeline
 from sciscape.keyword_extraction.term_network import TermNetworkConfig
 
 logging.basicConfig(
@@ -57,8 +59,8 @@ def main():
         phrase_min_count_per_cluster=5,
 
         # Top-K
-        top_n_unigrams=80,
-        top_n_keywords=50,
+        top_n_unigrams=200,
+        top_n_keywords=100,
 
         # Stage 2: vocab merge
         vocab_merge=VocabMergeConfig(
@@ -114,15 +116,14 @@ def main():
     )
 
     print(f"\n{'='*60}")
-    print(f"  KRISS Pilot: {ABS_PATH.name} + {MEM_PATH.name}")
+    print(f"  SciScape Keyword Extraction Pipeline")
+    print(f"  Input: {ABS_PATH.name} + {MEM_PATH.name}")
     print(f"  cluster_level = cluster_meso (5 clusters, 10,325 docs)")
-    print(f"  Stages: vectorize → vocab_merge → aggregate → score")
-    print(f"          → normalize → cooccurrence → term_network")
-    print(f"          → depth → temporal")
     print(f"{'='*60}\n")
 
     t0 = time.perf_counter()
-    result = run_keyword_pipeline(cfg)
+    pipeline = KeywordExtractionPipeline(cfg)
+    result = pipeline.run()
     elapsed = time.perf_counter() - t0
 
     print(f"\n{'='*60}")
@@ -167,6 +168,17 @@ def main():
             )
     save_df.to_parquet(out_path, index=False)
     print(f"\nSaved to: {out_path}")
+
+    # Generate interactive HTML dashboard
+    viz_data = pipeline.get_visualization_data()
+    dash_path = Path(__file__).resolve().parent.parent / "pilot_dashboard.html"
+    export_dashboard(
+        result,
+        output_path=str(dash_path),
+        title="SciScape Keyword Explorer",
+        viz_data=viz_data,
+    )
+    print(f"Dashboard: {dash_path}")
 
     return result
 

@@ -24,6 +24,13 @@ _INVARIANT_PLURALS = frozenset({
     "series", "species", "chassis", "diabetes", "rabies",
 })
 
+# Suffixes that look like they end in "s" but are NOT English plurals.
+# -sis: analysis, synthesis, diagnosis, basis, crisis, thesis, hypothesis
+# -us: status, focus, radius, census, corpus, apparatus, stimulus
+# -is: axis, mantis, ibis, cannabis
+# -os: chaos, ethos, cosmos
+_NON_PLURAL_SUFFIXES = ("sis", "us", "is", "os")
+
 
 def _simple_singular(word: str) -> Optional[str]:
     """Heuristic plural -> singular for English.
@@ -51,6 +58,10 @@ def _simple_singular(word: str) -> Optional[str]:
             candidate = word[:-2]
             return candidate
     if word.endswith("s") and not word.endswith("ss"):
+        # Skip Latin/Greek-origin words that aren't English plurals
+        lower = word.lower()
+        if any(lower.endswith(sfx) for sfx in _NON_PLURAL_SUFFIXES):
+            return None
         candidate = word[:-1]
         return candidate
     return None

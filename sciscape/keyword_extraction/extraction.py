@@ -138,6 +138,113 @@ def _suppress_subphrases(terms: List[str], max_keep: int) -> List[str]:
     return kept
 
 
+def _detect_boundary_fragments(
+    scored_terms: List[Tuple[str, float, int]],
+    all_feature_names: np.ndarray,
+    cluster_freq_vec: np.ndarray,
+    min_longer_ratio: float = 0.5,
+    bridging_max_freq_ratio: float = 0.3,
+) -> set:
+    """Detect n-gram boundary fragments that should be suppressed.
+
+    Two detection modes:
+
+    1. **Vocabulary extension**: A multi-word term "A B" is a fragment if a
+       longer vocabulary term "A B C" or "X A B" exists with frequency >=
+       *min_longer_ratio* × freq("A B").  Catches truncated n-grams like
+       "supermassive black" (from "supermassive black hole").
+
+    2. **Bridging overlap**: A multi-word term "A B" is a fragment if another
+       scored term "B C" (or "X A") exists in the same cluster with much
+       higher frequency, implying the combined form "A B C" is the real
+       phrase.  Catches e.g. "lidar point" when "point cloud" dominates.
+       Triggered when freq("A B") / freq("B C") < *bridging_max_freq_ratio*.
+
+    Parameters
+    ----------
+    scored_terms : list of (term, score, freq)
+        Candidate terms for the current cluster.
+    all_feature_names : ndarray of str
+        Full vocabulary (unigrams + phrases).
+    cluster_freq_vec : ndarray of int
+        Per-term frequency vector for this cluster.
+    min_longer_ratio : float
+        Mode 1 threshold: freq(longer) / freq(shorter).
+    bridging_max_freq_ratio : float
+        Mode 2 threshold: suppress if freq(A) / freq(B) < this value.
+
+    Returns
+    -------
+    set of str
+        Terms identified as boundary fragments.
+    """
+    from collections import defaultdict
+
+    # ---- Mode 1: vocabulary extension check ----
+    prefix_index: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
+    suffix_index: Dict[str, List[Tuple[str, int]]] = defaultdict(list)
+
+    for name, freq in zip(all_feature_names, cluster_freq_vec):
+        freq = int(freq)
+        if freq <= 0 or " " not in name:
+            continue
+        words = name.split()
+        n = len(words)
+        for k in range(1, n):
+            prefix_key = " ".join(words[:k])
+            prefix_index[prefix_key].append((name, freq))
+        for k in range(1, n):
+            suffix_key = " ".join(words[k:])
+            suffix_index[suffix_key].append((name, freq))
+
+    fragments: set = set()
+    for term, score, freq in scored_terms:
+        if " " not in term or freq <= 0:
+            continue
+        extensions = prefix_index.get(term, []) + suffix_index.get(term, [])
+        for _ext_term, ext_freq in extensions:
+            if ext_freq >= min_longer_ratio * freq:
+                fragments.add(term)
+                break
+
+    # ---- Mode 2: bridging overlap check ----
+    # Build word-boundary indexes from scored terms only
+    # first_word_index["point"] → [("point cloud", 0.005, 6864), ...]
+    first_word_idx: Dict[str, List[Tuple[str, float, int]]] = defaultdict(list)
+    last_word_idx: Dict[str, List[Tuple[str, float, int]]] = defaultdict(list)
+    for term, score, freq in scored_terms:
+        if " " not in term or freq <= 0:
+            continue
+        words = term.split()
+        first_word_idx[words[0]].append((term, score, freq))
+        last_word_idx[words[-1]].append((term, score, freq))
+
+    for term, score, freq in scored_terms:
+        if term in fragments or " " not in term or freq <= 0:
+            continue
+        words = term.split()
+        # Check right overlap: term "A B", another term "B C" exists
+        last_w = words[-1]
+        for other_term, other_score, other_freq in first_word_idx.get(last_w, []):
+            if other_term == term:
+                continue
+            if other_freq > 0 and freq / other_freq < bridging_max_freq_ratio:
+                fragments.add(term)
+                break
+        if term in fragments:
+            continue
+        # Check left overlap: term "B C", another term "A B" exists
+        first_w = words[0]
+        for other_term, other_score, other_freq in last_word_idx.get(first_w, []):
+            if other_term == term:
+                continue
+            if other_freq > 0 and freq / other_freq < bridging_max_freq_ratio:
+                fragments.add(term)
+                break
+
+    return fragments
+
+
 class _DataSource:
     """Streaming data loader joining abstracts with membership."""
 

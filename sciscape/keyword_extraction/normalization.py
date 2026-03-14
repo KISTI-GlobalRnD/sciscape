@@ -193,7 +193,7 @@ def normalize_keywords(
                 t = term  # revert if normalization produced a stopword
             normalized[i] = t.strip()
 
-        # Step 2b: plural merge — merge "Xs" into "X" when both present
+        # Step 2b: plural → singular normalization
         if plural_merge_enabled:
             norm_lower_to_idx: Dict[str, int] = {}
             for i in range(len(terms)):
@@ -204,9 +204,12 @@ def normalize_keywords(
                     continue
                 target_idx = norm_lower_to_idx.get(singular.lower())
                 if target_idx is not None and target_idx != i:
-                    # Point the plural's normalized form to the singular
+                    # Both plural and singular present → merge into singular
                     # (actual merging happens in step 3a exact-match)
                     normalized[i] = normalized[target_idx]
+                elif target_idx is None:
+                    # Singular form not present — still normalize to singular
+                    normalized[i] = singular
 
         # Step 3: merge near-duplicates (greedy, high-freq absorbs low-freq)
         # Sort by frequency descending so higher-freq terms are canonical
@@ -255,11 +258,21 @@ def normalize_keywords(
         # Build merged output
         canonical_freqs: Dict[int, int] = {}
         canonical_scores: Dict[int, float] = {}
+        # Track which original terms merged into each canonical term
+        canonical_merged_from: Dict[int, List[str]] = {}
         for i in range(len(terms)):
             target = merged_into.get(i, i)
             canonical_freqs[target] = canonical_freqs.get(target, 0) + freqs[i]
             if target not in canonical_scores or scores[i] > canonical_scores[target]:
                 canonical_scores[target] = scores[i]
+            # Track merge sources (only when actual merge happened)
+            if i != target:
+                source_term = terms[i]
+                # Skip self-references: original term same as canonical form
+                if source_term.lower() != normalized[target].lower():
+                    if target not in canonical_merged_from:
+                        canonical_merged_from[target] = []
+                    canonical_merged_from[target].append(source_term)
 
         # Preserve other columns
         extra_cols = [c for c in group.columns if c not in ("cluster_id", "term", "score", "frequency")]
@@ -274,6 +287,10 @@ def normalize_keywords(
             orig_row = group.iloc[i]
             for col in extra_cols:
                 row[col] = orig_row[col]
+            # Add merge tracking
+            merged_sources = canonical_merged_from.get(i, [])
+            if merged_sources:
+                row["norm_merged_from"] = merged_sources
             result_rows.append(row)
 
     if not result_rows:

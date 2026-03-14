@@ -18,6 +18,7 @@ from sciscape.keyword_extraction.normalization import (
     _normalize_spelling,
     _phrase_singular,
 )
+from sciscape.keyword_extraction.extraction import _detect_boundary_fragments
 from sciscape.keyword_extraction.pipeline import (
     ACADEMIC_STOPWORDS,
     KeywordExtractionPipeline,
@@ -765,3 +766,126 @@ class TestFilterRarePhrases:
         DF = sp.csr_matrix(np.array([[5, 1, 2]]))
         C_out, DF_out = stub._filter_rare_phrases(C, DF, K=1)
         assert C_out.shape[1] == 3
+
+
+# ---------------------------------------------------------------------------
+# Fragment suppression — truncated n-gram boundary artifact detection
+# ---------------------------------------------------------------------------
+
+
+class TestDetectBoundaryFragments:
+    """Tests for _detect_boundary_fragments."""
+
+    def test_prefix_fragment_detected(self):
+        """'supermassive black' is a prefix fragment of 'supermassive black hole'."""
+        feature_names = np.array(["supermassive", "black", "hole",
+                                  "supermassive black", "supermassive black hole",
+                                  "black hole"])
+        # Cluster freqs: "supermassive black" ~ "supermassive black hole"
+        cluster_freq = np.array([400, 2000, 2000, 393, 390, 1800])
+        scored_terms = [
+            ("black hole", 0.007, 1800),
+            ("supermassive black", 0.002, 393),
+            ("supermassive", 0.001, 400),
+        ]
+        fragments = _detect_boundary_fragments(scored_terms, feature_names, cluster_freq)
+        assert "supermassive black" in fragments
+        assert "black hole" not in fragments  # "black hole" is not a fragment
+
+    def test_suffix_fragment_detected(self):
+        """'point cloud' NOT suppressed, but 'lidar point' IS if 'lidar point cloud' exists."""
+        feature_names = np.array(["lidar", "point", "cloud",
+                                  "lidar point", "point cloud", "lidar point cloud"])
+        cluster_freq = np.array([600, 7000, 7000, 540, 6864, 530])
+        scored_terms = [
+            ("point cloud", 0.005, 6864),
+            ("lidar point", 0.002, 540),
+        ]
+        fragments = _detect_boundary_fragments(scored_terms, feature_names, cluster_freq)
+        assert "lidar point" in fragments
+        assert "point cloud" not in fragments
+
+    def test_independent_term_not_suppressed(self):
+        """'machine learning' should NOT be suppressed even though
+        'machine learning model' exists, because freq(shorter) >> freq(longer)."""
+        feature_names = np.array(["machine", "learning", "model",
+                                  "machine learning", "machine learning model"])
+        cluster_freq = np.array([1000, 1200, 800, 950, 200])
+        scored_terms = [
+            ("machine learning", 0.01, 950),
+        ]
+        # With ratio=0.5, need longer_freq >= 0.5 * 950 = 475.  200 < 475 → not fragment
+        fragments = _detect_boundary_fragments(scored_terms, feature_names, cluster_freq, min_longer_ratio=0.5)
+        assert "machine learning" not in fragments
+
+    def test_unigrams_never_flagged(self):
+        """Unigrams should never be considered boundary fragments."""
+        feature_names = np.array(["hydrogen", "storage", "hydrogen storage"])
+        cluster_freq = np.array([500, 400, 490])
+        scored_terms = [("hydrogen", 0.01, 500)]
+        fragments = _detect_boundary_fragments(scored_terms, feature_names, cluster_freq)
+        assert "hydrogen" not in fragments
+
+    def test_no_longer_form_in_vocab(self):
+        """If no longer form exists, the term is kept."""
+        feature_names = np.array(["deep learning", "neural network"])
+        cluster_freq = np.array([600, 500])
+        scored_terms = [("deep learning", 0.01, 600)]
+        fragments = _detect_boundary_fragments(scored_terms, feature_names, cluster_freq)
+        assert len(fragments) == 0
+
+    def test_empty_input(self):
+        feature_names = np.array([], dtype=str)
+        cluster_freq = np.array([], dtype=int)
+        fragments = _detect_boundary_fragments([], feature_names, cluster_freq)
+        assert len(fragments) == 0
+
+    # ---- Mode 2: bridging overlap tests ----
+
+    def test_bridging_overlap_right(self):
+        """'lidar point' shares 'point' with much higher-freq 'point cloud' → fragment."""
+        feature_names = np.array(["lidar", "point", "cloud",
+                                  "lidar point", "point cloud"])
+        cluster_freq = np.array([600, 7000, 7000, 540, 6864])
+        scored_terms = [
+            ("point cloud", 0.005, 6864),
+            ("lidar point", 0.002, 540),
+        ]
+        fragments = _detect_boundary_fragments(
+            scored_terms, feature_names, cluster_freq, bridging_max_freq_ratio=0.3
+        )
+        assert "lidar point" in fragments
+        assert "point cloud" not in fragments
+
+    def test_bridging_overlap_independent_terms(self):
+        """'machine learning' and 'learning rate' share 'learning' but both are
+        independent (comparable freq) → neither suppressed."""
+        feature_names = np.array(["machine", "learning", "rate",
+                                  "machine learning", "learning rate"])
+        cluster_freq = np.array([1000, 1200, 800, 950, 600])
+        scored_terms = [
+            ("machine learning", 0.01, 950),
+            ("learning rate", 0.008, 600),
+        ]
+        # 950/600 = 1.58 >> 0.3, 600/950 = 0.63 > 0.3 → both kept
+        fragments = _detect_boundary_fragments(
+            scored_terms, feature_names, cluster_freq, bridging_max_freq_ratio=0.3
+        )
+        assert "machine learning" not in fragments
+        assert "learning rate" not in fragments
+
+    def test_bridging_overlap_left(self):
+        """'cloud data' shares 'cloud' with much higher-freq 'point cloud' → fragment."""
+        feature_names = np.array(["point", "cloud", "data",
+                                  "point cloud", "cloud data"])
+        cluster_freq = np.array([7000, 7000, 500, 6800, 450])
+        scored_terms = [
+            ("point cloud", 0.005, 6800),
+            ("cloud data", 0.001, 450),
+        ]
+        # 450/6800 = 0.066 < 0.3 → fragment
+        fragments = _detect_boundary_fragments(
+            scored_terms, feature_names, cluster_freq, bridging_max_freq_ratio=0.3
+        )
+        assert "cloud data" in fragments
+        assert "point cloud" not in fragments
