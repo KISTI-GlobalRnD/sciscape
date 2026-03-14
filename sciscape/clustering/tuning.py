@@ -34,6 +34,10 @@ class ResolutionScanEntry:
     quality: float
     cluster_count: int
     membership: List[int]
+    # Cluster count before postprocess (Leiden raw membership).
+    # Useful to avoid selecting degenerate high-resolution solutions where every node
+    # becomes its own community and postprocess does all the work.
+    raw_cluster_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -83,17 +87,22 @@ def _scan_worker(task: tuple[float, int | None]) -> ResolutionScanEntry:
         seed=seed,
         n_iterations=_SCAN_ITERATIONS,
     )
-    membership = result.membership
+    raw_membership = result.membership
+    raw_cluster_count = int(result.cluster_count)
+    membership = raw_membership
 
     if _SCAN_POSTPROCESS is not None:
         node_weights = (
             _SCAN_GRAPH.vs["weight"] if "weight" in _SCAN_GRAPH.vs.attributes() else None
         )
+        min_size, min_weight = _SCAN_POSTPROCESS.resolve_thresholds(
+            has_node_weights=node_weights is not None
+        )
         membership = merge_small_clusters(
             _SCAN_GRAPH,
             membership,
-            min_size=_SCAN_POSTPROCESS.min_size,
-            min_weight=_SCAN_POSTPROCESS.min_weight,
+            min_size=min_size,
+            min_weight=min_weight,
             node_weights=node_weights,
             max_passes=max(_SCAN_POSTPROCESS.max_passes, 1),
         ).membership
@@ -104,6 +113,7 @@ def _scan_worker(task: tuple[float, int | None]) -> ResolutionScanEntry:
         quality=result.quality,
         cluster_count=len(set(membership)),
         membership=membership,
+        raw_cluster_count=raw_cluster_count,
     )
 
 
@@ -427,6 +437,7 @@ def scan_resolution_grid(
     stability_metric: str | None = None,
     parallel: bool = False,
     workers: int | None = None,
+    start_method: str | None = None,
     progress: Optional[Callable[[str], None]] = None,
 ) -> ResolutionScanResult:
     """Evaluate a grid of resolution/seed pairs and report cluster statistics."""
@@ -439,7 +450,14 @@ def scan_resolution_grid(
             progress(msg)
 
     if parallel and tasks:
-        ctx = mp.get_context("fork")
+        ctx, resolved_start_method, used_fallback = _resolve_parallel_context(
+            preferred=start_method or "fork"
+        )
+        if used_fallback:
+            log(
+                "parallel start_method fallback: "
+                f"requested={start_method or 'fork'} -> using={resolved_start_method}"
+            )
 
         with ctx.Pool(
             processes=workers,
@@ -464,16 +482,21 @@ def scan_resolution_grid(
                 seed=seed,
                 n_iterations=n_iterations,
             )
-            membership = result.membership
+            raw_membership = result.membership
+            raw_cluster_count = int(result.cluster_count)
+            membership = raw_membership
             if postprocess is not None:
                 node_weights = (
                     graph.vs["weight"] if "weight" in graph.vs.attributes() else None
                 )
+                min_size, min_weight = postprocess.resolve_thresholds(
+                    has_node_weights=node_weights is not None
+                )
                 membership = merge_small_clusters(
                     graph,
                     membership,
-                    min_size=postprocess.min_size,
-                    min_weight=postprocess.min_weight,
+                    min_size=min_size,
+                    min_weight=min_weight,
                     node_weights=node_weights,
                     max_passes=max(postprocess.max_passes, 1),
                 ).membership
@@ -484,6 +507,7 @@ def scan_resolution_grid(
                     quality=result.quality,
                     cluster_count=len(set(membership)),
                     membership=membership,
+                    raw_cluster_count=raw_cluster_count,
                 )
             )
             log(
@@ -512,6 +536,21 @@ def scan_resolution_grid(
             stability[gamma] = sum(scores) / len(scores) if scores else 1.0
 
     return ResolutionScanResult(entries=entries, stability=stability)
+
+
+def _resolve_parallel_context(preferred: str = "fork") -> tuple[mp.context.BaseContext, str, bool]:
+    """Resolve multiprocessing context with platform-safe fallback."""
+
+    available = tuple(mp.get_all_start_methods())
+    requested = preferred
+
+    try:
+        return mp.get_context(requested), requested, False
+    except ValueError:
+        fallback = mp.get_start_method(allow_none=True)
+        if fallback is None:
+            fallback = available[0] if available else "spawn"
+        return mp.get_context(fallback), fallback, True
 
 
 __all__ = [

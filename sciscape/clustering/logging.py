@@ -24,6 +24,30 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _with_run_id(path: Path, run_id: str) -> Path:
+    suffix = "".join(path.suffixes)
+    if suffix and path.name.endswith(suffix):
+        stem = path.name[: -len(suffix)]
+    else:
+        stem = path.name
+    return path.with_name(f"{stem}_{run_id}{suffix}")
+
+
+def resolve_log_path(
+    default_path: Path,
+    *,
+    explicit_path: Optional[Path] = None,
+    log_dir: Optional[Path] = None,
+    run_id: Optional[str] = None,
+) -> Path:
+    path = Path(explicit_path) if explicit_path is not None else Path(default_path)
+    if explicit_path is None and log_dir is not None:
+        path = Path(log_dir) / path.name
+    if run_id:
+        path = _with_run_id(path, str(run_id))
+    return path
+
+
 def write_history_entry(
     path: Path,
     *,
@@ -79,5 +103,6 @@ __all__ = [
     "PROGRESS_LOG_FILE",
     "write_history_entry",
     "write_progress_event",
+    "resolve_log_path",
     "_now_iso",
 ]

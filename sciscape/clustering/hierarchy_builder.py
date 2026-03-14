@@ -90,11 +90,14 @@ class HierarchyBuilder:
             post_result: PostprocessResult | None = None
             graph_weights = runner.graph.vs["weight"] if "weight" in runner.graph.vs.attributes() else None
             if post_cfg is not None:
+                min_size, min_weight = post_cfg.resolve_thresholds(
+                    has_node_weights=graph_weights is not None
+                )
                 post_result = merge_small_clusters(
                     runner.graph,
                     best_run.membership,
-                    min_size=post_cfg.min_size,
-                    min_weight=post_cfg.min_weight,
+                    min_size=min_size,
+                    min_weight=min_weight,
                     node_weights=graph_weights,
                     max_passes=max(post_cfg.max_passes, 1),
                 )

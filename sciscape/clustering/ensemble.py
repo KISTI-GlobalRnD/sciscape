@@ -18,7 +18,7 @@ from .config import EnsembleConfig, LeidenConfig
 from .graph import build_graph, giant_component
 from .io import load_edge_table
 from .partitioning import partition_class
-from .logging import write_progress_event, PROGRESS_LOG_FILE
+from .logging import PROGRESS_LOG_FILE, resolve_log_path, write_progress_event
 
 
 # Globals used by worker processes
@@ -185,7 +185,9 @@ class EnsembleResult:
                 continue
             df = pl.read_parquet(aggregated)
             seed_cols = [c for c in df.columns if c.startswith("membership_seed_")]
-            long = df.unpivot(on=seed_cols, index=["uid"], variable_name="seed_col", value_name="cluster")
+            if not seed_cols:
+                continue
+            long = df.unpivot(index=["uid"], on=seed_cols, variable_name="seed_col", value_name="cluster")
             long = long.with_columns(
                 pl.lit(gamma).alias("gamma"),
                 pl.col("seed_col")
@@ -256,7 +258,7 @@ class EnsembleResult:
 
         df = self.summary()
         return (
-            df.groupby("gamma")
+            df.group_by("gamma")
             .agg([
                 pl.mean("largest_ratio").alias("avg_largest_ratio"),
                 pl.max("largest_ratio").alias("max_largest_ratio"),
@@ -302,10 +304,15 @@ def _normalize_membership(membership: Sequence[int]) -> Tuple[List[int], Dict[in
     return normalized, mapping
 
 
-def _prepare_progress_hook(progress: Optional[Callable[[str], None]], *, log: bool) -> Callable[[str], None]:
+def _prepare_progress_hook(
+    progress: Optional[Callable[[str], None]],
+    *,
+    log: bool,
+    progress_log_path: Path,
+) -> Callable[[str], None]:
     def emit(message: str) -> None:
         if log:
-            write_progress_event(message, path=PROGRESS_LOG_FILE)
+            write_progress_event(message, path=progress_log_path)
         if progress:
             progress(message)
 
@@ -373,9 +380,16 @@ def run_ensemble_pipeline(
 
     gamma_values = _generate_gamma_values(ensemble_config)
     seeds = list(ensemble_config.seeds)
+    resolved_progress_log_path = resolve_log_path(
+        default_path=PROGRESS_LOG_FILE,
+        explicit_path=ensemble_config.progress_log_path or leiden_config.progress_log_path,
+        log_dir=ensemble_config.log_dir or leiden_config.log_dir or ensemble_config.output_dir,
+        run_id=ensemble_config.run_id or leiden_config.run_id,
+    )
     progress_cb = _prepare_progress_hook(
         ensemble_config.progress,
         log=bool(leiden_config.log_history or ensemble_config.progress),
+        progress_log_path=resolved_progress_log_path,
     )
 
     weights = giant.es["weight"] if "weight" in giant.es.attributes() else None

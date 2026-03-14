@@ -14,7 +14,11 @@ from .io import load_edge_table
 from .graph import build_graph, giant_component
 from .clustering import attach_uids, partitions_to_polars, run_leiden_levels
 from .hierarchy import build_cluster_tables, get_cluster_hierarchy
-from .hierarchical_pipeline import HierarchyPipelineResult, run_hierarchy_pipeline
+from .hierarchical_pipeline import (
+    HierarchyPipelineResult,
+    run_hierarchy_pipeline,
+    run_hierarchy_pipeline_from_graph,
+)
 from .pipeline import run_pipeline
 from .tuning import (
     ResolutionResult,
@@ -66,6 +70,7 @@ __all__ = [
     "get_cluster_hierarchy",
     "run_pipeline",
     "run_hierarchy_pipeline",
+    "run_hierarchy_pipeline_from_graph",
     "HierarchyPipelineResult",
     "partition_class",
     "LeidenRunner",

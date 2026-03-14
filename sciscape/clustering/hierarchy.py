@@ -30,11 +30,14 @@ def get_cluster_hierarchy(
                 raise ValueError(f"Requested level '{level}' not present in membership table")
             ordered_cols.append(col)
 
+    if not ordered_cols:
+        raise ValueError("No cluster levels to build hierarchy from")
+
     level_names = [col.removeprefix("cluster_") for col in ordered_cols]
 
     counts_per_level: Dict[str, Dict[int, int]] = {}
     for col, level in zip(ordered_cols, level_names):
-        counts_df = df.groupby(col).agg(pl.len().alias("size"))
+        counts_df = df.group_by(col).agg(pl.len().alias("size"))
         counts_per_level[level] = {
             row[col]: int(row["size"])
             for row in counts_df.iter_rows(named=True)
@@ -44,7 +47,7 @@ def get_cluster_hierarchy(
     for parent_col, child_col in zip(ordered_cols, ordered_cols[1:]):
         parent_level = parent_col.removeprefix("cluster_")
         child_level = child_col.removeprefix("cluster_")
-        pairs = df.groupby([parent_col, child_col]).agg(pl.len().alias("size"))
+        pairs = df.group_by([parent_col, child_col]).agg(pl.len().alias("size"))
         mapping: Dict[int, Dict[int, int]] = {}
         for row in pairs.iter_rows(named=True):
             parent = row[parent_col]
@@ -116,7 +119,7 @@ def build_cluster_tables(
                 base.select(cluster_col)
                 .unique()
                 .sort(cluster_col)
-                .with_row_count(name=level_name, offset=1)
+                .with_row_index(name=level_name, offset=1)
                 .with_columns(pl.col(level_name).cast(pl.Int64))
                 .select([cluster_col, level_name])
             )
@@ -129,7 +132,7 @@ def build_cluster_tables(
                 .unique()
                 .sort(join_cols)
                 .with_columns(
-                    (pl.row_number().over(parent_cluster_cols) + 1)
+                    (pl.row_index().over(parent_cluster_cols) + 1)
                     .cast(pl.Int64)
                     .alias(level_name)
                 )
@@ -148,7 +151,7 @@ def build_cluster_tables(
     )
 
     description = (
-        membership.groupby(index_columns)
+        membership.group_by(index_columns)
         .agg(pl.len().alias("number_of_nodes"))
         .with_columns(
             pl.concat_str(

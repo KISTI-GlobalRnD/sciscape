@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import heapq
 from typing import Dict, List, Sequence
 
 import igraph as ig
@@ -61,6 +62,84 @@ def _build_cluster_adjacency(
     return adjacency
 
 
+def _component_nodes(
+    clusters: Sequence[int],
+    adjacency: Dict[int, Dict[int, float]],
+) -> List[List[int]]:
+    remaining = set(clusters)
+    components: List[List[int]] = []
+    while remaining:
+        start = min(remaining)
+        stack = [start]
+        component: List[int] = []
+        while stack:
+            current = stack.pop()
+            if current not in remaining:
+                continue
+            remaining.remove(current)
+            component.append(current)
+            for neighbour in adjacency.get(current, {}):
+                if neighbour in remaining:
+                    stack.append(neighbour)
+        components.append(component)
+    return components
+
+
+def _closest_anchor_assignment(
+    adjacency: Dict[int, Dict[int, float]],
+    anchors: Sequence[int],
+    cluster_sizes: Dict[int, int],
+    cluster_weights: Dict[int, float],
+) -> Dict[int, int]:
+    if not anchors:
+        return {}
+
+    # Multi-source Dijkstra over cluster graph.
+    # Edge cost is inverse weight to prioritize stronger inter-cluster ties.
+    best: Dict[int, tuple[float, float, float, int]] = {}
+    heap: List[tuple[float, float, float, int, int]] = []
+
+    for anchor in sorted(set(anchors)):
+        key = (
+            0.0,
+            -float(cluster_weights.get(anchor, 0.0)),
+            -float(cluster_sizes.get(anchor, 0)),
+            int(anchor),
+        )
+        best[anchor] = key
+        heapq.heappush(heap, (*key, anchor))
+
+    while heap:
+        dist, neg_weight, neg_size, anchor, node = heapq.heappop(heap)
+        key = (dist, neg_weight, neg_size, anchor)
+        if best.get(node) != key:
+            continue
+        for neighbour, edge_weight in adjacency.get(node, {}).items():
+            cost = 1.0 / max(float(edge_weight), 1e-12)
+            candidate = (dist + cost, neg_weight, neg_size, anchor)
+            previous = best.get(neighbour)
+            if previous is None or candidate < previous:
+                best[neighbour] = candidate
+                heapq.heappush(heap, (*candidate, neighbour))
+
+    return {cluster: key[3] for cluster, key in best.items()}
+
+
+def _pick_fallback_anchor(
+    component: Sequence[int],
+    cluster_sizes: Dict[int, int],
+    cluster_weights: Dict[int, float],
+) -> int:
+    return max(
+        component,
+        key=lambda cluster: (
+            float(cluster_weights.get(cluster, 0.0)),
+            int(cluster_sizes.get(cluster, 0)),
+            -int(cluster),
+        ),
+    )
+
+
 def merge_small_clusters(
     graph: ig.Graph,
     membership: Sequence[int],
@@ -70,7 +149,11 @@ def merge_small_clusters(
     node_weights: Sequence[float] | None = None,
     max_passes: int = 1,
 ) -> PostprocessResult:
-    """Merge clusters that do not satisfy the size/weight thresholds."""
+    """Merge clusters that do not satisfy the size/weight thresholds.
+
+    Targets are selected on the cluster graph first, then memberships are remapped
+    in one pass. This avoids per-merge full scans of node-level membership vectors.
+    """
 
     if min_size is None and min_weight is None:
         sizes, weights = _compute_cluster_stats(membership, node_weights)
@@ -78,7 +161,8 @@ def merge_small_clusters(
 
     sizes, weights = _compute_cluster_stats(membership, node_weights)
     membership_list = list(membership)
-    adjacency = _build_cluster_adjacency(graph, membership_list)
+    if not membership_list:
+        return PostprocessResult([], [], {}, {})
     merges: List[MergeAction] = []
 
     def threshold_ok(cluster: int) -> bool:
@@ -86,68 +170,77 @@ def merge_small_clusters(
         weight_ok = min_weight is None or weights.get(cluster, 0.0) >= min_weight
         return size_ok and weight_ok
 
-    passes = 0
-    while passes < max_passes:
-        passes += 1
+    for _ in range(max(1, int(max_passes))):
+        adjacency = _build_cluster_adjacency(graph, membership_list)
+        active_clusters = sorted(cluster for cluster, size in sizes.items() if size > 0)
+        if not active_clusters:
+            break
+
+        anchors = {cluster for cluster in active_clusters if threshold_ok(cluster)}
+        forced_anchors: set[int] = set()
+        for component in _component_nodes(active_clusters, adjacency):
+            if not any(cluster in anchors for cluster in component):
+                fallback = _pick_fallback_anchor(component, sizes, weights)
+                anchors.add(fallback)
+                forced_anchors.add(fallback)
+
         small_clusters = [
-            cid
-            for cid in sorted(sizes, key=lambda c: (weights.get(c, 0.0), sizes.get(c, 0)))
-            if not threshold_ok(cid) and sizes.get(cid, 0) > 0
+            cluster
+            for cluster in sorted(
+                active_clusters,
+                key=lambda cid: (float(weights.get(cid, 0.0)), int(sizes.get(cid, 0)), int(cid)),
+            )
+            if not threshold_ok(cluster) and cluster not in forced_anchors
         ]
         if not small_clusters:
             break
 
-        merged_any = False
+        nearest_anchor = _closest_anchor_assignment(
+            adjacency,
+            sorted(anchors),
+            cluster_sizes=sizes,
+            cluster_weights=weights,
+        )
+        small_set = set(small_clusters)
+        merge_targets: Dict[int, int] = {}
+
         for cluster in small_clusters:
-            neighbours = adjacency.get(cluster, {})
-            if not neighbours:
-                continue
-            target = max(neighbours.items(), key=lambda item: (item[1], sizes.get(item[0], 0)))[0]
+            target = nearest_anchor.get(cluster)
+            if target is None or target == cluster:
+                neighbours = adjacency.get(cluster, {})
+                if not neighbours:
+                    continue
+                eligible = {nbr: edge for nbr, edge in neighbours.items() if nbr not in small_set}
+                target_pool = eligible if eligible else neighbours
+                target = max(
+                    target_pool.items(),
+                    key=lambda item: (
+                        float(item[1]),
+                        int(sizes.get(item[0], 0)),
+                        float(weights.get(item[0], 0.0)),
+                        -int(item[0]),
+                    ),
+                )[0]
             if target == cluster:
                 continue
+            merge_targets[cluster] = target
 
-            edge_weight = neighbours[target]
-            merge_size = sizes.get(cluster, 0)
-            merge_weight = weights.get(cluster, 0.0)
+        if not merge_targets:
+            break
 
-            for idx, label in enumerate(membership_list):
-                if label == cluster:
-                    membership_list[idx] = target
-
-            sizes[target] = sizes.get(target, 0) + merge_size
-            weights[target] = weights.get(target, 0.0) + merge_weight
-            sizes[cluster] = 0
-            weights[cluster] = 0.0
-
+        for source, target in merge_targets.items():
             merges.append(
                 MergeAction(
-                    source=cluster,
+                    source=source,
                     target=target,
-                    size=merge_size,
-                    weight=merge_weight,
-                    edge_weight=edge_weight,
+                    size=int(sizes.get(source, 0)),
+                    weight=float(weights.get(source, 0.0)),
+                    edge_weight=float(adjacency.get(source, {}).get(target, 0.0)),
                 )
             )
-            merged_any = True
 
-            # Update adjacency: move all edges incident to cluster into target.
-            if target in adjacency:
-                adjacency[target].pop(cluster, None)
-
-            for neighbour, weight in neighbours.items():
-                if neighbour == target:
-                    continue
-                adjacency.setdefault(target, {})[neighbour] = (
-                    adjacency.get(target, {}).get(neighbour, 0.0) + weight
-                )
-                adjacency.setdefault(neighbour, {})[target] = (
-                    adjacency.get(neighbour, {}).get(target, 0.0) + weight
-                )
-                adjacency[neighbour].pop(cluster, None)
-            adjacency.pop(cluster, None)
-
-        if not merged_any:
-            break
+        membership_list = [merge_targets.get(cluster, cluster) for cluster in membership_list]
+        sizes, weights = _compute_cluster_stats(membership_list, node_weights)
 
     # Renumber clusters to keep labels compact.
     mapping: Dict[int, int] = {}

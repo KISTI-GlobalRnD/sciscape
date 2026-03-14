@@ -86,6 +86,9 @@ class LeidenRunner:
         if seed is not None:
             self._optimiser.set_rng_seed(int(seed))
 
+        # leidenalg expects an int; treat None as "use library default" (-1).
+        if n_iterations is None:
+            n_iterations = -1
         self._optimiser.optimise_partition(partition, n_iterations=n_iterations)
 
         membership = list(partition.membership)
