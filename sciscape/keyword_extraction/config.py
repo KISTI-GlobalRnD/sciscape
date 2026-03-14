@@ -109,6 +109,10 @@ class KeywordExtractionConfig:
     # Output sizes
     top_n_unigrams: int = 100
     top_n_keywords: int = 100
+    # Pre-merge pool multiplier: Stage 4 extracts top_n_keywords × scoring_pool_factor
+    # keywords, then trims back to top_n_keywords after Stage 5 merging.
+    # This ensures merge candidates beyond the final cut-off are considered.
+    scoring_pool_factor: float = 1.5
 
     # Post aggregation filtering
     phrase_min_count_per_cluster: int = 10
@@ -148,6 +152,11 @@ class KeywordExtractionConfig:
     cross_cluster_penalty_enabled: bool = False
     cross_cluster_penalty_min_count: int = 2
     cross_cluster_penalty_fn: str = "inverse"  # "inverse" or "log_inverse"
+
+    # Fragment suppression — suppress truncated n-grams like "supermassive black"
+    # when a longer form "supermassive black hole" exists with comparable frequency.
+    fragment_suppression_enabled: bool = True
+    fragment_min_longer_ratio: float = 0.5  # freq(longer) >= ratio * freq(shorter) → suppress
 
     # Plural merging in normalization (P2)
     norm_plural_merge_enabled: bool = True

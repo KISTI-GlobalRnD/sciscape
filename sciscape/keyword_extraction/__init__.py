@@ -9,6 +9,15 @@ from .diagnostics import KeywordDiagnostics, keyword_diagnostics, score_before_a
 from .keyword_extraction import KeywordExtractionPipeline, run_keyword_pipeline
 from .normalization import normalize_keywords
 from .term_network import TermNetwork, TermNetworkConfig
+from .vocab_cleansing import VocabSimGraph
+from .visualization import (
+    export_dashboard,
+    plot_cluster_keywords,
+    plot_cross_cluster_terms,
+    plot_depth_distribution,
+    plot_score_distribution,
+    plot_temporal_trends,
+)
 
 __all__ = [
     "CORE_COLUMNS",
@@ -22,10 +31,17 @@ __all__ = [
     "TermNetwork",
     "TermNetworkConfig",
     "VocabMergeConfig",
+    "VocabSimGraph",
     "collect_cooccurrence",
     "estimate_depth",
     "keyword_diagnostics",
     "normalize_keywords",
+    "export_dashboard",
+    "plot_cluster_keywords",
+    "plot_cross_cluster_terms",
+    "plot_depth_distribution",
+    "plot_score_distribution",
+    "plot_temporal_trends",
     "run_keyword_pipeline",
     "score_before_after",
 ]
