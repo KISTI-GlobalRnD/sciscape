@@ -3,11 +3,15 @@
 Usage:
     sciscape cluster  <zip_path> <inner_name> [options]
     sciscape keywords <abstract_parquet> <membership_parquet> [options]
+    sciscape convert  <source> <input_file> [options]
 
 Examples:
     sciscape cluster edges.zip edges.txt --levels 5,100 80,500
     sciscape keywords abstracts.parquet membership.parquet --cluster-level cluster_micro
     sciscape keywords abstracts.parquet membership.parquet --top-n 100 --include-title -o keywords.parquet
+    sciscape convert wos savedrecs.txt -o abstracts.parquet
+    sciscape convert scopus scopus_export.csv -o abstracts.parquet
+    sciscape convert openalex works.jsonl -o abstracts.parquet
 """
 
 from __future__ import annotations
@@ -57,7 +61,45 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Output parquet path")
     kw.add_argument("-v", "--verbose", action="store_true")
 
+    # ---- convert ----
+    cv = sub.add_parser("convert", help="Convert external data to SciScape abstract parquet")
+    cv.add_argument("source", choices=["wos", "scopus", "openalex"],
+                     help="Data source format")
+    cv.add_argument("input_file", type=Path, help="Input file path")
+    cv.add_argument("-o", "--output", type=Path, default=Path("abstracts.parquet"),
+                     help="Output parquet path (default: abstracts.parquet)")
+    cv.add_argument("--encoding", type=str, default=None,
+                     help="File encoding (default: auto per source)")
+    cv.add_argument("--keep-no-abstract", action="store_true",
+                     help="Keep rows without abstracts")
+    cv.add_argument("-v", "--verbose", action="store_true")
+
     return parser
+
+
+def _run_convert(args: argparse.Namespace) -> None:
+    from sciscape.adapters import read_wos, read_scopus, read_openalex
+
+    common = dict(drop_no_abstract=not args.keep_no_abstract)
+    if args.encoding:
+        common["encoding"] = args.encoding
+
+    if args.source == "wos":
+        df = read_wos(args.input_file, **common)
+    elif args.source == "scopus":
+        df = read_scopus(args.input_file, **common)
+    elif args.source == "openalex":
+        df = read_openalex(args.input_file, **common)
+    else:
+        raise ValueError(f"Unknown source: {args.source}")
+
+    df.to_parquet(args.output, index=False)
+    print(f"Converted {args.source}: {len(df)} documents → {args.output}")
+    if args.verbose:
+        years = df["pubyear"].dropna()
+        if len(years):
+            print(f"  Year range: {int(years.min())}–{int(years.max())}")
+        print(f"  Avg abstract length: {df['abstract'].str.len().mean():.0f} chars")
 
 
 def _run_cluster(args: argparse.Namespace) -> None:
@@ -174,6 +216,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_cluster(args)
     elif args.command == "keywords":
         _run_keywords(args)
+    elif args.command == "convert":
+        _run_convert(args)
     else:
         parser.print_help()
         sys.exit(1)
