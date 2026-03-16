@@ -2,366 +2,150 @@
 
 ## Implementation Strategy
 
-### GBBS 대신 Python 직접 구현
+### Core HAC: Rust + PyO3
 
-GBBS/ParHAC는 C++ CLI 전용이고 Python HAC API가 미문서화.
-Subprocess wrapping은 I/O 파싱 취약점이 크고 디버깅 어려움.
+100K 노드 × 3.28M 엣지에서 Python HAC는 1-2시간+ 소요.
+반복 실험이 필요한 연구 단계에서 비현실적.
 
-**Python sparse HAC가 현실적인 이유:**
-- 100K 노드에서 O(n²) = 10B → 불가
-- 하지만 sparse graph에서 실제 후보 = 3.28M 쌍 (edge-connected만)
-- Lazy priority queue + neighbor dict로 O(m log n) 수준 달성
-- 예상 런타임: 10-30분 (연구용 충분)
-- 향후 GBBS 통합은 scalability extension으로 별도 진행
+**Rust + PyO3 선택 이유:**
+- C++ 동등 성능 (100K 노드 HAC: 1-3분)
+- 메모리 안전 (컴파일 타임 보장, segfault 불가)
+- cargo 빌드 (CMake 지옥 회피)
+- maturin으로 Python wheel 원커맨드 빌드
+- rayon으로 안전한 병렬화 가능
+- cargo.lock으로 완전한 빌드 재현성
 
-### Fallback
-
-만약 Python이 100K에서 너무 느리면:
-1. Leiden(γ_high) → contract → Python HAC on ~5K nodes (확실히 빠름)
-2. Cython/Numba 가속
-3. GBBS subprocess wrapping
-
----
-
-## Module Structure
+### 아키텍처: 분리된 crate + Python thin wrapper
 
 ```
 sciscape/clustering/
-├── dendrogram.py          # [NEW] CPM-critical dendrogram construction
-├── constrained_cut.py     # [NEW] Size-constrained optimal cut DP
-├── triadic_preprocess.py  # [NEW] Edge reweighting via triadic closure
-├── hierarchy_builder.py   # [EXISTING] Leiden-based hierarchy (untouched)
-├── runner.py              # [EXISTING] LeidenRunner (reuse graph interface)
-├── postprocess.py         # [EXISTING] merge_small_clusters (comparison baseline)
+├── dendrogram.py          # Python thin wrapper (igraph ↔ Rust 변환)
+├── constrained_cut.py     # Pure Python O(n) DP (Rust 불필요)
 └── ...
+
+cpm-dendro/                 # 독립 Rust crate
+├── Cargo.toml
+├── pyproject.toml          # maturin 빌드 설정
+├── src/
+│   ├── lib.rs              # PyO3 모듈 진입점
+│   ├── graph.rs            # CSR sparse graph
+│   ├── hac.rs              # Core HAC (lazy max-heap)
+│   ├── dendrogram.rs       # Dendrogram 구조체 + linkage matrix
+│   └── triadic.rs          # Triadic closure 전처리
+└── tests/
+    ├── test_hac.rs
+    └── test_triadic.rs
 ```
+
+### Size-Constrained Cut: Pure Python
+
+O(n) DP, 100K에서 밀리초. Rust 불필요. scipy linkage matrix 입력 → partition 출력.
 
 ---
 
-## File 1: `dendrogram.py` — CPM-Critical Dendrogram
+## Phase 1: constrained_cut.py (Pure Python)
 
-### Data Structures
+가장 간단하고 독립적. Dendrogram 없이도 테스트 가능 (linkage matrix 직접 생성).
 
-```python
-@dataclass
-class DendrogramNode:
-    """A node in the binary merge tree."""
-    id: int                    # Unique node ID
-    size: int                  # Number of original nodes in subtree
-    merge_height: float        # ρ at which this merge occurred (γ* critical resolution)
-    left: int | None           # Left child ID (None for leaves)
-    right: int | None          # Right child ID (None for leaves)
-
-@dataclass
-class Dendrogram:
-    """Complete binary dendrogram from agglomerative CPM-density clustering."""
-    nodes: Dict[int, DendrogramNode]  # id → node
-    root: int                          # Root node ID
-    n_leaves: int                      # Number of original nodes
-    leaf_ids: List[int]                # Original node IDs (leaves)
-
-    def to_linkage_matrix(self) -> np.ndarray:
-        """Convert to scipy-compatible (n-1, 4) linkage matrix."""
-        ...
-
-    def subtree_sizes(self) -> Dict[int, int]:
-        """Size of each internal node's subtree."""
-        ...
-
-    def persistence(self, node_id: int) -> float:
-        """γ_birth - γ_death for stability measurement."""
-        ...
-```
-
-### Core Algorithm: Sparse Average-Linkage HAC
+### API
 
 ```python
-def build_cpm_dendrogram(
-    graph: ig.Graph,
-    *,
-    weights: str = "weight",
-    progress: Callable | None = None,
-) -> Dendrogram:
-    """Build CPM-critical dendrogram via exact average-linkage on sparse graph.
-
-    Equivalent to greedy agglomerative clustering with merge criterion:
-        ρ(A, B) = e_AB / (|A| · |B|)
-
-    Uses lazy max-heap with neighbor dictionaries for sparse efficiency.
-    Time: O(m · log²n) amortized for sparse graphs.
-    Space: O(n + m)
-    """
-```
-
-### Implementation Detail: Lazy Max-Heap Approach
-
-```
-Data structures:
-  - cluster_neighbors: Dict[int, Dict[int, float]]
-    cluster_neighbors[a][b] = sum of edge weights between clusters a and b
-  - cluster_size: Dict[int, int]
-    cluster_size[a] = number of original nodes in cluster a
-  - alive: Set[int]
-    Set of active (unmerged) cluster IDs
-  - heap: max-heap of (ρ, cluster_a, cluster_b)
-    Lazy: entries may reference dead clusters
-
-Algorithm:
-  1. Initialize: each node is a singleton cluster
-     For each edge (u,v,w): cluster_neighbors[u][v] += w
-     Push (ρ=w/(1·1), u, v) for each edge
-
-  2. Repeat n-1 times:
-     a. Pop max (ρ, a, b) from heap
-        - If a or b not in alive: skip (lazy deletion)
-        - If ρ ≠ current_ρ(a,b): skip (stale entry)
-     b. Create new internal node c = merge(a, b)
-        - merge_height = ρ
-        - size[c] = size[a] + size[b]
-     c. Update neighbors:
-        For each neighbor d of a or b (d ≠ a, d ≠ b):
-          e_cd = e_ad + e_bd  (sum edge weights to both a and b)
-          ρ_new = e_cd / (size[c] · size[d])
-          cluster_neighbors[c][d] = e_cd
-          cluster_neighbors[d][c] = e_cd
-          Push (ρ_new, c, d) to heap
-        Remove a, b from alive, add c
-     d. Record DendrogramNode(id=c, left=a, right=b, height=ρ, size=size[c])
-
-  3. Return Dendrogram(nodes, root=c, n_leaves=n)
-```
-
-### Complexity
-
-- Heap operations: Each edge processed O(log n) times worst case
-- Neighbor updates: Each merge touches O(degree) neighbors
-- Total: O(m · log n) amortized with lazy deletion
-- For 100K nodes, 3.28M edges: ~10-30 min in Python
-
-### Triadic Closure Preprocessing (separate function)
-
-```python
-def reweight_triadic(graph: ig.Graph, *, weights: str = "weight") -> ig.Graph:
-    """Reweight edges by triadic closure: w'(i,j) = w(i,j) · (1 + |CN(i,j)|).
-
-    Creates a copy of the graph with modified edge weights.
-    Time: O(m · √m) for triangle enumeration.
-    """
-```
-
----
-
-## File 2: `constrained_cut.py` — Size-Constrained Optimal Cut
-
-### Algorithm
-
-```python
-@dataclass
-class CutResult:
-    """Result of size-constrained optimal cut on a dendrogram."""
-    partition: List[Set[int]]        # List of clusters (sets of original node IDs)
-    membership: List[int]            # Node ID → cluster ID mapping
-    n_clusters: int                  # Number of clusters
-    total_stability: float           # Sum of persistence values
-    cut_nodes: List[int]             # Dendrogram node IDs at the cut
-
 def constrained_cut(
-    dendrogram: Dendrogram,
-    min_size: int,
+    linkage: np.ndarray,      # scipy-format (n-1, 4) linkage matrix
+    min_size: int,            # minimum cluster size k
 ) -> CutResult:
-    """Find partition maximizing #clusters s.t. all clusters have ≥ min_size nodes.
-
-    Lexicographic objective: max(#clusters, total_stability).
-
-    Algorithm: Bottom-up DP on binary tree, O(n).
-    At each node v:
-      split_count = opt(left) + opt(right)   if both feasible
-      keep_count  = 1                        if size(v) ≥ min_size
-      Choose: split if split_count ≥ 2, else keep if feasible
-      Tie-break: higher total stability wins
-
-    Returns optimal partition.
-    """
+    """Maximize #clusters s.t. all clusters ≥ min_size.
+    Lexicographic: max(count, total_stability). O(n)."""
 ```
 
-### DP State
+---
+
+## Phase 2-5: cpm-dendro Rust crate
+
+### Python에서 사용법
 
 ```python
-@dataclass
-class _DPState:
-    count: int          # Number of clusters achievable in this subtree
-    stability: float    # Total persistence of clusters
-    feasible: bool      # Whether this subtree can form valid partition
+from sciscape.clustering.dendrogram import build_dendrogram, constrained_cut
+
+linkage = build_dendrogram(graph, triadic=True)  # Rust (1-3분)
+result = constrained_cut(linkage, min_size=1000)  # Python (밀리초)
 ```
 
-### Traceback
+### Rust 핵심 알고리즘: Lazy Max-Heap Sparse HAC
 
-After computing opt[v] for all nodes, trace back from root:
-- If opt[v] chose "split": recurse into children
-- If opt[v] chose "keep": v's entire subtree is one cluster
-- Collect leaf nodes of each "keep" subtree → partition
+```
+1. 초기화: 각 노드 = 싱글톤 클러스터
+   각 edge (u,v,w)에 대해 heap.push(ρ=w, u, v)
 
----
+2. n-1번 반복:
+   a. heap.pop() → (ρ, a, b)
+      - a 또는 b가 dead → skip
+      - ρ ≠ current ρ(a,b) → skip (stale)
+   b. 새 클러스터 c = merge(a, b), height = ρ
+   c. 모든 neighbor d에 대해:
+      e_cd = e_ad + e_bd
+      ρ_new = e_cd / (size[c] · size[d])
+      heap.push(ρ_new, c, d)
+   d. a, b를 dead로 표시, c를 alive에 추가
 
-## File 3: `triadic_preprocess.py` — Edge Reweighting
-
-```python
-def count_triangles_per_edge(graph: ig.Graph) -> List[int]:
-    """Count common neighbors for each edge. O(m · α) where α = arboricity."""
-
-def reweight_triadic(graph: ig.Graph, *, weights: str = "weight") -> ig.Graph:
-    """Return new graph with w'(i,j) = w(i,j) · (1 + |CN(i,j)|)."""
+3. Return linkage matrix
 ```
 
-igraph has `graph.count_triangles()` but not per-edge. Implement via:
-```python
-for edge in graph.es:
-    u, v = edge.source, edge.target
-    cn = len(set(graph.neighbors(u)) & set(graph.neighbors(v)))
-    edge["weight"] = edge["weight"] * (1 + cn)
-```
+### 빌드
 
-For 100K nodes, avg degree 65: each edge checks ~65 neighbors.
-Total: 3.28M × 65 = 213M set operations → minutes in Python.
-
----
-
-## Integration into Landscape Pipeline
-
-### New function in `landscape.py`:
-
-```python
-def run_landscape_dendrogram(
-    edge_path: Path,
-    abstract_path: Path,
-    output_dir: Path,
-    *,
-    min_docs: int = 1000,
-    triadic: bool = True,
-    refine: bool = False,
-    ...
-) -> dict:
-    """Landscape pipeline using CPM-critical dendrogram instead of Leiden hierarchy.
-
-    Step 0: Load graph, giant component, (optional) triadic reweighting
-    Step 1: Build CPM-critical dendrogram
-    Step 2: Size-constrained optimal cut
-    Step 3: (Optional) Leiden refinement
-    Step 4: Keyword extraction
-    Step 5: Report generation
-    """
+```bash
+cd cpm-dendro && maturin develop --release
 ```
 
 ---
 
-## Testing Plan
+## 구현 순서
 
-### Unit Tests
-
-```
-tests/
-├── test_dendrogram.py
-│   ├── test_singleton_graph          # 1 node → trivial dendrogram
-│   ├── test_two_nodes                # 2 nodes → 1 merge
-│   ├── test_triangle                 # 3 nodes, 3 edges → verify merge order
-│   ├── test_four_node_counterexample # The known CPM ≠ greedy example
-│   ├── test_disconnected_components  # Components merge last (ρ=0)
-│   ├── test_weighted_edges           # Non-unit weights
-│   ├── test_merge_heights_monotonic  # Dendrogram validity
-│   ├── test_to_linkage_matrix        # scipy compatibility
-│   └── test_deterministic            # Same graph → same tree always
-│
-├── test_constrained_cut.py
-│   ├── test_trivial_cut              # k=1 → all singletons
-│   ├── test_k_equals_n              # k=n → single cluster
-│   ├── test_balanced_binary_tree     # Known optimal solution
-│   ├── test_stability_tiebreak       # Equal count → higher stability wins
-│   ├── test_infeasible               # k > n → error or single cluster
-│   └── test_varying_k_same_tree      # Multiple k values, verify monotonicity
-│
-├── test_triadic_preprocess.py
-│   ├── test_triangle_boost           # Triangle edge gets weight * 2
-│   ├── test_no_triangles             # Weight unchanged
-│   └── test_preserves_structure      # Same nodes/edges, different weights
-│
-└── test_integration.py
-    ├── test_dendrogram_pipeline      # End-to-end: graph → dendrogram → cut → partition
-    └── test_ceiling_breaking         # On sample network: more clusters than Leiden+merge?
-```
-
-### Benchmark Test (Separate Script)
-
-```python
-# scripts/benchmark_dendrogram.py
-# Run on KRISS 100K network, compare:
-# 1. Leiden-CPM (γ=1e-4) + merge → 38 clusters
-# 2. CPM-critical tree + DP cut → ? clusters
-# 3. Paris + DP cut → ? clusters
-# Report: cluster count, density, keyword coherence
-```
+| Phase | 내용 | 산출물 |
+|-------|------|--------|
+| **1** | constrained_cut.py + 테스트 | Pure Python DP |
+| **2** | cpm-dendro crate 초기화 + graph.rs | Rust 프로젝트 구조 |
+| **3** | hac.rs + dendrogram.rs + Rust 테스트 | Core 알고리즘 |
+| **4** | PyO3 binding + dendrogram.py wrapper | Python 통합 |
+| **5** | triadic.rs | 전처리 |
+| **6** | KRISS 100K 실행 | **38개 ceiling 돌파 검증** |
+| **7** | Paris 비교, 전체 실험 | 논문 실험 |
 
 ---
 
-## Implementation Order
+## 테스트 계획
 
-### Phase 1: Core (1-2 weeks)
-1. `constrained_cut.py` — simplest, pure tree DP, easy to test
-2. `dendrogram.py` — core HAC algorithm, extensive testing needed
-3. Unit tests for both
+### constrained_cut.py 단위 테스트
+- test_trivial_cut: k=1 → all leaves
+- test_k_equals_n: k=n → single cluster
+- test_balanced_tree: known optimal
+- test_stability_tiebreak: equal count → higher stability
+- test_varying_k: multiple k on same tree
+- test_four_node_counterexample
 
-### Phase 2: Integration (1 week)
-4. `triadic_preprocess.py` — straightforward
-5. Integration into landscape pipeline
-6. Integration tests
+### Rust 단위 테스트 (cpm-dendro)
+- test_two_nodes: 1 merge
+- test_triangle: 3 nodes, verify merge order
+- test_merge_heights_monotonic: dendrogram validity
+- test_weighted_edges: non-unit weights
+- test_disconnected: components merge last
+- test_deterministic: same input → same output
 
-### Phase 3: Validation (1 week)
-7. Run on KRISS 100K network
-8. Compare with Leiden-CPM baseline (38 clusters)
-9. **Milestone: Does it break the ceiling?**
-
-### Phase 4: Comparison (1 week)
-10. Paris baseline (scikit-network)
-11. Mass-weighted θ variants (ablation)
-12. Full experimental matrix
-
----
-
-## Dependencies
-
-### Required (already in project)
-- igraph (graph operations)
-- numpy (arrays, linkage matrix)
-- scipy (sparse matrices, optional dendrogram visualization)
-
-### Optional (for comparisons)
-- scikit-network (Paris algorithm baseline)
-- graph-tool (Peixoto nested SBM — heavy dependency, optional)
-
-### NOT needed
-- GBBS/ParHAC (Python implementation suffices for 100K scale)
+### 통합 테스트
+- test_dendrogram_pipeline: graph → dendrogram → cut → partition
+- test_ceiling_breaking: Leiden 38개 vs dendrogram+cut
 
 ---
 
-## Risk Assessment
+## 의존성
 
-| Risk | Probability | Impact | Mitigation |
-|------|:-:|:-:|-----------|
-| Python too slow for 100K | Medium | High | Fallback: Leiden contract → HAC on 5K nodes |
-| Memory exceeded (neighbor dicts) | Low | High | Sparse: only edge-connected pairs stored |
-| Dendrogram doesn't break 38 ceiling | Medium | Critical | Reframe: "dendrogram + cut" still useful for reusability |
-| GBBS needed for larger networks | Future | Medium | Documented as scalability extension |
+### sciscape (Python)
+- igraph, numpy, scipy (기존)
 
-## Performance Optimization Notes
+### cpm-dendro (Rust)
+- pyo3 (Python binding)
+- numpy (PyO3 numpy interop)
+- maturin (빌드)
 
-### Python-specific optimizations
-1. Use `heapq` (C-implemented) for max-heap (negate values for max)
-2. Neighbor dicts: `defaultdict(float)` for auto-initialization
-3. `alive` set: O(1) membership check
-4. Batch neighbor updates: merge smaller into larger cluster's dict (weighted union)
-5. Consider `sortedcontainers.SortedList` if heap becomes bottleneck
-
-### Memory estimate
-- cluster_neighbors: at most 2m entries (each edge stored twice) → ~50MB for 3.28M edges
-- heap: at most m·log(n) entries with lazy deletion → ~100MB
-- dendrogram nodes: 2n-1 nodes → ~10MB
-- **Total: ~200MB — well within modern machine capacity**
+### 비교 실험용 (선택)
+- scikit-network (Paris baseline)

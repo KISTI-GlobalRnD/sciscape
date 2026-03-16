@@ -1,0 +1,14 @@
+[package]
+name = "cpm-dendro"
+version = "0.1.0"
+edition = "2021"
+description = "CPM-critical dendrogram construction via sparse average-linkage HAC"
+license = "MIT"
+
+[lib]
+name = "cpm_dendro"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.24", features = ["extension-module"] }
+numpy = "0.24"
