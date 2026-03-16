@@ -10,7 +10,8 @@ sciscape/
 ├── keyword_extraction/  # 9단계 키워드 추출 파이프라인
 │   └── visualization/   # 대시보드, 네트워크맵, 계층/시계열 시각화
 ├── adapters/            # 외부 데이터 변환 (WoS, Scopus, OpenAlex)
-└── cli.py               # CLI: sciscape cluster | keywords | convert
+├── landscape.py         # 엔드투엔드 파이프라인 (서브샘플 → 클러스터링 → 키워드 → 리포트)
+└── cli.py               # CLI: sciscape cluster | keywords | convert | landscape
 ```
 
 - `sciscape.clustering`: 그래프 구성, Leiden 클러스터링, 해상도(γ) 탐색, 계층(hierarchy) 구성, 후처리(소규모 클러스터 병합) 등
@@ -98,6 +99,9 @@ sciscape keywords abstracts.parquet membership.parquet \
 sciscape convert wos savedrecs.txt -o abstracts.parquet
 sciscape convert scopus scopus_export.csv -o abstracts.parquet
 sciscape convert openalex works.jsonl -o abstracts.parquet
+
+# 전체 파이프라인 (엣지 → 클러스터링 → 키워드 → 리포트)
+sciscape landscape edges.parquet abstracts.parquet -o output/landscape --n-nodes 100000
 ```
 
 ## 빠른 사용법
@@ -131,7 +135,7 @@ from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pip
 cfg = KeywordExtractionConfig(
     abstract_path=Path("abstracts.parquet"),
     membership_path=Path("membership.parquet"),
-    cluster_level="cluster_micro",
+    # cluster_level=None → auto-detect finest level
     include_title=True,
     title_weight=1.5,
     min_df_unigram=5,

@@ -88,7 +88,7 @@ Tier 3 output schema now includes it. Useful for downstream analysis (bridge ter
 between research communities).
 
 ## [2026-03-12] [Quality] DECISION: 6 quality filters (P1–P6)
-**REASON**: KRISS pilot (10K docs, 5 clusters) revealed 17% of keywords were academic
+**REASON**: pilot (10K docs, 5 clusters) revealed 17% of keywords were academic
 boilerplate ("based", "using", "results"), 17 plural-duplicate pairs, and artifacts.
 **P1** Academic stopword filter: domain-agnostic single+multi-word removal. Multi-word
 terms filtered only when ALL tokens are academic stopwords ("proposed method" → filtered,

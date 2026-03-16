@@ -90,7 +90,7 @@ tables = run_pipeline(
 | `uid` | string/int | Yes | `uid_col` | 문서 고유 ID (abstract와 동일) |
 | `cluster_*` | int | Yes | `cluster_level` | 클러스터 ID (NaN 행은 제외됨) |
 
-**비고**: `cluster_level` 기본값은 `"cluster_micro"`. Clustering 출력의 `cluster_{level_name}` 컬럼과 대응.
+**비고**: `cluster_level` 기본값은 `None` (자동 감지: 가장 세분화된 `cluster_*` 컬럼 선택). 명시적 지정도 가능.
 
 ### 입력 3: Author Keywords (선택)
 
@@ -147,7 +147,7 @@ from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pip
 cfg = KeywordExtractionConfig(
     abstract_path=Path("abstracts.parquet"),
     membership_path=Path("membership.parquet"),
-    cluster_level="cluster_micro",
+    # cluster_level=None → auto-detects finest level
 )
 
 keywords = run_keyword_pipeline(cfg)
@@ -167,7 +167,7 @@ from sciscape.keyword_extraction.term_network import TermNetworkConfig
 cfg = KeywordExtractionConfig(
     abstract_path=Path("abstracts.parquet"),
     membership_path=Path("membership.parquet"),
-    cluster_level="cluster_micro",
+    # cluster_level auto-detected (finest level)
     include_title=True,
     title_weight=2.0,
     top_n_keywords=100,
@@ -215,7 +215,7 @@ clustering.run_pipeline()
     ↓
 keyword_extraction.run_keyword_pipeline(cfg)
     cfg.membership_path = "membership.parquet"
-    cfg.cluster_level = "cluster_micro"  # membership 컬럼명과 일치
+    cfg.cluster_level = None  # auto-detect finest level (또는 명시적 지정)
 ```
 
 **주의사항**:

@@ -1,17 +1,16 @@
 """SciScape CLI — minimal command-line interface.
 
 Usage:
-    sciscape cluster  <zip_path> <inner_name> [options]
-    sciscape keywords <abstract_parquet> <membership_parquet> [options]
-    sciscape convert  <source> <input_file> [options]
+    sciscape cluster   <zip_path> <inner_name> [options]
+    sciscape keywords  <abstract_parquet> <membership_parquet> [options]
+    sciscape convert   <source> <input_file> [options]
+    sciscape landscape <edge_file> <abstract_parquet> [options]
 
 Examples:
     sciscape cluster edges.zip edges.txt --levels 5,100 80,500
-    sciscape keywords abstracts.parquet membership.parquet --cluster-level cluster_micro
     sciscape keywords abstracts.parquet membership.parquet --top-n 100 --include-title -o keywords.parquet
     sciscape convert wos savedrecs.txt -o abstracts.parquet
-    sciscape convert scopus scopus_export.csv -o abstracts.parquet
-    sciscape convert openalex works.jsonl -o abstracts.parquet
+    sciscape landscape edges.parquet abstracts.parquet -o output/landscape
 """
 
 from __future__ import annotations
@@ -48,8 +47,8 @@ def _build_parser() -> argparse.ArgumentParser:
     kw = sub.add_parser("keywords", help="Run keyword extraction pipeline")
     kw.add_argument("abstract_path", type=Path, help="Abstract parquet file")
     kw.add_argument("membership_path", type=Path, help="Membership parquet file")
-    kw.add_argument("--cluster-level", type=str, default="cluster_micro",
-                     help="Cluster column name in membership (default: cluster_micro)")
+    kw.add_argument("--cluster-level", type=str, default=None,
+                     help="Cluster column name in membership (default: auto-detect finest)")
     kw.add_argument("--top-n", type=int, default=100, help="Keywords per cluster (default: 100)")
     kw.add_argument("--include-title", action="store_true", help="Include title in text")
     kw.add_argument("--min-df", type=int, default=5, help="Min document frequency (default: 5)")
@@ -73,6 +72,23 @@ def _build_parser() -> argparse.ArgumentParser:
     cv.add_argument("--keep-no-abstract", action="store_true",
                      help="Keep rows without abstracts")
     cv.add_argument("-v", "--verbose", action="store_true")
+
+    # ---- landscape ----
+    ls = sub.add_parser("landscape", help="Full pipeline: edges → clustering → keywords → report")
+    ls.add_argument("edge_path", type=Path, help="Edge list file (.parquet, .csv, .tsv, .txt)")
+    ls.add_argument("abstract_path", type=Path, help="Abstract parquet (uid, title, abstract, pubyear)")
+    ls.add_argument("-o", "--output-dir", type=Path, default=Path("landscape_output"),
+                     help="Output directory (default: landscape_output)")
+    ls.add_argument("--n-nodes", type=int, default=100_000,
+                     help="Target node count for BFS subsampling (default: 100000)")
+    ls.add_argument("--seed", type=int, default=42)
+    ls.add_argument("--min-docs", type=int, default=1000,
+                     help="Min documents per cluster (default: 1000)")
+    ls.add_argument("--top-n", type=int, default=80, help="Keywords per cluster (default: 80)")
+    ls.add_argument("--title", type=str, default="SciScape Landscape", help="Report title")
+    ls.add_argument("--force", action="store_true",
+                     help="Ignore cached intermediate results and re-run from scratch")
+    ls.add_argument("-v", "--verbose", action="store_true")
 
     return parser
 
@@ -210,6 +226,28 @@ def _run_keywords(args: argparse.Namespace) -> None:
         print(f"  cluster {cid}: {len(grp)} keywords — {top3}")
 
 
+def _run_landscape(args: argparse.Namespace) -> None:
+    import logging
+    from sciscape.landscape import LandscapeConfig, run_landscape
+
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO,
+                            format="%(asctime)s %(levelname)s %(message)s",
+                            datefmt="%H:%M:%S")
+
+    cfg = LandscapeConfig(
+        n_target_nodes=args.n_nodes,
+        seed=args.seed,
+        force=args.force,
+        min_docs_per_cluster=args.min_docs,
+        top_n_keywords=args.top_n,
+        report_title=args.title,
+    )
+
+    result = run_landscape(args.edge_path, args.abstract_path, args.output_dir, config=cfg)
+    print(f"Landscape complete → {result['report_dir']}/report.html")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -220,6 +258,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_keywords(args)
     elif args.command == "convert":
         _run_convert(args)
+    elif args.command == "landscape":
+        _run_landscape(args)
     else:
         parser.print_help()
         sys.exit(1)
