@@ -431,7 +431,7 @@ def scan_resolution_grid(
     resolutions: Sequence[float],
     seeds: Sequence[int | None] = (0,),
     *,
-    objective: str = "modularity",
+    objective: str = "cpm",
     n_iterations: int | None = None,
     postprocess: PostprocessConfig | None = None,
     stability_metric: str | None = None,

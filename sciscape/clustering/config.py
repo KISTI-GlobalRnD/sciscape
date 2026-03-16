@@ -14,9 +14,9 @@ class LeidenConfig:
     """Configuration for running Leiden at multiple resolutions."""
 
     resolutions: Mapping[str, float] | None = None
-    objective: str = "modularity"
+    objective: str = "cpm"
     level_constraints: Sequence[tuple[int, int]] | None = None
-    resolution_bounds: Tuple[float, float] = (1e-4, 50.0)
+    resolution_bounds: Tuple[float, float] = (1e-4, 1.0)
     max_iterations: int = 32
     progress: Callable[[str], None] | None = None
     leiden_iterations: int | None = None
@@ -48,8 +48,8 @@ class EnsembleConfig:
     """Configuration for running ensemble partitions across gamma values and seeds."""
 
     gamma_values: Sequence[float] | None = None
-    gamma_min: float = 1e-3
-    gamma_max: float = 5.0
+    gamma_min: float = 1e-4
+    gamma_max: float = 0.5
     gamma_count: int = 10
     gamma_scale: str = "log"
     seeds: Sequence[int] = (0, 1, 2)

@@ -103,7 +103,7 @@ def main() -> None:
         graph,
         gamma_grid,
         seeds,
-        objective="modularity",
+        objective="cpm",
         n_iterations=100,
         postprocess=PostprocessConfig(min_size=3),
         stability_metric="nmi",
@@ -133,7 +133,7 @@ def main() -> None:
 
     builder = HierarchyBuilder(
         graph,
-        objective="modularity",
+        objective="cpm",
         default_iterations=150,
         default_seed=0,
     )

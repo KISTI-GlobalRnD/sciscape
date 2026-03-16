@@ -20,8 +20,8 @@ def main() -> None:
     )
 
     tables = run_pipeline(
-        zip_path=Path("../Data/KRISS_pair_links/dc_bc_cc_total_pair.zip"),
-        inner_name="dc_bc_cc_total_pair.txt",
+        zip_path=Path("edges.zip"),
+        inner_name="edges.txt",
         config=config,
     )
 

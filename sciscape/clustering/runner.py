@@ -33,7 +33,7 @@ class LeidenRunner:
         self,
         graph: ig.Graph,
         *,
-        objective: str = "modularity",
+        objective: str = "cpm",
         default_iterations: int | None = None,
         default_seed: int | None = None,
     ) -> None:
