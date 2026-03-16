@@ -19,7 +19,7 @@ class KeywordExtractionConfig:
 
     abstract_path: Path
     membership_path: Path
-    cluster_level: str = "cluster_micro"
+    cluster_level: Optional[str] = None  # None → auto-detect finest level
 
     # Vectoriser/tokenisation parameters
     lowercase: bool = True

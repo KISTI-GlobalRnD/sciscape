@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, Iterator, List, Optional, Tuple
 
 import math
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
@@ -245,6 +248,34 @@ def _detect_boundary_fragments(
     return fragments
 
 
+def _detect_finest_cluster_level(membership_path, uid_col: str = "uid") -> str:
+    """Auto-detect the finest (most clusters) cluster level from a membership file.
+
+    Reads ``cluster_*`` columns and picks the one with the most unique values,
+    i.e. the most granular clustering level.
+    """
+    import pyarrow.parquet as pq
+
+    schema = pq.read_schema(membership_path)
+    cluster_cols = [f.name for f in schema if f.name.startswith("cluster_")]
+
+    if not cluster_cols:
+        raise ValueError(
+            f"No cluster_* columns found in {membership_path}. "
+            "Specify cluster_level explicitly."
+        )
+
+    if len(cluster_cols) == 1:
+        return cluster_cols[0]
+
+    # Read only cluster columns, count unique values per column
+    df = pd.read_parquet(membership_path, columns=cluster_cols)
+    best_col = max(cluster_cols, key=lambda c: df[c].nunique())
+    logger.info("Auto-detected finest cluster level: %s (%d clusters)",
+                best_col, df[best_col].nunique())
+    return best_col
+
+
 class _DataSource:
     """Streaming data loader joining abstracts with membership."""
 
@@ -258,11 +289,18 @@ class _DataSource:
         if self._membership is not None:
             return self._membership
         cfg = self.cfg
-        df = pd.read_parquet(cfg.membership_path, columns=[cfg.uid_col, cfg.cluster_level])
-        df = df.dropna(subset=[cfg.cluster_level])
-        df[cfg.cluster_level] = df[cfg.cluster_level].astype(int)
+
+        cluster_level = cfg.cluster_level
+        if cluster_level is None:
+            cluster_level = _detect_finest_cluster_level(cfg.membership_path, cfg.uid_col)
+            # Cache the resolved level back into config so downstream code sees it
+            cfg.cluster_level = cluster_level
+
+        df = pd.read_parquet(cfg.membership_path, columns=[cfg.uid_col, cluster_level])
+        df = df.dropna(subset=[cluster_level])
+        df[cluster_level] = df[cluster_level].astype(int)
         df = df.drop_duplicates(subset=[cfg.uid_col], keep="last")
-        series = df.set_index(cfg.uid_col)[cfg.cluster_level]
+        series = df.set_index(cfg.uid_col)[cluster_level]
         self._membership = series
         self._clusters_sorted = np.array(sorted(series.unique().tolist()), dtype=int)
         return series

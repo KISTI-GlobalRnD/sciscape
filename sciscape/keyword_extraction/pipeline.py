@@ -69,7 +69,7 @@ ACADEMIC_STOPWORDS: frozenset = frozenset({
     "type", "form", "part", "area", "point", "rate", "state",
     "small", "simple", "complex", "related", "specific",
     "potential", "major", "main", "key", "based method",
-    # Generic unigrams identified from KRISS pilot output inspection
+    # Generic unigrams identified from pilot output inspection
     "body", "dataset", "datasets", "error", "errors",
     "feature", "features", "field", "fields",
     "local", "module", "modules", "multi",
