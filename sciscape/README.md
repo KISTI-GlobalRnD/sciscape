@@ -1,77 +1,161 @@
 # SciScape
 
-Leiden 기반 클러스터링 파이프라인과 클러스터 단위 키워드 추출 파이프라인을 하나의 Python 패키지(`sciscape`)로 제공합니다.
+학술 논문 네트워크의 Leiden 클러스터링 + 키워드 추출 파이프라인.
 
 ## 구성
 
 ```
 sciscape/
-├── clustering/          # 그래프 구성, Leiden 클러스터링, 해상도(γ) 탐색, 계층 구성
-├── keyword_extraction/  # 9단계 키워드 추출 파이프라인
-│   └── visualization/   # 대시보드, 네트워크맵, 계층/시계열 시각화
-├── adapters/            # 외부 데이터 변환 (WoS, Scopus, OpenAlex)
-├── landscape.py         # 엔드투엔드 파이프라인 (서브샘플 → 클러스터링 → 키워드 → 리포트)
-└── cli.py               # CLI: sciscape cluster | keywords | convert | landscape
+├── clustering/              # CPM Leiden 클러스터링
+│   ├── block_init.py        #   high-γ block → contraction → cascade hot start
+│   ├── postprocess.py       #   split/merge refinement, γ search
+│   ├── dendrogram.py        #   CPM density HAC
+│   ├── constrained_cut.py   #   size-constrained optimal cut (DP)
+│   ├── runner.py            #   LeidenRunner (leidenalg wrapper)
+│   ├── ensemble.py          #   multi-seed ensemble
+│   └── cluster_naming.py    #   LLM-based cluster naming (optional)
+├── keyword_extraction/      # 10단계 키워드 추출
+│   ├── visualization/       #   대시보드, 네트워크맵, 계층/시계열 시각화
+│   └── ...                  #   vectorization → scoring → normalization → ...
+├── adapters/                # WoS, Scopus, OpenAlex, BibTeX 입력 변환
+├── landscape.py             # 엔드투엔드 파이프라인
+├── cli.py                   # CLI: cluster | keywords | convert | landscape | viewer | gui
+└── gui.py                   # Tkinter GUI
 ```
-
-- `sciscape.clustering`: 그래프 구성, Leiden 클러스터링, 해상도(γ) 탐색, 계층(hierarchy) 구성, 후처리(소규모 클러스터 병합) 등
-- `sciscape.keyword_extraction`: 문서(초록/제목) 기반 n-gram 키워드 추출(c‑TF‑IDF, LLR, MMR 다양성, 연도별 시계열) 등
-- `sciscape.adapters`: Web of Science, Scopus, OpenAlex 데이터를 SciScape 입력 포맷으로 변환
-
-호환을 위해 `sos.*` import는 shim으로 유지합니다.
 
 ## 설치
 
-이 저장소 루트에서:
+```bash
+pip install .                 # 기본
+pip install ".[viz]"          # + 시각화 (Plotly)
+pip install ".[arrow]"        # + Parquet 메타데이터 가속
+pip install ".[llm]"          # + LLM 정규화/요약 (OpenAI)
+pip install ".[dev]"          # + 개발/테스트
+```
+
+## CLI 전체 옵션
+
+### `sciscape landscape` — 전체 파이프라인
 
 ```bash
-python -m pip install -U pip
-python -m pip install .
+sciscape landscape edges.parquet abstracts.parquet -o output/ [options]
 ```
 
-옵션 기능:
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `--n-nodes` | 100000 | BFS 서브샘플 대상 노드 수 |
+| `--min-docs` | 1000 | 클러스터당 최소 문서 수 |
+| `--gamma-block` | auto | Block-init γ (`auto`, `none`, 또는 float) |
+| `--gamma-range` | 1e-6,1e-3 | γ 탐색 범위 (lo,hi) |
+| `--seed` | 42 | 랜덤 시드 |
+| `--top-n` | 80 | 클러스터당 키워드 수 |
+| `--title` | SciScape Landscape | 리포트 제목 |
+| `--force` | - | 캐시 무시, 전체 재실행 |
+| `-v` | - | 상세 로그 출력 |
+
+### `sciscape cluster` — 클러스터링만
 
 ```bash
-# Parquet row-group 스트리밍 가속
-python -m pip install .[arrow]
-
-# LLM 기반 정규화/요약 기능 사용 시
-python -m pip install .[llm]
-
-# 시각화 (Plotly 차트, 대시보드)
-python -m pip install .[viz]
+sciscape cluster edges.zip edges.txt --levels 5,100 80,500 -o membership.parquet
 ```
 
-## 키워드 추출 파이프라인 아키텍처
+### `sciscape keywords` — 키워드 추출만
+
+```bash
+sciscape keywords abstracts.parquet membership.parquet --enable-all --top-n 100 -o keywords.parquet
+```
+
+### `sciscape convert` — 데이터 변환
+
+```bash
+sciscape convert wos savedrecs.txt -o abstracts.parquet
+sciscape convert scopus scopus_export.csv -o abstracts.parquet
+sciscape convert openalex works.jsonl -o abstracts.parquet
+sciscape convert bibtex references.bib -o abstracts.parquet
+```
+
+### `sciscape viewer` — 뷰어 HTML 생성
+
+```bash
+sciscape viewer -o viewer/index.html
+```
+
+### `sciscape gui` — GUI 실행
+
+```bash
+sciscape gui
+```
+
+## 출력 파일
+
+`sciscape landscape` 실행 후 output 디렉토리 구조:
 
 ```
-                           ┌─────────────────────────────────────────┐
-  Parquet Inputs           │         9-Stage Pipeline                │
- ┌──────────────┐          │                                         │
- │  abstracts   │─────────►│  1. Vectorization  (CountVectorizer)    │
- │  membership  │─────────►│  2. Aggregation    (cluster counts)     │
- └──────────────┘          │  3. Vocab Cleansing                     │
-                           │     3a. Notation/Spelling normalize     │
-                           │     3b. Plural singularization          │
-                           │     3c. Edit-distance merge (cluster-   │
-                           │         aware safety)                   │
-                           │     3d. Similarity graph → VocabSimGraph│
-                           │  4. Scoring        (c-TF-IDF + LLR)    │
-                           │  ─── Pass 2: Keyword Refinement ───     │
-                           │  5. Cooccurrence   (PMI edges)          │
-                           │  6. Term Network   (multi-layer graph)  │
-                           │     → Bridge merge (sim graph 1-hop)    │
-                           │  7. LLM Canonicalize (optional)         │
-                           │  ─── Pass 3: Metadata ───               │
-                           │  8. Depth          (broad/mid/specific) │
-                           │  9. Temporal       (year series, trends) │
-                           └────────────────┬────────────────────────┘
+output/
+├── membership.parquet       # uid + cluster_nano + cluster_micro
+├── blocks.parquet           # block-init 캐시 (gamma_block, seed 등 메타데이터 포함)
+├── abstracts_subset.parquet # 서브샘플된 초록 데이터
+├── keywords.parquet         # 키워드 테이블 (term, score, frequency, temporal 등)
+└── report/
+    ├── data.json            # 대시보드 데이터 (viewer 업로드용)
+    ├── index.html           # 메인 대시보드
+    ├── network_map.html     # 클러스터 네트워크 맵 (MDS)
+    ├── hierarchy_sunburst.html
+    ├── hierarchy_treemap.html
+    ├── temporal_heatmap.html
+    ├── temporal_trends.html
+    ├── landscape_detailed.html  # 키워드 annotation 클러스터 맵
+    └── report.html          # 전체 리포트 인덱스
+```
+
+## Block-Init 모드
+
+대규모 네트워크(수백만~수천만 노드)에서 효율적인 클러스터링을 위한 모드:
+
+1. **Block formation**: 높은 γ에서 dense "Lego 블록" 생성
+2. **Graph contraction**: 블록을 super-node로 축약 (10~100배 축소)
+3. **γ search on contracted graph**: 축약 그래프에서 빠른 해상도 탐색
+4. **Cascade hot start**: 인접 γ 결과를 초기값으로 전달, 축퇴 탈출
+5. **Hot start refinement**: 원본 그래프에서 최종 정제
+
+```python
+from sciscape.landscape import LandscapeConfig, run_landscape
+
+# auto: gamma_block = 10 × gamma_range 상한
+cfg = LandscapeConfig(gamma_block="auto")
+
+# 명시적 지정
+cfg = LandscapeConfig(gamma_block=0.01)
+
+# 비활성화 (기존 방식)
+cfg = LandscapeConfig(gamma_block=None)
+```
+
+Block 캐시는 `blocks.parquet`에 저장되며, 동일 γ_block + 노드 수이면 재사용됩니다.
+
+## 키워드 추출 파이프라인
+
+```
+                           ┌──────────────────────────────────────────┐
+  Parquet Inputs           │         10-Stage Pipeline                │
+ ┌──────────────┐          │                                          │
+ │  abstracts   │─────────►│  1. Vectorization  (CountVectorizer)     │
+ │  membership  │─────────►│  2. Vocab Merge    (edit-distance)       │
+ └──────────────┘          │  3. Aggregation    (cluster counts)      │
+                           │  4. Scoring        (c-TF-IDF + LLR)     │
+                           │  5. Normalization  (P1–P7 filters)       │
+                           │  6. Cooccurrence   (PMI edges)           │
+                           │  7. Term Network   (multi-layer graph)   │
+                           │  8. LLM Canonicalize (optional)          │
+                           │  9. Depth          (broad/mid/specific)  │
+                           │ 10. Temporal       (year series, trends) │
+                           └────────────────┬─────────────────────────┘
                                             │
                                             ▼
                                     ┌───────────────┐
-                                    │  keywords.parquet
-                                    │  + Dashboard HTML
-                                    │  + Plotly charts
+                                    │ keywords.parquet
+                                    │ + Dashboard HTML
+                                    │ + data.json
                                     └───────────────┘
 ```
 
@@ -84,155 +168,103 @@ python -m pip install .[viz]
 - P6: Cross-cluster 비특이적 용어 패널티
 - P7: Fragment suppression (경계/브릿지 중복)
 
-## CLI
+## Web Viewer
 
-```bash
-# 클러스터링
-sciscape cluster edges.zip edges.txt --levels 5,100 80,500 -o membership.parquet
+`report/data.json` 또는 `keywords.csv`를 GitHub Pages 뷰어에 업로드하면 브라우저에서 바로 탐색 가능:
 
-# 키워드 추출
-sciscape keywords abstracts.parquet membership.parquet \
-  --cluster-level cluster_micro --top-n 100 --include-title --enable-all \
-  -o keywords.parquet
+**지원 포맷:**
+- `data.json` — 전체 데이터 (네트워크, 시계열, 계층, 필터 이력)
+- `keywords.csv` / `.tsv` — 범용 (`cluster_id`, `term`, `score` 필수열)
 
-# 외부 데이터 변환
-sciscape convert wos savedrecs.txt -o abstracts.parquet
-sciscape convert scopus scopus_export.csv -o abstracts.parquet
-sciscape convert openalex works.jsonl -o abstracts.parquet
+서버 없음, 데이터 전송 없음. 브라우저 로컬에서만 처리됩니다.
 
-# 전체 파이프라인 (엣지 → 클러스터링 → 키워드 → 리포트)
-sciscape landscape edges.parquet abstracts.parquet -o output/landscape --n-nodes 100000
-```
+## Python API
 
-## 빠른 사용법
-
-### 1) Clustering
+### Landscape (전체 파이프라인)
 
 ```python
-from pathlib import Path
+from sciscape.landscape import LandscapeConfig, run_landscape
+
+result = run_landscape(
+    "edges.parquet",
+    "abstracts.parquet",
+    "output/",
+    config=LandscapeConfig(
+        min_docs_per_cluster=500,
+        gamma_block="auto",
+        n_target_nodes=100_000,
+    ),
+)
+# result["report_dir"], result["keywords_df"], ...
+```
+
+### Clustering
+
+```python
 from sciscape.clustering import LeidenConfig, run_pipeline
 
-config = LeidenConfig(
-    level_constraints=[(5, 100), (80, 500), (400, 5000)],
-    resolution_bounds=(1e-3, 5.0),
-    max_iterations=32,
-    log_history=True,
-)
-
 tables = run_pipeline(
-    zip_path=Path("Data/edge_list.zip"),
+    zip_path="edges.zip",
     inner_name="edges.txt",
-    config=config,
+    config=LeidenConfig(
+        level_constraints=[(5, 100), (80, 500)],
+        resolution_bounds=(1e-3, 5.0),
+    ),
 )
 ```
 
-### 2) Keyword Extraction
+### Keyword Extraction
 
 ```python
-from pathlib import Path
 from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
 
 cfg = KeywordExtractionConfig(
-    abstract_path=Path("abstracts.parquet"),
-    membership_path=Path("membership.parquet"),
-    # cluster_level=None → auto-detect finest level
+    abstract_path="abstracts.parquet",
+    membership_path="membership.parquet",
     include_title=True,
-    title_weight=1.5,
-    min_df_unigram=5,
-    min_df_phrase=5,
-    n_jobs=-1,
+    top_n_keywords=100,
+    normalization_enabled=True,
+    cooccurrence_enabled=True,
 )
-
 keywords = run_keyword_pipeline(cfg)
-keywords.to_parquet("keywords.parquet", index=False)
 ```
 
-### 3) Input Adapters
+### Input Adapters
 
 ```python
-from sciscape.adapters import read_wos, read_scopus, read_openalex
+from sciscape.adapters import read_wos, read_scopus, read_openalex, read_bibtex
 
-# Web of Science
-df = read_wos("savedrecs.txt")
-
-# Scopus
-df = read_scopus("scopus_export.csv")
-
-# OpenAlex (supports .jsonl, .parquet, .csv — auto-reconstructs inverted index)
 df = read_openalex("works.jsonl")
-
-# 결과를 파이프라인 입력으로 저장
+df = read_bibtex("references.bib")
 df.to_parquet("abstracts.parquet", index=False)
 ```
 
-### 4) Visualization
+### Visualization
 
 ```python
 from sciscape.keyword_extraction.visualization import (
-    export_dashboard,           # Self-contained HTML dashboard
-    plot_cluster_map,           # 2D network map (MDS/spring layout)
-    plot_cluster_map_with_keywords,  # Network map + keyword annotations
-    plot_cluster_treemap,       # Hierarchical treemap drill-down
-    plot_cluster_sunburst,      # Sunburst chart (cluster → depth → keyword)
-    plot_temporal_heatmap,      # Keyword × year heatmap
-    plot_cluster_trend_comparison,  # Cluster-level trend lines
-    plot_cluster_keywords,      # Top-N keywords per cluster (bar chart)
-    plot_score_distribution,    # Score box plots
-    plot_cross_cluster_terms,   # Shared terms heatmap
+    export_dashboard, export_report, export_viewer,
+    plot_cluster_map, plot_cluster_sunburst,
+    plot_temporal_heatmap, plot_cluster_trend_comparison,
 )
 
-# HTML 대시보드 (브라우저에서 열기)
-export_dashboard(keywords, output_path="dashboard.html", open_browser=True)
+# HTML 대시보드
+export_dashboard(keywords, "dashboard.html", open_browser=True)
 
-# 개별 Plotly 차트
-fig = plot_cluster_map(keywords, layout="mds")
-fig.show()
+# 전체 리포트 (대시보드 + 차트 + data.json)
+export_report(keywords, "report/", viz_data=viz_data)
 
-fig = plot_cluster_sunburst(keywords)
-fig.show()
+# 빈 뷰어 (GitHub Pages 배포용)
+export_viewer("viewer.html")
 ```
-
-### 5) Quality Filters
-
-파이프라인에 내장된 7가지 품질 필터로 도메인 특화 키워드 품질을 높입니다.
-
-```python
-from sciscape.keyword_extraction.config import VocabMergeConfig
-from sciscape.keyword_extraction.term_network import TermNetworkConfig
-from sciscape.keyword_extraction.depth import DepthConfig
-
-cfg = KeywordExtractionConfig(
-    ...,
-    # Stage 3: Vocab Cleansing (notation, plural, edit-distance, similarity graph)
-    vocab_merge=VocabMergeConfig(enabled=True),
-    # P1: 학술 보일러플레이트 제거
-    academic_stopwords_enabled=True,
-    # P5: 아티팩트 제거
-    artifact_filter_enabled=True,
-    # P6: Cross-cluster 패널티
-    cross_cluster_penalty_enabled=True,
-    # P7: Fragment suppression
-    fragment_suppression_enabled=True,
-    # Cooccurrence + Term Network
-    cooccurrence_enabled=True,
-    term_network=TermNetworkConfig(enabled=True, layers=["string", "token", "cooccurrence"]),
-    auto_merge_enabled=True,
-    short_term_expansion_enabled=True,
-    # Depth classification
-    depth=DepthConfig(enabled=True, n_levels=3),
-)
-```
-
-British/American 철자 변이(disc→disk, colour→color 등 35종)는 정규화에서 자동 처리됩니다.
-
-## I/O 스키마
-
-자세한 입출력 스키마 문서는 [`docs/io_schema.md`](../docs/io_schema.md)를 참고하세요.
 
 ## 개발/검증
 
 ```bash
-# (권장) venv 환경에서
-python -m pip install -e .[dev]
-pytest -q    # 420+ tests
+python -m pip install -e ".[dev,viz,arrow]"
+pytest -q    # 528 tests
 ```
+
+## I/O 스키마
+
+자세한 입출력 스키마 문서: [`docs/io_schema.md`](../docs/io_schema.md)
