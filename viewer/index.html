@@ -1686,14 +1686,18 @@ function exportCurrentData() {
   URL.revokeObjectURL(url);
 }
 
-// Init
+// Init: default to Overview (global) tab
 if (clusterIds.length) {
   const restored = restoreFromHash();
   if (!restored) {
-    clusterSelect.value = clusterIds[0];
-    currentClusterId = clusterIds[0];
-    currentCluster = DATA[clusterIds[0]];
-    updateMeta();
+    // Start on overview — no cluster pre-selected
+    currentTab = "overview";
+    tabEls.forEach(t => t.classList.remove("active"));
+    const ovTab = document.querySelector('.tab[data-tab="overview"]');
+    if (ovTab) ovTab.classList.add("active");
+    panels.forEach(p => p.classList.remove("active"));
+    const ovPanel = document.getElementById("panel-overview");
+    if (ovPanel) ovPanel.classList.add("active");
   }
   updateScopeUI();
   renderCurrentTab();
