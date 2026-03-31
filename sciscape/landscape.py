@@ -87,6 +87,28 @@ def _load_and_subsample(
     )
     log.info("Loaded %s edges in %.1fs", f"{len(edges):,}", time.perf_counter() - t0)
 
+    # Auto-detect and rename columns to canonical schema (uid1, uid2, rel_sum2)
+    col_map = {}
+    cols = set(edges.columns)
+    if "uid1" not in cols:
+        for alias in ("src", "source", "node1", "from"):
+            if alias in cols:
+                col_map[alias] = "uid1"
+                break
+    if "uid2" not in cols:
+        for alias in ("dst", "target", "node2", "to"):
+            if alias in cols:
+                col_map[alias] = "uid2"
+                break
+    if "rel_sum2" not in cols:
+        for alias in ("weight", "w", "value"):
+            if alias in cols:
+                col_map[alias] = "rel_sum2"
+                break
+    if col_map:
+        log.info("Column mapping: %s", col_map)
+        edges = edges.rename(col_map)
+
     log.info("Building graph for subsampling...")
     t0 = time.perf_counter()
     graph = build_graph(edges)
@@ -351,11 +373,18 @@ def _run_clustering(
             giant, objective=cfg.leiden_objective,
             default_seed=cfg.seed, default_iterations=cfg.leiden_iterations,
         )
-        contracted = runner.contract(nano_membership, combine_weights="sum", keep_loops=True)
+
+        # Compact membership IDs to 0..K-1 so igraph.contract_vertices
+        # produces exactly K supernodes (no empty-cluster gaps).
+        unique_ids = sorted(set(nano_membership))
+        id_remap = {old: new for new, old in enumerate(unique_ids)}
+        compact_membership = [id_remap[c] for c in nano_membership]
+
+        contracted = runner.contract(compact_membership, combine_weights="sum", keep_loops=True)
         n_contracted = contracted.vcount()
 
         # Compute nano cluster sizes for node_sizes parameter.
-        nano_sizes = Counter(nano_membership)
+        nano_sizes = Counter(compact_membership)
         nano_size_arr = np.array(
             [nano_sizes[i] for i in range(n_contracted)], dtype=np.uint64,
         )
@@ -394,8 +423,8 @@ def _run_clustering(
 
         log.info("  → micro: %d clusters (min_size=%d)", n_micro, micro_min_size)
 
-        # Map back to original nodes
-        micro_membership = [micro_mem_contracted[nano_membership[i]]
+        # Map back to original nodes (use compact IDs as contracted-graph indices)
+        micro_membership = [micro_mem_contracted[compact_membership[i]]
                             for i in range(len(nano_membership))]
 
         # Save both levels (nano uses -1 for undetermined, micro keeps valid IDs)
