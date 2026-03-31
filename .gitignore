@@ -7,3 +7,11 @@ __pycache__/
 .env.*
 !.env.example
 cpm-dendro/target/
+
+# Local data / output / experiments
+data/
+output/
+pilot_*.html
+pilot_*.parquet
+*.parquet
+!tests/**/*.parquet
