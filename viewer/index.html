@@ -270,11 +270,12 @@ let currentClusterId = null;
 let currentTab = "overview";
 let hierarchyView = "depth";
 let dictView = "keywords";
+let clusterIds = [];
 
 function _initClusters() {
   // Clear existing options
   clusterSelect.innerHTML = '<option value="">— Select cluster —</option>';
-  const clusterIds = Object.keys(DATA).map(Number).filter(n => !isNaN(n)).sort((a,b) => a-b);
+  clusterIds = Object.keys(DATA).map(Number).filter(n => !isNaN(n)).sort((a,b) => a-b);
   clusterIds.forEach(cid => {
     const opt = document.createElement("option");
     opt.value = cid;
