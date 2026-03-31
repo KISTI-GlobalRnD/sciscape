@@ -68,20 +68,32 @@ class LeidenRunner:
         seed: int | None = None,
         n_iterations: int | None = None,
         initial_membership: Sequence[int] | None = None,
+        node_sizes: Sequence[int] | None = None,
     ) -> LeidenRunResult:
-        """Execute a Leiden optimisation and return the membership vector."""
+        """Execute a Leiden optimisation and return the membership vector.
+
+        Parameters
+        ----------
+        node_sizes : sequence of int, optional
+            Per-vertex sizes, used by CPM on contracted graphs so the
+            resolution term scales with the number of original nodes
+            each supernode represents.
+        """
 
         seed = self._default_seed if seed is None else seed
         n_iterations = self._default_iterations if n_iterations is None else n_iterations
         objective = self._objective if objective is None else objective
 
         partition_cls = partition_class(objective)
-        partition = partition_cls(
-            self._graph,
+        kwargs: dict = dict(
             weights=self._weights,
-            initial_membership=list(initial_membership) if initial_membership is not None else None,
             resolution_parameter=resolution,
         )
+        if initial_membership is not None:
+            kwargs["initial_membership"] = list(initial_membership)
+        if node_sizes is not None:
+            kwargs["node_sizes"] = list(node_sizes)
+        partition = partition_cls(self._graph, **kwargs)
 
         if seed is not None:
             self._optimiser.set_rng_seed(int(seed))

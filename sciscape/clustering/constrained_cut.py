@@ -1,9 +1,15 @@
 """Size-constrained optimal cut on a binary dendrogram.
 
-Given a scipy-format linkage matrix and a minimum cluster size *k*, find the
-partition that **maximizes the number of clusters** subject to every cluster
-having at least *k* nodes.  Ties in cluster count are broken by **total
-stability** (sum of persistence values across all leaf clusters).
+Given a linkage matrix (similarity format, non-increasing heights) and a
+minimum cluster size *k*, find the partition that **maximizes the number of
+clusters** subject to every cluster having at least *k* nodes.  Ties in
+cluster count are broken by **total stability** (sum of persistence values).
+
+**Important**: This module expects similarity linkage where merge heights are
+non-increasing (e.g., CPM density).  Persistence = γ_birth − γ_death is
+positive under this convention.  Do NOT pass standard scipy distance linkage
+(non-decreasing heights) — persistence values would be negative and
+tie-breaking would produce wrong results.
 
 The algorithm is a single bottom-up pass over the dendrogram tree — O(n) time,
 O(n) space — and is provably optimal for the count-maximisation objective.
@@ -27,7 +33,7 @@ References
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import List, Optional, Set
 
 import numpy as np
 
@@ -56,6 +62,10 @@ class CutResult:
     """Dendrogram node IDs (using scipy's internal-node indexing) selected by
     the cut.  Leaves use indices ``0..n-1``; internal nodes ``n..2n-2``."""
 
+    feasible: bool
+    """Whether a valid partition satisfying min_size was found.
+    If False, the result is a single-cluster fallback that may violate min_size."""
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -70,71 +80,23 @@ class _DPState:
     action: str         # "keep" | "split" | "infeasible"
 
 
-def _persistence(
-    node_idx: int,
-    linkage: np.ndarray,
-    n_leaves: int,
-) -> float:
-    """Compute persistence = γ_birth − γ_death for a dendrogram node.
-
-    * For a **leaf**, persistence = 0 (no merge created it).
-    * For an **internal node**, γ_birth = its own merge height.
-      γ_death = merge height of its parent (or 0 if it is the root).
-
-    Since in agglomerative clustering merge heights decrease (highest ρ
-    merged first), γ_birth > γ_death, so persistence is positive.
-    """
-    if node_idx < n_leaves:
-        return 0.0
-
-    row = node_idx - n_leaves
-    gamma_birth = linkage[row, 2]
-
-    # Find parent: the first row that references node_idx as a child
-    # (for efficiency we precompute this in the caller, but here we
-    # keep the logic self-contained for clarity)
-    gamma_death = 0.0  # root has no parent
-    for r in range(len(linkage)):
-        if int(linkage[r, 0]) == node_idx or int(linkage[r, 1]) == node_idx:
-            if r != row:  # not self
-                gamma_death = linkage[r, 2]
-                break
-
-    return gamma_birth - gamma_death
-
-
-def _build_parent_map(linkage: np.ndarray, n_leaves: int) -> Dict[int, float]:
+def _build_parent_height(linkage: np.ndarray, n_leaves: int) -> np.ndarray:
     """Map each node to the merge height of its parent (γ_death).
 
-    Returns dict: node_id → parent_merge_height.  The root has γ_death = 0.
+    Returns numpy array of length (n_leaves + n_internal), indexed by node ID.
+    The root has γ_death = 0.
     """
-    parent_height: Dict[int, float] = {}
-    for row_idx in range(len(linkage)):
+    n_internal = len(linkage)
+    n_total = n_leaves + n_internal
+    parent_height = np.zeros(n_total, dtype=np.float64)
+    for row_idx in range(n_internal):
         left = int(linkage[row_idx, 0])
         right = int(linkage[row_idx, 1])
         height = linkage[row_idx, 2]
         parent_height[left] = height
         parent_height[right] = height
-    # Root node has no parent → γ_death = 0
-    root_id = n_leaves + len(linkage) - 1
-    parent_height.setdefault(root_id, 0.0)
+    # Root node has no parent → γ_death = 0 (already initialized to 0)
     return parent_height
-
-
-def _collect_leaves(
-    node_idx: int,
-    linkage: np.ndarray,
-    n_leaves: int,
-) -> Set[int]:
-    """Collect all leaf indices under a dendrogram node."""
-    if node_idx < n_leaves:
-        return {node_idx}
-    row = node_idx - n_leaves
-    left = int(linkage[row, 0])
-    right = int(linkage[row, 1])
-    return _collect_leaves(left, linkage, n_leaves) | _collect_leaves(
-        right, linkage, n_leaves
-    )
 
 
 def _collect_leaves_iterative(
@@ -142,7 +104,7 @@ def _collect_leaves_iterative(
     linkage: np.ndarray,
     n_leaves: int,
 ) -> Set[int]:
-    """Iterative version of _collect_leaves to avoid recursion limit."""
+    """Collect all leaf indices under a dendrogram node (iterative)."""
     leaves: Set[int] = set()
     stack = [node_idx]
     while stack:
@@ -164,6 +126,7 @@ def constrained_cut(
     linkage: np.ndarray,
     min_size: int,
     *,
+    leaf_sizes: Optional[np.ndarray] = None,
     n_leaves: Optional[int] = None,
 ) -> CutResult:
     """Find the partition maximising cluster count with minimum size constraint.
@@ -171,11 +134,19 @@ def constrained_cut(
     Parameters
     ----------
     linkage : np.ndarray, shape (n-1, 4)
-        Scipy-format linkage matrix.  Each row ``[left, right, height, size]``.
-        Rows are ordered by merge sequence (row 0 = first merge = highest ρ
-        for CPM-critical dendrograms where merges go from high to low density).
+        **Similarity** linkage matrix (non-increasing heights).
+        Each row ``[left, right, height, size]``.
+        Row 0 = first merge = highest density.  This is the format produced
+        by ``build_dendrogram(as_distance=False)``.
+        Do NOT pass scipy distance linkage (non-decreasing heights).
     min_size : int
-        Every cluster in the output must have at least this many leaf nodes.
+        Every cluster in the output must have at least this many leaf nodes
+        (or original nodes when ``leaf_sizes`` is provided).
+    leaf_sizes : np.ndarray or None, optional
+        Size of each leaf node.  Pass this when the dendrogram was built on
+        a **contracted graph** (supernodes) so that the size constraint
+        refers to original node counts, not supernode counts.  Shape
+        ``(n_leaves,)`` with integer dtype.  If None, every leaf has size 1.
     n_leaves : int, optional
         Number of original data points (leaves).  If *None*, inferred as
         ``len(linkage) + 1``.
@@ -184,6 +155,8 @@ def constrained_cut(
     -------
     CutResult
         Optimal partition with cluster count, stability, and node assignments.
+        Check ``result.feasible`` to determine if the min_size constraint
+        was satisfiable.
     """
     if linkage.ndim != 2 or linkage.shape[1] != 4:
         raise ValueError(f"linkage must be (n-1, 4), got {linkage.shape}")
@@ -198,27 +171,34 @@ def constrained_cut(
 
     # --- Precompute subtree sizes and parent heights ---
     subtree_size = np.zeros(n_total, dtype=np.int64)
-    for i in range(n_leaves):
-        subtree_size[i] = 1
+    if leaf_sizes is not None:
+        if len(leaf_sizes) != n_leaves:
+            raise ValueError(
+                f"leaf_sizes length ({len(leaf_sizes)}) must equal "
+                f"n_leaves ({n_leaves})"
+            )
+        for i in range(n_leaves):
+            subtree_size[i] = int(leaf_sizes[i])
+    else:
+        for i in range(n_leaves):
+            subtree_size[i] = 1
     for row_idx in range(n_internal):
         node_id = n_leaves + row_idx
         subtree_size[node_id] = int(linkage[row_idx, 3])
 
-    parent_height = _build_parent_map(linkage, n_leaves)
+    parent_height = _build_parent_height(linkage, n_leaves)
 
     # --- Bottom-up DP ---
-    dp = [_DPState(0, 0.0, False, "infeasible")] * n_total
+    dp = [_DPState(0, 0.0, False, "infeasible") for _ in range(n_total)]
 
     # Leaves
     for i in range(n_leaves):
-        if min_size <= 1:
+        if subtree_size[i] >= min_size:
             dp[i] = _DPState(1, 0.0, True, "keep")
         else:
             dp[i] = _DPState(0, 0.0, False, "infeasible")
 
-    # Internal nodes (bottom-up: row 0 processed first, but we need children
-    # processed before parents — linkage rows are in merge order, and children
-    # always have smaller IDs than parents in scipy format)
+    # Internal nodes (bottom-up: children always have smaller IDs than parents)
     for row_idx in range(n_internal):
         node_id = n_leaves + row_idx
         left = int(linkage[row_idx, 0])
@@ -231,7 +211,7 @@ def constrained_cut(
         # Option 1: Keep as single cluster
         if size >= min_size:
             gamma_birth = linkage[row_idx, 2]
-            gamma_death = parent_height.get(node_id, 0.0)
+            gamma_death = parent_height[node_id]
             node_persistence = gamma_birth - gamma_death
             keep = _DPState(1, node_persistence, True, "keep")
         else:
@@ -277,6 +257,7 @@ def constrained_cut(
             n_clusters=1,
             total_stability=0.0,
             cut_nodes=[root_id],
+            feasible=False,
         )
 
     # Traceback via iterative DFS
@@ -317,7 +298,7 @@ def constrained_cut(
         else:
             row = cut_node - n_leaves
             gamma_birth = linkage[row, 2]
-            gamma_death = parent_height.get(cut_node, 0.0)
+            gamma_death = parent_height[cut_node]
             total_stability += gamma_birth - gamma_death
 
     return CutResult(
@@ -326,6 +307,7 @@ def constrained_cut(
         n_clusters=len(partition),
         total_stability=total_stability,
         cut_nodes=cut_nodes,
+        feasible=True,
     )
 
 

@@ -12,8 +12,13 @@ use crate::graph::{HalfEdge, SparseGraph};
 /// Count common neighbors for each edge and return a new graph with
 /// reweighted edges.
 ///
-/// Uses sorted neighbor intersection for O(deg) per edge.
-/// Total: O(Σ_e min(deg(u), deg(v))) ≈ O(m·√m) for sparse graphs.
+/// Per edge (u,v): sorted intersection is O(deg(u) + deg(v)), plus
+/// O(log deg(v)) for reverse-edge binary search.
+/// Total: O(Σ_{(u,v)∈E} [deg(u) + deg(v) + log deg(v)]).
+/// Can be large on high-degree graphs.
+///
+/// **Requires** the input graph to be simple (no duplicate edges).
+/// `SparseGraph::from_edges()` guarantees this via coalescing.
 pub fn reweight_triadic(graph: &SparseGraph) -> SparseGraph {
     let n = graph.n;
     let mut new_edges = graph.edges.clone();
@@ -41,14 +46,12 @@ pub fn reweight_triadic(graph: &SparseGraph) -> SparseGraph {
             // Update both directions
             new_edges[idx].weight *= multiplier;
 
-            // Find reverse edge v→u
+            // Find reverse edge v→u via binary search (neighbors are sorted by target)
             let v_start = offsets[v];
             let v_end = offsets[v + 1];
-            for ridx in v_start..v_end {
-                if graph.edges[ridx].target == u as u32 {
-                    new_edges[ridx].weight *= multiplier;
-                    break;
-                }
+            let v_slice = &graph.edges[v_start..v_end];
+            if let Ok(pos) = v_slice.binary_search_by_key(&(u as u32), |e| e.target) {
+                new_edges[v_start + pos].weight *= multiplier;
             }
         }
     }
