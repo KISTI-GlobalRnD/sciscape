@@ -136,6 +136,10 @@ class KeywordExtractionConfig:
     cooccurrence_min_count: int = 3
     term_network: Optional[TermNetworkConfig] = None
 
+    # Temporal metrics (Stage 10)
+    bayesian_alpha: float = 0.5   # Laplace smoothing for log-lift / Bayesian log-odds
+    bayesian_prior: float = 0.5   # prior strength for Bayesian log-odds
+
     # Depth estimation (Stage 9)
     depth: Optional[DepthConfig] = None
 
@@ -194,6 +198,10 @@ class KeywordExtractionConfig:
         return base
 
     def __post_init__(self) -> None:
+        if self.ngram_min < 1:
+            raise ValueError(
+                f"ngram_min must be >= 1, got {self.ngram_min}"
+            )
         if self.ngram_min > self.ngram_max:
             raise ValueError(
                 f"ngram_min ({self.ngram_min}) must be <= ngram_max ({self.ngram_max})"
@@ -205,6 +213,22 @@ class KeywordExtractionConfig:
         if self.top_n_unigrams < 1:
             raise ValueError(
                 f"top_n_unigrams must be >= 1, got {self.top_n_unigrams}"
+            )
+        # min_df must be <= max_df when both are the same type
+        # (int=absolute count, float=ratio — cross-type comparison is invalid)
+        if (type(self.min_df_unigram) is type(self.max_df_unigram)
+                and isinstance(self.min_df_unigram, (int, float))
+                and self.min_df_unigram > self.max_df_unigram):
+            raise ValueError(
+                f"min_df_unigram ({self.min_df_unigram}) must be <= "
+                f"max_df_unigram ({self.max_df_unigram})"
+            )
+        if (type(self.min_df_phrase) is type(self.max_df_phrase)
+                and isinstance(self.min_df_phrase, (int, float))
+                and self.min_df_phrase > self.max_df_phrase):
+            raise ValueError(
+                f"min_df_phrase ({self.min_df_phrase}) must be <= "
+                f"max_df_phrase ({self.max_df_phrase})"
             )
         if not (0.0 <= self.mmr_jaccard_lambda <= 1.0):
             raise ValueError(

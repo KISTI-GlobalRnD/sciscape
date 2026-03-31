@@ -49,6 +49,8 @@ class LandscapeConfig:
     # Block-init mode: high-γ blocks → contraction → cascade hot start
     # "auto" → 10 × gamma_range[1]; None → disabled; float → explicit value
     gamma_block: Optional[float] = "auto"  # type: ignore[assignment]
+    gamma_block_margin: float = 0.9  # multiplier for gamma_block upper bound in cascade
+    gamma_log_step: float = 0.3      # log10-step size for cascade gamma spacing
 
     # Keyword extraction
     top_n_unigrams: int = 200
@@ -94,20 +96,26 @@ def _load_and_subsample(
     col_map = {}
     cols = set(edges.columns)
     if "uid1" not in cols:
-        for alias in ("src", "source", "node1", "from"):
-            if alias in cols:
-                col_map[alias] = "uid1"
-                break
+        matches = [a for a in ("src", "source", "node1", "from") if a in cols]
+        if matches:
+            if len(matches) > 1:
+                log.warning("Ambiguous uid1 mapping: columns %s all match; using %r",
+                            matches, matches[0])
+            col_map[matches[0]] = "uid1"
     if "uid2" not in cols:
-        for alias in ("dst", "target", "node2", "to"):
-            if alias in cols:
-                col_map[alias] = "uid2"
-                break
+        matches = [a for a in ("dst", "target", "node2", "to") if a in cols]
+        if matches:
+            if len(matches) > 1:
+                log.warning("Ambiguous uid2 mapping: columns %s all match; using %r",
+                            matches, matches[0])
+            col_map[matches[0]] = "uid2"
     if "rel_sum2" not in cols:
-        for alias in ("weight", "w", "value"):
-            if alias in cols:
-                col_map[alias] = "rel_sum2"
-                break
+        matches = [a for a in ("weight", "w", "value") if a in cols]
+        if matches:
+            if len(matches) > 1:
+                log.warning("Ambiguous rel_sum2 mapping: columns %s all match; using %r",
+                            matches, matches[0])
+            col_map[matches[0]] = "rel_sum2"
     if col_map:
         log.info("Column mapping: %s", col_map)
         edges = edges.rename(col_map)
@@ -286,9 +294,9 @@ def _run_clustering(
 
             # Cascade targets: log-spaced from best_gamma up to near γ_block
             lo_g = _math.log10(best_gamma)
-            hi_g = _math.log10(gamma_block * 0.9)
+            hi_g = _math.log10(gamma_block * cfg.gamma_block_margin)
             if hi_g > lo_g:
-                n_steps = min(5, max(2, int((hi_g - lo_g) / 0.3) + 1))
+                n_steps = min(5, max(2, int((hi_g - lo_g) / cfg.gamma_log_step) + 1))
                 cascade_gammas = [
                     10 ** (lo_g + i * (hi_g - lo_g) / (n_steps - 1))
                     for i in range(n_steps)
@@ -405,7 +413,7 @@ def _run_clustering(
         # Constrained cut: min_size in original-node terms.
         # Use a fraction of total nodes as micro min_size (same cluster
         # count maximisation objective, just at a coarser scale).
-        len(nano_membership)
+
         micro_min_size = max(
             int(nano_size_arr.sum()) // 20,  # ~5% of total
             int(nano_size_arr.max()) + 1,     # larger than biggest nano

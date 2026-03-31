@@ -155,6 +155,12 @@ def build_dendrogram(
             raise ValueError(
                 f"node_sizes must have shape ({n},), got {ns_arr.shape}"
             )
+        if np.any(np.isnan(node_sizes.astype(np.float64))):
+            raise ValueError("node_sizes must not contain NaN values")
+        if np.any(ns_arr < 1):
+            raise ValueError(
+                f"node_sizes must all be >= 1, got min={ns_arr.min()}"
+            )
 
     # Call Rust implementation
     linkage = cpm_dendro.build_cpm_dendrogram(

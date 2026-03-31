@@ -346,6 +346,7 @@ class TermNetwork:
             sub_idx = np.array(member_indices)
             sub_mat = thresholded[np.ix_(sub_idx, sub_idx)].tolil()
             max_iter = sub_mat.nnz // 2 + 1  # upper bound: remove all edges
+            prev_comp_sizes = None
             for _split_iter in range(max_iter):
                 n_sub, sub_labels = sp.csgraph.connected_components(
                     sub_mat.tocsr(), directed=False, return_labels=True
@@ -356,6 +357,9 @@ class TermNetwork:
                     comp_sizes[sl] = comp_sizes.get(sl, 0) + 1
                 if all(s <= max_size for s in comp_sizes.values()):
                     break
+                if prev_comp_sizes is not None and comp_sizes == prev_comp_sizes:
+                    break
+                prev_comp_sizes = comp_sizes
                 # Find and remove weakest edge in any oversized component
                 min_val, min_i, min_j = float("inf"), -1, -1
                 csr = sub_mat.tocsr()

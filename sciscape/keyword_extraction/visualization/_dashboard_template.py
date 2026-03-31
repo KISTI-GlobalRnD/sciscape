@@ -94,12 +94,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="tab active" data-tab="overview" data-scope="global">Overview</div>
   <div class="tab" data-tab="crosscluster" data-scope="global">Cross-Cluster</div>
   <div class="tab-divider"></div>
-  <div class="tab-group-label">Cluster</div>
-  <div class="tab" data-tab="keywords" data-scope="cluster">Keywords</div>
-  <div class="tab" data-tab="temporal" data-scope="cluster">Temporal</div>
-  <div class="tab" data-tab="hierarchy" data-scope="cluster">Hierarchy</div>
-  <div class="tab" data-tab="network" data-scope="cluster">Network</div>
-  <div class="tab" data-tab="dictionary" data-scope="cluster">Dictionary</div>
+  <div class="tab-group-label">All / Cluster</div>
+  <div class="tab" data-tab="keywords">Keywords</div>
+  <div class="tab" data-tab="temporal">Temporal</div>
+  <div class="tab" data-tab="hierarchy">Hierarchy</div>
+  <div class="tab" data-tab="network">Network</div>
+  <div class="tab" data-tab="dictionary">Dictionary</div>
 </div>
 
 <div class="container">
@@ -120,11 +120,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
   <div class="panel" id="panel-keywords">
     <div class="panel-desc">
-      선택된 클러스터의 키워드를 c-TF-IDF 점수 기준으로 정렬하여 보여줍니다.
-      막대 위에 마우스를 올리면 점수, 빈도, 문서 커버리지, 깊이 수준 등 세부 정보를 확인할 수 있습니다.
-      색상은 깊이 수준(Broad=파랑, Mid=빨강, Specific=초록)에 따라 구분됩니다.
+      클러스터를 선택하면 해당 클러스터의 키워드 랭킹을 표시합니다.
+      선택하지 않으면 전체 클러스터의 Top 키워드를 요약합니다.
     </div>
-    <div class="chart-card"><div id="chart-keywords" style="width:100%;min-height:500px;"></div></div>
+    <div id="keywords-global" style="display:none;">
+      <div class="chart-card"><div id="chart-keywords-global" style="width:100%;min-height:500px;"></div></div>
+      <div class="chart-card"><div id="keywords-global-table" style="max-height:600px;overflow:auto;"></div></div>
+    </div>
+    <div id="keywords-cluster" style="display:none;">
+      <div class="chart-card"><div id="chart-keywords" style="width:100%;min-height:500px;"></div></div>
+    </div>
   </div>
 
   <div class="panel" id="panel-temporal">
@@ -171,13 +176,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 
   <div class="panel" id="panel-network">
-    <div class="panel-desc">
+    <div class="panel-desc" id="network-desc">
       키워드 간 <b>실제 공출현(co-occurrence) 네트워크</b>입니다.
       동일 문헌에서 함께 등장한 빈도를 기반으로 엣지가 생성됩니다.
       엣지 두께는 공출현 빈도에, 노드 크기는 점수에 비례합니다.
       색상은 깊이 수준(Broad=파랑, Mid=빨강, Specific=초록)입니다. 드래그와 줌이 가능합니다.
     </div>
     <div class="chart-card">
+      <div class="dict-subtabs" id="network-subtabs" style="display:none;">
+        <div class="dict-subtab active" data-view="cluster">Cluster Network</div>
+        <div class="dict-subtab" data-view="keyword">Keyword Network</div>
+      </div>
       <div style="margin-bottom:.5rem;display:flex;align-items:center;gap:1rem;">
         <label style="font-size:.85rem;">Min edge weight:</label>
         <input type="range" id="network-edge-slider" min="0" max="100" value="0" style="flex:1;max-width:300px;">
@@ -271,12 +280,13 @@ let currentCluster = null;
 let currentClusterId = null;
 let currentTab = "overview";
 let hierarchyView = "depth";
+let networkView = "cluster";
 let dictView = "keywords";
 let clusterIds = [];
 
 function _initClusters() {
   // Clear existing options
-  clusterSelect.innerHTML = '<option value="">— Select cluster —</option>';
+  clusterSelect.innerHTML = '<option value="">\u2726 All Clusters</option>';
   clusterIds = Object.keys(DATA).map(Number).filter(n => !isNaN(n)).sort((a,b) => a-b);
   clusterIds.forEach(cid => {
     const opt = document.createElement("option");
@@ -401,12 +411,15 @@ if (DATA) {
 }
 
 // Tab switching
-const globalTabs = new Set(["overview", "crosscluster"]);
+const globalOnlyTabs = new Set(["overview", "crosscluster"]);
 function updateScopeUI() {
-  const isGlobal = globalTabs.has(currentTab);
   const bar = document.getElementById("controls-bar");
-  if (isGlobal) { bar.classList.add("dimmed"); } else { bar.classList.remove("dimmed"); }
-  metaEl.style.display = isGlobal ? "none" : "flex";
+  if (globalOnlyTabs.has(currentTab)) {
+    bar.classList.add("dimmed");
+  } else {
+    bar.classList.remove("dimmed");
+  }
+  metaEl.style.display = "flex";
 }
 
 tabEls.forEach(tab => {
@@ -433,6 +446,16 @@ document.querySelectorAll("#hierarchy-subtabs .dict-subtab").forEach(st => {
   });
 });
 
+// Network subtabs
+document.querySelectorAll("#network-subtabs .dict-subtab").forEach(st => {
+  st.addEventListener("click", () => {
+    document.querySelectorAll("#network-subtabs .dict-subtab").forEach(s => s.classList.remove("active"));
+    st.classList.add("active");
+    networkView = st.dataset.view;
+    renderNetwork();
+  });
+});
+
 // Dictionary subtabs
 document.querySelectorAll("#dict-subtabs .dict-subtab").forEach(st => {
   st.addEventListener("click", () => {
@@ -449,15 +472,38 @@ document.getElementById("crosscluster-mode").addEventListener("change", () => re
 
 // Cluster change
 clusterSelect.addEventListener("change", () => {
-  currentClusterId = Number(clusterSelect.value);
-  currentCluster = DATA[currentClusterId];
+  const val = clusterSelect.value;
+  if (val === "") {
+    currentClusterId = null;
+    currentCluster = null;
+  } else {
+    currentClusterId = Number(val);
+    currentCluster = DATA[currentClusterId];
+  }
   updateMeta();
+  updateScopeUI();
   updateHash();
   renderCurrentTab();
 });
 
 function updateMeta() {
-  if (!currentCluster) return;
+  if (!currentCluster) {
+    // Global summary
+    const totalKw = clusterIds.reduce((s, c) => s + (DATA[c].keywords||[]).length, 0);
+    const allKws = clusterIds.flatMap(c => DATA[c].keywords || []);
+    const avgScore = allKws.length ? (allKws.reduce((s, k) => s + k.score, 0) / allKws.length).toFixed(4) : "N/A";
+    const depthCounts = {};
+    allKws.forEach(k => { if (k.depth_level != null) depthCounts[k.depth_level] = (depthCounts[k.depth_level]||0)+1; });
+    const depthStr = Object.entries(depthCounts).sort((a,b)=>a[0]-b[0]).map(([l,c]) => `L${l}: ${c}`).join(", ") || "N/A";
+    metaEl.innerHTML = `
+      <div class="meta-item"><div class="meta-label">Clusters</div><div class="meta-value">${clusterIds.length}</div></div>
+      <div class="meta-item"><div class="meta-label">Total Keywords</div><div class="meta-value">${totalKw}</div></div>
+      <div class="meta-item"><div class="meta-label">Avg Score</div><div class="meta-value">${avgScore}</div></div>
+      <div class="meta-item"><div class="meta-label">Depth</div><div class="meta-value">${depthStr}</div></div>
+    `;
+    metaEl.style.display = "flex";
+    return;
+  }
   const kws = currentCluster.keywords;
   const avgScore = (kws.reduce((s, k) => s + k.score, 0) / kws.length).toFixed(4);
   const avgFreq = Math.round(kws.reduce((s, k) => s + k.frequency, 0) / kws.length).toLocaleString();
@@ -483,14 +529,11 @@ function updateMeta() {
 function renderCurrentTab() {
   if (currentTab === "crosscluster") { renderCrossCluster(); return; }
   if (currentTab === "overview") { renderOverview(); return; }
-  if (!currentCluster) return;
-  switch(currentTab) {
-    case "keywords": renderKeywords(); break;
-    case "temporal": renderTemporal(); break;
-    case "hierarchy": renderHierarchy(); break;
-    case "network": renderNetwork(); break;
-    case "dictionary": renderDictionary(); break;
-  }
+  if (currentTab === "keywords") { renderKeywords(); return; }
+  if (currentTab === "temporal") { renderTemporal(); return; }
+  if (currentTab === "hierarchy") { renderHierarchy(); return; }
+  if (currentTab === "network") { renderNetwork(); return; }
+  if (currentTab === "dictionary") { renderDictionary(); return; }
 }
 
 const depthNames = { 0: "Broad", 1: "Mid", 2: "Specific" };
@@ -498,7 +541,18 @@ const depthColors = { 0: "#636EFA", 1: "#EF553B", 2: "#00CC96" };
 
 // ---- Tab 1: Keywords ----
 function renderKeywords() {
-  if (!currentCluster) return;
+  const globalEl = document.getElementById("keywords-global");
+  const clusterEl = document.getElementById("keywords-cluster");
+  if (!currentCluster) {
+    // Global view: top keywords per cluster
+    globalEl.style.display = "block";
+    clusterEl.style.display = "none";
+    renderKeywordsGlobal();
+    return;
+  }
+  globalEl.style.display = "none";
+  clusterEl.style.display = "block";
+
   const kws = currentCluster.keywords.slice(0, 30);
   const terms = kws.map(k => k.term).reverse();
   const scores = kws.map(k => k.score).reverse();
@@ -528,9 +582,60 @@ function renderKeywords() {
   }, { responsive: true, displaylogo: false });
 }
 
+function renderKeywordsGlobal() {
+  const topN = 5;
+  // Collect top keywords per cluster
+  const rows = [];
+  const traces = [];
+  const palette = Plotly.d3 ? Plotly.d3.scale.category20().range() :
+    ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf",
+     "#aec7e8","#ffbb78","#98df8a","#ff9896","#c5b0d5","#c49c94","#f7b6d2","#c7c7c7","#dbdb8d","#9edae5"];
+  clusterIds.forEach((cid, ci) => {
+    const cl = DATA[cid];
+    if (!cl || !cl.keywords) return;
+    const kws = cl.keywords.slice(0, topN);
+    const label = cl.label || `C${cid}`;
+    kws.forEach((k, ki) => {
+      rows.push({ cluster: cid, cluster_label: label, rank: ki + 1, term: k.term, score: k.score, frequency: k.frequency });
+    });
+    traces.push({
+      name: `C${cid}`,
+      type: "bar",
+      x: kws.map(k => k.term),
+      y: kws.map(k => k.score),
+      text: kws.map(k => k.score.toFixed(3)),
+      textposition: "outside",
+      hovertext: kws.map(k => `<b>${k.term}</b><br>Cluster: ${label}<br>Score: ${k.score.toFixed(4)}<br>Freq: ${k.frequency.toLocaleString()}`),
+      hoverinfo: "text",
+      marker: { color: palette[ci % palette.length] }
+    });
+  });
+
+  // Grouped bar chart
+  Plotly.react("chart-keywords-global", traces, {
+    title: `Top ${topN} Keywords per Cluster`,
+    barmode: "group",
+    xaxis: { title: "Keyword", tickangle: -45 },
+    yaxis: { title: "Score" },
+    margin: { l: 60, r: 30, t: 50, b: 120 },
+    height: 500,
+    legend: { orientation: "h", y: -0.35 },
+    template: "plotly_white"
+  }, { responsive: true, displaylogo: false });
+
+  // Summary table
+  let html = '<table class="merge-table"><thead><tr><th>Cluster</th><th>Rank</th><th>Keyword</th><th>Score</th><th>Frequency</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr style="cursor:pointer" onclick="document.getElementById('cluster-select').value='${r.cluster}';document.getElementById('cluster-select').dispatchEvent(new Event('change'))">`;
+    html += `<td>${r.cluster_label}</td><td>${r.rank}</td><td><b>${r.term}</b></td><td>${r.score.toFixed(4)}</td><td>${r.frequency.toLocaleString()}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById("keywords-global-table").innerHTML = html;
+}
+
 // ---- Tab 2: Temporal ----
 function renderTemporal() {
-  if (!currentCluster) return;
+  if (!currentCluster) { renderTemporalGlobal(); return; }
   renderTemporalHighlights();
   const metric = document.getElementById("temporal-metric").value;
   const metricLabels = {
@@ -582,14 +687,104 @@ function renderTemporal() {
   }, { responsive: true, displaylogo: false });
 }
 
+function renderTemporalGlobal() {
+  // Heatmap: clusters × years, value = total docs
+  const metric = document.getElementById("temporal-metric").value;
+  const metricLabels = { "pub_year_series": "Documents", "ppm_series": "PPM", "loglift_series": "Log-Lift" };
+  const yLabel = metricLabels[metric] || metric;
+  const yearSet = new Set();
+  const clusterData = [];
+  clusterIds.forEach(cid => {
+    const cl = DATA[cid];
+    if (!cl || !cl.keywords) return;
+    const agg = {};
+    cl.keywords.forEach(k => {
+      const series = k[metric] || k.temporal || {};
+      Object.entries(series).forEach(([y, v]) => { yearSet.add(y); agg[y] = (agg[y] || 0) + v; });
+    });
+    clusterData.push({ cid, label: cl.label, agg });
+  });
+  const years = [...yearSet].sort();
+  if (!years.length) {
+    Plotly.react("chart-temporal", [], {
+      title: "No temporal data available", height: 300,
+      annotations: [{ text: "Upload data with temporal series", xref: "paper", yref: "paper", x: 0.5, y: 0.5, showarrow: false }]
+    });
+    return;
+  }
+  const z = clusterData.map(cd => years.map(y => cd.agg[y] || 0));
+  const labels = clusterData.map(cd => `C${cd.cid}: ${cd.label.split(",")[0]}`);
+  Plotly.react("chart-temporal", [{
+    type: "heatmap", z, x: years, y: labels,
+    colorscale: "YlOrRd", hovertemplate: "<b>%{y}</b><br>Year: %{x}<br>" + yLabel + ": %{z:,.1f}<extra></extra>"
+  }], {
+    title: `Temporal Heatmap (${yLabel}) — All Clusters`,
+    xaxis: { title: "Year", dtick: 2, tickformat: "d" },
+    yaxis: { autorange: "reversed" },
+    margin: { l: 250, r: 30, t: 50, b: 60 },
+    height: Math.max(400, clusterData.length * 20 + 100),
+    template: "plotly_white"
+  }, { responsive: true, displaylogo: false });
+  // Hide per-cluster highlights
+  const hlEl = document.getElementById("temporal-highlights");
+  if (hlEl) hlEl.innerHTML = "";
+}
+
 // ---- Tab 3: Hierarchy ----
 function renderHierarchy() {
-  if (!currentCluster) return;
+  if (!currentCluster) { renderHierarchyGlobal(); return; }
   if (hierarchyView === "subphrase") {
     renderSubphraseTree();
   } else {
     renderDepthSunburst();
   }
+}
+
+function renderHierarchyGlobal() {
+  // Stacked bar: depth distribution per cluster
+  const depthData = {};  // depth_level -> [count per cluster]
+  const labels = [];
+  clusterIds.forEach(cid => {
+    const cl = DATA[cid];
+    if (!cl || !cl.keywords) return;
+    labels.push(`C${cid}`);
+    const counts = {};
+    cl.keywords.forEach(k => { if (k.depth_level != null) counts[k.depth_level] = (counts[k.depth_level]||0)+1; });
+    Object.entries(counts).forEach(([d, c]) => {
+      if (!depthData[d]) depthData[d] = [];
+    });
+  });
+  const idx = [];
+  clusterIds.forEach((cid, i) => {
+    const cl = DATA[cid];
+    if (!cl || !cl.keywords) return;
+    idx.push(i);
+  });
+  const traces = Object.keys(depthData).sort().map(d => {
+    const vals = [];
+    let ci = 0;
+    clusterIds.forEach(cid => {
+      const cl = DATA[cid];
+      if (!cl || !cl.keywords) return;
+      const cnt = cl.keywords.filter(k => k.depth_level == d).length;
+      vals.push(cnt);
+    });
+    return {
+      name: depthNames[d] || `L${d}`,
+      type: "bar", x: labels, y: vals,
+      marker: { color: depthColors[d] || "#adb5bd" },
+      hovertemplate: `<b>%{x}</b><br>${depthNames[d] || "L"+d}: %{y}<extra></extra>`
+    };
+  });
+  Plotly.react("chart-hierarchy", traces, {
+    title: "Depth Distribution — All Clusters",
+    barmode: "stack",
+    xaxis: { title: "Cluster", tickangle: -45 },
+    yaxis: { title: "Keywords" },
+    margin: { l: 60, r: 30, t: 50, b: 80 },
+    height: 450,
+    template: "plotly_white"
+  }, { responsive: true, displaylogo: false });
 }
 
 function renderSubphraseTree() {
@@ -906,8 +1101,288 @@ function renderOverview() {
 }
 
 // ---- Tab 4: Network (D3 Force) ----
+function renderNetworkClusterGlobal() {
+  // Build cluster-to-cluster connections from cross-cluster terms
+  const svg = d3.select("#network-svg");
+  svg.selectAll("*").remove();
+  d3.select("#network-container").selectAll(".network-info-panel").remove();
+  const container = document.getElementById("network-container");
+  const width = container.clientWidth || 800;
+  const height = 600;
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+  if (!CROSS_CLUSTER_TERMS || !CROSS_CLUSTER_TERMS.length) {
+    svg.append("text").attr("x", width/2).attr("y", height/2)
+      .attr("text-anchor", "middle").attr("font-size", "14px").attr("fill", "#6c757d")
+      .text("No cross-cluster data available for global network");
+    return;
+  }
+
+  // Aggregate edges between cluster pairs
+  const edgeMap = {};
+  const sharedTerms = {};
+  CROSS_CLUSTER_TERMS.forEach(ct => {
+    const cls = ct.clusters || [];
+    for (let i = 0; i < cls.length; i++) {
+      for (let j = i + 1; j < cls.length; j++) {
+        const key = `${cls[i]}-${cls[j]}`;
+        edgeMap[key] = (edgeMap[key] || 0) + 1;
+        if (!sharedTerms[key]) sharedTerms[key] = [];
+        if (sharedTerms[key].length < 5) sharedTerms[key].push(ct.term);
+      }
+    }
+  });
+
+  const nodes = clusterIds.map(cid => ({
+    id: cid,
+    label: `C${cid}`,
+    fullLabel: DATA[cid] ? DATA[cid].label : `C${cid}`,
+    nKw: DATA[cid] ? (DATA[cid].keywords || []).length : 0
+  }));
+  const nodeIndex = {};
+  nodes.forEach((n, i) => nodeIndex[n.id] = i);
+
+  const edges = [];
+  Object.entries(edgeMap).forEach(([key, weight]) => {
+    const [s, t] = key.split("-").map(Number);
+    if (nodeIndex[s] != null && nodeIndex[t] != null) {
+      edges.push({ source: nodeIndex[s], target: nodeIndex[t], weight, terms: sharedTerms[key] || [] });
+    }
+  });
+
+  if (!edges.length) {
+    svg.append("text").attr("x", width/2).attr("y", height/2)
+      .attr("text-anchor", "middle").attr("font-size", "14px").attr("fill", "#6c757d")
+      .text("No inter-cluster connections found");
+    return;
+  }
+
+  const maxNkw = d3.max(nodes, d => d.nKw) || 1;
+  const maxW = d3.max(edges, d => d.weight) || 1;
+  const palette = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(edges).distance(d => 120 / (1 + Math.log1p(d.weight))))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(d => Math.sqrt(d.nKw / maxNkw) * 25 + 15));
+
+  const g = svg.append("g");
+  svg.call(d3.zoom().scaleExtent([0.3, 3]).on("zoom", (event) => g.attr("transform", event.transform)));
+
+  const link = g.selectAll(".link").data(edges).join("line")
+    .attr("stroke", "#adb5bd")
+    .attr("stroke-opacity", d => 0.3 + 0.7 * (d.weight / maxW))
+    .attr("stroke-width", d => 1 + 4 * (d.weight / maxW));
+  link.append("title").text(d => {
+    const s = typeof d.source === "object" ? d.source : nodes[d.source];
+    const t = typeof d.target === "object" ? d.target : nodes[d.target];
+    return `${s.label} \u2014 ${t.label}\nShared terms: ${d.weight}\n${d.terms.join(", ")}`;
+  });
+
+  const node = g.selectAll(".node").data(nodes).join("circle")
+    .attr("r", d => Math.sqrt(d.nKw / maxNkw) * 20 + 8)
+    .attr("fill", (d, i) => palette[i % palette.length])
+    .attr("stroke", "#fff").attr("stroke-width", 1.5)
+    .style("cursor", "pointer")
+    .call(d3.drag()
+      .on("start", (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end", (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+    );
+  node.append("title").text(d => `${d.label}: ${d.fullLabel}\nKeywords: ${d.nKw}`);
+  node.on("click", (event, d) => {
+    clusterSelect.value = d.id;
+    clusterSelect.dispatchEvent(new Event("change"));
+  });
+
+  const label = g.selectAll(".node-label").data(nodes).join("text")
+    .attr("class", "node-label").attr("dy", "0.35em")
+    .text(d => d.label).attr("font-size", "11px");
+
+  simulation.on("tick", () => {
+    link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    node.attr("cx", d => d.x).attr("cy", d => d.y);
+    label.attr("x", d => d.x).attr("y", d => d.y);
+  });
+}
+
+function renderNetworkKeywordGlobal() {
+  const svg = d3.select("#network-svg");
+  svg.selectAll("*").remove();
+  d3.select("#network-container").selectAll(".network-info-panel").remove();
+  const container = document.getElementById("network-container");
+  const width = container.clientWidth || 800;
+  const height = 600;
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+  // Aggregate keyword co-occurrence edges across all clusters
+  const edgeMap = {};
+  const kwInfo = {};  // term -> {score, freq, bestCluster, clusterCount}
+  clusterIds.forEach(cid => {
+    const cl = DATA[cid];
+    if (!cl) return;
+    (cl.keywords || []).forEach(k => {
+      if (!kwInfo[k.term]) {
+        kwInfo[k.term] = { score: k.score, freq: k.frequency || 0, bestCluster: cid, bestScore: k.score, clusters: new Set() };
+      } else {
+        kwInfo[k.term].score = Math.max(kwInfo[k.term].score, k.score);
+        kwInfo[k.term].freq += (k.frequency || 0);
+        if (k.score > kwInfo[k.term].bestScore) { kwInfo[k.term].bestCluster = cid; kwInfo[k.term].bestScore = k.score; }
+      }
+      kwInfo[k.term].clusters.add(cid);
+    });
+    (cl.network_edges || []).forEach(e => {
+      const key = e.source < e.target ? `${e.source}\t${e.target}` : `${e.target}\t${e.source}`;
+      edgeMap[key] = (edgeMap[key] || 0) + e.weight;
+    });
+  });
+
+  // Take top edges by weight
+  const allEdges = Object.entries(edgeMap).map(([key, w]) => {
+    const [s, t] = key.split("\t");
+    return { source: s, target: t, weight: w };
+  }).sort((a, b) => b.weight - a.weight).slice(0, 120);
+
+  if (!allEdges.length) {
+    svg.append("text").attr("x", width/2).attr("y", height/2)
+      .attr("text-anchor", "middle").attr("font-size", "14px").attr("fill", "#6c757d")
+      .text("No keyword co-occurrence edges available");
+    return;
+  }
+
+  // Build node set from edges
+  const nodeSet = new Set();
+  allEdges.forEach(e => { nodeSet.add(e.source); nodeSet.add(e.target); });
+  const nodes = [...nodeSet].map(id => ({
+    id,
+    score: kwInfo[id] ? kwInfo[id].score : 0,
+    freq: kwInfo[id] ? kwInfo[id].freq : 0,
+    bestCluster: kwInfo[id] ? kwInfo[id].bestCluster : 0,
+    nClusters: kwInfo[id] ? kwInfo[id].clusters.size : 1,
+  }));
+  const nodeIndex = {};
+  nodes.forEach((n, i) => nodeIndex[n.id] = i);
+
+  const edges = allEdges.filter(e => nodeIndex[e.source] != null && nodeIndex[e.target] != null)
+    .map(e => ({ source: nodeIndex[e.source], target: nodeIndex[e.target], weight: e.weight }));
+
+  const maxScore = d3.max(nodes, d => d.score) || 1;
+  const maxW = d3.max(edges, d => d.weight) || 1;
+  const palette = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+
+  // Setup slider
+  const edgeSlider = document.getElementById("network-edge-slider");
+  const edgeValueSpan = document.getElementById("network-edge-value");
+  if (edgeSlider) { edgeSlider.max = Math.ceil(maxW); edgeSlider.value = 0; edgeValueSpan.textContent = "0"; }
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(edges).id((d, i) => i).distance(d => 100 / (1 + Math.log1p(d.weight))))
+    .force("charge", d3.forceManyBody().strength(-200))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(d => Math.sqrt(d.score / maxScore) * 20 + 10));
+
+  const g = svg.append("g");
+  svg.call(d3.zoom().scaleExtent([0.3, 3]).on("zoom", (event) => g.attr("transform", event.transform)));
+
+  const link = g.selectAll(".link").data(edges).join("line")
+    .attr("stroke", "#adb5bd")
+    .attr("stroke-opacity", d => 0.3 + 0.7 * (d.weight / maxW))
+    .attr("stroke-width", d => 1 + 4 * (d.weight / maxW));
+
+  const node = g.selectAll(".node").data(nodes).join("circle")
+    .attr("r", d => Math.sqrt(d.score / maxScore) * 18 + 5)
+    .attr("fill", d => palette[d.bestCluster % palette.length])
+    .attr("stroke", d => d.nClusters > 1 ? "#ffd700" : "#fff")
+    .attr("stroke-width", d => d.nClusters > 1 ? 2.5 : 1.5)
+    .style("cursor", "pointer")
+    .call(d3.drag()
+      .on("start", (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end", (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+    );
+  // Permanent labels for top nodes only
+  const sortedByScore = [...nodes].sort((a, b) => b.score - a.score);
+  const labelThreshold = sortedByScore[Math.min(20, sortedByScore.length - 1)].score;
+  const label = g.selectAll(".node-label").data(nodes).join("text")
+    .attr("class", "node-label").attr("dy", "0.35em")
+    .text(d => d.score >= labelThreshold ? d.id : "").attr("font-size", "10px");
+
+  // Hover label for all nodes
+  let hoverNode = null;
+  const hoverLabel = g.append("text").attr("class", "node-label")
+    .attr("font-size", "11px").attr("font-weight", "600")
+    .attr("paint-order", "stroke").attr("stroke", "#fff").attr("stroke-width", "3px")
+    .style("pointer-events", "none").style("display", "none");
+
+  // Edge slider filter
+  if (edgeSlider) {
+    edgeSlider.oninput = () => {
+      const minW = Number(edgeSlider.value);
+      edgeValueSpan.textContent = minW;
+      link.attr("display", d => d.weight >= minW ? null : "none");
+    };
+  }
+
+  // Hover highlight + dynamic label
+  const adjacency = {};
+  nodes.forEach(n => adjacency[n.id] = new Set());
+  node.on("mouseover", (event, d) => {
+    const neighbors = adjacency[d.id] || new Set();
+    node.attr("opacity", n => n.id === d.id || neighbors.has(n.id) ? 1 : 0.15);
+    link.attr("opacity", e => {
+      const sid = typeof e.source === "object" ? e.source.id : nodes[e.source].id;
+      const tid = typeof e.target === "object" ? e.target.id : nodes[e.target].id;
+      return sid === d.id || tid === d.id ? 1 : 0.05;
+    });
+    label.attr("opacity", n => n.id === d.id || neighbors.has(n.id) ? 1 : 0.1);
+    // Show hover label with detail
+    hoverNode = d;
+    hoverLabel.style("display", null)
+      .attr("x", d.x).attr("y", d.y - Math.sqrt(d.score / maxScore) * 18 - 10)
+      .text(`${d.id}  (${d.score.toFixed(3)}, C${d.bestCluster})`);
+  }).on("mouseout", () => {
+    hoverNode = null;
+    node.attr("opacity", 1); link.attr("opacity", 1); label.attr("opacity", 1);
+    hoverLabel.style("display", "none");
+  });
+
+  // Build adjacency after simulation starts (edges get mutated)
+  edges.forEach(e => {
+    const sid = typeof e.source === "object" ? e.source.id : nodes[e.source].id;
+    const tid = typeof e.target === "object" ? e.target.id : nodes[e.target].id;
+    if (adjacency[sid]) adjacency[sid].add(tid);
+    if (adjacency[tid]) adjacency[tid].add(sid);
+  });
+
+  simulation.on("tick", () => {
+    link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    node.attr("cx", d => d.x).attr("cy", d => d.y);
+    label.attr("x", d => d.x).attr("y", d => d.y);
+    if (hoverNode) {
+      hoverLabel.attr("x", hoverNode.x).attr("y", hoverNode.y - Math.sqrt(hoverNode.score / maxScore) * 18 - 10);
+    }
+  });
+}
+
 function renderNetwork() {
-  if (!currentCluster) return;
+  const subtabsEl = document.getElementById("network-subtabs");
+  const descEl = document.getElementById("network-desc");
+  if (!currentCluster) {
+    subtabsEl.style.display = "flex";
+    if (networkView === "keyword") {
+      descEl.innerHTML = '전체 클러스터의 키워드를 합산한 <b>키워드 공출현 네트워크</b>입니다. 노드 색상은 가장 빈번한 클러스터를 나타냅니다.';
+      renderNetworkKeywordGlobal();
+    } else {
+      descEl.innerHTML = '<b>Cross-cluster terms</b> 기반 클러스터 연결 네트워크입니다. 공유 키워드가 많을수록 엣지가 두껍습니다. 노드 클릭으로 해당 클러스터로 이동합니다.';
+      renderNetworkClusterGlobal();
+    }
+    return;
+  }
+  subtabsEl.style.display = "none";
+  descEl.innerHTML = '키워드 간 <b>실제 공출현(co-occurrence) 네트워크</b>입니다. 동일 문헌에서 함께 등장한 빈도를 기반으로 엣지가 생성됩니다. 엣지 두께는 공출현 빈도에, 노드 크기는 점수에 비례합니다. 색상은 깊이 수준(Broad=파랑, Mid=빨강, Specific=초록)입니다.';
   const svg = d3.select("#network-svg");
   svg.selectAll("*").remove();
   // Remove any existing info panels
@@ -1132,13 +1607,52 @@ function renderNetwork() {
 
 // ---- Tab 5: Dictionary ----
 function renderDictionary() {
-  if (!currentCluster) return;
   const container = document.getElementById("dict-table-container");
   const searchBox = document.getElementById("dict-search");
 
+  if (!currentCluster && dictView === "keywords") { renderDictKeywordsGlobal(container, searchBox); return; }
+  if (!currentCluster) {
+    // Vocab/Norm merges are already global — render them
+    if (dictView === "vocab") renderDictVocabMerges(container, searchBox);
+    else if (dictView === "norm") renderDictNormMerges(container, searchBox);
+    else renderDictKeywordsGlobal(container, searchBox);
+    return;
+  }
   if (dictView === "keywords") renderDictKeywords(container, searchBox);
   else if (dictView === "vocab") renderDictVocabMerges(container, searchBox);
   else if (dictView === "norm") renderDictNormMerges(container, searchBox);
+}
+
+function renderDictKeywordsGlobal(container, searchBox) {
+  // Gather all keywords from all clusters with cluster labels
+  const allKws = [];
+  clusterIds.forEach(cid => {
+    const cl = DATA[cid];
+    if (!cl || !cl.keywords) return;
+    cl.keywords.forEach(k => allKws.push({ ...k, cluster: cid, clusterLabel: cl.label }));
+  });
+  allKws.sort((a, b) => b.score - a.score);
+
+  function buildTable(filter) {
+    const fl = (filter || "").toLowerCase();
+    const filtered = fl ? allKws.filter(k => k.term.toLowerCase().includes(fl) || (`C${k.cluster}`).includes(fl) || k.clusterLabel.toLowerCase().includes(fl)) : allKws;
+    const shown = filtered.slice(0, 200);
+    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
+    shown.forEach((k, i) => {
+      const depth = k.depth_level != null ? `${depthNames[k.depth_level]||"L"+k.depth_level} (${(k.depth_score||0).toFixed(2)})` : "";
+      html += `<tr style="cursor:pointer" onclick="document.getElementById('cluster-select').value='${k.cluster}';document.getElementById('cluster-select').dispatchEvent(new Event('change'))">`;
+      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${k.score.toFixed(4)}</td>`;
+      html += `<td>${(k.frequency||0).toLocaleString()}</td><td>${(k.doc_coverage||0).toLocaleString()}</td>`;
+      html += `<td>${depth}</td><td>${k.cross_cluster_count > 1 ? k.cross_cluster_count : ""}</td></tr>`;
+    });
+    if (filtered.length > 200) html += `<tr><td colspan="8" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+  buildTable("");
+  if (searchBox) {
+    searchBox.oninput = () => buildTable(searchBox.value);
+  }
 }
 
 function renderDictKeywords(container, searchBox) {

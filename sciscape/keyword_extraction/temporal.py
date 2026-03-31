@@ -145,8 +145,9 @@ class TemporalMixin:
             for year, denom in year_map.items():
                 global_year_denoms[int(year)] += int(denom)
 
-        alpha = 0.5
-        prior = 0.5
+        _cfg = getattr(self, "config", None)
+        alpha = getattr(_cfg, "bayesian_alpha", 0.5) if _cfg is not None else 0.5
+        prior = getattr(_cfg, "bayesian_prior", 0.5) if _cfg is not None else 0.5
 
         pub_year_list: List[Dict[int, int]] = []
         year_denom_list: List[Dict[int, int]] = []

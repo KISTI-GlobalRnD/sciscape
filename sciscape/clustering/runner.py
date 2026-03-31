@@ -119,7 +119,7 @@ class LeidenRunner:
         contracted = self._graph.copy()
         mapping = list(membership)
         combine_attrs = {"uid": "first"}
-        if "weight" in self._graph.vs.attributes():
+        if "weight" in self._graph.es.attributes():
             combine_attrs["weight"] = "sum"
         contracted.contract_vertices(mapping, combine_attrs=combine_attrs)
         contracted.simplify(

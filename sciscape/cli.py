@@ -141,8 +141,13 @@ def _run_cluster(args: argparse.Namespace) -> None:
     if args.levels:
         level_constraints = []
         for pair in args.levels:
-            lo, hi = pair.split(",")
-            level_constraints.append((int(lo), int(hi)))
+            try:
+                lo, hi = pair.split(",")
+                level_constraints.append((int(lo), int(hi)))
+            except ValueError:
+                print(f"Invalid --levels format: {pair!r}. Expected: min,max (e.g., 5,100)",
+                      file=sys.stderr)
+                sys.exit(1)
 
     lo, hi = args.resolution_bounds.split(",")
     resolution_bounds = (float(lo), float(hi))
@@ -268,8 +273,13 @@ def _run_landscape(args: argparse.Namespace) -> None:
         gamma_block=gamma_block,
     )
     if args.gamma_range:
-        lo, hi = args.gamma_range.split(",")
-        cfg_kwargs["gamma_range"] = (float(lo), float(hi))
+        try:
+            lo, hi = args.gamma_range.split(",")
+            cfg_kwargs["gamma_range"] = (float(lo), float(hi))
+        except ValueError:
+            print(f"Invalid --gamma-range format. Expected: lo,hi (e.g., 1e-5,1e-2)",
+                  file=sys.stderr)
+            sys.exit(1)
 
     cfg = LandscapeConfig(**cfg_kwargs)
 
