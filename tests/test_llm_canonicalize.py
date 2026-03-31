@@ -7,11 +7,8 @@ LLM invocation itself is not tested (external dependency).
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from sciscape.keyword_extraction.config import KeywordExtractionConfig
 from sciscape.keyword_extraction.llm_canonicalize import LLMCanonicalizeMixin

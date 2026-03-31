@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Dict, List, Sequence
 import igraph as ig
 
 if TYPE_CHECKING:
-    from .runner import LeidenRunner
+    from .runner import LeidenRunResult, LeidenRunner
 
 log = logging.getLogger(__name__)
 

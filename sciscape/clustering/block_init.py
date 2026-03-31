@@ -9,10 +9,9 @@ Functions are pure — caching is the caller's responsibility.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Sequence, TYPE_CHECKING
@@ -21,7 +20,7 @@ import igraph as ig
 import polars as pl
 
 if TYPE_CHECKING:
-    from .runner import LeidenRunner, LeidenRunResult
+    from .runner import LeidenRunner
 
 log = logging.getLogger(__name__)
 

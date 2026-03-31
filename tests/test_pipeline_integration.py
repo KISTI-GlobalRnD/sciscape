@@ -1,6 +1,5 @@
 """Integration tests for the full pipeline with new stages enabled."""
 
-from pathlib import Path
 
 import pandas as pd
 import pytest

@@ -336,7 +336,7 @@ def _build_similarity_graph(
     graph = VocabSimGraph()
     involved = set(existing_merges.keys())  # already merged away
     col_sums = np.asarray(C.sum(axis=0)).ravel()
-    K = C.shape[0]
+    C.shape[0]
 
     # Active indices (not merged away)
     active = [i for i in range(len(feature_names)) if i not in involved]
@@ -598,7 +598,7 @@ def _apply_merge_only(
         return C, DF, feature_names
     C, feature_names = _merge_columns(C, feature_names, merge_map)
     if DF is not None:
-        dummy = np.arange(DF.shape[1] + len(merge_map))
+        np.arange(DF.shape[1] + len(merge_map))
         # Reconstruct dummy with correct original size
         orig_n = DF.shape[1]
         DF_new, _ = _merge_columns(DF, np.arange(orig_n), merge_map)

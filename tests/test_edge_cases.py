@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 from scipy import sparse as sp
 
 from sciscape.keyword_extraction.config import VocabMergeConfig

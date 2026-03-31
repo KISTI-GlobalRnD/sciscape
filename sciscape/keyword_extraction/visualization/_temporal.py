@@ -17,7 +17,7 @@ Usage::
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 import pandas as pd

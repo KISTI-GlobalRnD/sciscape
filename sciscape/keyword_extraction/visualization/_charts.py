@@ -114,7 +114,7 @@ def plot_cross_cluster_terms(df: pd.DataFrame, min_clusters: int = 2) -> "go.Fig
     _check_plotly()
     import plotly.graph_objects as go
 
-    labels = _build_cluster_labels(df)
+    _build_cluster_labels(df)
     clusters = sorted(df["cluster_id"].unique())
     tc = df.groupby("term")["cluster_id"].nunique()
     shared = tc[tc >= min_clusters].index.tolist()

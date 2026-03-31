@@ -1,7 +1,6 @@
 """Tests for post-top-K keyword normalization (Stage 5)."""
 
 import pandas as pd
-import pytest
 
 from sciscape.keyword_extraction.normalization import (
     _edit_distance,

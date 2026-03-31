@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import polars as pl
 
