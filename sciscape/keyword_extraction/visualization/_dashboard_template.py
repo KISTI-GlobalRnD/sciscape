@@ -498,6 +498,7 @@ const depthColors = { 0: "#636EFA", 1: "#EF553B", 2: "#00CC96" };
 
 // ---- Tab 1: Keywords ----
 function renderKeywords() {
+  if (!currentCluster) return;
   const kws = currentCluster.keywords.slice(0, 30);
   const terms = kws.map(k => k.term).reverse();
   const scores = kws.map(k => k.score).reverse();
@@ -529,6 +530,7 @@ function renderKeywords() {
 
 // ---- Tab 2: Temporal ----
 function renderTemporal() {
+  if (!currentCluster) return;
   renderTemporalHighlights();
   const metric = document.getElementById("temporal-metric").value;
   const metricLabels = {
@@ -582,6 +584,7 @@ function renderTemporal() {
 
 // ---- Tab 3: Hierarchy ----
 function renderHierarchy() {
+  if (!currentCluster) return;
   if (hierarchyView === "subphrase") {
     renderSubphraseTree();
   } else {
@@ -590,6 +593,7 @@ function renderHierarchy() {
 }
 
 function renderSubphraseTree() {
+  if (!currentCluster) return;
   const tree = currentCluster.subphrase_tree || [];
   const kws = currentCluster.keywords;
   const kwMap = {};
@@ -713,6 +717,7 @@ function renderSubphraseTree() {
 }
 
 function renderDepthSunburst() {
+  if (!currentCluster) return;
   const kws = currentCluster.keywords.filter(k => k.depth_level != null);
   if (!kws.length) {
     Plotly.react("chart-hierarchy", [], { title: "No depth data available", height: 300 });
@@ -902,6 +907,7 @@ function renderOverview() {
 
 // ---- Tab 4: Network (D3 Force) ----
 function renderNetwork() {
+  if (!currentCluster) return;
   const svg = d3.select("#network-svg");
   svg.selectAll("*").remove();
   // Remove any existing info panels
@@ -1126,6 +1132,7 @@ function renderNetwork() {
 
 // ---- Tab 5: Dictionary ----
 function renderDictionary() {
+  if (!currentCluster) return;
   const container = document.getElementById("dict-table-container");
   const searchBox = document.getElementById("dict-search");
 
@@ -1135,6 +1142,7 @@ function renderDictionary() {
 }
 
 function renderDictKeywords(container, searchBox) {
+  if (!currentCluster) return;
   const kws = currentCluster.keywords;
   const normMerges = currentCluster.norm_merges || {};
 
@@ -1319,6 +1327,7 @@ function renderCrossCluster() {
 
 // ---- Temporal highlights ----
 function renderTemporalHighlights() {
+  if (!currentCluster) return;
   const hlEl = document.getElementById("temporal-highlights");
   if (!hlEl) return;
   const kws = currentCluster ? currentCluster.keywords : [];
