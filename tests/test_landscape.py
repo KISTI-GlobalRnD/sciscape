@@ -220,7 +220,7 @@ class TestClustering:
         assert (out / "blocks.parquet").stat().st_mtime == blocks_mtime
 
     def test_two_levels(self, sample_dir):
-        """Two hierarchy levels: nano + micro."""
+        """Two hierarchy levels: nano + micro (requires Rust cpm_dendro)."""
         from sciscape.landscape import _run_clustering
 
         tmp_path, edge_path, _ = sample_dir
@@ -236,7 +236,12 @@ class TestClustering:
             leiden_iterations=10,
             seed=42,
         )
-        result = _run_clustering(edges, cfg, out)
+        try:
+            result = _run_clustering(edges, cfg, out)
+        except ImportError as e:
+            if "cpm_dendro" in str(e) or "Rust" in str(e):
+                pytest.skip("cpm_dendro Rust extension not available")
+            raise
 
         assert "cluster_nano" in result.columns
         assert "cluster_micro" in result.columns
