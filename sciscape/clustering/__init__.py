@@ -28,7 +28,14 @@ from .tuning import (
     scan_resolution_grid,
 )
 from .logging import LogMetadata, DEFAULT_LOG_FILE
-from .postprocess import PostprocessResult, merge_small_clusters
+from .postprocess import (
+    PostprocessResult,
+    SingletonResolutionResult,
+    SmallClusterResolutionResult,
+    merge_small_clusters,
+    resolve_singletons,
+    resolve_small_clusters,
+)
 from .partitioning import partition_class
 from .runner import LeidenRunner, LeidenRunResult
 from .core_documents import (
@@ -52,6 +59,19 @@ from .ensemble import (
     EnsembleMembership,
     EnsembleResult,
     run_ensemble_pipeline,
+)
+from .dendrogram import build_dendrogram
+from .constrained_cut import CutResult, constrained_cut
+from .block_init import (
+    BlockInitResult,
+    CascadeResult,
+    block_init,
+    contract_graph,
+    cascade_search,
+    save_blocks,
+    load_blocks,
+    load_blocks_metadata,
+    is_cache_valid,
 )
 
 __all__ = [
@@ -77,6 +97,10 @@ __all__ = [
     "LeidenRunResult",
     "merge_small_clusters",
     "PostprocessResult",
+    "resolve_singletons",
+    "SingletonResolutionResult",
+    "resolve_small_clusters",
+    "SmallClusterResolutionResult",
     "resolve_resolution_schedule",
     "ResolutionResult",
     "ResolutionScanEntry",
@@ -101,4 +125,16 @@ __all__ = [
     "EnsembleMembership",
     "EnsembleResult",
     "run_ensemble_pipeline",
+    "build_dendrogram",
+    "CutResult",
+    "constrained_cut",
+    "BlockInitResult",
+    "CascadeResult",
+    "block_init",
+    "contract_graph",
+    "cascade_search",
+    "save_blocks",
+    "load_blocks",
+    "load_blocks_metadata",
+    "is_cache_valid",
 ]

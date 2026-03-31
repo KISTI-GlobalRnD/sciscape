@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -42,6 +42,10 @@ class LandscapeConfig:
     n_hierarchy_levels: int = 2  # nano + micro (upper levels use contraction)
     leiden_objective: str = "cpm"
     leiden_iterations: int = 50
+
+    # Block-init mode: high-γ blocks → contraction → cascade hot start
+    # "auto" → 10 × gamma_range[1]; None → disabled; float → explicit value
+    gamma_block: Optional[float] = "auto"  # type: ignore[assignment]
 
     # Keyword extraction
     top_n_unigrams: int = 200
@@ -154,14 +158,11 @@ def _run_clustering(
     import polars as pl
     from collections import Counter
     from .clustering import (
-        HierarchyLevelConfig,
-        PostprocessConfig,
         build_graph,
         giant_component,
     )
-    from .clustering.hierarchy_builder import HierarchyBuilder
     from .clustering.runner import LeidenRunner
-    from .clustering.postprocess import merge_small_clusters
+    from .clustering.postprocess import refine_clusters, gamma_search
 
     membership_path = output_dir / "membership.parquet"
     level_names = ["nano", "micro"][:cfg.n_hierarchy_levels]
@@ -197,83 +198,155 @@ def _run_clustering(
     # Nano: auto-search γ to maximise clusters with min_docs constraint
     # ------------------------------------------------------------------
     if "nano" not in existing_levels:
-        log.info("Searching optimal γ for nano (min_docs=%d)...", min_docs)
         runner = LeidenRunner(
             giant, objective=cfg.leiden_objective,
             default_seed=cfg.seed, default_iterations=cfg.leiden_iterations,
         )
+        t0_search = time.perf_counter()
 
-        def _eval_gamma(gamma: float) -> Tuple[int, list]:
-            """Run Leiden at gamma, merge small clusters, return (n_clusters, membership)."""
-            t0 = time.perf_counter()
-            result = runner.run(gamma)
-            post = merge_small_clusters(giant, result.membership, min_size=min_docs)
-            n_clusters = len(set(post.membership))
-            smallest = min(Counter(post.membership).values())
-            elapsed = time.perf_counter() - t0
-            log.info("  γ=%.4f → %d clusters (min=%d, Q=%.0f, %.1fs)",
-                     gamma, n_clusters, smallest, result.quality, elapsed)
-            return n_clusters, list(post.membership)
+        # Resolve gamma_block: "auto" → 10 × gamma_range[1]
+        gamma_block = cfg.gamma_block
+        if gamma_block == "auto":
+            gamma_block = 10.0 * cfg.gamma_range[1]
 
-        # Phase 1: Coarse scan (3 points) to find promising region
-        lo_g, hi_g = np.log10(cfg.gamma_range[0]), np.log10(cfg.gamma_range[1])
-        coarse_gammas = np.logspace(lo_g, hi_g, num=3)
-        cache: Dict[float, Tuple[int, list]] = {}
+        if gamma_block is not None:
+            # ── Block-init mode: blocks → contraction → cascade ──
+            import math as _math
+            from .clustering.block_init import (
+                block_init as _block_init,
+                cascade_search as _cascade_search,
+                save_blocks, load_blocks, is_cache_valid,
+                contract_graph,
+            )
 
-        for g in coarse_gammas:
-            cache[g] = _eval_gamma(g)
+            blocks_path = output_dir / "blocks.parquet"
 
-        # Phase 2: Binary search to find γ* maximising cluster count
-        # γ↑ → raw clusters↑, but after merge clusters can peak then decline
-        # (over-splitting → too many tiny clusters → all merged away)
-        # Find the peak via ternary-like search.
-        best_gamma = max(cache, key=lambda g: cache[g][0])
-        best_n_clusters = cache[best_gamma][0]
+            if not cfg.force and is_cache_valid(
+                blocks_path, gamma_block, giant.vcount()
+            ):
+                log.info("Loading cached blocks from %s", blocks_path)
+                blocks = load_blocks(blocks_path)
+            else:
+                log.info("Block init: γ_block=%.2e...", gamma_block)
+                blocks = _block_init(runner, gamma_block, seed=cfg.seed)
+                save_blocks(blocks, blocks_path, uids)
 
-        for _ in range(4):  # 4 refinement rounds
-            # Probe midpoints around best
-            sorted_gammas = sorted(cache.keys())
-            idx = sorted_gammas.index(best_gamma)
+            # Singleton warning
+            singleton_frac = blocks.n_singletons / blocks.n_nodes
+            if singleton_frac > 0.8:
+                log.warning(
+                    "Block init: %.0f%% singletons (%d/%d). "
+                    "Consider lowering gamma_block (currently %.2e).",
+                    singleton_frac * 100,
+                    blocks.n_singletons, blocks.n_nodes, gamma_block,
+                )
 
-            probes = []
-            if idx > 0:
-                mid_lo = 10 ** ((np.log10(sorted_gammas[idx - 1]) + np.log10(best_gamma)) / 2)
-                if mid_lo not in cache:
-                    probes.append(mid_lo)
-            if idx < len(sorted_gammas) - 1:
-                mid_hi = 10 ** ((np.log10(best_gamma) + np.log10(sorted_gammas[idx + 1])) / 2)
-                if mid_hi not in cache:
-                    probes.append(mid_hi)
+            contracted, contracted_runner = contract_graph(runner, blocks)
+            node_sizes = blocks.node_sizes_list
+            contraction_ratio = giant.vcount() / max(contracted.vcount(), 1)
+            log.info("Contracted: %d → %d supernodes (%.1fx reduction)",
+                     giant.vcount(), contracted.vcount(), contraction_ratio)
 
-            if not probes:
-                break
+            # γ search on contracted graph (weighted sizes)
+            log.info("Searching optimal γ on contracted graph (min_docs=%d)...",
+                     min_docs)
+            search_result = gamma_search(
+                contracted_runner,
+                gamma_range=cfg.gamma_range,
+                min_size=min_docs,
+                search_iterations=10,
+                node_sizes=node_sizes,
+            )
+            best_gamma = search_result.best_gamma
 
-            for g in probes:
-                cache[g] = _eval_gamma(g)
+            # Cascade targets: log-spaced from best_gamma up to near γ_block
+            lo_g = _math.log10(best_gamma)
+            hi_g = _math.log10(gamma_block * 0.9)
+            if hi_g > lo_g:
+                n_steps = min(5, max(2, int((hi_g - lo_g) / 0.3) + 1))
+                cascade_gammas = [
+                    10 ** (lo_g + i * (hi_g - lo_g) / (n_steps - 1))
+                    for i in range(n_steps)
+                ]
+            else:
+                cascade_gammas = [best_gamma]
 
-            best_gamma = max(cache, key=lambda g: cache[g][0])
-            new_best = cache[best_gamma][0]
-            if new_best == best_n_clusters:
-                break  # converged
-            best_n_clusters = new_best
+            cascade_result = _cascade_search(
+                runner, blocks,
+                gamma_targets=cascade_gammas,
+                seed=cfg.seed,
+                hot_start=True,
+            )
+            raw_membership = list(cascade_result.membership)
+            search_elapsed = time.perf_counter() - t0_search
+            log.info("  Block-init + cascade: %.1fs (γ=%.4e, %d clusters)",
+                     search_elapsed, best_gamma, cascade_result.n_clusters)
 
-        log.info("  → Best: γ=%.4f → %d clusters (%d evals)",
-                 best_gamma, best_n_clusters, len(cache))
-        nano_membership = cache[best_gamma][1]
+        else:
+            # ── Standard mode (no block-init) ────────────────────
+            log.info("Searching optimal γ for nano (min_docs=%d)...", min_docs)
+            search_result = gamma_search(
+                runner,
+                gamma_range=cfg.gamma_range,
+                min_size=min_docs,
+                search_iterations=10,
+            )
+            best_gamma = search_result.best_gamma
+
+            log.info("  Running final Leiden at γ=%.4f (full iterations)...",
+                     best_gamma)
+            final_result = runner.run(best_gamma)
+            raw_membership = list(final_result.membership)
+            search_elapsed = time.perf_counter() - t0_search
+            log.info("  γ search + final: %.1fs (%d search evals + 1 final)",
+                     search_elapsed, search_result.n_evals)
+
+        # Common refinement + save path
+        refinement_result = refine_clusters(
+            runner, raw_membership, best_gamma, min_size=min_docs,
+        )
+        nano_membership = list(refinement_result.membership)
+
+        # Mark remaining singletons as undetermined (-1) in saved output only.
+        sizes_final = Counter(nano_membership)
+        undetermined_nodes: set[int] = {
+            i for i, c in enumerate(nano_membership) if sizes_final[c] == 1
+        }
+
+        nano_for_save = list(nano_membership)
+        for i in undetermined_nodes:
+            nano_for_save[i] = -1
+
+        n_clusters = len(sizes_final)
+        n_undetermined = len(undetermined_nodes)
+        log.info("  → Final: %d clusters, %d undetermined (%.3f%%)",
+                 n_clusters, n_undetermined,
+                 n_undetermined / len(nano_membership) * 100 if nano_membership else 0)
 
         # Save nano
-        cols: Dict[str, Any] = {"uid": uids, "cluster_nano": nano_membership}
+        cols: Dict[str, Any] = {"uid": uids, "cluster_nano": nano_for_save}
         pl.DataFrame(cols).write_parquet(membership_path)
         log.info("  nano membership saved")
     else:
         log.info("Nano cached, loading...")
         existing_df = pl.read_parquet(membership_path)
-        nano_membership = existing_df["cluster_nano"].to_list()
+        nano_for_save = existing_df["cluster_nano"].to_list()
+        # For contraction, replace -1 (undetermined) with a valid cluster ID.
+        nano_membership = list(nano_for_save)
+        has_undetermined = any(c < 0 for c in nano_membership)
+        if has_undetermined:
+            next_cid = max((c for c in nano_membership if c >= 0), default=0) + 1
+            for i in range(len(nano_membership)):
+                if nano_membership[i] < 0:
+                    nano_membership[i] = next_cid
 
     # ------------------------------------------------------------------
-    # Upper levels: contract and run with γ=1.0
+    # Upper levels: dendrogram on contracted graph + constrained cut
     # ------------------------------------------------------------------
     if cfg.n_hierarchy_levels >= 2 and "micro" not in existing_levels:
+        from .clustering.dendrogram import build_dendrogram
+        from .clustering.constrained_cut import constrained_cut
+
         runner = LeidenRunner(
             giant, objective=cfg.leiden_objective,
             default_seed=cfg.seed, default_iterations=cfg.leiden_iterations,
@@ -281,61 +354,54 @@ def _run_clustering(
         contracted = runner.contract(nano_membership, combine_weights="sum", keep_loops=True)
         n_contracted = contracted.vcount()
 
-        # Normalize edge weights to density for CPM on contracted graph.
-        # Raw summed weights are proportional to cluster sizes, making CPM
-        # unable to split.  Dividing by (n_i * n_j) yields inter-cluster
-        # edge density, which CPM can meaningfully threshold.
+        # Compute nano cluster sizes for node_sizes parameter.
         nano_sizes = Counter(nano_membership)
-        for e in contracted.es:
-            s, t = e.source, e.target
-            ns, nt = nano_sizes[s], nano_sizes[t]
-            if s != t:
-                e["weight"] = e["weight"] / (ns * nt) if ns * nt > 0 else 0.0
-            else:
-                denom = ns * (ns - 1) / 2
-                e["weight"] = e["weight"] / denom if denom > 0 else 0.0
+        nano_size_arr = np.array(
+            [nano_sizes[i] for i in range(n_contracted)], dtype=np.uint64,
+        )
 
-        runner2 = runner.clone_for_graph(contracted)
+        log.info("Building CPM dendrogram on contracted %d-node graph...",
+                 n_contracted)
+        t0 = time.perf_counter()
+        linkage = build_dendrogram(contracted, mode="cpm", node_sizes=nano_size_arr)
+        log.info("  Dendrogram: %d merges, height range [%.6f, %.6f] (%.2fs)",
+                 len(linkage),
+                 linkage[-1, 2] if len(linkage) > 0 else 0,
+                 linkage[0, 2] if len(linkage) > 0 else 0,
+                 time.perf_counter() - t0)
 
-        log.info("Searching optimal γ for micro on contracted %d-node graph "
-                 "(density-normalized)...", n_contracted)
+        # Constrained cut: min_size in original-node terms.
+        # Use a fraction of total nodes as micro min_size (same cluster
+        # count maximisation objective, just at a coarser scale).
+        n_total_nodes = len(nano_membership)
+        micro_min_size = max(
+            int(nano_size_arr.sum()) // 20,  # ~5% of total
+            int(nano_size_arr.max()) + 1,     # larger than biggest nano
+        )
+        cut_result = constrained_cut(
+            linkage, min_size=micro_min_size,
+            leaf_sizes=nano_size_arr,
+        )
 
-        # micro min_size: at least 2 nano clusters per micro (otherwise trivial)
-        micro_min_size = max(2, n_contracted // 20)
+        if not cut_result.feasible or cut_result.n_clusters <= 1:
+            log.warning("  micro cut infeasible or trivial (%d clusters), "
+                        "falling back to 1 cluster", cut_result.n_clusters)
+            micro_mem_contracted = [0] * n_contracted
+            n_micro = 1
+        else:
+            micro_mem_contracted = list(cut_result.membership)
+            n_micro = cut_result.n_clusters
 
-        best_micro_gamma = None
-        best_micro_n = 0
-        best_micro_mem = None
-
-        micro_gammas = np.logspace(-8, -3, num=10)
-        for g in micro_gammas:
-            t0 = time.perf_counter()
-            res = runner2.run(g)
-            post = merge_small_clusters(contracted, res.membership, min_size=micro_min_size)
-            nc = len(set(post.membership))
-            elapsed = time.perf_counter() - t0
-            log.info("  γ=%.2e → %d micro clusters (%.2fs)", g, nc, elapsed)
-            if nc > best_micro_n and nc < n_contracted:
-                best_micro_n = nc
-                best_micro_gamma = g
-                best_micro_mem = list(post.membership)
-
-        if best_micro_mem is None or best_micro_n <= 1:
-            log.warning("  micro search found no useful partition, using 1 cluster")
-            best_micro_mem = [0] * n_contracted
-            best_micro_n = 1
-
-        log.info("  → Best micro: γ=%.2e → %d clusters", best_micro_gamma or 0, best_micro_n)
-        micro_mem_contracted = best_micro_mem
-        n_micro = best_micro_n
+        log.info("  → micro: %d clusters (min_size=%d)", n_micro, micro_min_size)
 
         # Map back to original nodes
-        micro_membership = [micro_mem_contracted[nano_membership[i]] for i in range(len(nano_membership))]
+        micro_membership = [micro_mem_contracted[nano_membership[i]]
+                            for i in range(len(nano_membership))]
 
-        # Save both levels
+        # Save both levels (nano uses -1 for undetermined, micro keeps valid IDs)
         cols = {
             "uid": uids,
-            "cluster_nano": nano_membership,
+            "cluster_nano": nano_for_save,
             "cluster_micro": micro_membership,
         }
         pl.DataFrame(cols).write_parquet(membership_path)
@@ -490,6 +556,27 @@ def run_landscape(
     abstract_path = Path(abstract_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Input validation ──────────────────────────────────────
+    if not edge_path.exists():
+        raise FileNotFoundError(f"Edge file not found: {edge_path}")
+    if not abstract_path.exists():
+        raise FileNotFoundError(f"Abstract file not found: {abstract_path}")
+
+    # Check abstract columns (lightweight schema-only read)
+    try:
+        import pyarrow.parquet as pq
+        abs_schema = pq.read_schema(str(abstract_path))
+        abs_cols = {f.name for f in abs_schema}
+        required = {"uid", "title", "abstract", "pubyear"}
+        missing = required - abs_cols
+        if missing:
+            raise ValueError(
+                f"Abstract file missing columns: {missing}. "
+                f"Required: {required}. Found: {abs_cols}"
+            )
+    except ImportError:
+        pass  # pyarrow not available → skip schema check
 
     membership_path = output_dir / "membership.parquet"
     abstract_subset_path = output_dir / "abstracts_subset.parquet"
