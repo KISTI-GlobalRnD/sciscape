@@ -299,6 +299,8 @@ class _DataSource:
         df = pd.read_parquet(cfg.membership_path, columns=[cfg.uid_col, cluster_level])
         df = df.dropna(subset=[cluster_level])
         df[cluster_level] = df[cluster_level].astype(int)
+        # Exclude undetermined nodes (cluster_id == -1) from keyword extraction.
+        df = df[df[cluster_level] >= 0]
         df = df.drop_duplicates(subset=[cfg.uid_col], keep="last")
         series = df.set_index(cfg.uid_col)[cluster_level]
         self._membership = series
