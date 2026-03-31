@@ -92,10 +92,8 @@ class TestBuildGraphWeights:
         assert all(w >= 1.0 for w in g.es["weight"])
 
     def test_min_weight_filters_all_raises(self, weighted_edges):
-        """Filtering all edges leaves an empty DataFrame whose concat yields
-        a null-typed uid column, causing a Polars SchemaError on the join.
-        This documents current behavior (potential improvement area)."""
-        with pytest.raises(Exception):
+        """Filtering all edges should raise a clear ValueError."""
+        with pytest.raises(ValueError, match="No edges remain after filtering"):
             build_graph(weighted_edges, min_weight=10.0)
 
     def test_min_weight_none_keeps_all(self, weighted_edges):
@@ -108,15 +106,13 @@ class TestBuildGraphWeights:
 
 class TestBuildGraphEdgeCases:
     def test_empty_edges_raises(self):
-        """Empty edge DataFrame produces a null-typed uid column after concat,
-        which causes a Polars SchemaError on the join.
-        This documents current behavior (potential improvement area)."""
+        """Empty edge DataFrame should raise a clear ValueError."""
         edges = pl.DataFrame({
             "uid1": pl.Series([], dtype=pl.Utf8),
             "uid2": pl.Series([], dtype=pl.Utf8),
             "rel_sum2": pl.Series([], dtype=pl.Float64),
         })
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="No edges remain after filtering"):
             build_graph(edges)
 
     def test_self_loop_edge(self):

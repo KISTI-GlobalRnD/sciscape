@@ -30,6 +30,11 @@ def build_graph(
     if min_weight is not None:
         edges = edges.filter(pl.col("rel_sum2") >= min_weight)
 
+    if edges.height == 0:
+        raise ValueError(
+            f"No edges remain after filtering (min_weight={min_weight})"
+        )
+
     # Build uid → index mapping using Polars categorical encoding (vectorized)
     uids = pl.concat([edges["uid1"], edges["uid2"]]).unique(maintain_order=True)
     uid_list = uids.to_list()
@@ -62,7 +67,7 @@ def giant_component(graph: ig.Graph) -> ig.Graph:
 
     if graph.vcount() == 0:
         return graph
-    return graph.clusters(mode="WEAK").giant()
+    return graph.connected_components(mode="WEAK").giant()
 
 
 __all__ = ["build_graph", "giant_component"]
