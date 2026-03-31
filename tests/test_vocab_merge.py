@@ -1,7 +1,6 @@
 """Tests for vocabulary-level merge (Stage 2 post-vectorizer)."""
 
 import numpy as np
-import pytest
 from scipy import sparse as sp
 
 from sciscape.keyword_extraction.config import VocabMergeConfig

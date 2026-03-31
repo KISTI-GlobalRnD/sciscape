@@ -1,8 +1,5 @@
 """Tests for term co-occurrence collection (Stage 6)."""
 
-import numpy as np
-import pytest
-from scipy import sparse as sp
 
 from sciscape.keyword_extraction.cooccurrence import collect_cooccurrence
 

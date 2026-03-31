@@ -9,7 +9,6 @@ import leidenalg as la
 import polars as pl
 
 from .config import LeidenConfig
-from .partitioning import partition_class
 from .runner import LeidenRunner
 
 

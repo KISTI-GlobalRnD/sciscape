@@ -37,7 +37,7 @@ def _compute_network_edges(
 ) -> List[Dict]:
     """Compute co-occurrence network edges from token overlap + subphrase."""
     term_list = terms["term"].tolist()
-    scores = dict(zip(terms["term"], terms["score"]))
+    dict(zip(terms["term"], terms["score"]))
     edges = []
     seen: Set[Tuple[str, str]] = set()
 

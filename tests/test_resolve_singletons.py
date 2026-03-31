@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-from collections import Counter
 
 import pytest
 
 from sciscape.clustering.postprocess import (
-    SingletonResolutionResult,
     resolve_singletons,
 )
 

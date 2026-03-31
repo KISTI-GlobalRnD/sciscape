@@ -7,13 +7,13 @@ from typing import Dict, Iterator, List, Optional, Tuple
 
 import math
 
-logger = logging.getLogger(__name__)
-
 import numpy as np
 import pandas as pd
 from scipy import sparse as sp
 from .config import KeywordExtractionConfig
 from .utils import _normalize_text_basic
+
+logger = logging.getLogger(__name__)
 
 try:  # optional dependency
     import polars as pl

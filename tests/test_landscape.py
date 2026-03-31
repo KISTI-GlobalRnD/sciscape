@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
-from collections import Counter
-from pathlib import Path
 
 import igraph as ig
 import pandas as pd

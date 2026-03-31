@@ -13,7 +13,6 @@ import pytest
 from scipy import sparse as sp
 
 from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
-from sciscape.keyword_extraction.config import VocabMergeConfig
 from sciscape.keyword_extraction.normalization import (
     _normalize_spelling,
     _phrase_singular,
@@ -23,7 +22,6 @@ from sciscape.keyword_extraction.pipeline import (
     ACADEMIC_STOPWORDS,
     KeywordExtractionPipeline,
 )
-from sciscape.keyword_extraction.term_network import TermNetworkConfig
 
 
 # ---------------------------------------------------------------------------
@@ -474,11 +472,10 @@ def _make_pipeline_stub():
 
 def _make_p4_scenario(mode="annotate"):
     """Construct a pipeline + top_df for P4 short-term expansion testing."""
-    import re
     from unittest.mock import MagicMock
 
     terms = ["mg", "hydrogen", "mg alloy", "catalyst", "storage"]
-    term_to_idx = {t: i for i, t in enumerate(terms)}
+    {t: i for i, t in enumerate(terms)}
 
     # Build cooc matrix: "mg" cooccurs with "mg alloy" (strong) and "catalyst" (weak)
     n = len(terms)
@@ -518,7 +515,6 @@ def _make_p4_scenario(mode="annotate"):
 
 def _make_p4_scenario_substring():
     """P4 scenario with both substring and non-substring partners."""
-    import re
     from unittest.mock import MagicMock
 
     terms = ["fe", "fe oxide", "nanoparticle", "catalyst", "iron"]

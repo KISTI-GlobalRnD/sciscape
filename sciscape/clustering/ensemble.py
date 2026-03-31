@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 import math
 import json
 import multiprocessing as mp
@@ -644,7 +644,7 @@ def _finalize_outputs(
             "non_tiny_counts": stats.get("non_tiny_counts", {}),
             "total_nodes": stats.get("total_nodes", len(uids)),
         }
-        metadata_path = gamma_dir / "metadata.json"
+        gamma_dir / "metadata.json"
         with (gamma_dir / "metadata.json").open("w", encoding="utf-8") as fh:
             json.dump(metadata, fh, ensure_ascii=False, indent=2)
 

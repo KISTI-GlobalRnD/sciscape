@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
 from sciscape.clustering.postprocess import (
-    SmallClusterResolutionResult,
     resolve_small_clusters,
 )
 
@@ -167,7 +166,7 @@ class TestAdaptiveConvergence:
         coarse2 = [0, 1]  # 0 resolved → converge
 
         runner = _make_runner([coarse1, coarse2])
-        result = resolve_small_clusters(runner, fine_mem, gamma=0.004, min_size=5)
+        resolve_small_clusters(runner, fine_mem, gamma=0.004, min_size=5)
 
         contracted_runner = runner.clone_for_graph.return_value
         calls = contracted_runner.run.call_args_list

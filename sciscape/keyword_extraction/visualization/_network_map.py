@@ -19,7 +19,6 @@ Usage::
 
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -233,7 +232,6 @@ def plot_cluster_map(
 
     # Draw edges
     edge_x, edge_y = [], []
-    edge_hover = []
     for i in range(n):
         for j in range(i + 1, n):
             if sim[i, j] >= edge_threshold:
@@ -245,7 +243,6 @@ def plot_cluster_map(
     # Edge trace
     if edge_x:
         # Compute edge widths based on similarity
-        edge_traces = []
         for i in range(n):
             for j in range(i + 1, n):
                 if sim[i, j] >= edge_threshold:

@@ -1,6 +1,5 @@
 """Tests for keyword extraction diagnostics module."""
 
-import math
 
 import pandas as pd
 import pytest

@@ -1,9 +1,7 @@
 """Tests for extraction utilities and shared utils module."""
 
-import math
 
 import numpy as np
-import pandas as pd
 import pytest
 from scipy import sparse as sp
 

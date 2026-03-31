@@ -17,7 +17,10 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    import polars as pl
 
 import numpy as np
 
@@ -402,7 +405,7 @@ def _run_clustering(
         # Constrained cut: min_size in original-node terms.
         # Use a fraction of total nodes as micro min_size (same cluster
         # count maximisation objective, just at a coarser scale).
-        n_total_nodes = len(nano_membership)
+        len(nano_membership)
         micro_min_size = max(
             int(nano_size_arr.sum()) // 20,  # ~5% of total
             int(nano_size_arr.max()) + 1,     # larger than biggest nano

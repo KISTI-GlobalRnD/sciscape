@@ -5,11 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from unittest.mock import MagicMock
 
-import pytest
 
 from sciscape.clustering.postprocess import (
-    LargeClusterSplitResult,
-    RefinementResult,
     refine_clusters,
     split_large_clusters,
 )

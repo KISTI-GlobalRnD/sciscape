@@ -277,14 +277,12 @@ class LLMCanonicalizeMixin:
                         else:
                             messages, payload = self._build_alias_messages(cluster_id, chunk)
                         raw_response = None
-                        last_error: Optional[Exception] = None
                         attempts = max(1, int(cfg.alias_retry))
                         for attempt in range(attempts):
                             try:
                                 raw_response = self._invoke_alias_model(client, messages)
                                 break
                             except Exception as exc:  # pragma: no cover - external dependency
-                                last_error = exc
                                 logger.warning(
                                     "Alias model request failed for cluster %s (attempt %s/%s): %s",
                                     cluster_id,
@@ -1532,7 +1530,7 @@ class LLMCanonicalizeMixin:
 
         self.n_jobs_effective = prev_n_jobs
 
-        metadata_cols = [col for col in metadata_group.columns if col not in {"cluster_id", "term"}]
+        [col for col in metadata_group.columns if col not in {"cluster_id", "term"}]
         merged = reranked.merge(metadata_group, on=["cluster_id", "term"], how="left")
 
         if missing_terms:

@@ -13,14 +13,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 import numpy as np
-
-logger = logging.getLogger(__name__)
 from scipy import sparse as sp
 
 from .utils import _edit_distance
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -394,7 +397,6 @@ class TermNetwork:
         When *combined* and *terms_list* are provided, includes per-pair
         similarity scores for auto-merge confidence gating (P3).
         """
-        import pandas as pd
 
         term_to_idx = {t: i for i, t in enumerate(terms_list)} if terms_list is not None else {}
 

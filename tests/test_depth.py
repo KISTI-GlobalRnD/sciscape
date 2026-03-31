@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 from scipy import sparse as sp
 
 from sciscape.keyword_extraction.depth import (
@@ -127,7 +126,7 @@ class TestEstimateDepth:
 
     def test_with_cooccurrence(self):
         terms = ["radiation", "nuclear", "cesium"]
-        term_to_idx = {t: i for i, t in enumerate(terms)}
+        {t: i for i, t in enumerate(terms)}
 
         # cesium co-occurs with radiation (asymmetric: radiation is broader)
         cooc = sp.csr_matrix(np.array([

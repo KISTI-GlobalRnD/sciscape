@@ -1,7 +1,6 @@
 """Tests for Stage 3: full-vocabulary cleansing."""
 
 import numpy as np
-import pytest
 from scipy import sparse as sp
 
 from sciscape.keyword_extraction.vocab_cleansing import (

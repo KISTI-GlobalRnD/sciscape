@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
-import pytest
 
 from sciscape.clustering.postprocess import (
-    GammaSearchResult,
     gamma_search,
 )
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sciscape.clustering.constrained_cut import CutResult, constrained_cut
+from sciscape.clustering.constrained_cut import constrained_cut
 
 
 # ---------------------------------------------------------------------------

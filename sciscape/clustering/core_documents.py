@@ -6,7 +6,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TYPE_CHECKING, Union
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, TYPE_CHECKING, Union
 
 try:  # optional dependency for SQLite
     import sqlite3
@@ -687,7 +687,8 @@ def select_core_documents(
     if not cleaned:
         return []
 
-    key_citation = lambda r: (r["citation"], r["pubyear"] or 0)
+    def key_citation(r):
+        return (r["citation"], r["pubyear"] or 0)
     sorted_by_citation = sorted(cleaned, key=key_citation, reverse=True)
 
     selected: List[Dict[str, Optional[str]]] = []
