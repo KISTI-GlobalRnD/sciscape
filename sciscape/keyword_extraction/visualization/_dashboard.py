@@ -109,6 +109,13 @@ def export_report(
     out.mkdir(parents=True, exist_ok=True)
     generated: List[str] = []
 
+    # 0. Save data.json (for external viewer / Vercel deploy)
+    cluster_data = prepare_cluster_data(df, viz_data=viz_data)
+    data_json_path = str(out / "data.json")
+    with open(data_json_path, "w", encoding="utf-8") as f:
+        json.dump(cluster_data, f, ensure_ascii=False)
+    generated.append(os.path.abspath(data_json_path))
+
     # 1. Main dashboard
     dash_path = export_dashboard(
         df, output_path=str(out / "index.html"),
@@ -177,3 +184,43 @@ li{{margin:.5rem 0;font-size:1.1rem;}}</style></head>
         webbrowser.open(f"file://{os.path.abspath(nav_path)}")
 
     return generated
+
+
+def export_viewer(
+    output_path: str = "viewer.html",
+    title: str = "SciScape Viewer",
+) -> str:
+    """Generate a standalone viewer HTML that loads data via file upload.
+
+    Deploy this single file to Vercel / GitHub Pages / any static host.
+    Users drag & drop a ``data.json`` (produced by ``export_report``)
+    to explore their results in the browser — no server needed.
+
+    Parameters
+    ----------
+    output_path : str
+        Path for the HTML file.
+    title : str
+        Viewer title.
+
+    Returns
+    -------
+    str
+        Absolute path to the generated HTML file.
+    """
+    from ._dashboard_template import _DASHBOARD_HTML_TEMPLATE
+
+    html = _DASHBOARD_HTML_TEMPLATE
+    html = html.replace("{{TITLE}}", title)
+    html = html.replace("{{N_KEYWORDS}}", "0")
+    html = html.replace("{{N_CLUSTERS}}", "0")
+    # Replace the DATA assignment with null — triggers upload UI
+    html = html.replace("{{DATA_JSON}}", "null")
+
+    out_dir = os.path.dirname(os.path.abspath(output_path))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    return os.path.abspath(output_path)

@@ -86,9 +86,23 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Min documents per cluster (default: 1000)")
     ls.add_argument("--top-n", type=int, default=80, help="Keywords per cluster (default: 80)")
     ls.add_argument("--title", type=str, default="SciScape Landscape", help="Report title")
+    ls.add_argument("--gamma-block", type=str, default="auto",
+                     help="Block-init γ: 'auto' (10×γ_range upper), 'none' (disable), or float (default: auto)")
+    ls.add_argument("--gamma-range", type=str, default=None,
+                     help="Resolution search bounds lo,hi (default: 1e-6,1e-3)")
     ls.add_argument("--force", action="store_true",
                      help="Ignore cached intermediate results and re-run from scratch")
     ls.add_argument("-v", "--verbose", action="store_true")
+
+    # ---- viewer ----
+    vw = sub.add_parser("viewer", help="Generate standalone viewer HTML (deploy to Vercel/GitHub Pages)")
+    vw.add_argument("-o", "--output", type=Path, default=Path("viewer.html"),
+                     help="Output HTML path (default: viewer.html)")
+    vw.add_argument("--title", type=str, default="SciScape Viewer", help="Viewer title")
+    vw.add_argument("--open", action="store_true", help="Open in browser after generation")
+
+    # ---- gui ----
+    sub.add_parser("gui", help="Launch graphical interface")
 
     return parser
 
@@ -235,17 +249,48 @@ def _run_landscape(args: argparse.Namespace) -> None:
                             format="%(asctime)s %(levelname)s %(message)s",
                             datefmt="%H:%M:%S")
 
-    cfg = LandscapeConfig(
+    # Parse gamma_block: "auto" | "none" | float
+    gb = args.gamma_block.strip().lower()
+    if gb == "none":
+        gamma_block = None
+    elif gb == "auto":
+        gamma_block = "auto"
+    else:
+        gamma_block = float(gb)
+
+    cfg_kwargs = dict(
         n_target_nodes=args.n_nodes,
         seed=args.seed,
         force=args.force,
         min_docs_per_cluster=args.min_docs,
         top_n_keywords=args.top_n,
         report_title=args.title,
+        gamma_block=gamma_block,
     )
+    if args.gamma_range:
+        lo, hi = args.gamma_range.split(",")
+        cfg_kwargs["gamma_range"] = (float(lo), float(hi))
+
+    cfg = LandscapeConfig(**cfg_kwargs)
 
     result = run_landscape(args.edge_path, args.abstract_path, args.output_dir, config=cfg)
     print(f"Landscape complete → {result['report_dir']}/report.html")
+
+
+def _run_viewer(args: argparse.Namespace) -> None:
+    from sciscape.keyword_extraction.visualization import export_viewer
+
+    path = export_viewer(
+        output_path=str(args.output),
+        title=args.title,
+    )
+    print(f"Viewer generated: {path}")
+    print("Deploy to Vercel:  vercel deploy --prod .")
+    print("Or open locally:   open viewer.html")
+
+    if args.open:
+        import webbrowser
+        webbrowser.open(f"file://{path}")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -260,6 +305,11 @@ def main(argv: list[str] | None = None) -> None:
         _run_convert(args)
     elif args.command == "landscape":
         _run_landscape(args)
+    elif args.command == "viewer":
+        _run_viewer(args)
+    elif args.command == "gui":
+        from sciscape.gui import launch
+        launch()
     else:
         parser.print_help()
         sys.exit(1)

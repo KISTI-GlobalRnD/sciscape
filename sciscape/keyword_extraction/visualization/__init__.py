@@ -17,7 +17,7 @@ from ._charts import (
     plot_score_distribution,
     plot_temporal_trends,
 )
-from ._dashboard import export_dashboard, export_report
+from ._dashboard import export_dashboard, export_report, export_viewer
 from ._hierarchy import plot_cluster_sunburst, plot_cluster_treemap
 from ._network_map import plot_cluster_map, plot_cluster_map_with_keywords
 from ._temporal import plot_cluster_trend_comparison, plot_temporal_heatmap
@@ -25,6 +25,7 @@ from ._temporal import plot_cluster_trend_comparison, plot_temporal_heatmap
 __all__ = [
     "export_dashboard",
     "export_report",
+    "export_viewer",
     "plot_cluster_keywords",
     "plot_cluster_map",
     "plot_cluster_map_with_keywords",

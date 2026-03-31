@@ -1,11 +1,9 @@
-"""HTML template for the keyword extraction dashboard."""
-
-_DASHBOARD_HTML_TEMPLATE = r"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{TITLE}}</title>
+<title>SciScape Viewer</title>
 <script src="https://cdn.plot.ly/plotly-2.27.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
@@ -72,10 +70,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <body>
 
 <div class="header">
-  <h1>{{TITLE}}</h1>
+  <h1>SciScape Viewer</h1>
   <div class="stats">
-    <div>Keywords: <span>{{N_KEYWORDS}}</span></div>
-    <div>Clusters: <span>{{N_CLUSTERS}}</span></div>
+    <div>Keywords: <span>0</span></div>
+    <div>Clusters: <span>0</span></div>
   </div>
 </div>
 
@@ -242,7 +240,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </div>
 
 <script>
-let DATA = {{DATA_JSON}};
+let DATA = null;
 
 // ── Upload / Viewer mode ──
 let VOCAB_MERGES = {}, NORM_MERGES = {}, CROSS_CLUSTER_TERMS = null;
@@ -1692,4 +1690,4 @@ if (clusterIds.length) {
 }
 </script>
 </body>
-</html>"""
+</html>
