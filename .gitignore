@@ -1,9 +1,17 @@
+.venv/
+.pytest_cache/
 __pycache__/
 *.py[cod]
+*.egg-info/
+.env
+.env.*
+!.env.example
+cpm-dendro/target/
 
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-artifacts/
+# Local data / output / experiments
+data/
+output/
+pilot_*.html
+pilot_*.parquet
 *.parquet
+!tests/**/*.parquet
