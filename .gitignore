@@ -1,9 +1,9 @@
+.venv/
+.pytest_cache/
 __pycache__/
 *.py[cod]
-
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-artifacts/
-*.parquet
+*.egg-info/
+.env
+.env.*
+!.env.example
+cpm-dendro/target/

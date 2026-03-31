@@ -1,103 +1,102 @@
 # SciScape
 
-Leiden 기반 클러스터링 파이프라인과 클러스터 단위 키워드 추출 파이프라인을 하나의 Python 패키지(`sciscape`)로 제공합니다.
+학술 논문 네트워크의 Leiden 클러스터링 + 키워드 추출 파이프라인.
 
-## 구성
+## 주요 기능
 
-- `sciscape.clustering`: 그래프 구성, Leiden 클러스터링, 해상도(γ) 탐색, 계층(hierarchy) 구성, 후처리(소규모 클러스터 병합) 등
-- `sciscape.keyword_extraction`: 문서(초록/제목) 기반 n-gram 키워드 추출(c‑TF‑IDF, LLR, MMR 다양성, 연도별 시계열) 등
-
-호환을 위해 `sos.*` import는 shim으로 유지합니다.
+- **Hierarchical Leiden Clustering**: CPM 기반 다중 해상도 클러스터링, block-init + cascade hot start
+- **10-Stage Keyword Extraction**: c-TF-IDF + LLR 스코어링, 7가지 품질 필터 (P1–P7), 시계열 분석
+- **Input Adapters**: Web of Science, Scopus, OpenAlex, BibTeX 데이터 자동 변환
+- **Interactive Visualization**: HTML 대시보드, 네트워크 맵, 계층 트리맵, 시계열 비교
+- **Landscape Pipeline**: 엣지 → BFS 서브샘플 → 계층 클러스터링 → 키워드 → 대화형 리포트
+- **Web Viewer**: GitHub Pages에 배포, CSV/JSON 드래그&드롭으로 결과 탐색 (서버 불필요)
+- **GUI**: Tkinter 기반 최소 GUI (파라미터 설정 → 실행 → 진행률 → 리포트 열기)
 
 ## 설치
 
-이 저장소 루트에서:
-
 ```bash
-python -m pip install -U pip
-python -m pip install .
+pip install .                # 기본
+pip install ".[viz]"         # + 시각화 (Plotly)
+pip install ".[arrow]"       # + Parquet 메타데이터 가속
+pip install ".[dev]"         # + 개발/테스트
 ```
 
-옵션 기능:
+## 빠른 시작
+
+### CLI
 
 ```bash
-# Parquet row-group 스트리밍 가속
-python -m pip install .[arrow]
+# 외부 데이터 → SciScape 포맷
+sciscape convert openalex works.jsonl -o abstracts.parquet
 
-# LLM 기반 정규화/요약 기능 사용 시
-python -m pip install .[llm]
+# 전체 파이프라인 (엣지 → 클러스터링 → 키워드 → 리포트)
+sciscape landscape edges.parquet abstracts.parquet -o output/
+
+# 개별 단계
+sciscape cluster edges.zip edges.txt --levels 5,100 80,500
+sciscape keywords abstracts.parquet membership.parquet --enable-all -o keywords.parquet
 ```
 
-## 빠른 사용법
+### GUI
 
-### 1) Clustering
+```bash
+sciscape gui
+```
+
+### Web Viewer
+
+```bash
+# 뷰어 HTML 생성 (GitHub Pages 배포용)
+sciscape viewer -o viewer/index.html
+
+# 또는 기존 리포트의 data.json을 뷰어에 업로드
+# → https://<user>.github.io/<repo>/ 에서 접속
+```
+
+## 패키지 구성
+
+```
+sciscape/
+├── clustering/              # Leiden 클러스터링
+│   ├── block_init.py        #   block-init + cascade hot start
+│   ├── postprocess.py       #   split/merge refinement + γ search
+│   ├── dendrogram.py        #   CPM density HAC
+│   └── constrained_cut.py   #   size-constrained optimal cut
+├── keyword_extraction/      # 10단계 키워드 추출
+│   └── visualization/       #   대시보드, 네트워크맵, 시계열
+├── adapters/                # WoS, Scopus, OpenAlex, BibTeX
+├── landscape.py             # 엔드투엔드 파이프라인
+├── cli.py                   # CLI (cluster, keywords, convert, landscape, viewer, gui)
+└── gui.py                   # Tkinter GUI
+```
+
+## GitHub Pages Viewer
+
+`viewer/index.html`은 정적 HTML 파일로, GitHub Pages에 배포하면 누구나 브라우저에서 결과를 탐색할 수 있습니다.
+
+**지원 포맷:**
+- `data.json` — `sciscape landscape`가 생성하는 전체 데이터 (네트워크, 시계열, 계층)
+- `keywords.csv` / `keywords.tsv` — 범용 키워드 테이블 (`cluster_id`, `term`, `score` 필수)
+
+**배포:**
+1. GitHub repo Settings → Pages → Source: **GitHub Actions**
+2. `viewer/index.html`이 main 브랜치에 푸시되면 자동 배포
+3. 또는 Actions 탭에서 수동 트리거 (workflow_dispatch)
+
+## 문서
+
+- 상세 사용법: [`sciscape/README.md`](sciscape/README.md)
+- I/O 스키마: [`docs/io_schema.md`](docs/io_schema.md)
+
+## Python API
 
 ```python
-from pathlib import Path
-from sciscape.clustering import LeidenConfig, run_pipeline
+from sciscape.landscape import LandscapeConfig, run_landscape
 
-config = LeidenConfig(
-    level_constraints=[(5, 100), (80, 500), (400, 5000)],
-    resolution_bounds=(1e-3, 5.0),
-    max_iterations=32,
-    log_history=True,
-)
-
-tables = run_pipeline(
-    zip_path=Path("Data/KRISS_pair_links/dc_bc_cc_total_pair.zip"),
-    inner_name="dc_bc_cc_total_pair.txt",
-    config=config,
+result = run_landscape(
+    "edges.parquet",
+    "abstracts.parquet",
+    "output/",
+    config=LandscapeConfig(min_docs_per_cluster=500),
 )
 ```
-
-### 2) Keyword Extraction
-
-```python
-from pathlib import Path
-from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
-
-cfg = KeywordExtractionConfig(
-    abstract_path=Path("Data/FINAL_title_abstract_pubyear.parquet"),
-    membership_path=Path("Output/total_membership_gamma16.parquet"),
-    cluster_level="cluster_micro",
-    include_title=True,
-    title_weight=1.5,
-    min_df_unigram=5,
-    min_df_phrase=5,
-    phrase_min_count_per_cluster=10,
-    min_cluster_doc_coverage=10,
-    min_cluster_doc_coverage_ratio=0.01,
-    mmr_jaccard_lambda=0.25,
-    w_llr=0.4,
-    n_jobs=48,
-)
-
-keywords = run_keyword_pipeline(cfg)
-keywords.to_parquet("Output/cluster_keywords.parquet", index=False)
-```
-
-### (선택) Stage 2.5: LLM 기반 용어 정규화(alias merge/drop/translate)
-
-`KeywordExtractionConfig`에서 `apply_alias_map=True`를 켜고 `alias_strategy`를 지정하면,
-추출된 키워드를 canonical form으로 정규화할 수 있습니다.
-
-- `alias_strategy="llm"`: LLM 호출로 `keep / merge_into / translate / drop` 결정(기본 chunking)
-- `alias_strategy="llm_candidates"`: term별 `candidates`(후보 canonical allowlist)를 제공하는 방식  
-  - `merge_into`는 해당 term의 후보 목록 안에서만 선택하도록 강제(대규모 vocabulary에서 안전성↑)
-
-관련 옵션(일부):
-- `alias_cache_path`: raw response + mapping 저장 경로
-- `alias_max_terms_per_prompt`: 한 번에 보낼 term 개수
-- `alias_candidate_column` / `alias_candidate_max` / `alias_candidate_enforce`: `llm_candidates`용 후보 컬럼/제약
-
-## 개발/검증
-
-```bash
-# (권장) venv 환경에서
-python -m pip install -e .[dev]
-pytest -q
-```
-
-## 레거시
-
-과거 코드/노트북 호환을 위해 `leiden_module/`이 남아있을 수 있습니다. 신규 개발/수정은 `sciscape/`를 기준으로 진행합니다.
