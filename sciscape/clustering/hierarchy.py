@@ -38,10 +38,10 @@ def get_cluster_hierarchy(
     counts_per_level: Dict[str, Dict[int, int]] = {}
     for col, level in zip(ordered_cols, level_names):
         counts_df = df.group_by(col).agg(pl.len().alias("size"))
-        counts_per_level[level] = {
-            row[col]: int(row["size"])
-            for row in counts_df.iter_rows(named=True)
-        }
+        counts_per_level[level] = dict(zip(
+            counts_df[col].to_list(),
+            counts_df["size"].cast(int).to_list(),
+        ))
 
     transition_counts: Dict[tuple[str, str], Dict[int, Dict[int, int]]] = {}
     for parent_col, child_col in zip(ordered_cols, ordered_cols[1:]):
@@ -49,10 +49,12 @@ def get_cluster_hierarchy(
         child_level = child_col.removeprefix("cluster_")
         pairs = df.group_by([parent_col, child_col]).agg(pl.len().alias("size"))
         mapping: Dict[int, Dict[int, int]] = {}
-        for row in pairs.iter_rows(named=True):
-            parent = row[parent_col]
-            child = row[child_col]
-            mapping.setdefault(parent, {})[child] = int(row["size"])
+        for p, c, s in zip(
+            pairs[parent_col].to_list(),
+            pairs[child_col].to_list(),
+            pairs["size"].cast(int).to_list(),
+        ):
+            mapping.setdefault(p, {})[c] = s
         transition_counts[(parent_level, child_level)] = mapping
 
     nodes: Dict[str, Dict[int, Dict[str, object]]] = {

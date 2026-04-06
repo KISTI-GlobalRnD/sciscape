@@ -320,8 +320,8 @@ class TermNetwork:
         thresh = threshold if threshold is not None else self.config.merge_threshold
         max_size = self.config.max_group_size
 
-        # Threshold the similarity matrix
-        thresholded = combined.copy()
+        # Threshold the similarity matrix (in-place on CSR)
+        thresholded = combined.tocsr()
         thresholded.data[thresholded.data < thresh] = 0
         thresholded.eliminate_zeros()
 
@@ -344,40 +344,44 @@ class TermNetwork:
 
             # Split oversized group: extract subgraph, remove weakest edges
             sub_idx = np.array(member_indices)
-            sub_mat = thresholded[np.ix_(sub_idx, sub_idx)].tolil()
-            max_iter = sub_mat.nnz // 2 + 1  # upper bound: remove all edges
+            sub_csr = thresholded[np.ix_(sub_idx, sub_idx)].tocsr()
+            max_iter = sub_csr.nnz // 2 + 1  # upper bound: remove all edges
             prev_comp_sizes = None
             for _split_iter in range(max_iter):
                 n_sub, sub_labels = sp.csgraph.connected_components(
-                    sub_mat.tocsr(), directed=False, return_labels=True
+                    sub_csr, directed=False, return_labels=True
                 )
                 # Check if all components are within limit
-                comp_sizes = {}
-                for si, sl in enumerate(sub_labels):
-                    comp_sizes[sl] = comp_sizes.get(sl, 0) + 1
-                if all(s <= max_size for s in comp_sizes.values()):
+                comp_sizes = np.bincount(sub_labels)
+                if comp_sizes.max() <= max_size:
                     break
-                if prev_comp_sizes is not None and comp_sizes == prev_comp_sizes:
+                comp_sizes_dict = {i: int(s) for i, s in enumerate(comp_sizes) if s > 0}
+                if prev_comp_sizes is not None and comp_sizes_dict == prev_comp_sizes:
                     break
-                prev_comp_sizes = comp_sizes
-                # Find and remove weakest edge in any oversized component
+                prev_comp_sizes = comp_sizes_dict
+                # Find weakest edge in any oversized component via CSR direct access
                 min_val, min_i, min_j = float("inf"), -1, -1
-                csr = sub_mat.tocsr()
-                for i in range(csr.shape[0]):
-                    row = csr.getrow(i)
-                    for j, v in zip(row.indices, row.data):
+                for i in range(sub_csr.shape[0]):
+                    if comp_sizes[sub_labels[i]] <= max_size:
+                        continue
+                    s0, s1 = sub_csr.indptr[i], sub_csr.indptr[i + 1]
+                    for pos in range(s0, s1):
+                        j = sub_csr.indices[pos]
+                        v = sub_csr.data[pos]
                         if j > i and 0 < v < min_val:
-                            # Only consider edges within oversized components
-                            if comp_sizes.get(sub_labels[i], 0) > max_size:
-                                min_val, min_i, min_j = v, i, j
+                            min_val, min_i, min_j = v, i, j
                 if min_i < 0:
                     break
-                sub_mat[min_i, min_j] = 0
-                sub_mat[min_j, min_i] = 0
+                # Convert to LIL only for the single edge removal, then back
+                sub_lil = sub_csr.tolil()
+                sub_lil[min_i, min_j] = 0
+                sub_lil[min_j, min_i] = 0
+                sub_csr = sub_lil.tocsr()
+                sub_csr.eliminate_zeros()
 
             # Collect final sub-components
             n_sub, sub_labels = sp.csgraph.connected_components(
-                sub_mat.tocsr(), directed=False, return_labels=True
+                sub_csr, directed=False, return_labels=True
             )
             sub_groups: Dict[int, List[str]] = {}
             for si, sl in enumerate(sub_labels):

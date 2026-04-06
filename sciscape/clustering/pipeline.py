@@ -9,11 +9,15 @@ from collections import OrderedDict
 
 import polars as pl
 
+import logging
+
 from .clustering import attach_uids
 from .config import ClusterTables, HierarchyConfig, HierarchyLevelConfig, LeidenConfig
 from .graph import build_graph, giant_component
 from .hierarchy import build_cluster_tables
 from .hierarchy_builder import HierarchyBuilder
+from .integer_remap import integer_remap, join_back_uids
+from .leiden_java import run_leiden_java
 from .postprocess import merge_small_clusters
 from .io import load_edge_table
 from .logging import (
@@ -26,6 +30,100 @@ from .logging import (
     write_progress_event,
 )
 from .tuning import resolve_resolution_schedule, scan_resolution_grid
+
+
+_log_module = logging.getLogger(__name__)
+
+
+def _select_backend(edges: pl.DataFrame, config: LeidenConfig) -> str:
+    """Determine which backend to use: 'igraph' or 'java'."""
+    if config.backend in ("igraph", "java"):
+        return config.backend
+    # auto: estimate node count from edges
+    n_nodes = pl.concat([edges["uid1"], edges["uid2"]]).n_unique()
+    if n_nodes >= config.auto_backend_threshold:
+        _log_module.info(
+            "auto-selected java backend (%d nodes >= %d threshold)",
+            n_nodes, config.auto_backend_threshold,
+        )
+        return "java"
+    return "igraph"
+
+
+def _run_java_backend(
+    edges: pl.DataFrame,
+    config: LeidenConfig,
+    *,
+    output_dir: Path,
+    progress_log_path: Path,
+) -> ClusterTables:
+    """Run Leiden via the Java backend (no igraph)."""
+    if not config.resolutions:
+        raise ValueError(
+            "Java backend requires explicit resolutions in LeidenConfig.resolutions. "
+            "level_constraints (binary search) is not supported with the Java backend."
+        )
+
+    t0 = time.perf_counter()
+
+    # Integer remap
+    t_remap = time.perf_counter()
+    remap = integer_remap(edges, output_dir / "remap")
+    _log(config, f"integer remap in {time.perf_counter() - t_remap:.2f}s "
+         f"({remap.n_nodes} nodes, {remap.n_edges} edges)",
+         progress_log_path=progress_log_path)
+
+    # Run Leiden at each resolution
+    memberships_by_level = OrderedDict()
+    resolutions_map = OrderedDict()
+    qualities_map = OrderedDict()
+
+    for level_name, gamma in config.resolutions.items():
+        t_leiden = time.perf_counter()
+        result = run_leiden_java(
+            remap.int_edges_path,
+            resolution=float(gamma),
+            n_nodes=remap.n_nodes,
+            jar_path=config.jar_path,
+            seed=config.seed or 0,
+            iterations=config.leiden_iterations or 10,
+            java_heap=config.java_heap,
+        )
+        _log(config,
+             f"level {level_name}: java leiden in {time.perf_counter() - t_leiden:.2f}s "
+             f"(gamma={gamma:.6g}, {result.n_clusters} clusters)",
+             progress_log_path=progress_log_path)
+
+        memberships_by_level[level_name] = result.membership.tolist()
+        resolutions_map[level_name] = float(gamma)
+        qualities_map[level_name] = 0.0  # Java backend doesn't return quality
+
+    # Join back UIDs
+    t_join = time.perf_counter()
+    uid_cluster = join_back_uids(
+        memberships_by_level[next(iter(memberships_by_level))],
+        remap.node_manifest_path,
+    )
+    # Build membership DataFrame with all levels
+    membership_df = uid_cluster.select("uid")
+    for level_name, mem in memberships_by_level.items():
+        membership_df = membership_df.with_columns(
+            pl.Series(f"cluster_{level_name}", mem),
+        )
+    _log(config, f"uid join-back in {time.perf_counter() - t_join:.2f}s",
+         progress_log_path=progress_log_path)
+
+    levels = tuple(memberships_by_level.keys())
+    tables = build_cluster_tables(
+        membership_df,
+        levels=levels,
+        resolutions=resolutions_map,
+        qualities=qualities_map,
+    )
+
+    _log(config, f"java pipeline finished in {time.perf_counter() - t0:.2f}s",
+         progress_log_path=progress_log_path)
+    return tables
 
 
 def _log(config: LeidenConfig, message: str, *, progress_log_path: Path) -> None:
@@ -98,6 +196,17 @@ def run_pipeline(
     edges = load_edge_table(zip_path, inner_name)
     _log(config, f"loaded edges in {time.perf_counter() - t0:.2f}s", progress_log_path=progress_log_path)
 
+    # ── Backend dispatch ──────────────────────────────────────
+    backend = _select_backend(edges, config)
+    if backend == "java":
+        output_dir = Path(config.log_dir or ".") / (config.run_id or "leiden_java")
+        return _run_java_backend(
+            edges, config,
+            output_dir=output_dir,
+            progress_log_path=progress_log_path,
+        )
+
+    # ── igraph path (default) ─────────────────────────────────
     t_graph = time.perf_counter()
     edge_count = edges.height
     graph = build_graph(edges)

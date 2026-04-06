@@ -127,7 +127,7 @@ class TestBuildGraphEdgeCases:
         assert g.ecount() == 2
 
     def test_duplicate_edges(self):
-        """Duplicate edges are kept as multi-edges (igraph default)."""
+        """Duplicate edges are summed (sparse matrix merges multi-edges)."""
         edges = pl.DataFrame({
             "uid1": ["A", "A"],
             "uid2": ["B", "B"],
@@ -135,7 +135,8 @@ class TestBuildGraphEdgeCases:
         })
         g = build_graph(edges)
         assert g.vcount() == 2
-        assert g.ecount() == 2
+        assert g.ecount() == 1
+        assert g.es[0]["weight"] == 3.0
 
     def test_single_edge(self):
         edges = pl.DataFrame({

@@ -62,6 +62,13 @@ from .ensemble import (
 )
 from .dendrogram import build_dendrogram
 from .constrained_cut import CutResult, constrained_cut
+from .integer_remap import (
+    RemapResult,
+    integer_remap,
+    join_back_uids,
+    load_manifest,
+)
+from .leiden_java import JavaLeidenResult, run_leiden_java
 from .block_init import (
     BlockInitResult,
     CascadeResult,
@@ -137,4 +144,10 @@ __all__ = [
     "load_blocks",
     "load_blocks_metadata",
     "is_cache_valid",
+    "RemapResult",
+    "integer_remap",
+    "join_back_uids",
+    "load_manifest",
+    "JavaLeidenResult",
+    "run_leiden_java",
 ]

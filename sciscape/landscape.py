@@ -200,11 +200,12 @@ def _run_clustering(
     membership_path = output_dir / "membership.parquet"
     level_names = ["nano", "micro"][:cfg.n_hierarchy_levels]
 
-    # Check which levels are already done
+    # Check which levels are already done (schema-only, no data read)
     existing_levels: set = set()
     if not cfg.force and membership_path.exists():
-        existing_df = pl.read_parquet(membership_path)
-        for col in existing_df.columns:
+        import pyarrow.parquet as pq
+        schema_cols = pq.read_schema(membership_path).names
+        for col in schema_cols:
             if col.startswith("cluster_"):
                 existing_levels.add(col.removeprefix("cluster_"))
 
@@ -358,20 +359,18 @@ def _run_clustering(
 
         # Save nano
         cols: Dict[str, Any] = {"uid": uids, "cluster_nano": nano_for_save}
-        pl.DataFrame(cols).write_parquet(membership_path)
+        pl.DataFrame(cols).write_parquet(membership_path, compression="zstd")
         log.info("  nano membership saved")
     else:
         log.info("Nano cached, loading...")
         existing_df = pl.read_parquet(membership_path)
-        nano_for_save = existing_df["cluster_nano"].to_list()
+        nano_arr = existing_df["cluster_nano"].to_numpy()
+        nano_for_save = nano_arr.tolist()
         # For contraction, replace -1 (undetermined) with a valid cluster ID.
-        nano_membership = list(nano_for_save)
-        has_undetermined = any(c < 0 for c in nano_membership)
-        if has_undetermined:
-            next_cid = max((c for c in nano_membership if c >= 0), default=0) + 1
-            for i in range(len(nano_membership)):
-                if nano_membership[i] < 0:
-                    nano_membership[i] = next_cid
+        if (nano_arr < 0).any():
+            next_cid = int(nano_arr[nano_arr >= 0].max()) + 1
+            nano_arr = np.where(nano_arr < 0, next_cid, nano_arr)
+        nano_membership = nano_arr.tolist()
 
     # ------------------------------------------------------------------
     # Upper levels: dendrogram on contracted graph + constrained cut
@@ -395,10 +394,9 @@ def _run_clustering(
         n_contracted = contracted.vcount()
 
         # Compute nano cluster sizes for node_sizes parameter.
-        nano_sizes = Counter(compact_membership)
-        nano_size_arr = np.array(
-            [nano_sizes[i] for i in range(n_contracted)], dtype=np.uint64,
-        )
+        nano_size_arr = np.bincount(
+            compact_membership, minlength=n_contracted,
+        ).astype(np.uint64)
 
         log.info("Building CPM dendrogram on contracted %d-node graph...",
                  n_contracted)
@@ -444,7 +442,7 @@ def _run_clustering(
             "cluster_nano": nano_for_save,
             "cluster_micro": micro_membership,
         }
-        pl.DataFrame(cols).write_parquet(membership_path)
+        pl.DataFrame(cols).write_parquet(membership_path, compression="zstd")
         log.info("  membership saved (nano + micro)")
 
     return pl.read_parquet(membership_path)
@@ -655,16 +653,18 @@ def run_landscape(
         log.info("Step 3: Keyword extraction (finest level)")
         log.info("=" * 60)
 
-        member_uids = set(membership_df["uid"].to_list())
-        log.info("Loading abstracts for %s nodes...", f"{len(member_uids):,}")
+        member_uids = membership_df["uid"]
+        log.info("Loading abstracts for %s nodes...", f"{member_uids.len():,}")
 
-        abstract_df = pl.read_parquet(
-            abstract_path,
-            columns=["uid", "title", "abstract", "pubyear"],
-        ).filter(pl.col("uid").is_in(member_uids))
+        abstract_df = (
+            pl.scan_parquet(abstract_path)
+            .select("uid", "title", "abstract", "pubyear")
+            .filter(pl.col("uid").is_in(member_uids))
+            .collect()
+        )
         log.info("Matched abstracts: %s", f"{len(abstract_df):,}")
 
-        abstract_df.write_parquet(abstract_subset_path)
+        abstract_df.write_parquet(abstract_subset_path, compression="zstd")
 
         keywords_df, viz_data = _run_keywords(membership_path, abstract_subset_path, cfg)
 

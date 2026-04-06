@@ -150,29 +150,42 @@ def apply_merge_map(
 ) -> Tuple[sp.csr_matrix, np.ndarray]:
     """Merge sparse matrix columns and return updated matrix + names.
 
-    Columns specified in merge_map are summed into their target columns,
-    then the source columns are removed.
+    Uses a sparse projection matrix ``X @ P`` instead of per-column LIL
+    extraction, avoiding O(merges × rows) memory churn.
     """
     if not merge_map:
         return X, feature_names
 
     n_cols = X.shape[1]
-    X_lil = X.tolil()
 
-    # Sum source columns into target columns
-    for src, tgt in merge_map.items():
-        if src >= n_cols or tgt >= n_cols:
-            continue
-        src_col = X_lil[:, src].toarray().ravel()
-        X_lil[:, tgt] = X_lil[:, tgt].toarray().ravel() + src_col
-        X_lil[:, src] = 0
+    # Filter out-of-range entries
+    valid_merges = {s: t for s, t in merge_map.items() if s < n_cols and t < n_cols}
+    if not valid_merges:
+        return X, feature_names
 
-    # Determine which columns to keep
-    drop_cols = set(merge_map.keys())
-    keep_mask = np.array([i not in drop_cols for i in range(n_cols)])
+    # Build column mapping: source cols redirect to their target col
+    drop_cols = set(valid_merges.keys())
+    keep_cols = sorted(set(range(n_cols)) - drop_cols)
+    n_new = len(keep_cols)
 
-    X_merged = X_lil.tocsc()[:, keep_mask].tocsr()
-    names_merged = feature_names[keep_mask]
+    col_remap = np.full(n_cols, -1, dtype=np.int32)
+    for new_idx, old_idx in enumerate(keep_cols):
+        col_remap[old_idx] = new_idx
+    for src, tgt in valid_merges.items():
+        col_remap[src] = col_remap[tgt]
+
+    # Sparse projection matrix P (n_cols × n_new): X_merged = X @ P
+    p_rows = np.arange(n_cols, dtype=np.int32)
+    p_cols = col_remap
+    valid = p_cols >= 0
+    P = sp.csc_matrix(
+        (np.ones(valid.sum(), dtype=np.float64), (p_rows[valid], p_cols[valid])),
+        shape=(n_cols, n_new),
+    )
+    X_merged = (X @ P).tocsr()
+
+    keep_arr = np.array(keep_cols)
+    names_merged = feature_names[keep_arr]
 
     return X_merged, names_merged
 

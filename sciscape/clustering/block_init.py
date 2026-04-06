@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Sequence, TYPE_CHECKING
 
 import igraph as ig
+import numpy as np
 import polars as pl
 
 if TYPE_CHECKING:
@@ -90,11 +91,14 @@ def block_init(
     n_blocks = len(counts)
     n_singletons = sum(1 for s in counts.values() if s == 1)
 
-    # Renumber to 0-based contiguous IDs
+    # Renumber to 0-based contiguous IDs (vectorized)
     unique_ids = sorted(counts.keys())
-    remap = {old: new for new, old in enumerate(unique_ids)}
-    mem_remapped = [remap[b] for b in mem]
-    sizes_remapped = {remap[k]: v for k, v in counts.items()}
+    max_id = max(unique_ids) if unique_ids else 0
+    remap_arr = np.empty(max_id + 1, dtype=np.intp)
+    for new, old in enumerate(unique_ids):
+        remap_arr[old] = new
+    mem_remapped = remap_arr[np.array(mem)].tolist()
+    sizes_remapped = {remap_arr[k]: v for k, v in counts.items()}
 
     log.info(
         "Block init: γ=%.1e → %d blocks (%d singletons), %.1fs",
@@ -388,7 +392,7 @@ def _expand_membership(
     block_mem: Sequence[int],
 ) -> List[int]:
     """Map contracted-graph membership back to original node indices."""
-    return [contracted_mem[block_mem[i]] for i in range(len(block_mem))]
+    return np.array(contracted_mem)[np.array(block_mem)].tolist()
 
 
 __all__ = [

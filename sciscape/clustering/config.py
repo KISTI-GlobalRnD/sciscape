@@ -30,6 +30,12 @@ class LeidenConfig:
     stability_metric: str | None = None
     stability_seeds: Sequence[int] | None = None
 
+    # ── Large-scale Java backend ──────────────────────────────
+    backend: str = "auto"                   # "auto" | "igraph" | "java"
+    auto_backend_threshold: int = 5_000_000 # switch to java above this node count
+    jar_path: Path | None = None            # path to networkanalysis JAR
+    java_heap: str = "8g"                   # -Xmx for JVM
+
 
 @dataclass
 class ClusterTables:
