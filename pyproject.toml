@@ -26,6 +26,7 @@ arrow = ["pyarrow>=12"]
 llm = ["openai>=1.0"]
 mysql = ["pymysql>=1.0"]
 viz = ["plotly>=5.0"]
+largescale = ["sparse_dot_topn>=1.1"]
 dev = ["pytest>=8", "build>=1.2"]
 
 [project.scripts]

@@ -100,3 +100,5 @@ result = run_landscape(
     config=LandscapeConfig(min_docs_per_cluster=500),
 )
 ```
+
+- Added `docs/large_scale_bc_emb_scaling_note_20260403.md` summarizing the large-scale BC+Emb scaling fix: sparsify first, remap to integer edges, then use sparse-native block-init instead of the default string-UID graph-build path.
