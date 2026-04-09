@@ -1,4 +1,4 @@
-# Decision Log — Keyword Pipeline Redesign
+# Decision Log
 
 ## Format
 Each entry: `[DATE] [PHASE] DECISION: ... REASON: ... ALTERNATIVES: ...`
@@ -121,4 +121,21 @@ Added max_group_size (default 5) that splits oversized groups by iteratively rem
 weakest edges. Reduces candidate noise for downstream LLM canonicalization.
 **ALTERNATIVES**: (a) Max-depth BFS — more complex, similar result.
 (b) Minimum spanning tree pruning — overkill for this use case.
+
+## [2026-04-09] [Clustering] DECISION: Pass node_sizes through hierarchy_builder contraction
+**REASON**: `hierarchy_builder.build_level()` contracts the graph after each level but did
+not pass `node_sizes` to the next level's `runner.run()`. CPM's resolution term is
+`γ × Σ (n_c choose 2)` where `n_c` must reflect the original number of nodes each
+super-node represents. Without `node_sizes`, each super-node counts as 1, breaking γ
+preservation across levels. `block_init.cascade_search()` already handled this correctly.
+**FIX**: After contraction, compute per-super-node original node counts and store in
+`self._node_sizes`. Pass to `runner.run(node_sizes=self._node_sizes)`. Multi-level
+contraction accumulates sizes correctly.
+**CWTS REFERENCE**: CWTS `publicationclassification` (Java) also uses contraction-based
+hierarchy. CPM monotonicity (γ₀ > γ₁ ⟹ clusters at γ₀ are subsets of clusters at γ₁)
+theoretically justifies this approach, though Leiden's stochastic nature means the
+guarantee holds only at the global optimum.
+**ALTERNATIVES**: (a) Independent Leiden at each level on full graph + post-hoc nesting
+— preserves refinement but O(n) per level on large graphs.
+(b) Block init with extreme γ_block — reduces contraction error but diminishes speed gain.
 

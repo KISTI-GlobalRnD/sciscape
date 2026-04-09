@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import Counter
 from typing import Dict, List
 
 import igraph as ig
@@ -82,6 +83,7 @@ class HierarchyBuilder:
         self._memberships_original: Dict[str, List[int]] = {}
         self._prev_original_membership: List[int] | None = None
         self._prev_graph_membership: List[int] | None = None
+        self._node_sizes: List[int] | None = None  # per-supernode original node counts
         self._stopped: bool = False
 
     # ------------------------------------------------------------------
@@ -126,6 +128,7 @@ class HierarchyBuilder:
                     self._prev_graph_membership
                     if self._reuse_membership else None
                 ),
+                node_sizes=self._node_sizes,
             )
             if best_run is None or result.quality > best_run.quality:
                 best_run = result
@@ -195,6 +198,19 @@ class HierarchyBuilder:
             )
             self._runner = runner.clone_for_graph(contracted)
             self._prev_graph_membership = None
+
+            # Compute node_sizes for next level: each super-node
+            # represents the total original nodes it contains.
+            cluster_counts = Counter(final_membership)
+            if self._node_sizes is not None:
+                # Already contracted: accumulate original sizes
+                agg: Dict[int, int] = {}
+                for v, cid in enumerate(final_membership):
+                    agg[cid] = agg.get(cid, 0) + self._node_sizes[v]
+                self._node_sizes = [agg[cid] for cid in range(layer.cluster_count)]
+            else:
+                # First contraction: sizes = cluster membership counts
+                self._node_sizes = [cluster_counts[cid] for cid in range(layer.cluster_count)]
 
         return layer
 
