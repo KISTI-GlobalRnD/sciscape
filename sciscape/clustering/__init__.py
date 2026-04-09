@@ -68,7 +68,13 @@ from .integer_remap import (
     join_back_uids,
     load_manifest,
 )
-from .leiden_java import JavaLeidenResult, run_leiden_java
+from .leiden_java import (
+    JavaLeidenResult,
+    JavaMultiLevelResult,
+    LevelConfig,
+    run_leiden_java,
+    run_multilevel_java,
+)
 from .block_init import (
     BlockInitResult,
     CascadeResult,
@@ -149,5 +155,8 @@ __all__ = [
     "join_back_uids",
     "load_manifest",
     "JavaLeidenResult",
+    "JavaMultiLevelResult",
+    "LevelConfig",
     "run_leiden_java",
+    "run_multilevel_java",
 ]
