@@ -7,6 +7,7 @@ import time
 
 from collections import OrderedDict
 
+import numpy as np
 import polars as pl
 
 import logging
@@ -18,6 +19,7 @@ from .hierarchy import build_cluster_tables
 from .hierarchy_builder import HierarchyBuilder
 from .integer_remap import integer_remap, join_back_uids
 from .leiden_java import run_leiden_java
+from .leiden_rust import RUST_AVAILABLE, run_leiden_rust, postprocess_small_clusters_rust
 from .postprocess import merge_small_clusters
 from .io import load_edge_table
 from .logging import (
@@ -36,10 +38,30 @@ _log_module = logging.getLogger(__name__)
 
 
 def _select_backend(edges: pl.DataFrame, config: LeidenConfig) -> str:
-    """Determine which backend to use: 'igraph' or 'java'."""
-    if config.backend in ("igraph", "java"):
-        return config.backend
-    # auto: estimate node count from edges
+    """Determine which backend to use: 'rust', 'igraph', or 'java'.
+
+    Auto priority: rust (if available) > java (large graphs) > igraph.
+
+    Rust is preferred because it:
+    - Has no JVM startup cost (~2s saved per run)
+    - Passes numpy arrays directly via PyO3 (zero-copy, no file I/O)
+    - Uses native memory layout with cache-friendly CSR + unsafe hot paths
+    - Avoids Python/igraph C-extension overhead for leidenalg
+    - Runs contraction, refinement, and postprocess entirely in compiled code
+    """
+    if config.backend in ("igraph", "java", "rust"):
+        if config.backend == "rust" and not RUST_AVAILABLE:
+            _log_module.warning(
+                "rust backend requested but sciscape-leiden not installed, "
+                "falling back to auto selection"
+            )
+        else:
+            return config.backend
+    # auto: prefer rust when available
+    if RUST_AVAILABLE:
+        _log_module.info("auto-selected rust backend (sciscape-leiden available)")
+        return "rust"
+    # fallback: java for large graphs, igraph for small
     n_nodes = pl.concat([edges["uid1"], edges["uid2"]]).n_unique()
     if n_nodes >= config.auto_backend_threshold:
         _log_module.info(
@@ -126,6 +148,202 @@ def _run_java_backend(
     return tables
 
 
+def _run_rust_backend(
+    edges: pl.DataFrame,
+    config: LeidenConfig,
+    *,
+    output_dir: Path,
+    progress_log_path: Path,
+) -> ClusterTables:
+    """Run Leiden via the Rust backend (numpy arrays, no file I/O).
+
+    Supports hierarchical multi-level clustering with graph contraction
+    between levels, warm-start via initial_membership, and optional
+    postprocessing with cascading γ.
+    """
+    if not config.resolutions:
+        raise ValueError(
+            "Rust backend requires explicit resolutions in LeidenConfig.resolutions. "
+            "level_constraints (binary search) is not supported with the Rust backend."
+        )
+
+    t0 = time.perf_counter()
+
+    # Integer remap (reuse existing infra for UID → int mapping)
+    t_remap = time.perf_counter()
+    remap = integer_remap(edges, output_dir / "remap")
+    _log(config, f"integer remap in {time.perf_counter() - t_remap:.2f}s "
+         f"({remap.n_nodes} nodes, {remap.n_edges} edges)",
+         progress_log_path=progress_log_path)
+
+    # Load edges into numpy once (shared across all levels)
+    int_edges = pl.read_parquet(remap.int_edges_path)
+    edges_src = int_edges["src"].to_numpy().astype(np.uint32)
+    edges_dst = int_edges["dst"].to_numpy().astype(np.uint32)
+    edges_weight = int_edges["weight"].to_numpy().astype(np.float64)
+    n_nodes = remap.n_nodes
+
+    memberships_by_level = OrderedDict()
+    resolutions_map = OrderedDict()
+    qualities_map = OrderedDict()
+
+    # State for hierarchical contraction
+    cur_src, cur_dst, cur_weight = edges_src, edges_dst, edges_weight
+    cur_n_nodes = n_nodes
+    prev_membership_original: np.ndarray | None = None  # map back to original nodes
+    prev_membership_graph: np.ndarray | None = None  # for warm-start on contracted graph
+    node_sizes: np.ndarray | None = None  # per-supernode original counts
+
+    seed = config.seed or 0
+    n_iter = config.leiden_iterations or 10
+
+    for level_name, gamma in config.resolutions.items():
+        t_leiden = time.perf_counter()
+        result = run_leiden_rust(
+            edges_src=cur_src,
+            edges_dst=cur_dst,
+            edges_weight=cur_weight,
+            resolution=float(gamma),
+            n_nodes=cur_n_nodes,
+            seed=seed,
+            n_iterations=n_iter,
+            initial_membership=prev_membership_graph,
+        )
+        _log(config,
+             f"level {level_name}: rust leiden in {time.perf_counter() - t_leiden:.2f}s "
+             f"(γ={gamma:.6g}, {result.n_clusters} clusters, Q={result.quality:.4f})",
+             progress_log_path=progress_log_path)
+
+        membership = result.membership
+
+        # Postprocess
+        if config.postprocess is not None:
+            min_size, _ = config.postprocess.resolve_thresholds(has_node_weights=False)
+            if min_size is not None and min_size > 1:
+                t_post = time.perf_counter()
+                post = postprocess_small_clusters_rust(
+                    resolution=float(gamma),
+                    min_size=min_size,
+                    membership=membership,
+                    edges_src=cur_src,
+                    edges_dst=cur_dst,
+                    edges_weight=cur_weight,
+                    n_nodes=cur_n_nodes,
+                    seed=seed,
+                    n_iterations=n_iter,
+                )
+                _log(config,
+                     f"level {level_name}: rust postprocess in "
+                     f"{time.perf_counter() - t_post:.2f}s "
+                     f"({result.n_clusters}→{post.n_clusters} clusters, "
+                     f"{len(post.rounds)} rounds)",
+                     progress_log_path=progress_log_path)
+                membership = post.membership
+
+        # Map back to original node indices
+        if prev_membership_original is None:
+            original_membership = membership.copy()
+        else:
+            original_membership = membership[prev_membership_original]
+
+        memberships_by_level[level_name] = original_membership.tolist()
+        resolutions_map[level_name] = float(gamma)
+        qualities_map[level_name] = float(result.quality)
+        prev_membership_original = np.asarray(
+            memberships_by_level[level_name], dtype=np.uint64
+        )
+
+        # Contract graph for next level
+        n_clusters = int(membership.max()) + 1
+        if n_clusters > 1:
+            t_contract = time.perf_counter()
+            cur_src, cur_dst, cur_weight, cur_n_nodes, node_sizes = \
+                _contract_edges(cur_src, cur_dst, cur_weight, membership, node_sizes)
+            prev_membership_graph = None  # singleton start on contracted graph
+            _log(config,
+                 f"level {level_name}: contracted to {cur_n_nodes} nodes in "
+                 f"{time.perf_counter() - t_contract:.2f}s",
+                 progress_log_path=progress_log_path)
+
+    # Join back UIDs
+    t_join = time.perf_counter()
+    first_level = next(iter(memberships_by_level))
+    uid_cluster = join_back_uids(
+        memberships_by_level[first_level],
+        remap.node_manifest_path,
+    )
+    membership_df = uid_cluster.select("uid")
+    for level_name, mem in memberships_by_level.items():
+        membership_df = membership_df.with_columns(
+            pl.Series(f"cluster_{level_name}", mem),
+        )
+    _log(config, f"uid join-back in {time.perf_counter() - t_join:.2f}s",
+         progress_log_path=progress_log_path)
+
+    levels = tuple(memberships_by_level.keys())
+    tables = build_cluster_tables(
+        membership_df,
+        levels=levels,
+        resolutions=resolutions_map,
+        qualities=qualities_map,
+    )
+
+    _log(config, f"rust pipeline finished in {time.perf_counter() - t0:.2f}s",
+         progress_log_path=progress_log_path)
+    return tables
+
+
+def _contract_edges(
+    src: np.ndarray,
+    dst: np.ndarray,
+    weight: np.ndarray,
+    membership: np.ndarray,
+    prev_node_sizes: np.ndarray | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, np.ndarray]:
+    """Contract edges via membership, aggregate weights, remove self-loops.
+
+    Returns (new_src, new_dst, new_weight, n_clusters, node_sizes).
+    """
+    mem = membership.astype(np.int64)
+    new_src = mem[src.astype(np.int64)]
+    new_dst = mem[dst.astype(np.int64)]
+
+    # Remove self-loops
+    mask = new_src != new_dst
+    new_src = new_src[mask]
+    new_dst = new_dst[mask]
+    new_weight = weight[mask]
+
+    n_clusters = int(mem.max()) + 1
+
+    # Aggregate duplicate edges using sparse matrix
+    from scipy.sparse import coo_matrix
+    mat = coo_matrix(
+        (new_weight, (new_src, new_dst)),
+        shape=(n_clusters, n_clusters),
+    )
+    # Sum duplicates and extract upper triangle (undirected)
+    mat = mat.tocsr()
+    # Symmetrize: take upper triangle of (mat + mat.T)
+    sym = mat + mat.T
+    sym = sym.tocoo()
+    # Keep only upper triangle
+    upper = sym.row < sym.col
+    out_src = sym.row[upper].astype(np.uint32)
+    out_dst = sym.col[upper].astype(np.uint32)
+    out_weight = sym.data[upper]
+
+    # Compute node_sizes for contracted graph
+    if prev_node_sizes is not None:
+        node_sizes = np.zeros(n_clusters, dtype=np.int64)
+        for v in range(len(mem)):
+            node_sizes[mem[v]] += prev_node_sizes[v]
+    else:
+        node_sizes = np.bincount(mem, minlength=n_clusters)
+
+    return out_src, out_dst, out_weight, n_clusters, node_sizes
+
+
 def _log(config: LeidenConfig, message: str, *, progress_log_path: Path) -> None:
     if config.progress:
         config.progress(message)
@@ -198,6 +416,13 @@ def run_pipeline(
 
     # ── Backend dispatch ──────────────────────────────────────
     backend = _select_backend(edges, config)
+    if backend == "rust":
+        output_dir = Path(config.log_dir or ".") / (config.run_id or "leiden_rust")
+        return _run_rust_backend(
+            edges, config,
+            output_dir=output_dir,
+            progress_log_path=progress_log_path,
+        )
     if backend == "java":
         output_dir = Path(config.log_dir or ".") / (config.run_id or "leiden_java")
         return _run_java_backend(
@@ -206,7 +431,7 @@ def run_pipeline(
             progress_log_path=progress_log_path,
         )
 
-    # ── igraph path (default) ─────────────────────────────────
+    # ── igraph path (fallback) ───────────────────────────────
     t_graph = time.perf_counter()
     edge_count = edges.height
     graph = build_graph(edges)
