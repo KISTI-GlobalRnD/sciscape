@@ -52,6 +52,7 @@ class RustPostprocessResult:
     """Result of Rust postprocessing with round-by-round monitoring."""
     membership: np.ndarray
     n_clusters: int
+    changed_at_round: np.ndarray  # per-node: which round changed it (-1 = unchanged)
     rounds: list  # list of dicts with per-round info
 
 
@@ -177,7 +178,7 @@ def postprocess_small_clusters_rust(
     if n_nodes is None:
         n_nodes = len(membership)
 
-    result_mem, n_clusters, rounds = _rust.run_postprocess(
+    result_mem, n_clusters, changed_at, rounds = _rust.run_postprocess(
         n_nodes=n_nodes,
         src=edges_src,
         dst=edges_dst,
@@ -207,6 +208,7 @@ def postprocess_small_clusters_rust(
     return RustPostprocessResult(
         membership=result_mem,
         n_clusters=n_clusters,
+        changed_at_round=changed_at,
         rounds=rounds,
     )
 
