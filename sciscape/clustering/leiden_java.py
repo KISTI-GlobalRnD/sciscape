@@ -4,9 +4,34 @@ Runs Leiden community detection via the CWTS ``RunNetworkClustering`` CLI,
 which accepts integer edge lists and writes membership files.  This backend
 bypasses igraph entirely, enabling clustering on 50M+ node graphs.
 
-Requires:
-    - Java >= 11 on ``$PATH`` (or explicit ``java_cmd``)
-    - ``networkanalysis-X.Y.Z.jar`` (https://github.com/CWTSLeiden/networkanalysis)
+This module is **optional** — the rest of sciscape works with Python
+igraph + leidenalg alone. Install the ``java`` extra for large-scale
+workloads::
+
+    pip install sciscape[java]   # marks intent; actual setup below
+
+Setup
+-----
+1. Install JDK >= 11 (e.g. ``sudo apt install openjdk-11-jdk``).
+2. Build or download the CWTS networkanalysis JAR::
+
+       git clone https://github.com/CWTSLeiden/networkanalysis.git
+       cd networkanalysis && ./gradlew build
+       # JAR at build/libs/networkanalysis-*.jar
+
+   For ``--fixed-nodes`` support (constrained postprocess), use the
+   KISTI fork with the ``feature/fixed-nodes`` branch.
+
+3. Set the JAR path via environment variable or function argument::
+
+       export LEIDEN_JAR=/path/to/networkanalysis.jar
+
+   Or pass ``jar_path=`` to each function call.
+
+4. (Optional) For multi-level classification, also build
+   ``publicationclassification``::
+
+       export CLASSIFICATION_JAR=/path/to/publicationclassification.jar
 """
 
 from __future__ import annotations
