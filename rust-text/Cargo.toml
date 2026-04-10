@@ -1,0 +1,21 @@
+[package]
+name = "sciscape-text"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance text similarity and co-occurrence for sciscape keyword extraction"
+
+[lib]
+name = "sciscape_text"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+rayon = "1.10"
+pyo3 = { version = "0.23", features = ["extension-module"], optional = true }
+numpy = { version = "0.23", optional = true }
+ahash = "0.8"
+
+[features]
+default = []
+python = ["pyo3", "numpy"]
+
+[dev-dependencies]

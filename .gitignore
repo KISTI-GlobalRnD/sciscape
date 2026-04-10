@@ -8,6 +8,7 @@ __pycache__/
 !.env.example
 cpm-dendro/target/
 rust/target/
+rust-text/target/
 
 # Local data / output / experiments
 data/
