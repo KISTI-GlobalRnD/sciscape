@@ -74,6 +74,7 @@ from .leiden_java import (
     LevelConfig,
     run_leiden_java,
     run_multilevel_java,
+    postprocess_small_clusters_java,
 )
 from .block_init import (
     BlockInitResult,
@@ -159,4 +160,5 @@ __all__ = [
     "LevelConfig",
     "run_leiden_java",
     "run_multilevel_java",
+    "postprocess_small_clusters_java",
 ]

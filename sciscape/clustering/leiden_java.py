@@ -279,6 +279,110 @@ def run_leiden_java(
             fixed_nodes_path.unlink()
 
 
+# ── Constrained postprocess ──────────────────────────────────────
+
+
+def postprocess_small_clusters_java(
+    edge_path: Path,
+    membership: np.ndarray,
+    *,
+    resolution: float,
+    min_size: int,
+    jar_path: Path | None = None,
+    seed: int = 0,
+    iterations: int = 10,
+    weighted: bool = True,
+    java_cmd: str = "java",
+    java_heap: str = "8g",
+) -> JavaLeidenResult:
+    """Reassign small-cluster nodes using constrained Leiden.
+
+    Nodes in clusters with size >= ``min_size`` are fixed; all other
+    nodes are free to move. Re-runs Leiden at the **same** resolution
+    so that unfixed nodes find their optimal assignment while large
+    clusters remain intact.
+
+    Parameters
+    ----------
+    edge_path : Path
+        Path to ``int_edges.parquet`` (columns: src, dst, weight).
+    membership : numpy.ndarray
+        Cluster assignment from the initial Leiden run (int, length n_nodes).
+    resolution : float
+        Same CPM resolution parameter used in the initial run.
+    min_size : int
+        Clusters smaller than this are eligible for reassignment.
+    jar_path, seed, iterations, weighted, java_cmd, java_heap
+        Forwarded to :func:`run_leiden_java`.
+
+    Returns
+    -------
+    JavaLeidenResult
+        Updated clustering with small clusters reassigned.
+    """
+    from collections import Counter
+
+    n_nodes = len(membership)
+    counts = Counter(membership.tolist())
+
+    # Identify large clusters and their node indices
+    large_clusters = {cid for cid, cnt in counts.items() if cnt >= min_size}
+    fixed = {i for i, cid in enumerate(membership) if cid in large_clusters}
+
+    n_small_nodes = n_nodes - len(fixed)
+    n_small_clusters = sum(1 for cid, cnt in counts.items() if cnt < min_size)
+    log.info(
+        "postprocess: %d small clusters (%d nodes) to reassign, "
+        "%d large clusters (%d nodes) fixed",
+        n_small_clusters, n_small_nodes,
+        len(large_clusters), len(fixed),
+    )
+
+    if n_small_nodes == 0:
+        log.info("postprocess: no small clusters, skipping")
+        return JavaLeidenResult(
+            membership=membership,
+            n_clusters=len(large_clusters),
+            resolution=resolution,
+            output_path=None,
+        )
+
+    # Write initial clustering to temp file
+    with tempfile.NamedTemporaryFile(
+        suffix=".tsv", prefix="leiden_init_", delete=False, mode="w",
+    ) as f:
+        init_path = Path(f.name)
+        for i in range(n_nodes):
+            f.write(f"{i}\t{membership[i]}\n")
+
+    try:
+        result = run_leiden_java(
+            edge_path,
+            resolution=resolution,
+            n_nodes=n_nodes,
+            jar_path=jar_path,
+            input_clustering_path=init_path,
+            fixed_nodes=fixed,
+            seed=seed,
+            iterations=iterations,
+            weighted=weighted,
+            java_cmd=java_cmd,
+            java_heap=java_heap,
+        )
+
+        # Log changes
+        changed = int(np.sum(result.membership != membership))
+        log.info(
+            "postprocess: %d nodes changed cluster (%d → %d clusters)",
+            changed, len(counts), result.n_clusters,
+        )
+        return result
+
+    finally:
+        if init_path.exists():
+            init_path.unlink()
+
+
 # ── Multi-level classification (publicationclassification backend) ──
 
 
