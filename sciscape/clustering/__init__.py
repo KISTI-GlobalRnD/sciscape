@@ -37,7 +37,7 @@ from .postprocess import (
     resolve_small_clusters,
 )
 from .partitioning import partition_class
-from .runner import LeidenRunner, LeidenRunResult
+from .runner import LeidenRunner, RustLeidenRunner, LeidenRunResult
 from .core_documents import (
     ClusterDocument,
     ClusterDBConfig,

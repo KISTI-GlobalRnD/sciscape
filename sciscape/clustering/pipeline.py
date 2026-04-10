@@ -161,10 +161,9 @@ def _run_rust_backend(
     between levels, warm-start via initial_membership, and optional
     postprocessing with cascading γ.
     """
-    if not config.resolutions:
+    if not config.resolutions and not config.level_constraints:
         raise ValueError(
-            "Rust backend requires explicit resolutions in LeidenConfig.resolutions. "
-            "level_constraints (binary search) is not supported with the Rust backend."
+            "Rust backend requires either explicit resolutions or level_constraints."
         )
 
     t0 = time.perf_counter()
@@ -197,7 +196,36 @@ def _run_rust_backend(
     seed = config.seed or 0
     n_iter = config.leiden_iterations or 10
 
-    for level_name, gamma in config.resolutions.items():
+    # Resolve resolutions: explicit or via binary search
+    if config.resolutions:
+        resolved_resolutions = OrderedDict(config.resolutions)
+    else:
+        # level_constraints binary search using Rust runner
+        from .runner import RustLeidenRunner
+        rust_runner = RustLeidenRunner(
+            edges_src, edges_dst, edges_weight, n_nodes,
+            default_iterations=n_iter, default_seed=seed,
+        )
+        t_search = time.perf_counter()
+        schedule = resolve_resolution_schedule(
+            None,
+            config.level_constraints,
+            config.objective,
+            config.resolution_bounds,
+            config.max_iterations,
+            progress=config.progress,
+            n_iterations=n_iter,
+            seed=seed,
+            rust_runner=rust_runner,
+        )
+        _log(config,
+             f"resolved resolutions in {time.perf_counter() - t_search:.2f}s",
+             progress_log_path=progress_log_path)
+        resolved_resolutions = OrderedDict(
+            (name, res.resolution) for name, res in schedule.items()
+        )
+
+    for level_name, gamma in resolved_resolutions.items():
         t_leiden = time.perf_counter()
         # Pass node_weights on contracted graphs so CPM uses doc_count
         nw = node_sizes.astype(np.float64) if node_sizes is not None else None

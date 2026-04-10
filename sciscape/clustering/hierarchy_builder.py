@@ -10,7 +10,7 @@ import igraph as ig
 
 from .config import HierarchyConfig, HierarchyLevelConfig, PostprocessConfig
 from .postprocess import PostprocessResult, merge_small_clusters
-from .runner import LeidenRunResult, LeidenRunner
+from .runner import LeidenRunResult, LeidenRunner, RustLeidenRunner
 
 
 @dataclass(frozen=True)
@@ -139,12 +139,42 @@ class HierarchyBuilder:
         # Post-process (merge small clusters)
         post_cfg = level_cfg.postprocess or self._default_postprocess
         post_result: PostprocessResult | None = None
-        graph_weights = (
-            runner.graph.vs["weight"]
-            if "weight" in runner.graph.vs.attributes() else None
-        )
 
-        if post_cfg is not None:
+        if post_cfg is not None and isinstance(runner, RustLeidenRunner):
+            # Rust path: use Rust postprocess with weighted thresholds
+            from .leiden_rust import postprocess_small_clusters_rust
+            import numpy as np
+            has_nw = runner._node_weights is not None
+            min_size, min_weight = post_cfg.resolve_thresholds(
+                has_node_weights=has_nw
+            )
+            do_post = (
+                (min_weight is not None and min_weight > 0)
+                or (min_size is not None and min_size > 1)
+            )
+            if do_post:
+                mem = np.asarray(best_run.membership, dtype=np.uint64)
+                rust_post = postprocess_small_clusters_rust(
+                    resolution=level_cfg.resolution,
+                    min_size=int(min_size or 0),
+                    min_weight=float(min_weight or 0.0),
+                    membership=mem,
+                    edges_src=runner._src,
+                    edges_dst=runner._dst,
+                    edges_weight=runner._weight,
+                    node_weights=runner._node_weights,
+                    n_nodes=runner.n_nodes,
+                    seed=best_seed or 0,
+                )
+                final_membership = rust_post.membership.tolist()
+            else:
+                final_membership = best_run.membership
+        elif post_cfg is not None:
+            # igraph path
+            graph_weights = (
+                runner.graph.vs["weight"]
+                if "weight" in runner.graph.vs.attributes() else None
+            )
             min_size, min_weight = post_cfg.resolve_thresholds(
                 has_node_weights=graph_weights is not None
             )
@@ -191,12 +221,16 @@ class HierarchyBuilder:
         if level_cfg.stop_if_singleton and layer.cluster_count <= 1:
             self._stopped = True
         elif layer.cluster_count > 1:
-            contracted = runner.contract(
-                final_membership,
-                combine_weights=self._contract_weights,
-                keep_loops=self._contract_loops,
-            )
-            self._runner = runner.clone_for_graph(contracted)
+            if isinstance(runner, RustLeidenRunner):
+                # Rust runner: contract returns a new runner directly
+                self._runner = runner.contract(final_membership)
+            else:
+                contracted = runner.contract(
+                    final_membership,
+                    combine_weights=self._contract_weights,
+                    keep_loops=self._contract_loops,
+                )
+                self._runner = runner.clone_for_graph(contracted)
             self._prev_graph_membership = None
 
             # Compute node_sizes for next level: each super-node

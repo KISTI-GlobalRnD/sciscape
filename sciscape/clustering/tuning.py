@@ -14,8 +14,9 @@ import leidenalg as la
 
 from .partitioning import partition_class
 from .config import PostprocessConfig
+from .leiden_rust import RUST_AVAILABLE
 from .postprocess import merge_small_clusters
-from .runner import LeidenRunner
+from .runner import LeidenRunner, RustLeidenRunner
 
 
 @dataclass
@@ -159,6 +160,49 @@ def _evaluate_partition(
     )
     cache[gamma] = result
     return result
+
+
+def _get_cached_membership(result: ResolutionResult) -> Optional[List[int]]:
+    """Extract membership from a cached ResolutionResult (igraph or Rust)."""
+    if result.partition is not None:
+        return list(result.partition.membership)
+    # Rust path: stored as _membership attribute
+    return getattr(result, "_membership", None)
+
+
+def _evaluate_partition_rust(
+    runner: RustLeidenRunner,
+    gamma: float,
+    cache: Dict[float, ResolutionResult],
+    name: str,
+    n_iterations: Optional[int] = None,
+    initial_membership: Optional[Sequence[int]] = None,
+    seed: Optional[int] = None,
+) -> ResolutionResult:
+    """Evaluate a partition using the Rust backend."""
+    if gamma in cache:
+        return cache[gamma]
+
+    if initial_membership is None and cache:
+        nearest_gamma = min(cache, key=lambda g: abs(g - gamma))
+        initial_membership = _get_cached_membership(cache[nearest_gamma])
+
+    result = runner.run(
+        gamma,
+        seed=seed,
+        n_iterations=n_iterations,
+        initial_membership=initial_membership,
+    )
+    res = ResolutionResult(
+        name=name,
+        resolution=gamma,
+        partition=None,
+        cluster_count=result.cluster_count,
+        quality=result.quality,
+    )
+    res._membership = result.membership  # type: ignore[attr-defined]
+    cache[gamma] = res
+    return res
 
 
 def _emit_result(
@@ -333,8 +377,116 @@ def _search_resolution(
     return best_result
 
 
+def _search_resolution_rust(
+    runner: RustLeidenRunner,
+    name: str,
+    min_clusters: int,
+    max_clusters: int,
+    bounds: Tuple[float, float],
+    max_iterations: int,
+    progress: Optional[Callable[[str], None]] = None,
+    n_iterations: Optional[int] = None,
+    cache: Optional[Dict[float, ResolutionResult]] = None,
+    seed: Optional[int] = None,
+) -> ResolutionResult:
+    """Binary search for resolution using Rust backend (mirrors _search_resolution)."""
+    lower_bound, upper_bound = bounds
+    if lower_bound <= 0 or upper_bound <= 0:
+        raise ValueError("resolution bounds must be positive")
+    if lower_bound >= upper_bound:
+        raise ValueError("resolution lower bound must be less than upper bound")
+
+    if cache is None:
+        cache = {}
+
+    best_result: ResolutionResult | None = None
+    best_distance = float("inf")
+
+    def update_best(candidate: ResolutionResult) -> None:
+        nonlocal best_result, best_distance
+        distance = _distance_to_range(candidate.cluster_count, min_clusters, max_clusters)
+        if distance < best_distance or (
+            distance == best_distance and best_result is not None and candidate.resolution < best_result.resolution
+        ):
+            best_result = candidate
+            best_distance = distance
+
+    lower_result = _evaluate_partition_rust(
+        runner, lower_bound, cache, name, n_iterations=n_iterations, seed=seed,
+    )
+    _emit_result(progress, name, lower_result, "evaluated")
+    update_best(lower_result)
+    upper_result = _evaluate_partition_rust(
+        runner, upper_bound, cache, name, n_iterations=n_iterations, seed=seed,
+    )
+    _emit_result(progress, name, upper_result, "evaluated")
+    update_best(upper_result)
+
+    # Expand bounds
+    expansion_limit = max_iterations
+    expand_lo = lower_bound
+    count_lo = lower_result.cluster_count
+    for _ in range(expansion_limit):
+        if count_lo <= max_clusters or expand_lo < 1e-9:
+            break
+        expand_lo *= 0.5
+        lower_result = _evaluate_partition_rust(
+            runner, expand_lo, cache, name, n_iterations=n_iterations, seed=seed,
+        )
+        _emit_result(progress, name, lower_result, "expanded lower")
+        update_best(lower_result)
+        count_lo = lower_result.cluster_count
+    lower_bound = expand_lo
+
+    expand_hi = upper_bound
+    count_hi = upper_result.cluster_count
+    for _ in range(expansion_limit):
+        if count_hi >= min_clusters or expand_hi > 1e9:
+            break
+        expand_hi *= 2.0
+        upper_result = _evaluate_partition_rust(
+            runner, expand_hi, cache, name, n_iterations=n_iterations, seed=seed,
+        )
+        _emit_result(progress, name, upper_result, "expanded upper")
+        update_best(upper_result)
+        count_hi = upper_result.cluster_count
+    upper_bound = expand_hi
+
+    lower_count = lower_result.cluster_count
+    upper_count = upper_result.cluster_count
+
+    if (lower_count > max_clusters and upper_count > max_clusters) or \
+       (lower_count < min_clusters and upper_count < min_clusters):
+        if best_result is None:
+            raise RuntimeError("Failed to evaluate any Leiden partitions")
+        return best_result
+
+    lo_gamma = lower_result.resolution
+    hi_gamma = upper_result.resolution
+
+    for _ in range(max_iterations):
+        mid_gamma = (lo_gamma + hi_gamma) / 2.0
+        mid_result = _evaluate_partition_rust(
+            runner, mid_gamma, cache, name, n_iterations=n_iterations, seed=seed,
+        )
+        _emit_result(progress, name, mid_result, "bisected")
+        update_best(mid_result)
+
+        if min_clusters <= mid_result.cluster_count <= max_clusters:
+            return mid_result
+
+        if mid_result.cluster_count < min_clusters:
+            lo_gamma = mid_gamma
+        else:
+            hi_gamma = mid_gamma
+
+    if best_result is None:
+        raise RuntimeError("Failed to converge on a resolution; no candidates evaluated")
+    return best_result
+
+
 def resolve_resolution_schedule(
-    graph: ig.Graph,
+    graph: ig.Graph | None,
     constraints: Sequence[tuple[int, int]],
     objective: str,
     bounds: Tuple[float, float],
@@ -342,8 +494,13 @@ def resolve_resolution_schedule(
     progress: Optional[Callable[[str], None]] = None,
     n_iterations: Optional[int] = None,
     seed: Optional[int] = None,
+    rust_runner: Optional[RustLeidenRunner] = None,
 ) -> "OrderedDict[str, ResolutionResult]":
-    """Determine resolution parameters that satisfy cluster count ranges."""
+    """Determine resolution parameters that satisfy cluster count ranges.
+
+    If ``rust_runner`` is provided, uses the Rust backend for evaluation.
+    Otherwise uses igraph/leidenalg on ``graph``.
+    """
 
     schedule: "OrderedDict[str, ResolutionResult]" = OrderedDict()
     shared_cache: Dict[float, ResolutionResult] = {}
@@ -358,19 +515,33 @@ def resolve_resolution_schedule(
             raise ValueError("min_clusters must be less than or equal to max_clusters")
 
         name = f"level-{idx}"
-        result = _search_resolution(
-            graph,
-            name,
-            min_clusters,
-            max_clusters,
-            bounds,
-            max_iterations,
-            objective,
-            progress,
-            n_iterations,
-            cache=shared_cache,
-            seed=seed,
-        )
+        if rust_runner is not None:
+            result = _search_resolution_rust(
+                rust_runner,
+                name,
+                min_clusters,
+                max_clusters,
+                bounds,
+                max_iterations,
+                progress,
+                n_iterations,
+                cache=shared_cache,
+                seed=seed,
+            )
+        else:
+            result = _search_resolution(
+                graph,
+                name,
+                min_clusters,
+                max_clusters,
+                bounds,
+                max_iterations,
+                objective,
+                progress,
+                n_iterations,
+                cache=shared_cache,
+                seed=seed,
+            )
         if progress:
             progress(
                 f"{name}: selected gamma={result.resolution:.6g} -> "
