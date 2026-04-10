@@ -30,6 +30,8 @@ use rand::SeedableRng;
 ///     seed: Random seed.
 ///     initial_membership: Optional initial cluster assignment.
 ///     fixed_nodes: Optional boolean mask of fixed nodes.
+///     node_weights: Optional per-node weights (doc_count for contracted graphs).
+///         If None, all nodes have weight 1.0.
 ///
 /// Returns:
 ///     Tuple of (membership: numpy array, quality: float, n_clusters: int).
@@ -47,6 +49,7 @@ use rand::SeedableRng;
     seed = 0,
     initial_membership = None,
     fixed_nodes = None,
+    node_weights = None,
 ))]
 fn run_leiden<'py>(
     py: Python<'py>,
@@ -61,12 +64,17 @@ fn run_leiden<'py>(
     seed: u64,
     initial_membership: Option<PyReadonlyArray1<u64>>,
     fixed_nodes: Option<PyReadonlyArray1<bool>>,
+    node_weights: Option<PyReadonlyArray1<f64>>,
 ) -> PyResult<(Py<PyArray1<u64>>, f64, usize)> {
     let src_slice = src.as_slice()?;
     let dst_slice = dst.as_slice()?;
     let w_slice = weights.as_slice()?;
 
-    let graph = Graph::from_edge_list(n_nodes, src_slice, dst_slice, w_slice);
+    let graph = if let Some(nw) = node_weights {
+        Graph::from_edge_list_weighted(n_nodes, src_slice, dst_slice, w_slice, nw.as_slice()?)
+    } else {
+        Graph::from_edge_list(n_nodes, src_slice, dst_slice, w_slice)
+    };
 
     let config = LeidenConfig {
         resolution,
@@ -105,6 +113,12 @@ fn run_leiden<'py>(
 }
 
 /// Reassign small clusters using constrained Leiden.
+///
+/// Args:
+///     node_weights: Optional per-node weights. If provided, min_weight is used
+///         instead of min_size for threshold comparison.
+///     min_weight: Weighted threshold (sum of node_weights). Only used when
+///         node_weights is provided. Default 0.0 means use min_size instead.
 #[cfg(feature = "python")]
 #[pyfunction]
 #[pyo3(signature = (
@@ -118,6 +132,8 @@ fn run_leiden<'py>(
     n_iterations = 10,
     randomness = 0.01,
     seed = 0,
+    node_weights = None,
+    min_weight = 0.0,
 ))]
 fn run_postprocess<'py>(
     py: Python<'py>,
@@ -131,13 +147,25 @@ fn run_postprocess<'py>(
     n_iterations: usize,
     randomness: f64,
     seed: u64,
+    node_weights: Option<PyReadonlyArray1<f64>>,
+    min_weight: f64,
 ) -> PyResult<(Py<PyArray1<u64>>, usize, Py<PyArray1<i32>>, Vec<std::collections::HashMap<String, pyo3::PyObject>>)> {
-    let graph = Graph::from_edge_list(
-        n_nodes,
-        src.as_slice()?,
-        dst.as_slice()?,
-        weights.as_slice()?,
-    );
+    let graph = if let Some(nw) = node_weights {
+        Graph::from_edge_list_weighted(
+            n_nodes,
+            src.as_slice()?,
+            dst.as_slice()?,
+            weights.as_slice()?,
+            nw.as_slice()?,
+        )
+    } else {
+        Graph::from_edge_list(
+            n_nodes,
+            src.as_slice()?,
+            dst.as_slice()?,
+            weights.as_slice()?,
+        )
+    };
 
     let clustering = Clustering::from_assignments(
         membership.as_slice()?.iter().map(|&x| x as usize).collect()
@@ -151,7 +179,7 @@ fn run_postprocess<'py>(
     };
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    let pp_result = postprocess_small_clusters(&graph, &clustering, &config, min_size, &mut rng);
+    let pp_result = postprocess_small_clusters(&graph, &clustering, &config, min_size, min_weight, &mut rng);
 
     let mem_out: Vec<u64> = pp_result.clustering.clusters.iter().map(|&c| c as u64).collect();
     let n_clusters = pp_result.clustering.n_clusters;
@@ -169,6 +197,7 @@ fn run_postprocess<'py>(
             d.insert("n_merged".to_string(), r.n_merged.into_pyobject(py).unwrap().into_any().unbind());
             d.insert("n_total_clusters".to_string(), r.n_total_clusters.into_pyobject(py).unwrap().into_any().unbind());
             d.insert("max_cluster_size".to_string(), r.max_cluster_size.into_pyobject(py).unwrap().into_any().unbind());
+            d.insert("max_cluster_weight".to_string(), r.max_cluster_weight.into_pyobject(py).unwrap().into_any().unbind());
             d
         })
     }).collect();
@@ -180,6 +209,7 @@ fn run_postprocess<'py>(
 /// Compute CPM quality of a clustering.
 #[cfg(feature = "python")]
 #[pyfunction]
+#[pyo3(signature = (n_nodes, src, dst, weights, membership, resolution, node_weights = None))]
 fn cpm_quality(
     n_nodes: usize,
     src: PyReadonlyArray1<u32>,
@@ -187,13 +217,17 @@ fn cpm_quality(
     weights: PyReadonlyArray1<f64>,
     membership: PyReadonlyArray1<u64>,
     resolution: f64,
+    node_weights: Option<PyReadonlyArray1<f64>>,
 ) -> PyResult<f64> {
-    let graph = Graph::from_edge_list(
-        n_nodes,
-        src.as_slice()?,
-        dst.as_slice()?,
-        weights.as_slice()?,
-    );
+    let graph = if let Some(nw) = node_weights {
+        Graph::from_edge_list_weighted(
+            n_nodes, src.as_slice()?, dst.as_slice()?, weights.as_slice()?, nw.as_slice()?,
+        )
+    } else {
+        Graph::from_edge_list(
+            n_nodes, src.as_slice()?, dst.as_slice()?, weights.as_slice()?,
+        )
+    };
     let clustering = Clustering::from_assignments(
         membership.as_slice()?.iter().map(|&x| x as usize).collect()
     );

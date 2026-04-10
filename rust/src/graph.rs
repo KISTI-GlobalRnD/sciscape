@@ -97,6 +97,22 @@ impl Graph {
         }
     }
 
+    /// Build from edge list with explicit node weights (for contracted graphs).
+    ///
+    /// `node_weights[i]` = doc_count (or original node count) for super-node i.
+    pub fn from_edge_list_weighted(
+        n_nodes: usize,
+        src: &[u32],
+        dst: &[u32],
+        weights: &[f64],
+        node_weights: &[f64],
+    ) -> Self {
+        assert_eq!(node_weights.len(), n_nodes);
+        let mut g = Self::from_edge_list(n_nodes, src, dst, weights);
+        g.node_weights = node_weights.to_vec();
+        g
+    }
+
     /// Remove duplicate edges and self-loops, summing weights.
     /// Also sorts neighbors per row for cache-friendly access.
     pub fn simplify(&mut self) {

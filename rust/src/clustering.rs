@@ -58,7 +58,7 @@ impl Clustering {
         result
     }
 
-    /// Cluster sizes.
+    /// Cluster sizes (raw node count).
     pub fn cluster_sizes(&self) -> Vec<usize> {
         let mut sizes = vec![0usize; self.n_clusters];
         for &cid in &self.clusters {
@@ -67,6 +67,18 @@ impl Clustering {
             }
         }
         sizes
+    }
+
+    /// Cluster weights (sum of node_weights per cluster).
+    /// For contracted graphs, this gives the total doc_count per cluster.
+    pub fn cluster_weights(&self, node_weights: &[f64]) -> Vec<f64> {
+        let mut weights = vec![0.0f64; self.n_clusters];
+        for (node, &cid) in self.clusters.iter().enumerate() {
+            if cid < self.n_clusters {
+                weights[cid] += node_weights[node];
+            }
+        }
+        weights
     }
 
     /// Remove empty clusters and renumber to 0..k-1.

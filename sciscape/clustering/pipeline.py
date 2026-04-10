@@ -199,6 +199,8 @@ def _run_rust_backend(
 
     for level_name, gamma in config.resolutions.items():
         t_leiden = time.perf_counter()
+        # Pass node_weights on contracted graphs so CPM uses doc_count
+        nw = node_sizes.astype(np.float64) if node_sizes is not None else None
         result = run_leiden_rust(
             edges_src=cur_src,
             edges_dst=cur_dst,
@@ -208,6 +210,7 @@ def _run_rust_backend(
             seed=seed,
             n_iterations=n_iter,
             initial_membership=prev_membership_graph,
+            node_weights=nw,
         )
         _log(config,
              f"level {level_name}: rust leiden in {time.perf_counter() - t_leiden:.2f}s "
@@ -218,16 +221,25 @@ def _run_rust_backend(
 
         # Postprocess
         if config.postprocess is not None:
-            min_size, _ = config.postprocess.resolve_thresholds(has_node_weights=False)
-            if min_size is not None and min_size > 1:
+            has_nw = nw is not None
+            min_size_val, min_weight_val = config.postprocess.resolve_thresholds(
+                has_node_weights=has_nw
+            )
+            do_post = (
+                (min_weight_val is not None and min_weight_val > 0)
+                or (min_size_val is not None and min_size_val > 1)
+            )
+            if do_post:
                 t_post = time.perf_counter()
                 post = postprocess_small_clusters_rust(
                     resolution=float(gamma),
-                    min_size=min_size,
+                    min_size=int(min_size_val or 0),
+                    min_weight=float(min_weight_val or 0.0),
                     membership=membership,
                     edges_src=cur_src,
                     edges_dst=cur_dst,
                     edges_weight=cur_weight,
+                    node_weights=nw,
                     n_nodes=cur_n_nodes,
                     seed=seed,
                     n_iterations=n_iter,

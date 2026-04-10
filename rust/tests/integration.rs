@@ -241,7 +241,7 @@ fn test_postprocess_small_clusters() {
     };
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-    let pp = postprocess_small_clusters(&g, &init, &config, 3, &mut rng);
+    let pp = postprocess_small_clusters(&g, &init, &config, 3, 0.0, &mut rng);
 
     // Big cluster {0,1,2,3} should remain intact
     let c0 = pp.clustering.clusters[0];

@@ -70,6 +70,7 @@ def run_leiden_rust(
     randomness: float = 0.01,
     initial_membership: np.ndarray | None = None,
     fixed_nodes: np.ndarray | None = None,
+    node_weights: np.ndarray | None = None,
 ) -> RustLeidenResult:
     """Run Leiden clustering via the Rust backend.
 
@@ -117,6 +118,10 @@ def run_leiden_rust(
     if n_nodes is None:
         n_nodes = int(max(edges_src.max(), edges_dst.max())) + 1
 
+    nw = None
+    if node_weights is not None:
+        nw = np.ascontiguousarray(node_weights, dtype=np.float64)
+
     membership, quality, n_clusters = _rust.run_leiden(
         n_nodes=n_nodes,
         src=edges_src,
@@ -129,6 +134,7 @@ def run_leiden_rust(
         seed=seed,
         initial_membership=initial_membership,
         fixed_nodes=fixed_nodes,
+        node_weights=nw,
     )
 
     log.info(
@@ -146,18 +152,26 @@ def run_leiden_rust(
 def postprocess_small_clusters_rust(
     *,
     resolution: float,
-    min_size: int,
+    min_size: int = 0,
+    min_weight: float = 0.0,
     membership: np.ndarray,
     n_nodes: int | None = None,
     edge_path: Path | None = None,
     edges_src: np.ndarray | None = None,
     edges_dst: np.ndarray | None = None,
     edges_weight: np.ndarray | None = None,
+    node_weights: np.ndarray | None = None,
     seed: int = 0,
     n_iterations: int = 10,
     randomness: float = 0.01,
-) -> RustLeidenResult:
-    """Reassign small clusters using constrained Leiden (Rust backend)."""
+) -> RustPostprocessResult:
+    """Reassign small clusters using constrained Leiden (Rust backend).
+
+    Threshold semantics:
+    - If ``node_weights`` is provided and ``min_weight > 0``, clusters are
+      considered "small" when their total node_weight < min_weight (doc_count).
+    - Otherwise, raw node count < min_size is used.
+    """
     _check_available()
 
     if edges_src is None:
@@ -178,6 +192,10 @@ def postprocess_small_clusters_rust(
     if n_nodes is None:
         n_nodes = len(membership)
 
+    nw = None
+    if node_weights is not None:
+        nw = np.ascontiguousarray(node_weights, dtype=np.float64)
+
     result_mem, n_clusters, changed_at, rounds = _rust.run_postprocess(
         n_nodes=n_nodes,
         src=edges_src,
@@ -189,20 +207,27 @@ def postprocess_small_clusters_rust(
         n_iterations=n_iterations,
         randomness=randomness,
         seed=seed,
+        node_weights=nw,
+        min_weight=min_weight,
     )
 
     changed = int(np.sum(result_mem != membership))
+    threshold_str = (
+        f"min_weight={min_weight}" if min_weight > 0
+        else f"min_size={min_size}"
+    )
     for r in rounds:
         log.info(
             "postprocess round %d: γ=%.4e, method=%s, small: %d→%d, "
-            "merged: %d, total: %d, max_size: %d",
+            "merged: %d, total: %d, max_size: %d, max_weight: %.1f",
             r["round"], r["gamma"], r["method"],
             r["n_small_before"], r["n_small_after"],
             r["n_merged"], r["n_total_clusters"], r["max_cluster_size"],
+            r["max_cluster_weight"],
         )
     log.info(
-        "postprocess_rust: %d nodes changed, %d clusters (min_size=%d, %d rounds)",
-        changed, n_clusters, min_size, len(rounds),
+        "postprocess_rust: %d nodes changed, %d clusters (%s, %d rounds)",
+        changed, n_clusters, threshold_str, len(rounds),
     )
 
     return RustPostprocessResult(
