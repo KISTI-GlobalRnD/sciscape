@@ -47,6 +47,14 @@ class RustLeidenResult:
     n_clusters: int
 
 
+@dataclass(frozen=True)
+class RustPostprocessResult:
+    """Result of Rust postprocessing with round-by-round monitoring."""
+    membership: np.ndarray
+    n_clusters: int
+    rounds: list  # list of dicts with per-round info
+
+
 def run_leiden_rust(
     edge_path: Path | None = None,
     *,
@@ -169,7 +177,7 @@ def postprocess_small_clusters_rust(
     if n_nodes is None:
         n_nodes = len(membership)
 
-    result_mem, n_clusters = _rust.run_postprocess(
+    result_mem, n_clusters, rounds = _rust.run_postprocess(
         n_nodes=n_nodes,
         src=edges_src,
         dst=edges_dst,
@@ -183,21 +191,30 @@ def postprocess_small_clusters_rust(
     )
 
     changed = int(np.sum(result_mem != membership))
+    for r in rounds:
+        log.info(
+            "postprocess round %d: γ=%.4e, method=%s, small: %d→%d, "
+            "merged: %d, total: %d, max_size: %d",
+            r["round"], r["gamma"], r["method"],
+            r["n_small_before"], r["n_small_after"],
+            r["n_merged"], r["n_total_clusters"], r["max_cluster_size"],
+        )
     log.info(
-        "postprocess_rust: %d nodes changed, %d clusters (min_size=%d)",
-        changed, n_clusters, min_size,
+        "postprocess_rust: %d nodes changed, %d clusters (min_size=%d, %d rounds)",
+        changed, n_clusters, min_size, len(rounds),
     )
 
-    return RustLeidenResult(
+    return RustPostprocessResult(
         membership=result_mem,
-        quality=0.0,  # not computed in postprocess
         n_clusters=n_clusters,
+        rounds=rounds,
     )
 
 
 __all__ = [
     "RUST_AVAILABLE",
     "RustLeidenResult",
+    "RustPostprocessResult",
     "run_leiden_rust",
     "postprocess_small_clusters_rust",
 ]
