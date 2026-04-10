@@ -120,6 +120,7 @@ def run_leiden_java(
     jar_path: Path | None = None,
     output_path: Path | None = None,
     input_clustering_path: Path | None = None,
+    fixed_nodes: set[int] | None = None,
     edge_tsv_path: Path | None = None,
     seed: int = 0,
     iterations: int = 10,
@@ -141,6 +142,10 @@ def run_leiden_java(
         Path to ``networkanalysis-X.Y.Z.jar``. Falls back to ``$LEIDEN_JAR``.
     output_path : Path, optional
         Where to write the membership TSV. If None, uses a temp file.
+    fixed_nodes : set[int], optional
+        Node indices that should not change cluster assignment.
+        Requires the patched CWTS networkanalysis JAR with
+        ``--fixed-nodes`` support.
     seed : int
         Random seed for the Leiden algorithm.
     iterations : int
@@ -212,6 +217,19 @@ def run_leiden_java(
             cmd.append("-w")
         if input_clustering_path is not None:
             cmd.extend(["--input-clustering", str(input_clustering_path)])
+
+        # Write fixed nodes file if provided
+        fixed_nodes_path = None
+        if fixed_nodes:
+            with tempfile.NamedTemporaryFile(
+                suffix=".txt", prefix="leiden_fixed_", delete=False, mode="w",
+            ) as f:
+                fixed_nodes_path = Path(f.name)
+                for node in sorted(fixed_nodes):
+                    f.write(f"{node}\n")
+            cmd.extend(["--fixed-nodes", str(fixed_nodes_path)])
+            log.info("leiden_java: %d fixed nodes", len(fixed_nodes))
+
         cmd.extend(["-o", str(output_path), str(tsv_path)])
 
         log.info("leiden_java: running %s", " ".join(cmd))
@@ -256,6 +274,9 @@ def run_leiden_java(
         # Clean up temp output if we created it
         if use_temp_output and output_path is not None and output_path.exists():
             output_path.unlink()
+        # Clean up temp fixed nodes file
+        if fixed_nodes_path is not None and fixed_nodes_path.exists():
+            fixed_nodes_path.unlink()
 
 
 # ── Multi-level classification (publicationclassification backend) ──
