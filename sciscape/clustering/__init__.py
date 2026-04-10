@@ -76,6 +76,12 @@ from .leiden_java import (
     run_multilevel_java,
     postprocess_small_clusters_java,
 )
+from .leiden_rust import (
+    RUST_AVAILABLE,
+    RustLeidenResult,
+    run_leiden_rust,
+    postprocess_small_clusters_rust,
+)
 from .block_init import (
     BlockInitResult,
     CascadeResult,
@@ -161,4 +167,8 @@ __all__ = [
     "run_leiden_java",
     "run_multilevel_java",
     "postprocess_small_clusters_java",
+    "RUST_AVAILABLE",
+    "RustLeidenResult",
+    "run_leiden_rust",
+    "postprocess_small_clusters_rust",
 ]
