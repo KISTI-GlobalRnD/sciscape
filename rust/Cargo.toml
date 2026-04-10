@@ -1,0 +1,27 @@
+[package]
+name = "sciscape-leiden"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance CPM Leiden clustering with fixed-node support"
+license = "MIT"
+
+[lib]
+name = "sciscape_leiden"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+rand = "0.8"
+rayon = "1.10"
+pyo3 = { version = "0.23", features = ["extension-module"], optional = true }
+numpy = { version = "0.23", optional = true }
+
+[features]
+default = []
+python = ["pyo3", "numpy"]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "leiden_bench"
+harness = false
