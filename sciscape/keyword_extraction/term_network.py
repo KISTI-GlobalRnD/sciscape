@@ -25,6 +25,12 @@ from .utils import _edit_distance
 
 logger = logging.getLogger(__name__)
 
+try:
+    import sciscape_text as _rust_text
+    _RUST_TEXT_AVAILABLE = True
+except ImportError:
+    _RUST_TEXT_AVAILABLE = False
+
 
 @dataclass
 class TermNetworkConfig:
@@ -135,12 +141,33 @@ class TermNetwork:
         """Layer 1: character-level similarity (edit distance + char n-gram).
 
         Uses blocking to avoid O(n^2) comparisons.
+        Accelerated by Rust (sciscape_text) when available.
         """
         n = len(terms)
         if n == 0:
             return sp.csr_matrix((0, 0), dtype=np.float32)
 
         cfg = self.config
+
+        # ── Rust fast path ──
+        if _RUST_TEXT_AVAILABLE:
+            rows, cols, vals, _ = _rust_text.rust_build_layer_string(
+                list(terms),
+                char_ngram_n=cfg.char_ngram_n,
+                max_edit_distance=cfg.max_edit_distance,
+                min_sim=cfg.min_char_ngram_sim,
+                max_block_size=cfg.max_block_size,
+                prefix_len=cfg.prefix_length,
+                blocking_strategy=cfg.blocking_strategy,
+            )
+            if len(rows) == 0:
+                return sp.csr_matrix((n, n), dtype=np.float32)
+            return sp.csr_matrix(
+                (np.asarray(vals), (np.asarray(rows), np.asarray(cols))),
+                shape=(n, n),
+            )
+
+        # ── Python fallback ──
         blocks = _build_blocks(terms, cfg.blocking_strategy, cfg.prefix_length)
         ngrams = [_char_ngrams(t.lower(), cfg.char_ngram_n) for t in terms]
 
@@ -162,17 +189,14 @@ class TermNetwork:
                         continue
                     seen.add(pair)
 
-                    # Edit distance similarity
                     dist = _edit_distance(terms[i].lower(), terms[j].lower())
                     max_len = max(len(terms[i]), len(terms[j]))
                     if max_len == 0:
                         continue
                     ed_sim = 1.0 - (dist / max_len) if dist <= cfg.max_edit_distance else 0.0
 
-                    # Char n-gram similarity
                     ng_sim = _jaccard(ngrams[i], ngrams[j])
 
-                    # Combined
                     sim = max(ed_sim, ng_sim)
                     if sim >= cfg.min_char_ngram_sim:
                         rows.extend([i, j])
@@ -188,12 +212,33 @@ class TermNetwork:
         )
 
     def build_layer_token(self, terms: Sequence[str]) -> sp.csr_matrix:
-        """Layer 2: word-level overlap, containment, abbreviation detection."""
+        """Layer 2: word-level overlap, containment, abbreviation detection.
+
+        Accelerated by Rust (sciscape_text) when available.
+        """
         n = len(terms)
         if n == 0:
             return sp.csr_matrix((0, 0), dtype=np.float32)
 
         cfg = self.config
+
+        # ── Rust fast path ──
+        if _RUST_TEXT_AVAILABLE:
+            rows, cols, vals, _ = _rust_text.rust_build_layer_token(
+                list(terms),
+                min_sim=cfg.min_token_overlap,
+                max_block_size=cfg.max_block_size,
+                prefix_len=cfg.prefix_length,
+                blocking_strategy=cfg.blocking_strategy,
+            )
+            if len(rows) == 0:
+                return sp.csr_matrix((n, n), dtype=np.float32)
+            return sp.csr_matrix(
+                (np.asarray(vals), (np.asarray(rows), np.asarray(cols))),
+                shape=(n, n),
+            )
+
+        # ── Python fallback ──
         token_sets = [set(t.lower().split()) for t in terms]
         blocks = _build_blocks(terms, cfg.blocking_strategy, cfg.prefix_length)
 

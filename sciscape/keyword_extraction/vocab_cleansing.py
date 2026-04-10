@@ -27,6 +27,12 @@ from .normalization import _normalize_notation, _normalize_spelling, _phrase_sin
 from .utils import _edit_distance
 from .vocab_merge import _simple_singular
 
+try:
+    import sciscape_text as _rust_text
+    _RUST_TEXT_AVAILABLE = True
+except ImportError:
+    _RUST_TEXT_AVAILABLE = False
+
 
 # ---------------------------------------------------------------------------
 # 3a: Notation + Spelling normalization
@@ -213,9 +219,26 @@ def _build_edit_distance_merge_map(
         return merge_map
 
     col_sums = np.asarray(C.sum(axis=0)).ravel()
-    C_csc = C.tocsc()  # efficient column slicing
+    C_csc = C.tocsc()
 
-    # Block by prefix for efficiency
+    # ── Rust fast path: sparse column comparison, no todense() ──
+    if _RUST_TEXT_AVAILABLE:
+        merge_keys = np.array(list(existing_merges.keys()), dtype=np.uint32)
+        merge_vals = np.array(list(existing_merges.values()), dtype=np.uint32)
+        pairs = _rust_text.rust_build_edit_distance_merge_map(
+            list(feature_names),
+            merge_keys,
+            merge_vals,
+            np.asarray(C_csc.indptr, dtype=np.uint64),
+            np.asarray(C_csc.indices, dtype=np.uint32),
+            np.asarray(C_csc.data, dtype=np.float64),
+            np.asarray(col_sums, dtype=np.float64),
+            max_edit_distance=max_edit_distance,
+            global_ratio_threshold=global_ratio_threshold,
+        )
+        return {int(src): int(tgt) for src, tgt in pairs}
+
+    # ── Python fallback ──
     prefix_len = 3
     blocks: Dict[str, List[int]] = defaultdict(list)
     for idx in unigram_indices:
@@ -226,7 +249,6 @@ def _build_edit_distance_merge_map(
     for block_indices in blocks.values():
         if len(block_indices) < 2:
             continue
-        # Sort by frequency descending
         block_sorted = sorted(block_indices, key=lambda i: -col_sums[i])
 
         for bi in range(len(block_sorted)):
@@ -248,7 +270,6 @@ def _build_edit_distance_merge_map(
                 if dist > max_edit_distance:
                     continue
 
-                # Frequency ratio check
                 freq_i = col_sums[idx_i]
                 freq_j = col_sums[idx_j]
                 major_freq = max(freq_i, freq_j)
@@ -257,9 +278,8 @@ def _build_edit_distance_merge_map(
                     continue
                 ratio = minor_freq / major_freq
                 if ratio >= global_ratio_threshold:
-                    continue  # both forms too frequent — not a typo
+                    continue
 
-                # Cluster dominance check: is the minor form dominant anywhere?
                 major_idx = idx_i if freq_i >= freq_j else idx_j
                 minor_idx = idx_j if freq_i >= freq_j else idx_i
 
@@ -268,7 +288,7 @@ def _build_edit_distance_merge_map(
 
                 minor_leads_anywhere = np.any(minor_col > major_col)
                 if minor_leads_anywhere:
-                    continue  # minor dominates in at least one cluster
+                    continue
 
                 merge_map[minor_idx] = major_idx
 

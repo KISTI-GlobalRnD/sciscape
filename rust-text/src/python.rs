@@ -15,6 +15,7 @@ use crate::{build_layer_string, build_layer_token, collect_cooccurrence, build_e
     min_sim = 0.5,
     max_block_size = 5000,
     prefix_len = 3,
+    blocking_strategy = "prefix",
 ))]
 fn rust_build_layer_string<'py>(
     py: Python<'py>,
@@ -24,9 +25,10 @@ fn rust_build_layer_string<'py>(
     min_sim: f32,
     max_block_size: usize,
     prefix_len: usize,
+    blocking_strategy: &str,
 ) -> PyResult<(Py<PyArray1<u32>>, Py<PyArray1<u32>>, Py<PyArray1<f32>>, usize)> {
     let result = build_layer_string(
-        &terms, char_ngram_n, max_edit_distance, min_sim, max_block_size, prefix_len,
+        &terms, char_ngram_n, max_edit_distance, min_sim, max_block_size, prefix_len, blocking_strategy,
     );
     Ok((
         PyArray1::from_vec(py, result.rows).into(),
@@ -44,6 +46,7 @@ fn rust_build_layer_string<'py>(
     min_sim = 0.3,
     max_block_size = 5000,
     prefix_len = 3,
+    blocking_strategy = "prefix",
 ))]
 fn rust_build_layer_token<'py>(
     py: Python<'py>,
@@ -51,8 +54,9 @@ fn rust_build_layer_token<'py>(
     min_sim: f32,
     max_block_size: usize,
     prefix_len: usize,
+    blocking_strategy: &str,
 ) -> PyResult<(Py<PyArray1<u32>>, Py<PyArray1<u32>>, Py<PyArray1<f32>>, usize)> {
-    let result = build_layer_token(&terms, min_sim, max_block_size, prefix_len);
+    let result = build_layer_token(&terms, min_sim, max_block_size, prefix_len, blocking_strategy);
     Ok((
         PyArray1::from_vec(py, result.rows).into(),
         PyArray1::from_vec(py, result.cols).into(),

@@ -31,14 +31,52 @@ fn jaccard(a: &AHashSet<String>, b: &AHashSet<String>) -> f32 {
     if union == 0 { 0.0 } else { inter as f32 / union as f32 }
 }
 
-/// Build prefix-based blocks for blocking strategy.
-fn build_blocks(terms: &[String], prefix_len: usize) -> AHashMap<String, Vec<usize>> {
+/// Build blocks for pairwise comparison.
+///
+/// `strategy`: "prefix" or "token".
+/// Also creates an "_abbrev" block pairing short terms with multi-word terms.
+fn build_blocks(terms: &[String], prefix_len: usize, strategy: &str) -> AHashMap<String, Vec<usize>> {
     let mut blocks: AHashMap<String, Vec<usize>> = AHashMap::new();
+    let mut abbrev_candidates: Vec<usize> = Vec::new();
+    let mut multi_word: Vec<usize> = Vec::new();
+
     for (i, t) in terms.iter().enumerate() {
         let lower = t.to_lowercase();
-        let key: String = lower.chars().take(prefix_len).collect();
-        blocks.entry(key).or_default().push(i);
+        let nospace: String = lower.chars().filter(|c| !c.is_whitespace()).collect();
+
+        if strategy == "token" {
+            let tokens: Vec<&str> = lower.split_whitespace().collect();
+            if tokens.is_empty() {
+                blocks.entry(String::new()).or_default().push(i);
+            } else {
+                for token in &tokens {
+                    blocks.entry(token.to_string()).or_default().push(i);
+                }
+            }
+            if nospace.len() <= 5 {
+                abbrev_candidates.push(i);
+            } else if tokens.len() > 1 {
+                multi_word.push(i);
+            }
+        } else {
+            // prefix blocking
+            let key: String = lower.chars().take(prefix_len).collect();
+            blocks.entry(key).or_default().push(i);
+            if nospace.len() <= 5 {
+                abbrev_candidates.push(i);
+            } else if lower.contains(' ') {
+                multi_word.push(i);
+            }
+        }
     }
+
+    // Abbreviation block: pair short terms with multi-word terms
+    if !abbrev_candidates.is_empty() && !multi_word.is_empty() {
+        let mut abbrev_block = abbrev_candidates;
+        abbrev_block.extend(multi_word);
+        blocks.insert("_abbrev".to_string(), abbrev_block);
+    }
+
     blocks
 }
 
@@ -60,6 +98,7 @@ pub fn build_layer_string(
     min_sim: f32,
     max_block_size: usize,
     prefix_len: usize,
+    blocking_strategy: &str,
 ) -> CooEntries {
     let n = terms.len();
     let lower_terms: Vec<String> = terms.iter().map(|t| t.to_lowercase()).collect();
@@ -70,7 +109,7 @@ pub fn build_layer_string(
         .map(|t| char_ngrams(t, char_ngram_n))
         .collect();
 
-    let blocks = build_blocks(terms, prefix_len);
+    let blocks = build_blocks(terms, prefix_len, blocking_strategy);
 
     // Process blocks in parallel
     let block_results: Vec<(Vec<u32>, Vec<u32>, Vec<f32>)> = blocks
@@ -136,6 +175,7 @@ pub fn build_layer_token(
     min_sim: f32,
     max_block_size: usize,
     prefix_len: usize,
+    blocking_strategy: &str,
 ) -> CooEntries {
     let n = terms.len();
     let lower_terms: Vec<String> = terms.iter().map(|t| t.to_lowercase()).collect();
@@ -146,7 +186,7 @@ pub fn build_layer_token(
         .map(|t| t.split_whitespace().map(String::from).collect())
         .collect();
 
-    let blocks = build_blocks(terms, prefix_len);
+    let blocks = build_blocks(terms, prefix_len, blocking_strategy);
 
     let block_results: Vec<(Vec<u32>, Vec<u32>, Vec<f32>)> = blocks
         .par_iter()
@@ -252,7 +292,7 @@ mod tests {
         let terms: Vec<String> = vec![
             "neural".into(), "neurol".into(), "network".into(),
         ];
-        let result = build_layer_string(&terms, 3, 2, 0.5, 1000, 3);
+        let result = build_layer_string(&terms, 3, 2, 0.5, 1000, 3, "prefix");
         // neural vs neurol: edit distance = 1, sim = 1 - 1/6 ≈ 0.833
         assert!(!result.rows.is_empty());
     }
@@ -265,7 +305,7 @@ mod tests {
             "quantum computing".into(),
         ];
         // Same prefix "mac" → same block. Jaccard({"machine","learning"}, {"machine","vision"}) = 1/3
-        let result = build_layer_token(&terms, 0.3, 1000, 3);
+        let result = build_layer_token(&terms, 0.3, 1000, 3, "prefix");
         assert!(!result.rows.is_empty());
     }
 }
