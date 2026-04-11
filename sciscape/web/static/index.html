@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SciScape</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
 
@@ -485,6 +486,26 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--fog); border-radius: 3px; }
 .terminal::-webkit-scrollbar-thumb { background: var(--graphite); }
+
+/* ── NETWORK CONTROLS ──────────────────────────────────── */
+.net-controls { padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--fog); background: var(--paper); }
+.net-ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.net-ctrl-group { display: flex; align-items: center; gap: 0.3rem; }
+.net-ctrl-label {
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--steel); margin-right: 0.3rem;
+}
+.net-chip {
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500;
+  padding: 0.2rem 0.6rem; border-radius: 3px; border: 1px solid var(--fog);
+  background: var(--white); color: var(--steel); cursor: pointer; transition: all 0.15s;
+}
+.net-chip:hover { border-color: var(--silver); color: var(--ink); }
+.net-chip.active { background: var(--slate); color: var(--cream); border-color: var(--slate); }
+.net-chip.layer-chip[data-layer="dc"].active { background: #2563eb; border-color: #2563eb; }
+.net-chip.layer-chip[data-layer="bc"].active { background: #dc2626; border-color: #dc2626; }
+.net-chip.layer-chip[data-layer="cc"].active { background: #059669; border-color: #059669; }
+.net-chip.layer-chip[data-layer="combined"].active { background: var(--slate); border-color: var(--slate); }
 </style>
 </head>
 <body>
@@ -553,10 +574,11 @@ body {
       </div>
 
       <div class="tab-content active" id="tab-overview">
-        <div class="viz-placeholder" id="viz-placeholder">
-          Visualization will appear here after landscape analysis completes.
+        <div id="network-container" style="width:100%;height:540px;background:var(--white);border:1px solid var(--fog);border-radius:var(--radius);overflow:hidden;position:relative;">
+          <div class="viz-placeholder" id="viz-placeholder">
+            Network visualization will appear here after analysis completes.
+          </div>
         </div>
-        <iframe class="viz-frame" id="viz-frame" style="display:none;" sandbox="allow-scripts allow-same-origin"></iframe>
       </div>
 
       <div class="tab-content" id="tab-clusters">
@@ -710,14 +732,8 @@ function showResults(result) {
   if (result.edges_path)
     grid.innerHTML += dlCard('edges.parquet', 'Citation edges', 'EDG', currentJobId);
 
-  // Overview iframe
-  if (result.landscape_dir) {
-    const frame = document.getElementById('viz-frame');
-    const placeholder = document.getElementById('viz-placeholder');
-    frame.src = '/api/jobs/' + currentJobId + '/download/landscape/report.html';
-    frame.style.display = 'block';
-    placeholder.style.display = 'none';
-  }
+  // Network visualization
+  loadNetwork(currentJobId);
 
   // Tabs: activate overview
   switchTab('overview');
@@ -786,6 +802,16 @@ async function loadJob(jobId) {
 /* ── UTILS ─────────────────────────────────────────────── */
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+/* ── NETWORK VIZ ───────────────────────────────────────── */
+let networkViz = null;
+
+async function loadNetwork(jobId) {
+  if (!window.ClusterNetwork) return;
+  document.getElementById('viz-placeholder').style.display = 'none';
+  networkViz = new ClusterNetwork('network-container');
+  await networkViz.load(jobId);
+}
+
 /* ── INIT ──────────────────────────────────────────────── */
 refreshHistory();
 
@@ -794,5 +820,6 @@ document.getElementById('q-search').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') submitQuery();
 });
 </script>
+<script src="/static/network.js"></script>
 </body>
 </html>

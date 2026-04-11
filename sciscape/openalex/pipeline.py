@@ -125,7 +125,13 @@ def run_openalex_pipeline(
         if etype in edge_tables and edge_tables[etype].height > 0:
             edge_dfs.append(edge_tables[etype])
 
+    # Save per-layer edge files for network visualization
     n_edges = {}
+    for etype, df in edge_tables.items():
+        if df.height > 0:
+            layer_path = output_dir / f"edges_{etype}.parquet"
+            df.write_parquet(layer_path)
+
     if edge_dfs:
         combined = pl.concat(edge_dfs).group_by(["uid1", "uid2"]).agg(
             pl.col("rel_sum2").sum()

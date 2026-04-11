@@ -139,6 +139,56 @@ async def download_file(job_id: str, filename: str):
     return FileResponse(file_path, filename=filename)
 
 
+@app.get("/api/jobs/{job_id}/network")
+async def get_network(job_id: str):
+    """Get cluster network data for D3 visualization."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    output_dir = result.get("output_dir")
+    if not output_dir:
+        return {"error": "no output directory"}
+
+    from .network_data import build_network_json
+
+    edges_path = result.get("edges_path")
+    if not edges_path or not Path(edges_path).exists():
+        return {"error": "no edges file"}
+
+    # Check for membership and keywords
+    out = Path(output_dir)
+    membership_path = None
+    keywords_path = None
+    landscape_dir = result.get("landscape_dir")
+    if landscape_dir:
+        ld = Path(landscape_dir)
+        for f in ld.glob("membership*.parquet"):
+            membership_path = f
+            break
+        for f in ld.glob("keywords*.parquet"):
+            keywords_path = f
+            break
+
+    # Check for per-layer edge files
+    layer_paths = {}
+    for layer in ("dc", "bc", "cc"):
+        p = out / f"edges_{layer}.parquet"
+        if p.exists():
+            layer_paths[layer] = p
+
+    try:
+        data = build_network_json(
+            Path(edges_path),
+            membership_path=membership_path,
+            keywords_path=keywords_path,
+            edge_layer_paths=layer_paths if layer_paths else None,
+        )
+        return data
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs")
 async def list_jobs():
     """List all jobs."""
