@@ -189,6 +189,134 @@ async def get_network(job_id: str):
         return {"error": str(e)}
 
 
+@app.get("/api/jobs/{job_id}/labels")
+async def get_labels(job_id: str, strategy: str = "tfidf_distinct", top_k: int = 3):
+    """Auto-generate cluster labels from keywords (no LLM needed)."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+
+    result = job.get("result", {})
+    landscape_dir = result.get("landscape_dir")
+    if not landscape_dir:
+        return {"error": "no landscape output"}
+
+    import polars as pl
+    from sciscape.clustering.auto_label import auto_label_clusters
+
+    # Find keywords file
+    ld = Path(landscape_dir)
+    kw_path = None
+    for f in ld.glob("keywords*.parquet"):
+        kw_path = f
+        break
+    if not kw_path:
+        return {"error": "no keywords file found"}
+
+    try:
+        kw_df = pl.read_parquet(kw_path)
+        labels = auto_label_clusters(kw_df, strategy=strategy, top_k=top_k)
+        return {"labels": {str(k): v for k, v in labels.items()}}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/jobs/{job_id}/labels/llm")
+async def generate_llm_labels(job_id: str, bg: BackgroundTasks):
+    """Generate cluster names using LLM (requires Ollama or OpenAI API)."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+
+    # Store LLM labeling status
+    if "llm_labels" not in job:
+        job["llm_labels"] = {"status": "running", "labels": {}}
+    bg.add_task(_run_llm_labeling, job_id)
+    return {"status": "started"}
+
+
+def _run_llm_labeling(job_id: str) -> None:
+    """Background task for LLM cluster naming."""
+    job = _jobs.get(job_id)
+    if not job:
+        return
+
+    try:
+        import polars as pl
+        from sciscape.clustering.cluster_naming import create_client, summarise_cluster
+        from sciscape.clustering.core_documents import ClusterDocument
+
+        result = job.get("result", {})
+        output_dir = Path(result.get("output_dir", ""))
+        landscape_dir = result.get("landscape_dir")
+
+        # Load abstracts
+        abs_path = result.get("abstracts_path")
+        if not abs_path:
+            job["llm_labels"] = {"status": "error", "error": "no abstracts"}
+            return
+
+        abs_df = pl.read_parquet(abs_path)
+
+        # Load membership
+        mem_path = None
+        if landscape_dir:
+            for f in Path(landscape_dir).glob("membership*.parquet"):
+                mem_path = f
+                break
+        if not mem_path:
+            job["llm_labels"] = {"status": "error", "error": "no membership"}
+            return
+
+        mem_df = pl.read_parquet(mem_path)
+        cluster_col = [c for c in mem_df.columns if c.startswith("cluster_")][0]
+
+        # Join
+        joined = abs_df.join(mem_df.select("uid", cluster_col), on="uid", how="inner")
+
+        # Group docs by cluster
+        client = create_client()
+        model = getattr(client, "_sciscape_model", "gpt-oss:20b")
+        labels = {}
+
+        cluster_ids = sorted(joined[cluster_col].unique().to_list())
+        for cid in cluster_ids:
+            docs_df = joined.filter(pl.col(cluster_col) == cid).head(8)
+            docs = [
+                ClusterDocument(
+                    uid=row["uid"],
+                    title=row.get("title", ""),
+                    abstract=row.get("abstract", ""),
+                )
+                for row in docs_df.iter_rows(named=True)
+            ]
+            if not docs:
+                continue
+            try:
+                summary = summarise_cluster(client, str(cid), docs, model=model)
+                labels[str(cid)] = {
+                    "name": summary.name,
+                    "description": summary.description,
+                    "keywords": summary.keywords,
+                }
+            except Exception as e:
+                labels[str(cid)] = {"name": f"Cluster {cid}", "error": str(e)}
+
+        job["llm_labels"] = {"status": "done", "labels": labels}
+
+    except Exception as e:
+        job["llm_labels"] = {"status": "error", "error": str(e)}
+
+
+@app.get("/api/jobs/{job_id}/labels/llm/status")
+async def llm_label_status(job_id: str):
+    """Check LLM labeling progress."""
+    job = _jobs.get(job_id)
+    if not job:
+        return {"error": "job not found"}
+    return job.get("llm_labels", {"status": "not_started"})
+
+
 @app.get("/api/jobs")
 async def list_jobs():
     """List all jobs."""
