@@ -137,6 +137,11 @@ fn run_leiden<'py>(
     max_rounds = 5,
     gamma_decay = 0.1,
     use_greedy = true,
+    greedy_anchor_only = false,
+    greedy_fallback_to_small = false,
+    greedy_max_weight = 0.0,
+    use_component_merge = true,
+    component_max_weight = 0.0,
 ))]
 fn run_postprocess<'py>(
     py: Python<'py>,
@@ -155,6 +160,11 @@ fn run_postprocess<'py>(
     max_rounds: usize,
     gamma_decay: f64,
     use_greedy: bool,
+    greedy_anchor_only: bool,
+    greedy_fallback_to_small: bool,
+    greedy_max_weight: f64,
+    use_component_merge: bool,
+    component_max_weight: f64,
 ) -> PyResult<(Py<PyArray1<u64>>, usize, Py<PyArray1<i32>>, Vec<std::collections::HashMap<String, pyo3::PyObject>>)> {
     let graph = if let Some(nw) = node_weights {
         Graph::from_edge_list_weighted(
@@ -194,6 +204,11 @@ fn run_postprocess<'py>(
         max_rounds,
         gamma_decay,
         use_greedy,
+        greedy_anchor_only,
+        greedy_fallback_to_small,
+        greedy_max_weight,
+        use_component_merge,
+        component_max_weight,
         &mut rng,
     );
 
