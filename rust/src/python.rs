@@ -135,7 +135,7 @@ fn run_leiden<'py>(
     node_weights = None,
     min_weight = 0.0,
     max_rounds = 5,
-    gamma_decay = 0.1,
+    gamma_decay = 0.5,
     use_greedy = true,
     greedy_anchor_only = false,
     greedy_fallback_to_small = false,

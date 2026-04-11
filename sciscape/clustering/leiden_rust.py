@@ -165,7 +165,7 @@ def postprocess_small_clusters_rust(
     n_iterations: int = 10,
     randomness: float = 0.01,
     max_rounds: int = 5,
-    gamma_decay: float = 0.1,
+    gamma_decay: float = 0.5,
     use_greedy: bool = True,
     greedy_anchor_only: bool = False,
     greedy_fallback_to_small: bool = False,
