@@ -1,17 +1,20 @@
-.PHONY: install install-rust install-rust-text install-python test clean
+.PHONY: install install-dev install-rust install-rust-text install-python test clean
 
-# Install everything: Rust crates + Python package
-install: install-rust install-rust-text install-python
+# Install everything via pip (Rust crates + Python package)
+install:
+	pip install ./rust ./rust-text .
 
-# Rust Leiden backend (clustering)
+# Editable install for development
+install-dev:
+	pip install -e ./rust -e ./rust-text -e .
+
+# Individual targets
 install-rust:
-	cd rust && maturin develop --release
+	pip install ./rust
 
-# Rust text backend (keyword extraction)
 install-rust-text:
-	cd rust-text && maturin develop --release
+	pip install ./rust-text
 
-# Python package (editable)
 install-python:
 	pip install -e .
 
