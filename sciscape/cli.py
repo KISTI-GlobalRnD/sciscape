@@ -1,12 +1,14 @@
 """SciScape CLI — minimal command-line interface.
 
 Usage:
+    sciscape query     <search_query> [options]          ← NEW: OpenAlex all-in-one
     sciscape cluster   <zip_path> <inner_name> [options]
     sciscape keywords  <abstract_parquet> <membership_parquet> [options]
     sciscape convert   <source> <input_file> [options]
     sciscape landscape <edge_file> <abstract_parquet> [options]
 
 Examples:
+    sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o ml_output/
     sciscape cluster edges.zip edges.txt --levels 5,100 80,500
     sciscape keywords abstracts.parquet membership.parquet --top-n 100 --include-title -o keywords.parquet
     sciscape convert wos savedrecs.txt -o abstracts.parquet
@@ -100,6 +102,23 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Output HTML path (default: viewer.html)")
     vw.add_argument("--title", type=str, default="SciScape Viewer", help="Viewer title")
     vw.add_argument("--open", action="store_true", help="Open in browser after generation")
+
+    # ---- query (OpenAlex) ----
+    qa = sub.add_parser("query", help="Query OpenAlex → fetch → edges → landscape (all-in-one)")
+    qa.add_argument("search", type=str, help="Search query (title + abstract)")
+    qa.add_argument("--years", type=str, default=None,
+                     help="Year range, e.g. 2020-2024")
+    qa.add_argument("--max-works", type=int, default=5000,
+                     help="Maximum works to fetch (default: 5000)")
+    qa.add_argument("--email", type=str, default=None,
+                     help="Email for OpenAlex polite pool (10x rate limit)")
+    qa.add_argument("--edges", type=str, default="dc,bc",
+                     help="Edge types to build (default: dc,bc)")
+    qa.add_argument("--no-landscape", action="store_true",
+                     help="Skip landscape pipeline (only fetch + edges)")
+    qa.add_argument("-o", "--output", type=Path, default=Path("openalex_output"),
+                     help="Output directory")
+    qa.add_argument("-v", "--verbose", action="store_true")
 
     # ---- gui ----
     sub.add_parser("gui", help="Launch graphical interface")
@@ -303,6 +322,37 @@ def _run_viewer(args: argparse.Namespace) -> None:
         webbrowser.open(f"file://{path}")
 
 
+def _run_query(args: argparse.Namespace) -> None:
+    from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
+
+    if args.verbose:
+        import logging
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    filters = {}
+    if args.years:
+        filters["publication_year"] = args.years
+
+    config = OpenAlexPipelineConfig(
+        query=args.search,
+        filters=filters,
+        max_works=args.max_works,
+        email=args.email,
+        edge_types=args.edges.split(","),
+        output_dir=Path(args.output),
+        run_landscape=not args.no_landscape,
+        progress=print,
+    )
+    result = run_openalex_pipeline(config)
+    print(f"\nDone: {result.n_works} works, {result.n_edges} edges")
+    if result.abstracts_path:
+        print(f"  Abstracts: {result.abstracts_path}")
+    if result.edges_path:
+        print(f"  Edges: {result.edges_path}")
+    if result.landscape_dir:
+        print(f"  Landscape: {result.landscape_dir}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -317,6 +367,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_landscape(args)
     elif args.command == "viewer":
         _run_viewer(args)
+    elif args.command == "query":
+        _run_query(args)
     elif args.command == "gui":
         from sciscape.gui import launch
         launch()

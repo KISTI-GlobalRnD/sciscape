@@ -27,6 +27,7 @@ llm = ["openai>=1.0"]
 mysql = ["pymysql>=1.0"]
 viz = ["plotly>=5.0"]
 largescale = ["sparse_dot_topn>=1.1"]
+openalex = ["requests>=2.28"]
 java = []  # No Python deps; requires JDK>=11 + CWTS networkanalysis JAR on PATH
 rust = []  # install via: pip install ./rust ./rust-text .
 dev = ["pytest>=8", "build>=1.2"]
