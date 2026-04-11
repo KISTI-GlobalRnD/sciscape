@@ -68,12 +68,13 @@ pub fn postprocess_small_clusters(
     config: &LeidenConfig,
     min_size: usize,
     min_weight: f64,
+    max_rounds: usize,
+    gamma_decay: f64,
+    use_greedy: bool,
     rng: &mut impl Rng,
 ) -> PostprocessResult {
     let mut current = clustering.clone();
     let mut gamma = config.resolution;
-    let max_rounds = 5;
-    let gamma_decay = 0.1;
     let mut rounds = Vec::new();
     let mut changed_at = vec![-1i32; graph.n_nodes];
     let nw = &graph.node_weights;
@@ -163,7 +164,7 @@ pub fn postprocess_small_clusters(
     let n_small_before = (0..current.n_clusters)
         .filter(|&c| is_small(weights[c], sizes[c], min_weight, min_size))
         .count();
-    if n_small_before > 0 {
+    if use_greedy && n_small_before > 0 {
         let n_before = current.n_clusters;
         let prev_clusters = current.clusters.clone();
         greedy_merge_remaining(graph, &mut current, min_size, min_weight);
@@ -270,7 +271,7 @@ mod tests {
         };
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         // min_weight=0.0 → use min_size=4
-        let result = postprocess_small_clusters(&g, &init, &config, 4, 0.0, &mut rng);
+        let result = postprocess_small_clusters(&g, &init, &config, 4, 0.0, 5, 0.1, true, &mut rng);
 
         let sizes = result.clustering.cluster_sizes();
         let remaining_small = sizes.iter().filter(|&&s| s > 0 && s < 4).count();
@@ -291,7 +292,7 @@ mod tests {
         let config = LeidenConfig::default();
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         // min_weight=5.0 → cluster 1 (weight=3) is small, cluster 0 (weight=30) is large
-        let result = postprocess_small_clusters(&g, &init, &config, 0, 5.0, &mut rng);
+        let result = postprocess_small_clusters(&g, &init, &config, 0, 5.0, 5, 0.1, true, &mut rng);
 
         // cluster 1 should merge into cluster 0
         assert_eq!(result.clustering.n_clusters, 1);
@@ -305,7 +306,7 @@ mod tests {
         let init = Clustering::from_assignments(vec![0,0,0,1,1,1]);
         let config = LeidenConfig::default();
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-        let result = postprocess_small_clusters(&g, &init, &config, 2, 0.0, &mut rng);
+        let result = postprocess_small_clusters(&g, &init, &config, 2, 0.0, 5, 0.1, true, &mut rng);
         assert_eq!(result.clustering.n_clusters, 2);
         assert!(result.rounds.is_empty());
     }

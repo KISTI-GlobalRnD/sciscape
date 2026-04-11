@@ -134,6 +134,9 @@ fn run_leiden<'py>(
     seed = 0,
     node_weights = None,
     min_weight = 0.0,
+    max_rounds = 5,
+    gamma_decay = 0.1,
+    use_greedy = true,
 ))]
 fn run_postprocess<'py>(
     py: Python<'py>,
@@ -149,6 +152,9 @@ fn run_postprocess<'py>(
     seed: u64,
     node_weights: Option<PyReadonlyArray1<f64>>,
     min_weight: f64,
+    max_rounds: usize,
+    gamma_decay: f64,
+    use_greedy: bool,
 ) -> PyResult<(Py<PyArray1<u64>>, usize, Py<PyArray1<i32>>, Vec<std::collections::HashMap<String, pyo3::PyObject>>)> {
     let graph = if let Some(nw) = node_weights {
         Graph::from_edge_list_weighted(
@@ -179,7 +185,17 @@ fn run_postprocess<'py>(
     };
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    let pp_result = postprocess_small_clusters(&graph, &clustering, &config, min_size, min_weight, &mut rng);
+    let pp_result = postprocess_small_clusters(
+        &graph,
+        &clustering,
+        &config,
+        min_size,
+        min_weight,
+        max_rounds,
+        gamma_decay,
+        use_greedy,
+        &mut rng,
+    );
 
     let mem_out: Vec<u64> = pp_result.clustering.clusters.iter().map(|&c| c as u64).collect();
     let n_clusters = pp_result.clustering.n_clusters;

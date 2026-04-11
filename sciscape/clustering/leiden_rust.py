@@ -164,6 +164,9 @@ def postprocess_small_clusters_rust(
     seed: int = 0,
     n_iterations: int = 10,
     randomness: float = 0.01,
+    max_rounds: int = 5,
+    gamma_decay: float = 0.1,
+    use_greedy: bool = True,
 ) -> RustPostprocessResult:
     """Reassign small clusters using constrained Leiden (Rust backend).
 
@@ -209,6 +212,9 @@ def postprocess_small_clusters_rust(
         seed=seed,
         node_weights=nw,
         min_weight=min_weight,
+        max_rounds=int(max_rounds),
+        gamma_decay=float(gamma_decay),
+        use_greedy=bool(use_greedy),
     )
 
     changed = int(np.sum(result_mem != membership))
