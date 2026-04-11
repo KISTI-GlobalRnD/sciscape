@@ -5,186 +5,794 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SciScape</title>
 <style>
-:root { --bg: #f8f9fa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-.container { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
-h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
-.subtitle { color: var(--muted); margin-bottom: 2rem; }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
-label { display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.9rem; }
-input[type="text"], input[type="number"], input[type="email"] {
-  width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 8px;
-  font-size: 1rem; margin-bottom: 1rem; outline: none; transition: border-color 0.2s;
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --ink: #0a0f1a;
+  --slate: #1b2438;
+  --graphite: #2d3a52;
+  --steel: #4a5976;
+  --silver: #8899b3;
+  --fog: #c5cfe0;
+  --paper: #eef1f6;
+  --white: #f8f9fc;
+  --cream: #fefcf9;
+  --amber: #e8a838;
+  --amber-dim: #c48a20;
+  --amber-glow: rgba(232, 168, 56, 0.12);
+  --teal: #2ba89c;
+  --teal-dim: #1e7a72;
+  --coral: #d85a4a;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Source Sans 3', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  --radius: 6px;
+  --shadow-sm: 0 1px 3px rgba(10,15,26,0.06);
+  --shadow-md: 0 4px 16px rgba(10,15,26,0.08);
+  --shadow-lg: 0 8px 32px rgba(10,15,26,0.12);
 }
-input:focus { border-color: var(--accent); }
-.row { display: flex; gap: 1rem; }
-.row > div { flex: 1; }
-button {
-  background: var(--accent); color: white; border: none; border-radius: 8px;
-  padding: 0.7rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;
-  transition: opacity 0.2s; width: 100%;
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--white);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
-button:hover { opacity: 0.9; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-.progress-box {
-  background: #0f172a; color: #94a3b8; border-radius: 8px; padding: 1rem;
-  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8rem;
-  max-height: 400px; overflow-y: auto; line-height: 1.6; display: none;
+
+/* ── HEADER ────────────────────────────────────────────── */
+.site-header {
+  background: var(--ink);
+  color: var(--fog);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(200,210,230,0.08);
 }
-.progress-box .msg { color: #e2e8f0; }
-.progress-box .done { color: #22c55e; font-weight: 600; }
-.progress-box .error { color: #ef4444; font-weight: 600; }
-.result-box { display: none; }
-.result-box a { color: var(--accent); text-decoration: none; font-weight: 600; }
-.result-box a:hover { text-decoration: underline; }
-.stat { display: inline-block; background: var(--bg); padding: 0.4rem 0.8rem; border-radius: 6px; margin: 0.3rem; font-size: 0.9rem; }
+.site-header .logo {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--cream);
+  letter-spacing: -0.01em;
+}
+.site-header .logo span { color: var(--amber); }
+.site-header .divider {
+  width: 1px;
+  height: 20px;
+  background: var(--graphite);
+}
+.site-header .tagline {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--silver);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.site-header .nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.site-header .nav-link {
+  font-size: 0.8rem;
+  color: var(--silver);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.site-header .nav-link:hover { color: var(--cream); }
+
+/* ── LAYOUT ────────────────────────────────────────────── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: calc(100vh - 56px);
+}
+.main-col {
+  padding: 2rem 2.5rem;
+  max-width: 960px;
+}
+.side-col {
+  background: var(--paper);
+  border-left: 1px solid var(--fog);
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+  .app-layout { grid-template-columns: 1fr; }
+  .side-col { border-left: none; border-top: 1px solid var(--fog); }
+}
+
+/* ── SECTION LABELS ────────────────────────────────────── */
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--steel);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--fog);
+}
+
+/* ── QUERY FORM ────────────────────────────────────────── */
+.query-card {
+  background: var(--cream);
+  border: 1px solid #e5dfd6;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.query-main-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 400;
+  padding: 0.7rem 0;
+  border: none;
+  border-bottom: 2px solid var(--fog);
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.25s;
+  margin-bottom: 1rem;
+}
+.query-main-input::placeholder { color: var(--silver); font-weight: 300; }
+.query-main-input:focus { border-color: var(--amber); }
+
+.query-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+}
+.field-group label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+  margin-bottom: 0.25rem;
+}
+.field-group input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field-group input:focus { border-color: var(--amber-dim); }
+
+.query-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.btn-analyze {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.55rem 1.6rem;
+  background: var(--slate);
+  color: var(--cream);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-analyze:hover { background: var(--graphite); }
+.btn-analyze:active { transform: scale(0.98); }
+.btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-analyze.running {
+  background: var(--amber-dim);
+  color: var(--ink);
+}
+.btn-analyze.running::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { to { left: 100%; } }
+
+.query-hint {
+  font-size: 0.75rem;
+  color: var(--silver);
+}
+
+/* ── PROGRESS TERMINAL ─────────────────────────────────── */
+.terminal {
+  background: var(--ink);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.7;
+  color: var(--silver);
+  max-height: 280px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+.terminal.active { display: block; animation: slideDown 0.3s ease-out; }
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.terminal .line { padding: 1px 0; }
+.terminal .line::before {
+  content: '>';
+  color: var(--steel);
+  margin-right: 0.5rem;
+}
+.terminal .line.ok { color: var(--teal); }
+.terminal .line.ok::before { content: '\2713'; color: var(--teal); }
+.terminal .line.err { color: var(--coral); }
+.terminal .line.err::before { content: '!'; color: var(--coral); }
+.terminal .cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--amber);
+  animation: blink 1s steps(1) infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── RESULTS PANEL ─────────────────────────────────────── */
+.results-panel {
+  display: none;
+  animation: fadeIn 0.4s ease-out;
+}
+.results-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.stat-pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  background: var(--paper);
+  border: 1px solid var(--fog);
+  color: var(--graphite);
+}
+.stat-pill strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.stat-pill.accent {
+  background: var(--amber-glow);
+  border-color: var(--amber);
+  color: var(--amber-dim);
+}
+
+/* ── TABS ──────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--fog);
+  margin-bottom: 1.2rem;
+  gap: 0;
+}
+.tab-btn {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.6rem 1.2rem;
+  background: none;
+  border: none;
+  color: var(--steel);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active {
+  color: var(--ink);
+  border-bottom-color: var(--amber);
+  font-weight: 600;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.25s ease-out; }
+
+/* ── TABLES ────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.data-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+  padding: 0.5rem 0.8rem;
+  border-bottom: 2px solid var(--fog);
+}
+.data-table td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--paper);
+  color: var(--graphite);
+}
+.data-table tr:hover td { background: var(--paper); }
+.data-table .num {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+/* ── DOWNLOAD LINKS ────────────────────────────────────── */
+.dl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.dl-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  background: var(--paper);
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink);
+  transition: all 0.2s;
+}
+.dl-card:hover {
+  border-color: var(--amber);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.dl-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--slate);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.dl-info .dl-name { font-weight: 600; font-size: 0.85rem; }
+.dl-info .dl-desc { font-size: 0.72rem; color: var(--steel); }
+
+/* ── OVERVIEW IFRAME ───────────────────────────────────── */
+.viz-frame {
+  width: 100%;
+  height: 500px;
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+.viz-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  background: var(--paper);
+  border: 1px dashed var(--fog);
+  border-radius: var(--radius);
+  color: var(--silver);
+  font-size: 0.85rem;
+}
+
+/* ── SIDEBAR: JOB HISTORY ──────────────────────────────── */
+.history-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--slate);
+}
+.job-list { list-style: none; }
+.job-item {
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius);
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.job-item:hover { background: var(--white); border-color: var(--fog); }
+.job-item.active { background: var(--white); border-color: var(--amber); }
+.job-query {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.job-meta {
+  font-size: 0.7rem;
+  color: var(--silver);
+  margin-top: 2px;
+  display: flex;
+  gap: 0.6rem;
+}
+.job-status {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.job-status.done { background: var(--teal); }
+.job-status.running { background: var(--amber); animation: blink 1s steps(1) infinite; }
+.job-status.error { background: var(--coral); }
+.job-status.pending { background: var(--fog); }
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--silver);
+  font-size: 0.82rem;
+}
+.empty-state .empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.4;
+}
+
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--fog); border-radius: 3px; }
+.terminal::-webkit-scrollbar-thumb { background: var(--graphite); }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>SciScape</h1>
-  <p class="subtitle">Query OpenAlex, build citation networks, extract research landscapes.</p>
 
-  <div class="card">
-    <label for="query">Search Query</label>
-    <input type="text" id="query" placeholder='e.g. "machine learning" OR "deep learning"' />
+<!-- HEADER -->
+<header class="site-header">
+  <div class="logo">Sci<span>Scape</span></div>
+  <div class="divider"></div>
+  <div class="tagline">Scientific Landscape Analysis</div>
+  <nav class="nav-right">
+    <a href="/docs" class="nav-link">API Docs</a>
+  </nav>
+</header>
 
-    <div class="row">
-      <div>
-        <label for="years">Year Range</label>
-        <input type="text" id="years" placeholder="e.g. 2020-2024" />
+<!-- APP LAYOUT -->
+<div class="app-layout">
+
+  <!-- MAIN COLUMN -->
+  <div class="main-col">
+
+    <!-- QUERY -->
+    <div class="section-label">Query OpenAlex</div>
+    <div class="query-card">
+      <input type="text" class="query-main-input" id="q-search"
+             placeholder="Search terms, e.g. &quot;topological insulator&quot; OR &quot;quantum spin Hall&quot;" />
+      <div class="query-fields">
+        <div class="field-group">
+          <label>Year range</label>
+          <input type="text" id="q-years" placeholder="2020-2024" />
+        </div>
+        <div class="field-group">
+          <label>Max works</label>
+          <input type="number" id="q-max" value="5000" />
+        </div>
+        <div class="field-group">
+          <label>Email (optional)</label>
+          <input type="email" id="q-email" placeholder="you@univ.edu" />
+        </div>
+        <div class="field-group">
+          <label>Edge types</label>
+          <input type="text" id="q-edges" value="dc,bc" />
+        </div>
       </div>
-      <div>
-        <label for="max_works">Max Works</label>
-        <input type="number" id="max_works" value="5000" />
+      <div class="query-actions">
+        <button class="btn-analyze" id="btn-go" onclick="submitQuery()">Analyze</button>
+        <span class="query-hint" id="hint"></span>
       </div>
     </div>
 
-    <div class="row">
-      <div>
-        <label for="email">Email (polite pool, optional)</label>
-        <input type="email" id="email" placeholder="you@university.edu" />
-      </div>
-      <div>
-        <label for="edges">Edge Types</label>
-        <input type="text" id="edges" value="dc,bc" />
-      </div>
+    <!-- PROGRESS -->
+    <div class="terminal" id="terminal">
+      <div id="term-lines"></div>
+      <span class="cursor" id="term-cursor"></span>
     </div>
 
-    <button id="submit-btn" onclick="submitQuery()">Analyze</button>
+    <!-- RESULTS -->
+    <div class="results-panel" id="results">
+      <div class="section-label">Results</div>
+      <div class="stats-row" id="stats-row"></div>
+
+      <div class="tab-bar" id="tab-bar">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="clusters">Clusters</button>
+        <button class="tab-btn" data-tab="keywords">Keywords</button>
+        <button class="tab-btn" data-tab="downloads">Download</button>
+      </div>
+
+      <div class="tab-content active" id="tab-overview">
+        <div class="viz-placeholder" id="viz-placeholder">
+          Visualization will appear here after landscape analysis completes.
+        </div>
+        <iframe class="viz-frame" id="viz-frame" style="display:none;" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+
+      <div class="tab-content" id="tab-clusters">
+        <table class="data-table" id="cluster-table">
+          <thead><tr><th>Cluster</th><th>Size</th><th class="num">% of total</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-keywords">
+        <table class="data-table" id="keyword-table">
+          <thead><tr><th>Cluster</th><th>Top Keywords</th><th class="num">Score</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-downloads">
+        <div class="dl-grid" id="dl-grid"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="card progress-box" id="progress"></div>
-
-  <div class="card result-box" id="result">
-    <h3 style="margin-bottom: 0.8rem;">Results</h3>
-    <div id="result-stats"></div>
-    <div id="result-links" style="margin-top: 0.8rem;"></div>
+  <!-- SIDEBAR -->
+  <div class="side-col">
+    <div class="history-title">Analysis History</div>
+    <ul class="job-list" id="job-list">
+      <li class="empty-state">
+        <div class="empty-icon">&#9878;</div>
+        No analyses yet.<br>Submit a query to begin.
+      </li>
+    </ul>
   </div>
+
 </div>
 
 <script>
+/* ── STATE ─────────────────────────────────────────────── */
 let currentJobId = null;
+let evtSource = null;
 
+/* ── SUBMIT ────────────────────────────────────────────── */
 async function submitQuery() {
-  const btn = document.getElementById('submit-btn');
-  const progress = document.getElementById('progress');
-  const resultBox = document.getElementById('result');
+  const btn = document.getElementById('btn-go');
+  const term = document.getElementById('terminal');
+  const lines = document.getElementById('term-lines');
+  const results = document.getElementById('results');
+
+  const query = document.getElementById('q-search').value.trim();
+  if (!query) { document.getElementById('q-search').focus(); return; }
+
   btn.disabled = true;
-  btn.textContent = 'Analyzing...';
-  progress.style.display = 'block';
-  progress.innerHTML = '';
-  resultBox.style.display = 'none';
+  btn.textContent = 'Running...';
+  btn.classList.add('running');
+  term.classList.add('active');
+  lines.innerHTML = '';
+  results.classList.remove('active');
+  document.getElementById('hint').textContent = '';
 
   const body = {
-    query: document.getElementById('query').value,
-    years: document.getElementById('years').value || null,
-    max_works: parseInt(document.getElementById('max_works').value) || 5000,
-    email: document.getElementById('email').value || null,
-    edge_types: document.getElementById('edges').value || 'dc,bc',
+    query,
+    years: document.getElementById('q-years').value || null,
+    max_works: parseInt(document.getElementById('q-max').value) || 5000,
+    email: document.getElementById('q-email').value || null,
+    edge_types: document.getElementById('q-edges').value || 'dc,bc',
     run_landscape: true,
   };
 
   try {
-    const resp = await fetch('/api/query', {
+    const r = await fetch('/api/query', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body),
     });
-    const data = await resp.json();
+    const data = await r.json();
     currentJobId = data.job_id;
+    addLine('Job ' + data.job_id + ' submitted');
     streamProgress(data.job_id);
+    refreshHistory();
   } catch (e) {
-    progress.innerHTML += `<div class="error">Failed to submit: ${e.message}</div>`;
-    btn.disabled = false;
-    btn.textContent = 'Analyze';
+    addLine('Submit failed: ' + e.message, 'err');
+    resetBtn();
   }
 }
 
+/* ── PROGRESS STREAMING ────────────────────────────────── */
 function streamProgress(jobId) {
-  const progress = document.getElementById('progress');
-  const evtSource = new EventSource(`/api/jobs/${jobId}/stream`);
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource('/api/jobs/' + jobId + '/stream');
 
-  evtSource.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    if (data.message) {
-      progress.innerHTML += `<div class="msg">${escapeHtml(data.message)}</div>`;
-      progress.scrollTop = progress.scrollHeight;
-    }
-    if (data.status === 'done') {
+  evtSource.onmessage = function(ev) {
+    const d = JSON.parse(ev.data);
+    if (d.message) addLine(d.message);
+    if (d.status === 'done') {
       evtSource.close();
-      progress.innerHTML += `<div class="done">Pipeline complete.</div>`;
-      showResult(data.result);
-      document.getElementById('submit-btn').disabled = false;
-      document.getElementById('submit-btn').textContent = 'Analyze';
+      addLine('Pipeline complete.', 'ok');
+      document.getElementById('term-cursor').style.display = 'none';
+      showResults(d.result);
+      resetBtn();
+      refreshHistory();
     }
-    if (data.status === 'error') {
+    if (d.status === 'error') {
       evtSource.close();
-      progress.innerHTML += `<div class="error">Pipeline failed.</div>`;
-      document.getElementById('submit-btn').disabled = false;
-      document.getElementById('submit-btn').textContent = 'Analyze';
+      addLine('Pipeline failed.', 'err');
+      document.getElementById('term-cursor').style.display = 'none';
+      resetBtn();
+      refreshHistory();
     }
   };
-
-  evtSource.onerror = function() {
-    evtSource.close();
-    document.getElementById('submit-btn').disabled = false;
-    document.getElementById('submit-btn').textContent = 'Analyze';
-  };
+  evtSource.onerror = function() { evtSource.close(); resetBtn(); };
 }
 
-function showResult(result) {
-  if (!result) return;
-  const box = document.getElementById('result');
-  const stats = document.getElementById('result-stats');
-  const links = document.getElementById('result-links');
+function addLine(text, cls) {
+  const el = document.createElement('div');
+  el.className = 'line' + (cls ? ' ' + cls : '');
+  el.textContent = text;
+  const container = document.getElementById('term-lines');
+  container.appendChild(el);
+  const term = document.getElementById('terminal');
+  term.scrollTop = term.scrollHeight;
+}
 
-  let statsHtml = '';
-  if (result.n_works) statsHtml += `<span class="stat">${result.n_works} works</span>`;
+function resetBtn() {
+  const btn = document.getElementById('btn-go');
+  btn.disabled = false;
+  btn.textContent = 'Analyze';
+  btn.classList.remove('running');
+}
+
+/* ── RESULTS ───────────────────────────────────────────── */
+function showResults(result) {
+  if (!result) return;
+  const panel = document.getElementById('results');
+  panel.classList.add('active');
+
+  // Stats
+  const row = document.getElementById('stats-row');
+  let html = '';
+  if (result.n_works) html += pill(result.n_works + ' works', true);
   if (result.n_edges) {
     for (const [k, v] of Object.entries(result.n_edges)) {
-      statsHtml += `<span class="stat">${k}: ${v} edges</span>`;
+      html += pill(k.toUpperCase() + ': ' + v + ' edges');
     }
   }
-  stats.innerHTML = statsHtml;
+  row.innerHTML = html;
 
-  let linksHtml = '';
-  if (result.abstracts_path) {
-    linksHtml += `<a href="/api/jobs/${currentJobId}/download/abstracts.parquet">Download Abstracts</a> `;
+  // Downloads
+  const grid = document.getElementById('dl-grid');
+  grid.innerHTML = '';
+  if (result.abstracts_path)
+    grid.innerHTML += dlCard('abstracts.parquet', 'Paper metadata', 'ABS', currentJobId);
+  if (result.edges_path)
+    grid.innerHTML += dlCard('edges.parquet', 'Citation edges', 'EDG', currentJobId);
+
+  // Overview iframe
+  if (result.landscape_dir) {
+    const frame = document.getElementById('viz-frame');
+    const placeholder = document.getElementById('viz-placeholder');
+    frame.src = '/api/jobs/' + currentJobId + '/download/landscape/report.html';
+    frame.style.display = 'block';
+    placeholder.style.display = 'none';
   }
-  if (result.edges_path) {
-    linksHtml += `<a href="/api/jobs/${currentJobId}/download/edges.parquet">Download Edges</a> `;
-  }
-  links.innerHTML = linksHtml;
-  box.style.display = 'block';
+
+  // Tabs: activate overview
+  switchTab('overview');
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+function pill(text, accent) {
+  return '<span class="stat-pill' + (accent ? ' accent' : '') + '">' + esc(text) + '</span>';
 }
+
+function dlCard(filename, desc, icon, jobId) {
+  return '<a class="dl-card" href="/api/jobs/' + jobId + '/download/' + filename + '">' +
+    '<div class="dl-icon">' + icon + '</div>' +
+    '<div class="dl-info"><div class="dl-name">' + esc(filename) + '</div>' +
+    '<div class="dl-desc">' + esc(desc) + '</div></div></a>';
+}
+
+/* ── TABS ──────────────────────────────────────────────── */
+document.getElementById('tab-bar').addEventListener('click', function(e) {
+  if (e.target.classList.contains('tab-btn')) switchTab(e.target.dataset.tab);
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+}
+
+/* ── JOB HISTORY ───────────────────────────────────────── */
+async function refreshHistory() {
+  try {
+    const r = await fetch('/api/jobs');
+    const jobs = await r.json();
+    const list = document.getElementById('job-list');
+    if (!jobs.length) {
+      list.innerHTML = '<li class="empty-state"><div class="empty-icon">&#9878;</div>No analyses yet.</li>';
+      return;
+    }
+    list.innerHTML = jobs.map(j =>
+      '<li class="job-item' + (j.job_id === currentJobId ? ' active' : '') + '" onclick="loadJob(\'' + j.job_id + '\')">' +
+      '<div class="job-query"><span class="job-status ' + j.status + '"></span>' + esc(j.query || '(untitled)') + '</div>' +
+      '<div class="job-meta"><span>' + j.job_id + '</span><span>' + j.status + '</span></div></li>'
+    ).join('');
+  } catch (e) { /* ignore */ }
+}
+
+async function loadJob(jobId) {
+  try {
+    const r = await fetch('/api/jobs/' + jobId);
+    const job = await r.json();
+    currentJobId = jobId;
+
+    // Show progress
+    const term = document.getElementById('terminal');
+    const lines = document.getElementById('term-lines');
+    term.classList.add('active');
+    lines.innerHTML = '';
+    (job.progress || []).forEach(m => addLine(m, job.status === 'error' && m.startsWith('ERROR') ? 'err' : ''));
+    if (job.status === 'done') {
+      addLine('Pipeline complete.', 'ok');
+      document.getElementById('term-cursor').style.display = 'none';
+      showResults(job.result);
+    }
+    refreshHistory();
+  } catch (e) { /* ignore */ }
+}
+
+/* ── UTILS ─────────────────────────────────────────────── */
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* ── INIT ──────────────────────────────────────────────── */
+refreshHistory();
+
+/* Enter key submits */
+document.getElementById('q-search').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitQuery();
+});
 </script>
 </body>
 </html>
