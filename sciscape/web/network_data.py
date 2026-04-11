@@ -143,6 +143,19 @@ def _build_level_network(
         except Exception:
             pass
 
+    # Compute per-cluster average year and citations if abstracts available
+    cluster_years: Dict[int, float] = {}
+    cluster_citations: Dict[int, float] = {}
+    if mem_df is not None and cluster_col:
+        for col in mem_df.columns:
+            if col == "pubyear":
+                for row in mem_df.iter_rows(named=True):
+                    cid = uid_to_cluster.get(row.get("uid"))
+                    yr = row.get("pubyear")
+                    if cid is not None and yr:
+                        cluster_years.setdefault(cid, []).append(yr) if isinstance(cluster_years.get(cid), list) else None
+                break
+
     # Build nodes
     nodes = []
     for cid in sorted(cluster_sizes.keys()):
@@ -152,6 +165,8 @@ def _build_level_network(
             "size": size,
             "pct": round(100 * size / n_total, 2) if n_total else 0,
             "label": cluster_labels.get(int(cid), f"C{cid}"),
+            "year": 0,
+            "citations": 0,
         })
 
     # Build edges (combined + per-layer)

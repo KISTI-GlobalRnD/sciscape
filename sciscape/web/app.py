@@ -317,6 +317,51 @@ async def llm_label_status(job_id: str):
     return job.get("llm_labels", {"status": "not_started"})
 
 
+@app.get("/api/jobs/{job_id}/cluster/{cluster_id}")
+async def get_cluster_papers(job_id: str, cluster_id: int):
+    """Get papers belonging to a specific cluster."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+
+    result = job.get("result", {})
+    abs_path = result.get("abstracts_path")
+    landscape_dir = result.get("landscape_dir")
+    if not abs_path or not landscape_dir:
+        return {"papers": []}
+
+    import polars as pl
+
+    try:
+        abs_df = pl.read_parquet(abs_path)
+        # Find membership file
+        mem_path = None
+        for f in Path(landscape_dir).glob("membership*.parquet"):
+            mem_path = f
+            break
+        if not mem_path:
+            return {"papers": []}
+
+        mem_df = pl.read_parquet(mem_path)
+        cluster_col = [c for c in mem_df.columns if c.startswith("cluster_")][0]
+
+        # Join and filter
+        joined = abs_df.join(mem_df.select("uid", cluster_col), on="uid", how="inner")
+        cluster_papers = joined.filter(pl.col(cluster_col) == cluster_id)
+
+        papers = []
+        for row in cluster_papers.head(50).iter_rows(named=True):
+            papers.append({
+                "uid": row.get("uid", ""),
+                "title": row.get("title", ""),
+                "year": row.get("pubyear"),
+                "cited_by_count": row.get("cited_by_count", 0),
+            })
+        return {"papers": papers, "total": cluster_papers.height}
+    except Exception as e:
+        return {"papers": [], "error": str(e)}
+
+
 @app.get("/api/jobs")
 async def list_jobs():
     """List all jobs."""

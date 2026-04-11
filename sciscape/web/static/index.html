@@ -506,6 +506,30 @@ body {
 .net-chip.layer-chip[data-layer="bc"].active { background: #dc2626; border-color: #dc2626; }
 .net-chip.layer-chip[data-layer="cc"].active { background: #059669; border-color: #059669; }
 .net-chip.layer-chip[data-layer="combined"].active { background: var(--slate); border-color: var(--slate); }
+
+/* ── DETAIL PANEL ──────────────────────────────────────── */
+.net-detail {
+  width: 280px; background: var(--white); border-left: 1px solid var(--fog);
+  padding: 1rem; overflow-y: auto; font-size: 0.82rem;
+}
+.net-detail-header { margin-bottom: 0.6rem; font-size: 0.9rem; }
+.net-detail-stats { margin-bottom: 0.8rem; }
+.net-paper { padding: 0.5rem 0; border-bottom: 1px solid var(--paper); }
+.net-paper-title { font-weight: 500; color: var(--ink); line-height: 1.3; }
+.net-paper-meta { font-size: 0.72rem; color: var(--silver); margin-top: 2px; }
+
+/* ── DENSITY OVERLAY ───────────────────────────────────── */
+.density-overlay { mix-blend-mode: screen; }
+
+/* ── SLIDERS ───────────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none; height: 4px; background: var(--fog);
+  border-radius: 2px; outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  background: var(--slate); border-radius: 50%; cursor: pointer;
+}
 </style>
 </head>
 <body>
