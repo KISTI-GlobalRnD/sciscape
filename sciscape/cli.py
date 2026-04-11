@@ -120,6 +120,12 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Output directory")
     qa.add_argument("-v", "--verbose", action="store_true")
 
+    # ---- web ----
+    wb = sub.add_parser("web", help="Launch web interface (FastAPI)")
+    wb.add_argument("--host", type=str, default="127.0.0.1", help="Bind host")
+    wb.add_argument("--port", type=int, default=8000, help="Bind port")
+    wb.add_argument("--reload", action="store_true", help="Auto-reload on code changes")
+
     # ---- gui ----
     sub.add_parser("gui", help="Launch graphical interface")
 
@@ -369,6 +375,14 @@ def main(argv: list[str] | None = None) -> None:
         _run_viewer(args)
     elif args.command == "query":
         _run_query(args)
+    elif args.command == "web":
+        import uvicorn
+        uvicorn.run(
+            "sciscape.web.app:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+        )
     elif args.command == "gui":
         from sciscape.gui import launch
         launch()

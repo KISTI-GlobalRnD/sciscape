@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SciScape</title>
+<style>
+:root { --bg: #f8f9fa; --card: #fff; --accent: #2563eb; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.container { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
+.subtitle { color: var(--muted); margin-bottom: 2rem; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+label { display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.9rem; }
+input[type="text"], input[type="number"], input[type="email"] {
+  width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 1rem; margin-bottom: 1rem; outline: none; transition: border-color 0.2s;
+}
+input:focus { border-color: var(--accent); }
+.row { display: flex; gap: 1rem; }
+.row > div { flex: 1; }
+button {
+  background: var(--accent); color: white; border: none; border-radius: 8px;
+  padding: 0.7rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s; width: 100%;
+}
+button:hover { opacity: 0.9; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.progress-box {
+  background: #0f172a; color: #94a3b8; border-radius: 8px; padding: 1rem;
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8rem;
+  max-height: 400px; overflow-y: auto; line-height: 1.6; display: none;
+}
+.progress-box .msg { color: #e2e8f0; }
+.progress-box .done { color: #22c55e; font-weight: 600; }
+.progress-box .error { color: #ef4444; font-weight: 600; }
+.result-box { display: none; }
+.result-box a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.result-box a:hover { text-decoration: underline; }
+.stat { display: inline-block; background: var(--bg); padding: 0.4rem 0.8rem; border-radius: 6px; margin: 0.3rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SciScape</h1>
+  <p class="subtitle">Query OpenAlex, build citation networks, extract research landscapes.</p>
+
+  <div class="card">
+    <label for="query">Search Query</label>
+    <input type="text" id="query" placeholder='e.g. "machine learning" OR "deep learning"' />
+
+    <div class="row">
+      <div>
+        <label for="years">Year Range</label>
+        <input type="text" id="years" placeholder="e.g. 2020-2024" />
+      </div>
+      <div>
+        <label for="max_works">Max Works</label>
+        <input type="number" id="max_works" value="5000" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="email">Email (polite pool, optional)</label>
+        <input type="email" id="email" placeholder="you@university.edu" />
+      </div>
+      <div>
+        <label for="edges">Edge Types</label>
+        <input type="text" id="edges" value="dc,bc" />
+      </div>
+    </div>
+
+    <button id="submit-btn" onclick="submitQuery()">Analyze</button>
+  </div>
+
+  <div class="card progress-box" id="progress"></div>
+
+  <div class="card result-box" id="result">
+    <h3 style="margin-bottom: 0.8rem;">Results</h3>
+    <div id="result-stats"></div>
+    <div id="result-links" style="margin-top: 0.8rem;"></div>
+  </div>
+</div>
+
+<script>
+let currentJobId = null;
+
+async function submitQuery() {
+  const btn = document.getElementById('submit-btn');
+  const progress = document.getElementById('progress');
+  const resultBox = document.getElementById('result');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  progress.style.display = 'block';
+  progress.innerHTML = '';
+  resultBox.style.display = 'none';
+
+  const body = {
+    query: document.getElementById('query').value,
+    years: document.getElementById('years').value || null,
+    max_works: parseInt(document.getElementById('max_works').value) || 5000,
+    email: document.getElementById('email').value || null,
+    edge_types: document.getElementById('edges').value || 'dc,bc',
+    run_landscape: true,
+  };
+
+  try {
+    const resp = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    currentJobId = data.job_id;
+    streamProgress(data.job_id);
+  } catch (e) {
+    progress.innerHTML += `<div class="error">Failed to submit: ${e.message}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'Analyze';
+  }
+}
+
+function streamProgress(jobId) {
+  const progress = document.getElementById('progress');
+  const evtSource = new EventSource(`/api/jobs/${jobId}/stream`);
+
+  evtSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    if (data.message) {
+      progress.innerHTML += `<div class="msg">${escapeHtml(data.message)}</div>`;
+      progress.scrollTop = progress.scrollHeight;
+    }
+    if (data.status === 'done') {
+      evtSource.close();
+      progress.innerHTML += `<div class="done">Pipeline complete.</div>`;
+      showResult(data.result);
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('submit-btn').textContent = 'Analyze';
+    }
+    if (data.status === 'error') {
+      evtSource.close();
+      progress.innerHTML += `<div class="error">Pipeline failed.</div>`;
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('submit-btn').textContent = 'Analyze';
+    }
+  };
+
+  evtSource.onerror = function() {
+    evtSource.close();
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-btn').textContent = 'Analyze';
+  };
+}
+
+function showResult(result) {
+  if (!result) return;
+  const box = document.getElementById('result');
+  const stats = document.getElementById('result-stats');
+  const links = document.getElementById('result-links');
+
+  let statsHtml = '';
+  if (result.n_works) statsHtml += `<span class="stat">${result.n_works} works</span>`;
+  if (result.n_edges) {
+    for (const [k, v] of Object.entries(result.n_edges)) {
+      statsHtml += `<span class="stat">${k}: ${v} edges</span>`;
+    }
+  }
+  stats.innerHTML = statsHtml;
+
+  let linksHtml = '';
+  if (result.abstracts_path) {
+    linksHtml += `<a href="/api/jobs/${currentJobId}/download/abstracts.parquet">Download Abstracts</a> `;
+  }
+  if (result.edges_path) {
+    linksHtml += `<a href="/api/jobs/${currentJobId}/download/edges.parquet">Download Edges</a> `;
+  }
+  links.innerHTML = linksHtml;
+  box.style.display = 'block';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
