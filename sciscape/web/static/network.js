@@ -463,3 +463,188 @@ class ClusterNetwork {
 }
 
 window.ClusterNetwork = ClusterNetwork;
+
+
+/**
+ * Term Co-occurrence Network
+ * Nodes = keywords, edges = co-occurrence in same cluster.
+ * Node color = dominant cluster, size = frequency/score.
+ */
+class TermCooccurrenceNetwork {
+  constructor(containerId) {
+    this.container = document.getElementById(containerId);
+    this.data = null;
+    this.jobId = null;
+    this.labelThreshold = 0.3;
+    this.edgeMinWeight = 0;
+    this.colorMode = 'cluster'; // 'cluster' | 'score' | 'breadth'
+  }
+
+  async load(jobId) {
+    this.jobId = jobId;
+    this.container.innerHTML = '';
+    const resp = await fetch(`/api/jobs/${jobId}/term-network`);
+    this.data = await resp.json();
+    if (this.data.error) {
+      this.container.innerHTML = `<div style="padding:2rem;color:#64748b;text-align:center;">${this.data.error}</div>`;
+      return;
+    }
+    this._render();
+  }
+
+  _render() {
+    const rect = this.container.getBoundingClientRect();
+    const W = rect.width || 700;
+    const H = rect.height || 500;
+
+    // Controls
+    const ctrl = document.createElement('div');
+    ctrl.className = 'net-controls';
+    ctrl.innerHTML = `<div class="net-ctrl-row">
+      <div class="net-ctrl-group"><span class="net-ctrl-label">Color</span>
+        <button class="net-chip active" data-tc="cluster">Cluster</button>
+        <button class="net-chip" data-tc="score">Score</button>
+        <button class="net-chip" data-tc="breadth">Breadth</button>
+      </div>
+      <div class="net-ctrl-group"><span class="net-ctrl-label">Labels</span>
+        <input type="range" min="0" max="100" value="${Math.round((1-this.labelThreshold)*100)}" id="tsl-labels" style="width:80px;">
+      </div>
+      <div class="net-ctrl-group"><span class="net-ctrl-label">Min edge</span>
+        <input type="range" min="0" max="100" value="0" id="tsl-edge" style="width:80px;">
+      </div>
+      <div class="net-ctrl-group">
+        <button class="net-chip" id="tbtn-png">PNG</button>
+        <button class="net-chip" id="tbtn-svg">SVG</button>
+      </div>
+    </div>`;
+    this.container.appendChild(ctrl);
+
+    const svgH = H - 50;
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgEl.setAttribute('width', W);
+    svgEl.setAttribute('height', svgH);
+    svgEl.id = 'net-svg';
+    this.container.appendChild(svgEl);
+
+    const svg = d3.select(svgEl);
+    const g = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([0.2, 8]).on('zoom', e => g.attr('transform', e.transform)));
+
+    const defs = svg.append('defs');
+    const glow = defs.append('filter').attr('id', 'tglow');
+    glow.append('feGaussianBlur').attr('stdDeviation', '1.5').attr('result', 'b');
+    const m = glow.append('feMerge'); m.append('feMergeNode').attr('in', 'b'); m.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    const nodes = this.data.nodes.map(d => ({...d}));
+    const edges = this.data.edges.map(d => ({...d}));
+
+    const maxFreq = Math.max(...nodes.map(n => n.frequency), 1);
+    const maxScore = Math.max(...nodes.map(n => n.score), 0.01);
+    const maxBreadth = Math.max(...nodes.map(n => n.n_clusters), 1);
+    const rScale = d3.scaleSqrt().domain([0, maxScore]).range([3, 22]);
+    const maxW = Math.max(...edges.map(e => e.weight), 1);
+    const wScale = d3.scaleLinear().domain([0, maxW]).range([0.3, 3]);
+
+    const self = this;
+
+    const colorFn = (d) => {
+      if (self.colorMode === 'cluster') return PALETTE[d.cluster % PALETTE.length];
+      if (self.colorMode === 'score') return d3.interpolateYlOrRd(d.score / maxScore);
+      if (self.colorMode === 'breadth') return d3.interpolatePurples(d.n_clusters / maxBreadth);
+      return '#4a5976';
+    };
+
+    // Edges
+    const linkEls = g.append('g').selectAll('line').data(edges).join('line')
+      .attr('stroke', '#8899b3')
+      .attr('stroke-width', d => wScale(d.weight))
+      .attr('stroke-opacity', d => 0.1 + 0.3 * d.weight / maxW);
+    this._linkEls = linkEls;
+
+    // Nodes
+    const nodeEls = g.append('g').selectAll('g').data(nodes).join('g')
+      .attr('cursor', 'pointer')
+      .call(d3.drag()
+        .on('start', (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+        .on('end', (ev, d) => { if (!ev.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
+      );
+
+    nodeEls.append('circle')
+      .attr('r', d => rScale(d.score))
+      .attr('fill', colorFn)
+      .attr('stroke', '#fff').attr('stroke-width', 1)
+      .attr('filter', 'url(#tglow)');
+    this._nodeCircles = nodeEls.selectAll('circle');
+
+    // Labels
+    const labelEls = nodeEls.append('text')
+      .text(d => d.label)
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => rScale(d.score) + 10)
+      .attr('font-size', '8.5px')
+      .attr('font-family', 'Source Sans 3, sans-serif')
+      .attr('fill', '#2d3a52').attr('font-weight', '500')
+      .attr('pointer-events', 'none');
+    this._labelEls = labelEls;
+    this._maxScore = maxScore;
+
+    nodeEls.append('title').text(d =>
+      `${d.label}\nScore: ${d.score.toFixed(3)}\nClusters: ${d.n_clusters}\nDominant: C${d.cluster}`
+    );
+
+    // Simulation
+    const sim = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(edges).id(d => d.id).distance(50).strength(d => 0.05 + 0.2 * d.norm))
+      .force('charge', d3.forceManyBody().strength(d => -rScale(d.score) * 5))
+      .force('center', d3.forceCenter(W / 2, svgH / 2))
+      .force('collision', d3.forceCollide().radius(d => rScale(d.score) + 2))
+      .on('tick', () => {
+        linkEls.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        nodeEls.attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+
+    this._updateLabels();
+
+    // Bind controls
+    ctrl.querySelectorAll('[data-tc]').forEach(b => b.onclick = () => {
+      self.colorMode = b.dataset.tc;
+      ctrl.querySelectorAll('[data-tc]').forEach(x => x.classList.toggle('active', x.dataset.tc === self.colorMode));
+      self._nodeCircles.attr('fill', colorFn);
+    });
+    const slL = ctrl.querySelector('#tsl-labels');
+    if (slL) slL.oninput = () => { self.labelThreshold = 1 - slL.value / 100; self._updateLabels(); };
+    const slE = ctrl.querySelector('#tsl-edge');
+    if (slE) slE.oninput = () => {
+      const minW = (slE.value / 100) * maxW;
+      linkEls.attr('display', d => d.weight >= minW ? null : 'none');
+    };
+
+    // Export
+    ctrl.querySelector('#tbtn-svg')?.addEventListener('click', () => {
+      const s = new XMLSerializer().serializeToString(svgEl);
+      const blob = new Blob([s], {type: 'image/svg+xml'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'sciscape_terms.svg'; a.click();
+    });
+    ctrl.querySelector('#tbtn-png')?.addEventListener('click', () => {
+      const s = new XMLSerializer().serializeToString(svgEl);
+      const c = document.createElement('canvas'); c.width = W*2; c.height = svgH*2;
+      const ctx = c.getContext('2d'); ctx.scale(2,2);
+      const img = new Image();
+      img.onload = () => { ctx.fillStyle='#f8f9fc'; ctx.fillRect(0,0,W,svgH); ctx.drawImage(img,0,0);
+        c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'sciscape_terms.png'; a.click(); });
+      };
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(s)));
+    });
+  }
+
+  _updateLabels() {
+    if (!this._labelEls) return;
+    const t = this.labelThreshold;
+    this._labelEls.attr('display', d => (d.score / this._maxScore) >= t ? null : 'none');
+  }
+}
+
+window.TermCooccurrenceNetwork = TermCooccurrenceNetwork;

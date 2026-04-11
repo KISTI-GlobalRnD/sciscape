@@ -254,4 +254,107 @@ def _build_hierarchy_links(
     return links
 
 
-__all__ = ["build_network_json"]
+def build_term_network_json(
+    keywords_path: Path,
+    *,
+    top_k_per_cluster: int = 10,
+    min_cooc: int = 2,
+    max_terms: int = 200,
+    max_edges: int = 1500,
+) -> Dict[str, Any]:
+    """Build term co-occurrence network JSON for D3 visualization.
+
+    Nodes = keywords (sized by global frequency, colored by dominant cluster).
+    Edges = co-occurrence within same cluster (weight = number of shared clusters).
+
+    Parameters
+    ----------
+    keywords_path : Path
+        Keywords parquet (cluster, keyword, score columns).
+    top_k_per_cluster : int
+        Top keywords per cluster to include.
+    min_cooc : int
+        Minimum co-occurrence count for an edge.
+    max_terms : int
+        Maximum terms to show.
+    max_edges : int
+        Maximum edges to show.
+    """
+    kw_df = pl.read_parquet(keywords_path)
+    cols = kw_df.columns
+
+    # Auto-detect columns
+    cluster_col = next((c for c in cols if "cluster" in c.lower()), cols[0])
+    keyword_col = next(
+        (c for c in cols if any(k in c.lower() for k in ("keyword", "term", "word"))),
+        cols[1] if len(cols) > 1 else cols[0],
+    )
+    score_col = next(
+        (c for c in cols if any(k in c.lower() for k in ("score", "weight", "tfidf"))),
+        cols[2] if len(cols) > 2 else None,
+    )
+
+    # Collect top-k keywords per cluster
+    term_clusters: Dict[str, List[int]] = defaultdict(list)  # term → [cluster_ids]
+    term_scores: Dict[str, float] = defaultdict(float)       # term → max score
+    term_dominant: Dict[str, int] = {}                        # term → dominant cluster
+
+    cluster_ids = sorted(kw_df[cluster_col].unique().to_list())
+    for cid in cluster_ids:
+        cluster_kws = kw_df.filter(pl.col(cluster_col) == cid)
+        if score_col:
+            cluster_kws = cluster_kws.sort(score_col, descending=True)
+        top = cluster_kws.head(top_k_per_cluster)
+        for row in top.iter_rows(named=True):
+            term = str(row[keyword_col])
+            score = float(row[score_col]) if score_col else 1.0
+            term_clusters[term].append(int(cid))
+            if score > term_scores[term]:
+                term_scores[term] = score
+                term_dominant[term] = int(cid)
+
+    # Select top terms by score
+    sorted_terms = sorted(term_scores.keys(), key=lambda t: -term_scores[t])[:max_terms]
+    term_set = set(sorted_terms)
+    term_to_idx = {t: i for i, t in enumerate(sorted_terms)}
+
+    # Build nodes
+    nodes = []
+    for t in sorted_terms:
+        nodes.append({
+            "id": term_to_idx[t],
+            "label": t,
+            "score": round(term_scores[t], 4),
+            "cluster": term_dominant.get(t, 0),
+            "n_clusters": len(set(term_clusters[t])),
+            "frequency": len(term_clusters[t]),
+        })
+
+    # Build edges: terms that co-occur in the same cluster
+    edge_counts: Dict[tuple, int] = defaultdict(int)
+    for cid in cluster_ids:
+        cluster_terms = [t for t in sorted_terms if cid in term_clusters.get(t, [])]
+        for i in range(len(cluster_terms)):
+            for j in range(i + 1, len(cluster_terms)):
+                a, b = cluster_terms[i], cluster_terms[j]
+                pair = (min(term_to_idx[a], term_to_idx[b]),
+                        max(term_to_idx[a], term_to_idx[b]))
+                edge_counts[pair] += 1
+
+    # Filter and sort edges
+    edges = []
+    max_w = max(edge_counts.values()) if edge_counts else 1
+    for (s, t), count in sorted(edge_counts.items(), key=lambda x: -x[1])[:max_edges]:
+        if count < min_cooc:
+            continue
+        edges.append({
+            "source": s,
+            "target": t,
+            "weight": count,
+            "norm": round(count / max_w, 4),
+        })
+
+    return {"nodes": nodes, "edges": edges, "n_clusters": len(cluster_ids)}
+
+
+__all__ = ["build_network_json", "build_term_network_json"]

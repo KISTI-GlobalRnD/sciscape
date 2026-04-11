@@ -598,7 +598,11 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
 
       <div class="tab-content active" id="tab-overview">
-        <div id="network-container" style="width:100%;height:540px;background:var(--white);border:1px solid var(--fog);border-radius:var(--radius);overflow:hidden;position:relative;">
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">
+          <button class="net-chip active" id="btn-cluster-net" onclick="switchNetMode('cluster')">Cluster Network</button>
+          <button class="net-chip" id="btn-term-net" onclick="switchNetMode('term')">Term Co-occurrence</button>
+        </div>
+        <div id="network-container" style="width:100%;height:520px;background:var(--white);border:1px solid var(--fog);border-radius:var(--radius);overflow:hidden;position:relative;">
           <div class="viz-placeholder" id="viz-placeholder">
             Network visualization will appear here after analysis completes.
           </div>
@@ -828,12 +832,32 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 /* ── NETWORK VIZ ───────────────────────────────────────── */
 let networkViz = null;
+let termNetViz = null;
+let currentNetMode = 'cluster';
 
 async function loadNetwork(jobId) {
   if (!window.ClusterNetwork) return;
   document.getElementById('viz-placeholder').style.display = 'none';
   networkViz = new ClusterNetwork('network-container');
   await networkViz.load(jobId);
+}
+
+async function switchNetMode(mode) {
+  currentNetMode = mode;
+  document.getElementById('btn-cluster-net').classList.toggle('active', mode === 'cluster');
+  document.getElementById('btn-term-net').classList.toggle('active', mode === 'term');
+  if (mode === 'cluster' && currentJobId) {
+    loadNetwork(currentJobId);
+  } else if (mode === 'term' && currentJobId) {
+    loadTermNetwork(currentJobId);
+  }
+}
+
+async function loadTermNetwork(jobId) {
+  if (!window.TermCooccurrenceNetwork) return;
+  document.getElementById('viz-placeholder').style.display = 'none';
+  termNetViz = new TermCooccurrenceNetwork('network-container');
+  await termNetViz.load(jobId);
 }
 
 /* ── INIT ──────────────────────────────────────────────── */

@@ -317,6 +317,37 @@ async def llm_label_status(job_id: str):
     return job.get("llm_labels", {"status": "not_started"})
 
 
+@app.get("/api/jobs/{job_id}/term-network")
+async def get_term_network(job_id: str, top_k: int = 10, max_terms: int = 150):
+    """Get term co-occurrence network data for D3 visualization."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+
+    result = job.get("result", {})
+    landscape_dir = result.get("landscape_dir")
+    if not landscape_dir:
+        return {"error": "no landscape output"}
+
+    from .network_data import build_term_network_json
+
+    kw_path = None
+    for f in Path(landscape_dir).glob("keywords*.parquet"):
+        kw_path = f
+        break
+    if not kw_path:
+        return {"error": "no keywords file"}
+
+    try:
+        return build_term_network_json(
+            kw_path,
+            top_k_per_cluster=top_k,
+            max_terms=max_terms,
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs/{job_id}/cluster/{cluster_id}")
 async def get_cluster_papers(job_id: str, cluster_id: int):
     """Get papers belonging to a specific cluster."""
