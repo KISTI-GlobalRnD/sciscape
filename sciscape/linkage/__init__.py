@@ -51,6 +51,7 @@ from .filters import (
     filter_top_k,
     normalize_weights,
 )
+from .combine import combine_edge_layers, load_and_combine
 from .diagnostics import (
     complementarity_analysis,
     degree_comparison,
