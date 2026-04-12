@@ -357,4 +357,134 @@ def build_term_network_json(
     return {"nodes": nodes, "edges": edges, "n_clusters": len(cluster_ids)}
 
 
-__all__ = ["build_network_json", "build_term_network_json"]
+def build_temporal_snapshots(
+    edges_path: Path,
+    membership_path: Path,
+    abstracts_path: Path | None = None,
+    *,
+    year_col: str = "pubyear",
+) -> Dict[str, Any]:
+    """Build per-year cluster network snapshots for temporal playback.
+
+    Returns {year: {nodes: [...], edges: [...]}} for each year present.
+    """
+    edges = pl.read_parquet(edges_path)
+    mem_df = pl.read_parquet(membership_path)
+    cluster_col = next((c for c in mem_df.columns if c.startswith("cluster_")), None)
+    if not cluster_col:
+        return {"snapshots": {}, "years": []}
+
+    # Need abstracts for year info
+    if abstracts_path and Path(abstracts_path).exists():
+        abs_df = pl.read_parquet(abstracts_path)
+        if year_col in abs_df.columns and "uid" in abs_df.columns:
+            mem_df = mem_df.join(abs_df.select("uid", year_col), on="uid", how="left")
+
+    if year_col not in mem_df.columns:
+        return {"snapshots": {}, "years": []}
+
+    uid_to_cluster = dict(zip(mem_df["uid"].to_list(), mem_df[cluster_col].to_list()))
+    uid_to_year = dict(zip(mem_df["uid"].to_list(), mem_df[year_col].to_list()))
+
+    years = sorted(set(y for y in uid_to_year.values() if y and y > 0))
+    if not years:
+        return {"snapshots": {}, "years": []}
+
+    # Cumulative: each year includes all papers up to that year
+    snapshots = {}
+    for cutoff in years:
+        active_uids = {uid for uid, yr in uid_to_year.items() if yr and yr <= cutoff}
+        cluster_sizes: Counter = Counter()
+        for uid in active_uids:
+            cid = uid_to_cluster.get(uid)
+            if cid is not None:
+                cluster_sizes[cid] += 1
+
+        # Cluster edges for active papers only
+        edge_weights: Dict[tuple, float] = defaultdict(float)
+        for row in edges.iter_rows(named=True):
+            u1, u2 = row.get("uid1"), row.get("uid2")
+            if u1 in active_uids and u2 in active_uids:
+                c1, c2 = uid_to_cluster.get(u1), uid_to_cluster.get(u2)
+                if c1 is not None and c2 is not None and c1 != c2:
+                    pair = (min(c1, c2), max(c1, c2))
+                    edge_weights[pair] += float(row.get("rel_sum2", 1.0))
+
+        n_total = sum(cluster_sizes.values()) or 1
+        nodes = [
+            {"id": int(cid), "size": sz, "pct": round(100 * sz / n_total, 1)}
+            for cid, sz in sorted(cluster_sizes.items())
+            if sz > 0
+        ]
+        top_edges = sorted(edge_weights.items(), key=lambda x: -x[1])[:500]
+        max_w = top_edges[0][1] if top_edges else 1
+        edge_list = [
+            {"source": int(p[0]), "target": int(p[1]),
+             "weight": round(w, 3), "norm": round(w / max_w, 3)}
+            for p, w in top_edges
+        ]
+        snapshots[str(cutoff)] = {"nodes": nodes, "edges": edge_list}
+
+    return {"snapshots": snapshots, "years": [str(y) for y in years]}
+
+
+def find_bridge_papers(
+    edges_path: Path,
+    membership_path: Path,
+    abstracts_path: Path | None,
+    cluster_a: int,
+    cluster_b: int,
+    *,
+    top_k: int = 20,
+) -> List[Dict[str, Any]]:
+    """Find papers that bridge two clusters (cross-cluster edges)."""
+    edges = pl.read_parquet(edges_path)
+    mem_df = pl.read_parquet(membership_path)
+    cluster_col = next((c for c in mem_df.columns if c.startswith("cluster_")), None)
+    if not cluster_col:
+        return []
+
+    uid_to_cluster = dict(zip(mem_df["uid"].to_list(), mem_df[cluster_col].to_list()))
+
+    # Find edges between cluster_a and cluster_b
+    bridge_scores: Dict[str, float] = defaultdict(float)
+    for row in edges.iter_rows(named=True):
+        u1, u2 = row.get("uid1"), row.get("uid2")
+        c1 = uid_to_cluster.get(u1)
+        c2 = uid_to_cluster.get(u2)
+        w = float(row.get("rel_sum2", 1.0))
+        if (c1 == cluster_a and c2 == cluster_b) or (c1 == cluster_b and c2 == cluster_a):
+            bridge_scores[u1] = bridge_scores.get(u1, 0) + w
+            bridge_scores[u2] = bridge_scores.get(u2, 0) + w
+
+    # Sort by bridge score
+    top = sorted(bridge_scores.items(), key=lambda x: -x[1])[:top_k]
+
+    # Get paper metadata
+    results = []
+    abs_df = None
+    if abstracts_path and Path(abstracts_path).exists():
+        abs_df = pl.read_parquet(abstracts_path)
+        uid_to_title = dict(zip(abs_df["uid"].to_list(), abs_df["title"].to_list()))
+        uid_to_year = dict(zip(
+            abs_df["uid"].to_list(),
+            abs_df["pubyear"].to_list() if "pubyear" in abs_df.columns else [None] * abs_df.height,
+        ))
+    else:
+        uid_to_title = {}
+        uid_to_year = {}
+
+    for uid, score in top:
+        results.append({
+            "uid": uid,
+            "title": uid_to_title.get(uid, ""),
+            "year": uid_to_year.get(uid),
+            "cluster": uid_to_cluster.get(uid),
+            "bridge_score": round(score, 4),
+        })
+
+    return results
+
+
+__all__ = ["build_network_json", "build_term_network_json",
+           "build_temporal_snapshots", "find_bridge_papers"]

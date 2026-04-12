@@ -317,6 +317,68 @@ async def llm_label_status(job_id: str):
     return job.get("llm_labels", {"status": "not_started"})
 
 
+@app.get("/api/jobs/{job_id}/temporal")
+async def get_temporal(job_id: str):
+    """Get per-year cluster network snapshots for temporal playback."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    from .network_data import build_temporal_snapshots
+
+    edges_path = result.get("edges_path")
+    landscape_dir = result.get("landscape_dir")
+    if not edges_path or not landscape_dir:
+        return {"error": "missing files"}
+
+    mem_path = None
+    for f in Path(landscape_dir).glob("membership*.parquet"):
+        mem_path = f
+        break
+    if not mem_path:
+        return {"error": "no membership"}
+
+    try:
+        return build_temporal_snapshots(
+            Path(edges_path), mem_path,
+            abstracts_path=result.get("abstracts_path"),
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/jobs/{job_id}/bridge")
+async def get_bridge(job_id: str, cluster_a: int = 0, cluster_b: int = 1):
+    """Find bridging papers between two clusters."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    from .network_data import find_bridge_papers
+
+    edges_path = result.get("edges_path")
+    landscape_dir = result.get("landscape_dir")
+    if not edges_path or not landscape_dir:
+        return {"error": "missing files"}
+
+    mem_path = None
+    for f in Path(landscape_dir).glob("membership*.parquet"):
+        mem_path = f
+        break
+    if not mem_path:
+        return {"error": "no membership"}
+
+    try:
+        papers = find_bridge_papers(
+            Path(edges_path), mem_path,
+            abstracts_path=result.get("abstracts_path"),
+            cluster_a=cluster_a, cluster_b=cluster_b,
+        )
+        return {"papers": papers}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs/{job_id}/term-network")
 async def get_term_network(job_id: str, top_k: int = 10, max_terms: int = 150):
     """Get term co-occurrence network data for D3 visualization."""

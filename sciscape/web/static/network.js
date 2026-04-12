@@ -148,24 +148,29 @@ class ClusterNetwork {
     });
     h += '</div>';
 
-    // Density + Hierarchy + Export
+    // Tools
     h += '<div class="net-ctrl-group">';
     if (this.data.hierarchy?.length) {
       h += `<button class="net-chip${this.showHierarchy?' active':''}" id="btn-hierarchy">Hier</button>`;
     }
     h += `<button class="net-chip${this.showDensity?' active':''}" id="btn-density">Density</button>`;
+    h += `<button class="net-chip" id="btn-temporal">Timeline</button>`;
+    h += `<button class="net-chip" id="btn-bridge">Bridge</button>`;
+    h += `<button class="net-chip" id="btn-split">Split</button>`;
     h += `<button class="net-chip" id="btn-export-png">PNG</button>`;
     h += `<button class="net-chip" id="btn-export-svg">SVG</button>`;
     h += '</div>';
 
     h += '</div>';
 
-    // Sliders row
+    // Sliders + Search row
     h += '<div class="net-ctrl-row" style="margin-top:4px;">';
     h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Labels</span>
       <input type="range" min="0" max="100" value="${Math.round((1-this.labelThreshold)*100)}" id="sl-labels" style="width:80px;"></div>`;
     h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Min edge</span>
       <input type="range" min="0" max="100" value="0" id="sl-edge" style="width:80px;"></div>`;
+    h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Search</span>
+      <input type="text" id="net-search" placeholder="keyword..." style="width:120px;font-family:var(--font-mono,monospace);font-size:0.72rem;padding:2px 6px;border:1px solid #c5cfe0;border-radius:3px;"></div>`;
     h += '</div>';
 
     return h;
@@ -199,6 +204,25 @@ class ClusterNetwork {
     if (pngBtn) pngBtn.onclick = () => this._exportPNG();
     const svgBtn = controls.querySelector('#btn-export-svg');
     if (svgBtn) svgBtn.onclick = () => this._exportSVG();
+
+    // ── Feature 1: Temporal playback ──
+    const tempBtn = controls.querySelector('#btn-temporal');
+    if (tempBtn) tempBtn.onclick = () => this._openTimeline();
+
+    // ── Feature 4: Bridge analysis ──
+    const bridgeBtn = controls.querySelector('#btn-bridge');
+    if (bridgeBtn) bridgeBtn.onclick = () => this._enableBridgeMode();
+
+    // ── Feature 3: Split view ──
+    const splitBtn = controls.querySelector('#btn-split');
+    if (splitBtn) splitBtn.onclick = () => this._toggleSplitView();
+
+    // ── Feature 5: Search highlight ──
+    const searchInput = controls.querySelector('#net-search');
+    if (searchInput) {
+      searchInput.oninput = () => this._searchHighlight(searchInput.value);
+      searchInput.onkeydown = (e) => { if (e.key === 'Escape') { searchInput.value = ''; this._searchHighlight(''); } };
+    }
   }
 
   _setupDefs() {
@@ -281,7 +305,8 @@ class ClusterNetwork {
         .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
         .on('end', (ev, d) => { if (!ev.active) self.simulation.alphaTarget(0); d.fx = null; d.fy = null; })
       )
-      .on('click', (ev, d) => self._showDetail(d));
+      .on('click', (ev, d) => self._showDetail(d))
+      .on('dblclick', (ev, d) => self._semanticZoom(d));
 
     this._nodeEls.append('circle')
       .attr('r', d => rScale(d[sizeKey] || d.size))
@@ -457,6 +482,333 @@ class ClusterNetwork {
       });
     };
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // FEATURE 1: Temporal Playback
+  // ══════════════════════════════════════════════════════════
+  async _openTimeline() {
+    if (this._timelineActive) { this._closeTimeline(); return; }
+    const resp = await fetch(`/api/jobs/${this.jobId}/temporal`);
+    const data = await resp.json();
+    if (data.error || !data.years?.length) { alert('No temporal data available.'); return; }
+    this._timelineData = data;
+    this._timelineActive = true;
+
+    // Add timeline bar
+    const bar = document.createElement('div');
+    bar.id = 'timeline-bar';
+    bar.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:rgba(10,15,26,0.92);padding:8px 16px;display:flex;align-items:center;gap:10px;z-index:10;';
+    bar.innerHTML = `
+      <button id="tl-play" style="background:#e8a838;border:none;color:#0a0f1a;padding:3px 12px;border-radius:3px;cursor:pointer;font-weight:600;font-size:0.75rem;">Play</button>
+      <input type="range" id="tl-slider" min="0" max="${data.years.length-1}" value="${data.years.length-1}" style="flex:1;">
+      <span id="tl-year" style="color:#e8a838;font-family:var(--font-mono,monospace);font-size:0.85rem;min-width:40px;">${data.years[data.years.length-1]}</span>
+      <button id="tl-close" style="background:none;border:none;color:#8899b3;cursor:pointer;font-size:1rem;">&times;</button>
+    `;
+    this.container.querySelector('div[style*="flex"]>div:first-child').appendChild(bar);
+
+    const slider = bar.querySelector('#tl-slider');
+    const yearLabel = bar.querySelector('#tl-year');
+    slider.oninput = () => { yearLabel.textContent = data.years[slider.value]; this._applySnapshot(data.years[slider.value]); };
+    bar.querySelector('#tl-close').onclick = () => this._closeTimeline();
+
+    let playing = false, interval;
+    bar.querySelector('#tl-play').onclick = () => {
+      if (playing) { clearInterval(interval); playing = false; bar.querySelector('#tl-play').textContent = 'Play'; return; }
+      playing = true; bar.querySelector('#tl-play').textContent = 'Pause';
+      let idx = parseInt(slider.value);
+      interval = setInterval(() => {
+        idx++; if (idx >= data.years.length) { clearInterval(interval); playing = false; bar.querySelector('#tl-play').textContent = 'Play'; return; }
+        slider.value = idx; yearLabel.textContent = data.years[idx]; this._applySnapshot(data.years[idx]);
+      }, 800);
+    };
+  }
+
+  _applySnapshot(year) {
+    const snap = this._timelineData?.snapshots?.[year];
+    if (!snap || !this._nodeEls) return;
+    const activeIds = new Set(snap.nodes.map(n => n.id));
+    const sizeMap = new Map(snap.nodes.map(n => [n.id, n.size]));
+    const edgePairs = new Set(snap.edges.map(e => `${Math.min(e.source,e.target)}-${Math.max(e.source,e.target)}`));
+
+    // Fade/show nodes
+    this._nodeEls.transition().duration(300)
+      .attr('opacity', d => activeIds.has(d.id) ? 1 : 0.08);
+    this._nodeEls.select('circle').transition().duration(300)
+      .attr('r', d => activeIds.has(d.id) ? this._rScale(sizeMap.get(d.id) || 0) : 2);
+
+    // Fade/show edges
+    this._linkEls.transition().duration(300)
+      .attr('opacity', d => {
+        const s = typeof d.source === 'object' ? d.source.id : d.source;
+        const t = typeof d.target === 'object' ? d.target.id : d.target;
+        return edgePairs.has(`${Math.min(s,t)}-${Math.max(s,t)}`) ? 0.5 : 0.02;
+      });
+  }
+
+  _closeTimeline() {
+    this._timelineActive = false;
+    const bar = document.getElementById('timeline-bar');
+    if (bar) bar.remove();
+    // Restore all
+    if (this._nodeEls) this._nodeEls.transition().duration(200).attr('opacity', 1);
+    if (this._nodeEls) this._nodeEls.select('circle').transition().duration(200)
+      .attr('r', d => this._rScale(d[this.sizeMetric] || d.size));
+    if (this._linkEls) this._linkEls.transition().duration(200).attr('opacity', d => 0.12 + 0.4 * d.weight / Math.max(...this._edges.map(e=>e.weight),1));
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // FEATURE 2: Semantic Zoom (Drill-down on double-click)
+  // ══════════════════════════════════════════════════════════
+  _semanticZoom(d) {
+    const levels = this.data.levels || [];
+    const curIdx = levels.indexOf(this.currentLevel);
+    if (curIdx < 0 || curIdx >= levels.length - 1) return; // no finer level
+
+    // Find child clusters in the next finer level via hierarchy
+    const finerLevel = levels[curIdx + 1]; // wait — finer = earlier index (nano < micro < meso)
+    // Actually levels are ordered finest → coarsest, so curIdx+1 is coarser.
+    // We want to drill DOWN: from coarser to finer.
+    // If levels = [nano, micro, meso] and we're at micro (idx=1), drill to nano (idx=0)
+    if (curIdx === 0) return; // already at finest
+    const finerLevelName = levels[curIdx - 1];
+
+    // Find which finer-level clusters belong to this coarser cluster
+    const hierarchy = this.data.hierarchy || [];
+    const childIds = hierarchy
+      .filter(h => h.parent_level === this.currentLevel && h.child_level === finerLevelName && h.parent === d.id)
+      .map(h => h.child);
+
+    if (childIds.length === 0) {
+      // Fallback: just switch level
+      this.currentLevel = finerLevelName;
+      this.render();
+      return;
+    }
+
+    // Switch to finer level and highlight only children
+    this.currentLevel = finerLevelName;
+    this._drillFilter = new Set(childIds);
+    this.render();
+    // After render, fade non-children
+    if (this._nodeEls && this._drillFilter) {
+      this._nodeEls.select('circle').transition().duration(300)
+        .attr('opacity', n => this._drillFilter.has(n.id) ? 1 : 0.12);
+      this._labelEls?.transition().duration(300)
+        .attr('opacity', n => this._drillFilter.has(n.id) ? 1 : 0);
+      // Clear drill filter after 5 seconds
+      setTimeout(() => {
+        this._drillFilter = null;
+        this._nodeEls?.select('circle').transition().duration(500).attr('opacity', 1);
+        this._labelEls?.transition().duration(500).attr('opacity', 1);
+        this._updateLabels();
+      }, 5000);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // FEATURE 3: Split View (DC vs BC side by side)
+  // ══════════════════════════════════════════════════════════
+  _toggleSplitView() {
+    if (this._splitActive) { this.render(); this._splitActive = false; return; }
+    this._splitActive = true;
+    const layers = (this.data.layers || []).filter(l => l !== 'combined');
+    if (layers.length < 2) { alert('Need at least 2 layer types for split view.'); return; }
+
+    this.container.innerHTML = '';
+    const rect = this.container.getBoundingClientRect();
+    const W = rect.width || 700;
+    const H = rect.height || 500;
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'net-controls';
+    hdr.innerHTML = `<div class="net-ctrl-row">
+      <span class="net-ctrl-label">Split View</span>
+      ${layers.map(l => `<span class="net-chip active layer-chip" data-layer="${l}" style="pointer-events:none;">${l.toUpperCase()}</span>`).join('')}
+      <button class="net-chip" id="btn-split-close">Close</button>
+    </div>`;
+    this.container.appendChild(hdr);
+    hdr.querySelector('#btn-split-close').onclick = () => { this._splitActive = false; this.render(); };
+
+    // Side-by-side SVGs
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `display:flex;gap:4px;height:${H-40}px;`;
+    this.container.appendChild(wrap);
+
+    const levelEdges = this.data.edges?.find(e => e.level === this.currentLevel);
+    const levelNodes = this.data.nodes?.find(n => n.level === this.currentLevel);
+    if (!levelEdges || !levelNodes) return;
+
+    const labels = this.data._labels || {};
+
+    layers.forEach((layer, idx) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'flex:1;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;background:#f8f9fc;';
+      const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const sw = (W - 8) / layers.length;
+      svgEl.setAttribute('width', sw);
+      svgEl.setAttribute('height', H - 44);
+      div.appendChild(svgEl);
+      wrap.appendChild(div);
+
+      const svg = d3.select(svgEl);
+      const g = svg.append('g');
+      svg.call(d3.zoom().scaleExtent([0.3, 5]).on('zoom', e => g.attr('transform', e.transform)));
+
+      const nodes = levelNodes.data.map(d => ({...d, label: labels[String(d.id)] || d.label}));
+      const edges = (levelEdges.data[layer] || []).map(d => ({...d}));
+      const maxS = Math.max(...nodes.map(n => n.size), 1);
+      const rS = d3.scaleSqrt().domain([0, maxS]).range([3, 25]);
+      const maxW = Math.max(...edges.map(e => e.weight), 1);
+      const layerColors = {dc:'#2563eb', bc:'#dc2626', cc:'#059669'};
+      const color = layerColors[layer] || '#4a5976';
+
+      // Title
+      g.append('text').text(layer.toUpperCase()).attr('x', 10).attr('y', 18)
+        .attr('font-size', '11px').attr('font-weight', '700').attr('fill', color);
+
+      const linkEls = g.append('g').selectAll('line').data(edges).join('line')
+        .attr('stroke', color).attr('stroke-width', d => 0.5 + 3 * d.weight / maxW)
+        .attr('stroke-opacity', d => 0.15 + 0.4 * d.weight / maxW);
+
+      const nodeEls = g.append('g').selectAll('circle').data(nodes).join('circle')
+        .attr('r', d => rS(d.size)).attr('fill', d => PALETTE[d.id % PALETTE.length])
+        .attr('stroke', '#fff').attr('stroke-width', 1);
+
+      nodeEls.append('title').text(d => `${d.label} (${d.size})`);
+
+      const sim = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(edges).id(d => d.id).distance(50))
+        .force('charge', d3.forceManyBody().strength(-40))
+        .force('center', d3.forceCenter(sw / 2, (H - 44) / 2))
+        .on('tick', () => {
+          linkEls.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+          nodeEls.attr('cx', d => d.x).attr('cy', d => d.y);
+        });
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // FEATURE 4: Bridge Analysis
+  // ══════════════════════════════════════════════════════════
+  _enableBridgeMode() {
+    if (this._bridgeMode) { this._bridgeMode = false; this._bridgeFirst = null; this._restoreAll(); return; }
+    this._bridgeMode = true;
+    this._bridgeFirst = null;
+    // Override click handler
+    if (this._nodeEls) {
+      this._nodeEls.on('click', (ev, d) => this._bridgeClick(d));
+    }
+    // Show hint
+    const panel = document.getElementById('net-detail');
+    if (panel) {
+      panel.style.display = 'block';
+      panel.innerHTML = '<div style="padding:1rem;color:#4a5976;"><strong>Bridge Mode</strong><br>Click two clusters to find bridging papers between them.</div>';
+    }
+  }
+
+  async _bridgeClick(d) {
+    if (!this._bridgeFirst) {
+      this._bridgeFirst = d;
+      // Highlight selected
+      this._nodeEls.select('circle').attr('stroke', n => n.id === d.id ? '#e8a838' : '#fff')
+        .attr('stroke-width', n => n.id === d.id ? 3 : 1.5);
+      const panel = document.getElementById('net-detail');
+      if (panel) panel.innerHTML = `<div style="padding:1rem;color:#4a5976;"><strong>Bridge Mode</strong><br>Selected: <strong style="color:${PALETTE[d.id%PALETTE.length]}">${this._esc(d.label)}</strong><br>Now click a second cluster.</div>`;
+    } else {
+      const a = this._bridgeFirst, b = d;
+      this._bridgeFirst = null;
+      this._bridgeMode = false;
+
+      // Highlight edge between a and b
+      if (this._linkEls) {
+        this._linkEls.attr('stroke', e => {
+          const s = typeof e.source === 'object' ? e.source.id : e.source;
+          const t = typeof e.target === 'object' ? e.target.id : e.target;
+          if ((s === a.id && t === b.id) || (s === b.id && t === a.id)) return '#e8a838';
+          return '#4a5976';
+        }).attr('stroke-width', e => {
+          const s = typeof e.source === 'object' ? e.source.id : e.source;
+          const t = typeof e.target === 'object' ? e.target.id : e.target;
+          if ((s === a.id && t === b.id) || (s === b.id && t === a.id)) return 4;
+          return 1;
+        });
+      }
+      this._nodeEls.select('circle')
+        .attr('stroke', n => (n.id === a.id || n.id === b.id) ? '#e8a838' : '#fff')
+        .attr('stroke-width', n => (n.id === a.id || n.id === b.id) ? 3 : 1.5);
+
+      // Fetch bridge papers
+      const panel = document.getElementById('net-detail');
+      if (panel) {
+        panel.style.display = 'block';
+        panel.innerHTML = '<div style="padding:1rem;">Loading bridge papers...</div>';
+        try {
+          const resp = await fetch(`/api/jobs/${this.jobId}/bridge?cluster_a=${a.id}&cluster_b=${b.id}`);
+          const data = await resp.json();
+          let html = `<div class="net-detail-header"><strong>Bridge: <span style="color:${PALETTE[a.id%PALETTE.length]}">${this._esc(a.label)}</span> ↔ <span style="color:${PALETTE[b.id%PALETTE.length]}">${this._esc(b.label)}</span></strong>
+            <button onclick="document.getElementById('net-detail').style.display='none'" style="float:right;background:none;border:none;cursor:pointer;color:#64748b;">&times;</button></div>`;
+          if (data.papers?.length) {
+            html += data.papers.map(p =>
+              `<div class="net-paper"><div class="net-paper-title">${this._esc(p.title)}</div>
+               <div class="net-paper-meta">${p.year||''} &middot; C${p.cluster} &middot; bridge: ${p.bridge_score}</div></div>`
+            ).join('');
+          } else {
+            html += '<div style="color:#64748b;padding:0.5rem;">No bridging papers found.</div>';
+          }
+          panel.innerHTML = html;
+        } catch(e) {
+          panel.innerHTML = '<div style="padding:1rem;color:#d85a4a;">Failed to load bridge data.</div>';
+        }
+      }
+      // Restore click handler
+      this._nodeEls.on('click', (ev, nd) => this._showDetail(nd));
+    }
+  }
+
+  _restoreAll() {
+    if (this._nodeEls) {
+      this._nodeEls.select('circle').attr('stroke', '#fff').attr('stroke-width', 1.5);
+      this._nodeEls.on('click', (ev, d) => this._showDetail(d));
+    }
+    if (this._linkEls) {
+      const maxW = Math.max(...this._edges.map(e => e.weight), 1);
+      this._linkEls.attr('stroke', '#4a5976').attr('stroke-width', d => 0.5 + 4.5 * d.weight / maxW);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // FEATURE 5: Search & Highlight
+  // ══════════════════════════════════════════════════════════
+  _searchHighlight(query) {
+    if (!this._nodeEls) return;
+    const q = query.toLowerCase().trim();
+    if (!q) {
+      // Restore all
+      this._nodeEls.select('circle').transition().duration(200).attr('opacity', 1);
+      this._labelEls?.transition().duration(200).attr('opacity', 1);
+      this._linkEls?.transition().duration(200).attr('opacity', d => 0.12 + 0.4 * d.weight / Math.max(...this._edges.map(e=>e.weight),1));
+      return;
+    }
+    // Match nodes whose label contains query
+    const matchIds = new Set();
+    this._nodes.forEach(n => {
+      if (n.label.toLowerCase().includes(q)) matchIds.add(n.id);
+    });
+    // Fade non-matches
+    this._nodeEls.select('circle').transition().duration(200)
+      .attr('opacity', d => matchIds.has(d.id) ? 1 : 0.1);
+    this._labelEls?.transition().duration(200)
+      .attr('opacity', d => matchIds.has(d.id) ? 1 : 0.1);
+    // Show edges only between matched nodes
+    this._linkEls?.transition().duration(200)
+      .attr('opacity', d => {
+        const s = typeof d.source === 'object' ? d.source.id : d.source;
+        const t = typeof d.target === 'object' ? d.target.id : d.target;
+        return (matchIds.has(s) || matchIds.has(t)) ? 0.4 : 0.02;
+      });
   }
 
   _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
