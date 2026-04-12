@@ -70,8 +70,12 @@ def build_citation_edges(
 
     if dc_rows:
         dc_df = pl.DataFrame(dc_rows)
-        # Symmetrize: add reverse direction
-        dc_rev = dc_df.rename({"uid1": "uid2", "uid2": "uid1"})
+        # Symmetrize: add reverse direction (swap uid1 ↔ uid2)
+        dc_rev = dc_df.select(
+            pl.col("uid2").alias("uid1"),
+            pl.col("uid1").alias("uid2"),
+            pl.col("rel_sum2"),
+        )
         dc_sym = pl.concat([dc_df, dc_rev]).group_by(["uid1", "uid2"]).agg(
             pl.col("rel_sum2").sum()
         )
@@ -154,7 +158,11 @@ def build_citation_edges(
             if bc_rows:
                 bc_df = pl.DataFrame(bc_rows)
                 # Symmetrize
-                bc_rev = bc_df.rename({"uid1": "uid2", "uid2": "uid1"})
+                bc_rev = bc_df.select(
+                    pl.col("uid2").alias("uid1"),
+                    pl.col("uid1").alias("uid2"),
+                    pl.col("rel_sum2"),
+                )
                 bc_sym = pl.concat([bc_df, bc_rev]).group_by(["uid1", "uid2"]).agg(
                     pl.col("rel_sum2").sum()
                 )
