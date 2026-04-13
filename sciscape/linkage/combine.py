@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 import polars as pl
 
-from .filters import filter_giant_component
+from .filters import filter_giant_component, filter_top_k
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ def combine_edge_layers(
     strategy: str = "rank",
     weights: Dict[str, float] | None = None,
     gcc: bool = True,
+    top_k: int = 30,
     uid1_col: str = "uid1",
     uid2_col: str = "uid2",
     weight_col: str = "rel_sum2",
@@ -42,12 +43,16 @@ def combine_edge_layers(
         Mapping from layer name to edge DataFrame.
         Each must have uid1, uid2, rel_sum2 columns.
     strategy : str
-        Combination strategy: "union", "rank", "max", "vote".
+        Combination strategy: "union", "rank", "max", "vote", "boosted".
     weights : dict, optional
         Per-layer weight multiplier, e.g. {"bc": 1.0, "cc": 0.5}.
         Default: all layers weighted equally (1.0).
     gcc : bool
         If True, filter to giant connected component after combining.
+    top_k : int
+        Per-node top-k filter applied to EACH layer BEFORE normalization.
+        Default 30 (keep 30 strongest neighbors per node per layer).
+        Set to 0 to disable.
 
     Returns
     -------
@@ -63,6 +68,14 @@ def combine_edge_layers(
     for name, df in layers.items():
         if df.height == 0:
             continue
+
+        # Step 0: per-node top-k filter (BEFORE normalization)
+        if top_k > 0:
+            before = df.height
+            df = filter_top_k(df, top_k, uid1_col=uid1_col, uid2_col=uid2_col,
+                              weight_col=weight_col, mode="symmetric")
+            log.info("top_k=%d on %s: %d → %d edges", top_k, name, before, df.height)
+
         lw = layer_weights.get(name, 1.0)
 
         if strategy == "rank":
@@ -157,6 +170,7 @@ def load_and_combine(
     strategy: str = "rank",
     weights: Dict[str, float] | None = None,
     gcc: bool = True,
+    top_k: int = 30,
 ) -> pl.DataFrame:
     """Load parquet edge files from a directory and combine them.
 
@@ -194,7 +208,7 @@ def load_and_combine(
         )
 
     return combine_edge_layers(
-        layers, strategy=strategy, weights=weights, gcc=gcc,
+        layers, strategy=strategy, weights=weights, gcc=gcc, top_k=top_k,
     )
 
 
