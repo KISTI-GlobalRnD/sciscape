@@ -94,10 +94,41 @@ def combine_vote(layers: Dict[str, pl.DataFrame]) -> pl.DataFrame:
         return pl.DataFrame({"uid1": [], "uid2": [], "rel_sum2": []})
     return pl.concat(parts).group_by(["uid1", "uid2"]).agg(pl.col("rel_sum2").sum())
 
+def combine_boosted(layers: Dict[str, pl.DataFrame]) -> pl.DataFrame:
+    """Boosted sum: weight × number of layers containing this edge.
+
+    edge(i,j) = sum_of_weights(i,j) × n_layers_present(i,j)
+    Multi-layer consensus gets multiplicative bonus.
+    """
+    parts_w = []  # weighted
+    parts_v = []  # vote (binary)
+    for df in layers.values():
+        if df.height > 0:
+            parts_w.append(df.select("uid1", "uid2", "rel_sum2"))
+            parts_v.append(df.select("uid1", "uid2").with_columns(pl.lit(1.0).alias("_vote")))
+    if not parts_w:
+        return pl.DataFrame({"uid1": [], "uid2": [], "rel_sum2": []})
+
+    # Sum of weights
+    w_sum = pl.concat(parts_w).group_by(["uid1", "uid2"]).agg(
+        pl.col("rel_sum2").sum()
+    )
+    # Count of layers
+    v_count = pl.concat(parts_v).group_by(["uid1", "uid2"]).agg(
+        pl.col("_vote").sum().alias("_n_layers")
+    )
+    # Multiply: weight × n_layers
+    combined = w_sum.join(v_count, on=["uid1", "uid2"], how="left").with_columns(
+        (pl.col("rel_sum2") * pl.col("_n_layers")).alias("rel_sum2")
+    ).drop("_n_layers")
+    return combined
+
+
 COMBINERS = {
     "sum": combine_sum,
     "max": combine_max,
     "vote": combine_vote,
+    "boosted": combine_boosted,
 }
 
 

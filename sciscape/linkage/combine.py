@@ -103,6 +103,27 @@ def combine_edge_layers(
         combined = all_edges.group_by([uid1_col, uid2_col]).agg(
             pl.col(weight_col).max()
         )
+    elif strategy == "boosted":
+        # Boosted sum: weight × number of layers containing this edge
+        w_sum = all_edges.group_by([uid1_col, uid2_col]).agg(
+            pl.col(weight_col).sum()
+        )
+        # Count layers per edge (each layer contributes 1 per occurrence)
+        vote_parts = []
+        for name, df in layers.items():
+            if df.height > 0:
+                vote_parts.append(
+                    df.select(uid1_col, uid2_col).with_columns(pl.lit(1.0).alias("_v"))
+                )
+        if vote_parts:
+            v_count = pl.concat(vote_parts).group_by([uid1_col, uid2_col]).agg(
+                pl.col("_v").sum().alias("_n")
+            )
+            combined = w_sum.join(v_count, on=[uid1_col, uid2_col], how="left").with_columns(
+                (pl.col(weight_col) * pl.col("_n")).alias(weight_col)
+            ).drop("_n")
+        else:
+            combined = w_sum
     else:
         # Sum weights per pair (union, rank, vote)
         combined = all_edges.group_by([uid1_col, uid2_col]).agg(
