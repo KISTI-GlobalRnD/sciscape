@@ -1,0 +1,122 @@
+[
+  {
+    "uid": "W4405185436",
+    "title": "Iridium-incorporated cobalt hydroxide electrodeposited on titanium meshes enabling electroreduction of nitrate and nitrobenzene to ammonia and aniline",
+    "winner": "B",
+    "score_sum": 3,
+    "score_boosted": 5,
+    "reasoning": "Group A is more cohesive with the target paper as all papers focus on the electrochemical reduction of nitrate to ammonia, directly relating to the target's theme of nitrogen-containing pollutant reduction. In contrast, Group B includes a broader application of nitrate reduction mechanisms, some of which diverge from ammonia production and electroreduction methods specifically related to wastewater treatment.",
+    "sum_cluster": 32,
+    "boosted_cluster": 76,
+    "sum_size": 1429,
+    "boosted_size": 563
+  },
+  {
+    "uid": "W3020198492",
+    "title": "Promoted Electrocatalytic Nitrogen Fixation in Fe‐Ni Layered Double Hydroxide Arrays Coupled to Carbon Nanofibers: The Role of Phosphorus Doping",
+    "winner": "B",
+    "score_sum": 3,
+    "score_boosted": 5,
+    "reasoning": "Group B's papers focus heavily on layered double hydroxides and phosphorus doping in electrocatalytic processes, closely aligning with the target paper's emphasis on Fe-Ni layered double hydroxides and the role of phosphorus doping. This thematic cohesion indicates a stronger connection between Group B and the target paper compared to Group A, which primarily discusses different materials and methods without significant emphasis on the layered double hydroxide aspect.",
+    "sum_cluster": 2,
+    "boosted_cluster": 41,
+    "sum_size": 1695,
+    "boosted_size": 1710
+  },
+  {
+    "uid": "W2015265472",
+    "title": "Methanol Steam Reforming Promoted by Molten Salt‐Modified Platinum on Alumina Catalysts",
+    "winner": "A",
+    "score_sum": 5,
+    "score_boosted": 3,
+    "reasoning": "Group B's papers focus on the interactions and applications of ionic liquids, particularly in relation to metal surfaces and catalysis, aligning closely with the target paper's emphasis on platinum catalysts and methanol steam reforming. This direct connection to catalytic applications enhances the cohesion of Group B with the target paper compared to Group A.",
+    "sum_cluster": 164,
+    "boosted_cluster": 171,
+    "sum_size": 149,
+    "boosted_size": 168
+  },
+  {
+    "uid": "W2945662132",
+    "title": "Sodium Methyl Carbonate as an Effective C1 Synthon. Synthesis of Carboxylic Acids, Benzophenones, and Unsymmetrical Ketones",
+    "winner": "A",
+    "score_sum": 5,
+    "score_boosted": 3,
+    "reasoning": "Group B is more cohesive with the target paper as all their studies focus on carboxylation reactions involving carbon dioxide and the synthesis of carboxylic acids, which directly aligns with the target's emphasis on carboxylic acid synthesis. In contrast, while Group A's papers also involve carboxylation, they delve more into mechanistic studies and specific catalytic processes that are less related to the direct synthesis aspects showcased in the target paper.",
+    "sum_cluster": 59,
+    "boosted_cluster": 145,
+    "sum_size": 1104,
+    "boosted_size": 1220
+  },
+  {
+    "uid": "W2061667481",
+    "title": "Helium Nanodroplet Isolation and Infrared Spectroscopy of the Isolated Ion-Pair 1-Ethyl-3-methylimidazolium bis(trifluoromethylsulfonyl)imide",
+    "winner": "A",
+    "score_sum": 5,
+    "score_boosted": 2,
+    "reasoning": "Group B is more cohesive with the target paper as it focuses on the thermochemical properties and vaporization behaviors of ionic liquids, specifically related to the same family of compounds (1-ethyl-3-methylimidazolium) mentioned in the target. In contrast, while Group A contains relevant topics on ionic liquids, it lacks the specific emphasis on vaporization and spectroscopy that aligns closely with the detailed exploration of the target paper.",
+    "sum_cluster": 55,
+    "boosted_cluster": 13,
+    "sum_size": 367,
+    "boosted_size": 345
+  },
+  {
+    "uid": "W4285180154",
+    "title": "Cycloaddition of Carbon Dioxide and Epoxides Over Fe-Pypa: Synthetic Optimization and Mechanistic Study",
+    "winner": "B",
+    "score_sum": 3,
+    "score_boosted": 5,
+    "reasoning": "Group B contains multiple studies focused on the catalysis of CO2 and epoxides, similar to the target paper's emphasis on Fe-PYPA catalysis for CO2 cycloaddition. Their strong focus on catalyst development and mechanisms align closely with the target paper's methodology and aims, making them a more cohesive cluster.",
+    "sum_cluster": 14,
+    "boosted_cluster": 45,
+    "sum_size": 1998,
+    "boosted_size": 576
+  },
+  {
+    "uid": "W2020986118",
+    "title": "A new Cu-based system for formic acid dehydrogenation",
+    "winner": "A",
+    "score_sum": 5,
+    "score_boosted": 2,
+    "reasoning": "Group B is more cohesive with the target paper because the majority of its papers, especially those focusing on formic acid, directly relate to the central theme of the target paper on formic acid dehydrogenation. Additionally, the methods discussed in Group B papers specifically address catalytic processes similar to those in the target paper, enhancing overall relevance.",
+    "sum_cluster": 110,
+    "boosted_cluster": 57,
+    "sum_size": 308,
+    "boosted_size": 886
+  },
+  {
+    "uid": "W4288772852",
+    "title": "An efficient screening strategy towards multifunctional catalysts for the simultaneous electroreduction of NO<sub>3</sub><sup>−</sup>, NO<sub>2</sub><sup>−</sup> and NO to NH<sub>3</sub>",
+    "winner": "B",
+    "score_sum": 3,
+    "score_boosted": 5,
+    "reasoning": "Group A papers predominantly focus on electrocatalysis related to nitrogen reduction reactions and the synthesis of ammonia, which aligns closely with the target paper's focus on multifunctional catalysts for the electroreduction of nitrogen species. In contrast, while Group B also discusses nitrogen reduction, its papers diverge more into specific catalyst types and mechanisms rather than the overarching strategy presented in the target paper.",
+    "sum_cluster": 5,
+    "boosted_cluster": 43,
+    "sum_size": 667,
+    "boosted_size": 651
+  },
+  {
+    "uid": "W2147629637",
+    "title": "EGR-VGT Control and Tuning for Pumping Work Minimization and Emission Control",
+    "winner": "A",
+    "score_sum": 5,
+    "score_boosted": 3,
+    "reasoning": "Group B's papers are directly focused on advanced control techniques for EGR and VGT in diesel engines, closely aligning with the target paper's themes of emission control and performance optimization. In contrast, while Group A's papers relate to diesel engines and control, they stray towards lower pressure systems and broader topics, making them less cohesive with the target's specific focus on coordinated EGR-VGT control.",
+    "sum_cluster": 37,
+    "boosted_cluster": 55,
+    "sum_size": 848,
+    "boosted_size": 774
+  },
+  {
+    "uid": "W2018879024",
+    "title": "Micellar transitions in the aqueous solutions of a surfactant-like ionic liquid: 1-butyl-3-methylimidazolium octylsulfate",
+    "winner": "A",
+    "score_sum": 5,
+    "score_boosted": 3,
+    "reasoning": "Group A presents papers that focus explicitly on the aggregation and micellar properties of ionic liquids, which closely align with the target paper's investigation of surfactant-like behavior in the specific ionic liquid [C(4)mim][C(8)SO(4)]. In contrast, Group B, while also related to ionic liquids, has a weaker connection to the specific focus on micellar transitions and the modulation of ionic liquid properties in aqueous solutions.",
+    "sum_cluster": 0,
+    "boosted_cluster": 71,
+    "sum_size": 197,
+    "boosted_size": 185
+  }
+]

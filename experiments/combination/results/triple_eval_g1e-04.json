@@ -1,0 +1,527 @@
+[
+  {
+    "uid": "W2801691802",
+    "title": "Hydrogenation of CO<sub>2</sub> to Dimethyl Ether over Brønsted Acidic PdZn Catalysts",
+    "sum_cluster": 76,
+    "sum_size": 237,
+    "boosted_cluster": 46,
+    "boosted_size": 230,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 5,
+      "reasoning": "The target paper focuses on the hydrogenation of CO2 to produce dimethyl ether (DME) using PdZn catalysts, emphasizing the role of Brønsted acid sites. This directly aligns with Group A's focus on CO2 hydrogenation to DME and the exploration of catalyst design and performance to enhance selectivity and conversion, making it a perfect fit."
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "theme": "CO2 hydrogenation to produce dimethyl ether (DME)",
+      "n_outliers": 0,
+      "reasoning": "All papers in the group center around the topic of CO2 hydrogenation for the production of dimethyl ether (DME), discussing different catalysts, mechanisms, and efficiencies. There is a clear, specific focus on enhancing the reactions and understanding the catalytic processes, indicating a strong cohesion within the research cluster."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Catalytic conversion of CO2 to dimethyl ether (DME)",
+      "n_outliers": 0,
+      "reasoning": "All papers are focused on various aspects of catalyzing the conversion of carbon dioxide into dimethyl ether (DME), highlighting methodologies, catalyst compositions, and performance evaluations. There is a strong and consistent emphasis on the use of different catalysts for this specific reaction, indicating a tight, unified research cluster."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Catalytic hydrogenation of CO2 to produce dimethyl ether (DME)",
+      "reasoning": "The target paper and its neighbors focus on the catalytic hydrogenation of CO2 to produce dimethyl ether, specifically emphasizing Brønsted acidic catalysts. The outlier paper (index 2) discusses a Cu-ZnO-Al2O3 catalyst, which diverges from the Brønsted acidic approach and falls outside the cluster theme."
+    },
+    "outliers_boosted": {
+      "n_outliers": 1,
+      "theme": "Catalytic hydrogenation of CO2 to dimethyl ether (DME)",
+      "reasoning": "The outlier paper focuses on methanol synthesis rather than dimethyl ether, deviating from the specific theme of the cluster which is centered around DME production from CO2 hydrogenation."
+    }
+  },
+  {
+    "uid": "W3159081248",
+    "title": "Enhancing Thermocatalytic Activities by Upshifting the d‐Band Center of Exsolved Co‐Ni‐Fe Ternary Alloy Nanoparticles for the Dry Reforming of Methane",
+    "sum_cluster": 57,
+    "sum_size": 1805,
+    "boosted_cluster": 167,
+    "boosted_size": 1851,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper focuses on enhancing catalyst performance specifically for the dry reforming of methane (DRM) using Co-Ni-Fe ternary alloy nanoparticles, which aligns closely with the detailed exploration of catalyst behavior and kinetics found in Group A's papers. Furthermore, several papers in Group A emphasize catalyst stability and performance in DRM, suggesting a stronger thematic connection than those in Group B."
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "theme": "Research on Ni-based catalysts for dry reforming of methane",
+      "n_outliers": 0,
+      "reasoning": "All papers in the group focus on various aspects of nickel-based catalysts specifically for dry reforming of methane, emphasizing stability, performance, and innovative modifications to enhance catalytic activity. The shared focus on mitigating deactivation mechanisms and improving conversion efficiencies ties the group together cohesively."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Catalysts for dry reforming of methane",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on the development and optimization of catalysts specifically aimed at the dry reforming of methane, emphasizing various compositions and structural improvements. However, one paper investigates biogas reforming with a different catalyst, placing it somewhat outside the main focus on methane reforming. This allows for a strong overall cohesion score while acknowledging the presence of an outlier."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Catalytic processes and catalyst design for dry reforming of methane",
+      "reasoning": "The outlier focuses on low-temperature dry reforming of methane using a platinum-nickel alloy catalyst, which deviates from the primary focus on nickel-based catalysts common in the other papers. The other papers emphasize improving the performance and stability of nickel catalysts specifically for dry reforming."
+    },
+    "outliers_boosted": {
+      "n_outliers": 1,
+      "theme": "Catalytic processes for dry reforming of methane",
+      "reasoning": "The outlier focuses on biogas reforming using a Rh catalyst, which is distinct from the dry reforming of methane specifically using nickel-based catalysts addressed by the other papers."
+    }
+  },
+  {
+    "uid": "W2617346752",
+    "title": "Self-aggregation of trehalose in the mixed solvents of 1,3-dimethylimidazolium ionic liquid and water",
+    "sum_cluster": 77,
+    "sum_size": 7643,
+    "boosted_cluster": 150,
+    "boosted_size": 340,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper discusses the self-aggregation of trehalose in ionic liquid-water mixtures, which aligns well with Group B's focus on the interactions of ionic liquids with water and other components. Group B's papers emphasize the structural and dynamic interactions of ionic liquids in various mixtures, making them more suitable for the target paper's context."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Research on ionic liquids and their properties/applications",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers explore various types of ionic liquids, including their synthesis, properties, and applications across different fields. However, paper [6], which discusses inexpensive ionic liquid production, deviates slightly as it focuses more on cost and environmental impact rather than the chemical and physical properties or specific applications of ionic liquids, marking it as a minor outlier in this cohesive group."
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "theme": "Ionic liquids and their interactions",
+      "n_outliers": 1,
+      "reasoning": "The majority of papers focus on the properties and interactions of various ionic liquids and their mixtures, demonstrating a clear shared theme in ionic liquid research. However, paper [6] discusses a urea-water system, which, while related to solutions, diverges from the more specific ionic liquid focus seen in the other papers."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Ionic liquids and their properties/applications in various solvents",
+      "reasoning": "The outlier paper discusses colorless organometallic ionic liquids, which focus on metal complexes and their properties, deviating from the theme of ionic liquids derived from organic materials or their solvation behavior in mixtures."
+    },
+    "outliers_boosted": {
+      "n_outliers": 3,
+      "theme": "Ionic liquid-water interactions and structural properties",
+      "reasoning": "The outlier papers focus on specific ionic liquid systems and their interactions that diverge from the central theme of water interactions with trehalose and related binary mixtures. They explore different ionic liquids or unrelated aspects of ionic solutions, making them less relevant to the target paper."
+    }
+  },
+  {
+    "uid": "W2734651930",
+    "title": "Isotope Studies in Oxidation of Propane over Vanadium Oxide",
+    "sum_cluster": 98,
+    "sum_size": 1082,
+    "boosted_cluster": 209,
+    "boosted_size": 582,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper focuses on the oxidation of propane over vanadium oxide catalysts, which aligns closely with Group A's emphasis on alkane oxidation, particularly with Mo-V oxides relevant to propane. While Group B also deals with vanadium and oxidation, the specific context and materials of the target paper indicate a stronger connection to the research themes in Group A."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Catalysis related to vanadium and molybdenum oxides",
+      "n_outliers": 2,
+      "reasoning": "The majority of the papers focus on vanadium oxide catalysis, investigating specific mechanisms and structural characteristics. However, papers 5 and 6 explore oxidative dehydrogenation processes that diverge from the main theme centered on vanadia and its interactions. This leads to a clear shared area with a couple of minor outliers."
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "theme": "Studies on catalytic oxidation of hydrocarbons using various metal oxides",
+      "n_outliers": 1,
+      "reasoning": "The papers primarily focus on catalysts for the oxidation of hydrocarbons, particularly ethane and alkanes, using different transition metal oxides. However, paper [3] diverges slightly by discussing a computational method (ReaxFF Monte Carlo) applied to disordered ceramics rather than directly addressing catalytic processes, thus making it a minor outlier in the context of the overall emphasis on catalysis."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Vanadium and molybdenum oxide catalysis for oxidation reactions",
+      "reasoning": "The outlier paper focuses on the oxidative dehydrogenation of ethane using sulfur vapor, which is unrelated to the oxidation reactions involving vanadium or molybdenum oxides addressed in the target paper and its neighbors."
+    },
+    "outliers_boosted": {
+      "n_outliers": 2,
+      "theme": "Catalytic oxidation of alkanes using metal oxides",
+      "reasoning": "Papers [5] and [6] focus on oxidative dehydrogenation of ethane, which is distinct from propane oxidation studied in the target paper and other neighbors. The main theme of the cluster is the catalytic oxidation of propane using metal-oxide catalysts."
+    }
+  },
+  {
+    "uid": "W4389179188",
+    "title": "Activated Mn‐MACHO Complexes Form Stable CO<sub>2</sub> Adducts",
+    "sum_cluster": 73,
+    "sum_size": 515,
+    "boosted_cluster": 57,
+    "boosted_size": 886,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper focuses on the reaction of manganese carbonyl complexes with CO2 to generate stable adducts, similar to the themes in Group A that emphasize the transformation and utilization of CO2. Group A's emphasis on efficiently converting CO2 into valuable chemicals aligns closely with the developments described in the target paper."
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "theme": "Catalytic hydrogenation of carbon dioxide to formate or related products",
+      "n_outliers": 0,
+      "reasoning": "All papers in this group focus on the catalytic processes involved in the hydrogenation of carbon dioxide (CO2), either for producing formate, formic acid, or related compounds. They discuss various catalysts, including copper and ruthenium complexes, making the research cluster tightly united around a specific theme in catalysis and carbon utilization."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Catalytic processes involving formic acid and carbon dioxide hydrogenation",
+      "n_outliers": 0,
+      "reasoning": "All papers in this group focus on various aspects of catalytic processes related to carbon dioxide hydrogenation and the production or utilization of formic acid. They explore different catalytic systems and mechanisms, demonstrating a strong link between their research objectives and methodologies."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Hydrogenation of carbon dioxide to formate or related products using various metal complexes",
+      "reasoning": "The outlier, paper 4, focuses on a rechargeable hydrogen battery and its connection to CO2 hydrogenation, which diverges from the central theme of catalytic processes related to the direct hydrogenation of CO2. The other papers predominantly discuss mechanisms or applications directly related to CO2 hydrogenation using metal catalysts."
+    },
+    "outliers_boosted": {
+      "n_outliers": 1,
+      "theme": "Carbon dioxide (CO2) utilization and transformation into useful chemical products, particularly focusing on formic acid as a hydrogen carrier.",
+      "reasoning": "The outlier paper focuses on theoretical insights into hydrogen storage/delivery, which is peripheral to the practical synthesis and catalytic processes directly involving CO2 and formic acid discussed in the target and neighbor papers."
+    }
+  },
+  {
+    "uid": "W2944871924",
+    "title": "Room Temperature Ionic Liquids from Purine and Pyrimidine Nucleobases",
+    "sum_cluster": 77,
+    "sum_size": 7643,
+    "boosted_cluster": 101,
+    "boosted_size": 1248,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper focuses on room temperature ionic liquids derived from purine and pyrimidine nucleobases, which aligns with the theme of investigating the properties and interactions of ionic liquids evident in Group A's focus on various ionic liquid systems. Although Group B also studies ionic liquids, the specific emphasis on nucleobase-derived ionic liquids suggests a closer relationship to Group A's broader exploration of ionic liquids' composition and applications."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Ionic liquids and their properties",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on various aspects of ionic liquids, such as their properties, synthesis, and applications, particularly involving imidazolium-based compounds. Paper 3 stands out as it discusses a different method of analysis that does not directly relate to ionic liquids or their chemical characteristics, making it a minor outlier."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Properties and interactions of ionic liquids",
+      "n_outliers": 0,
+      "reasoning": "All papers in this research group focus on various aspects of ionic liquids, including their physicochemical properties, interactions with other substances, and modeling. They share a common goal of exploring and understanding the behavior of ionic liquids, which ties them together into a cohesive theme."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Room temperature ionic liquids and their properties/applications",
+      "reasoning": "The outlier paper focuses on the diffusion behavior of individual monatomic ions in liquids, which is unrelated to the topic of ionic liquids and their properties or applications discussed in the other papers."
+    },
+    "outliers_boosted": {
+      "n_outliers": 0,
+      "theme": "Ionic liquids and their properties",
+      "reasoning": "All papers in the cluster focus on ionic liquids, their interactions, and properties, which aligns well with the target paper's exploration of ionic liquids derived from nucleobases."
+    }
+  },
+  {
+    "uid": "W2890877133",
+    "title": "Effect of Anionic Structure on the LCST Phase Behavior of Phosphonium Ionic Liquids in Water",
+    "sum_cluster": 71,
+    "sum_size": 1565,
+    "boosted_cluster": 143,
+    "boosted_size": 4279,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 5,
+      "reasoning": "The target paper focuses on the phase behavior of phosphonium ionic liquids and utilizes molecular dynamics simulations, which aligns closely with the research theme in Group A that examines liquid-liquid phase separation and properties of ionic liquids. The emphasis on ionic liquids and their interactions with water in the target paper strongly resonates with the studies in Group A, making it a clear fit."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Ionic liquids and their properties",
+      "n_outliers": 1,
+      "reasoning": "All papers primarily focus on the behavior, properties, and applications of ionic liquids, including phase separation, diffusion, and molecular dynamics. However, paper 6, which discusses the solubility of cellulose in a DMSO/ionic liquid mixture, diverges slightly from the core theme of ionic liquids themselves, focusing more on the interaction with a specific solvent and polymer."
+    },
+    "cohesion_boosted": {
+      "score": 3,
+      "theme": "Ionic liquids and their applications in catalysis and material synthesis",
+      "n_outliers": 2,
+      "reasoning": "The majority of the papers focus specifically on the use of ionic liquids in catalytic processes and reactions. However, papers 4 and 6 diverge into broader applications of ionic liquids in material synthesis and mechanical engineering, respectively, leading to a less cohesive focus within the group."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Molecular dynamics simulations of ionic liquids and their behaviors in various solutions",
+      "reasoning": "The outlier paper (6) focuses on the solubility of cellulose in DMSO/ionic liquids, which diverges from the main theme of examining the phase behavior and interactions of ionic liquids with water and other solvents as seen in the target and other cluster papers."
+    },
+    "outliers_boosted": {
+      "n_outliers": 2,
+      "theme": "Ionic Liquids and Their Applications in Various Chemical Processes",
+      "reasoning": "Papers [6] and [7] focus on the applications of ionic liquids in mechanical engineering and the synthesis of specific ionic liquid compounds, which diverges from the primary focus of the target paper and neighbors on the phase behavior and catalytic applications of ionic liquids in chemical reactions."
+    }
+  },
+  {
+    "uid": "W2333178950",
+    "title": "Preparation and CO<sub>2</sub> Sorption/Desorption of <i>N</i>-(3-Aminopropyl)Aminoethyl Tributylphosphonium Amino Acid Salt Ionic Liquids Supported into Porous Silica Particles",
+    "sum_cluster": 49,
+    "sum_size": 539,
+    "boosted_cluster": 0,
+    "boosted_size": 517,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 5,
+      "reasoning": "The target paper focuses on the preparation and examination of a specific type of ionic liquid for CO2 sorption, which aligns closely with Group A’s emphasis on the development and application of ionic liquids for gas capture and catalytic processes. Both research works address the practical applications of ionic liquids in CO2 capture, showcasing similar methodologies and goals."
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "theme": "Ionic liquids for CO2 capture and absorption",
+      "n_outliers": 0,
+      "reasoning": "All papers focus on the study and application of ionic liquids specifically for CO2 capture and absorption. They discuss various aspects, such as synthesis, performance, and mechanisms, showing a cohesive and targeted research area centered on ionic liquids and their efficiency in reducing CO2 emissions."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Improving CO2 capture and absorption technologies",
+      "n_outliers": 0,
+      "reasoning": "All papers in this group focus on various aspects of carbon dioxide capture, absorption, and the development of materials or technologies for improving CO2 management. There is a clear, tight connection in the theme of CO2-related research with no discernible outliers."
+    },
+    "outliers_sum": {
+      "n_outliers": 0,
+      "theme": "CO2 capture using ionic liquids",
+      "reasoning": "All papers in the cluster focus on the development, characterization, or application of ionic liquids for CO2 capture or related processes, aligning them closely with the target paper's theme."
+    },
+    "outliers_boosted": {
+      "n_outliers": 0,
+      "theme": "CO2 capture technologies using ionic liquids and surfactants",
+      "reasoning": "All cluster neighbors focus on various aspects of CO2 capture technologies, particularly involving ionic liquids and their adaptations or enhancements for improved CO2 absorption and sorption mechanisms, which aligns them with the target paper."
+    }
+  },
+  {
+    "uid": "W2073192941",
+    "title": "Near Infrared Luminescent Oxygen Nanosensors with Nanoparticle Matrix Tailored Sensitivity",
+    "sum_cluster": 13,
+    "sum_size": 202,
+    "boosted_cluster": 202,
+    "boosted_size": 242,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper focuses on the development of nanosensors for real-time monitoring of oxygen levels in biological systems, which aligns closely with Group A's emphasis on intracellular oxygen detection and the use of nanoparticle probes for live cell imaging. While there are some overlaps with Group B, the specific application towards cellular functions and therapeutic monitoring fits more naturally with the themes found in Group A."
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "theme": "Oxygen sensing technologies and methodologies",
+      "n_outliers": 0,
+      "reasoning": "All papers in this group focus on various innovative approaches for sensing oxygen, particularly in biological systems and through nanoparticle technologies. They explore similar methodologies, such as ratiometric sensing and phosphorescence, highlighting a coherent and specific theme around oxygen detection techniques."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Development and application of oxygen-sensitive probes for imaging",
+      "n_outliers": 0,
+      "reasoning": "All papers in the group focus on the development and application of various types of molecular probes and sensors for detecting and imaging oxygen levels in biological systems. The methods discussed range from fluorescent and phosphorescent probes to nanoparticle-based systems, demonstrating a strong thematic cohesion around oxygen sensing technology."
+    },
+    "outliers_sum": {
+      "n_outliers": 0,
+      "theme": "Development of sensitive luminescent sensors for oxygen detection in biological systems",
+      "reasoning": "All papers in the cluster focus on advancements in luminescent or optical sensors designed for detecting and measuring oxygen levels, particularly in biological contexts, which aligns with the theme of the target paper."
+    },
+    "outliers_boosted": {
+      "n_outliers": 0,
+      "theme": "Development of oxygen sensing technologies for cellular applications",
+      "reasoning": "All papers in the cluster, including the target, focus on various methodologies and materials for sensing oxygen levels in biological systems, particularly within live cells."
+    }
+  },
+  {
+    "uid": "W2050168069",
+    "title": "Laser-Induced Fragmentation of Transition Metal Nanoparticles in Ionic Liquids",
+    "sum_cluster": 95,
+    "sum_size": 305,
+    "boosted_cluster": 179,
+    "boosted_size": 359,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 4,
+      "reasoning": "The target paper discusses the preparation of stable transition metal nanoparticles specifically in ionic liquids using laser irradiation, which aligns more closely with Group B's focus on the use of ionic liquids for synthesizing and stabilizing nanoparticles. While Group A also deals with nanoparticle synthesis in ionic liquids, the methods and context in Group B appear to be a better fit for the advanced applications highlighted in the target paper."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Synthesis and stabilization of nanoparticles using ionic liquids",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on the synthesis and application of various metal nanoparticles in the context of ionic liquids, highlighting their stabilization and catalytic properties. However, paper [4] diverges somewhat by investigating epoxy-containing ionic liquids without a direct focus on nanoparticle synthesis or stabilization, making it a minor outlier in this research group."
+    },
+    "cohesion_boosted": {
+      "score": 3,
+      "theme": "Synthesis and application of nanoparticles in ionic liquids",
+      "n_outliers": 1,
+      "reasoning": "Most papers focus on the synthesis and catalytic applications of nanoparticles in ionic liquids, particularly emphasizing different metal nanoparticles and their interactions. However, paper [2], which discusses force fields for ionic liquids interacting with metal surfaces, diverges from the primary focus on nanoparticle synthesis and may not fit well within this theme."
+    },
+    "outliers_sum": {
+      "n_outliers": 2,
+      "theme": "Nanoparticle synthesis and stabilization in ionic liquids",
+      "reasoning": "The outlier papers focus on the synthesis of ionic liquids with different functional properties or the stability of nanoparticles under different preparation methods, rather than the direct synthesis and stabilization of nanoparticles using laser irradiation or electrochemical methods in ionic liquids."
+    },
+    "outliers_boosted": {
+      "n_outliers": 2,
+      "theme": "Synthesis and utilization of metal nanoparticles in ionic liquids",
+      "reasoning": "The outliers primarily focus on theoretical interactions with ionic liquids and broader catalysis concepts, rather than the practical synthesis of metal nanoparticles within ionic liquids, which is the central theme of the target paper and its neighbors."
+    }
+  },
+  {
+    "uid": "W4387033082",
+    "title": "Built-in Electric Field-Induced Work Function Reduction in C–Co<sub>3</sub>O<sub>4</sub> for Efficient Electrochemical Nitrogen Reduction",
+    "sum_cluster": 2,
+    "sum_size": 1695,
+    "boosted_cluster": 41,
+    "boosted_size": 1710,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 5,
+      "reasoning": "The target paper focuses on the electrochemical nitrogen reduction reaction (NRR) using a catalyst based on Co<sub>3</sub>O<sub>4</sub>, which directly aligns with Group A's emphasis on electrocatalytic processes for ammonia synthesis from nitrogen. Both the target paper and Group A describe advancements in electrocatalysts specifically designed for enhancing the efficiency of the NRR."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Electrocatalytic nitrogen reduction and ammonia production",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on various methods and materials for electrocatalytic nitrogen reduction to ammonia (NH3), showcasing different catalysts and their efficiencies. However, paper [7] explores a novel approach involving solar activation and energy storage, which slightly diverges from the main theme of electrochemical techniques for ammonia production."
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "theme": "Electrocatalytic nitrogen reduction for ammonia synthesis",
+      "n_outliers": 0,
+      "reasoning": "All papers in this group focus on various aspects of electrocatalytic nitrogen reduction and the synthesis of ammonia, highlighting different catalysts, methodologies, and efficiencies. The theme of ammonia synthesis through electrochemical processes is clearly present and unifying across all papers."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Electrocatalytic nitrogen reduction to ammonia",
+      "reasoning": "The outlier paper focuses on high-temperature electrocatalytic ammonia production using a traditional catalytic approach, which deviates from the electrochemical focus of the other papers that primarily investigate low-temperature electrochemical nitrogen reduction strategies."
+    },
+    "outliers_boosted": {
+      "n_outliers": 0,
+      "theme": "Electrocatalysis for Nitrogen Reduction and Ammonia Synthesis",
+      "reasoning": "All the papers in the cluster paper share a common focus on various approaches and catalysts for the electrochemical reduction of nitrogen into ammonia, thus fitting well within the theme of electrocatalysis in nitrogen reduction."
+    }
+  },
+  {
+    "uid": "W1974290620",
+    "title": "Synthesis of Bipyridine‐Stabilized Rhodium Nanoparticles in Non‐Aqueous Ionic Liquids: A New Efficient Approach for Arene Hydrogenation with Nanocatalysts",
+    "sum_cluster": 95,
+    "sum_size": 305,
+    "boosted_cluster": 179,
+    "boosted_size": 359,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 5,
+      "reasoning": "The target paper focuses on the synthesis and stabilization of rhodium nanoparticles in ionic liquids, which aligns well with Group A's emphasis on nanoparticle research in ionic liquids. Additionally, both the target paper and Group A address catalytic applications involving metal nanoparticles in ionic liquid environments."
+    },
+    "cohesion_sum": {
+      "score": 3,
+      "theme": "Ionic liquids in nanoparticle research and applications",
+      "n_outliers": 2,
+      "reasoning": "The majority of the papers in the group focus on gold and platinum nanoparticles and their stabilization or application in ionic liquids, indicating a clear theme of ionic liquid applications in metal nanoparticle research. However, papers [2] and [3] explore additional topics such as environmental applications and historical perspectives on ionic liquids, which are less directly related to the main focus of nanoparticle stabilization or synthesis."
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "theme": "Utilization and applications of ionic liquids in various scientific fields",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers prominently focus on the application and significance of ionic liquids in fields such as materials science, catalysis, and microscopy. Paper 5 discusses organic carbonates instead of ionic liquids, making it the outlier in the context of this research group, which centers around ionic liquid technology."
+    },
+    "outliers_sum": {
+      "n_outliers": 3,
+      "theme": "Synthesis and stabilization of metal nanoparticles using ionic liquids",
+      "reasoning": "The outlier papers focus on unrelated aspects of ionic liquids and nanoparticle synthesis or application, particularly those not involving metal nanoparticles or catalytic processes related to the target paper's focus on arene hydrogenation with rhodium nanoparticles."
+    },
+    "outliers_boosted": {
+      "n_outliers": 2,
+      "theme": "Utilization of ionic liquids in nanomaterial synthesis and stabilization",
+      "reasoning": "The outlier papers focus on the use of ionic liquids for imaging and preparation of cells or materials, while the target paper and other neighbors are centered around chemical synthesis and stabilization of metal nanoparticles in ionic liquid environments."
+    }
+  },
+  {
+    "uid": "W1989454779",
+    "title": "LCST‐Type Phase Behavior Induced by Pillar[5]arene/Ionic Liquid Host–Guest Complexation",
+    "sum_cluster": 77,
+    "sum_size": 7643,
+    "boosted_cluster": 143,
+    "boosted_size": 4279,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper discusses the phase behavior related to the interaction of a pillar[5]arene with an ionic liquid, specifically focusing on a lower critical solution temperature (LCST) phase transition. This theme of phase behavior and ionic liquids aligns well with Group A's focus on solution properties and phase equilibria involving ionic substances, despite some overlap with Group B's general ionic liquid discussions."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Studies on ionic liquids and their applications in catalysis and material science",
+      "n_outliers": 1,
+      "reasoning": "Most papers focus on various properties and applications of ionic liquids, including their phase behavior, conductivity, and catalytic functions. However, the second paper primarily discusses organometallic catalysis, which, while related, does not directly align with the specific focus on ionic liquids found in the other papers."
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "theme": "Research on ionic liquids and their properties/applications",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on the chemistry, properties, and applications of ionic liquids, emphasizing their structural behavior and suitability for various chemical processes. However, paper 4 diverges from this theme as it discusses the educational aspect of ionic liquids in high school chemistry teaching, which is less relevant to the core scientific investigations present in other papers."
+    },
+    "outliers_sum": {
+      "n_outliers": 2,
+      "theme": "Ionic liquids and their phase behavior in various contexts",
+      "reasoning": "Papers [1] and [4] focus on organometallic catalysis and self-catalyzed reactions, respectively, which do not align with the central theme of phase behavior and applications of ionic liquids that characterizes the target and other neighboring papers."
+    },
+    "outliers_boosted": {
+      "n_outliers": 2,
+      "theme": "Phase behavior and properties of ionic liquids and their applications",
+      "reasoning": "Papers [4] and [6] diverge from the cluster theme as they focus on educational methodologies and synthetic methods for poly(ethylene terephthalate) respectively, rather than the phase behavior of ionic liquids or their specific properties."
+    }
+  },
+  {
+    "uid": "W2070517302",
+    "title": "A Computational Investigation of the Insertion of Carbon Dioxide into Four‐ and Five‐Coordinate Iridium Hydrides",
+    "sum_cluster": 73,
+    "sum_size": 515,
+    "boosted_cluster": 57,
+    "boosted_size": 886,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4,
+      "reasoning": "The target paper discusses the catalytic conversion of CO2 and its insertion into iridium hydrides, which ties directly into the research focus of Group A on hydrogenation processes involving CO2. Both the target paper and Group A work on metal complexes facilitating CO2 conversion, establishing a strong thematic link despite Group A's emphasis on copper catalysts."
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "theme": "Catalysis for CO2 transformation and hydrogenation",
+      "n_outliers": 1,
+      "reasoning": "Most papers focus on various metal catalysts and their mechanisms for catalyzing reactions involving CO2, specifically hydrogenation processes. However, paper [6] addresses a broader theme of sustainable fuels and chemicals rather than focusing specifically on catalytic processes, making it an outlier in this context."
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "theme": "Catalytic hydrogenation processes involving CO2 and methanol",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on catalytic processes specifically for hydrogenation of CO2 and methanol, demonstrating a clear shared theme in transition metal catalysts. However, paper [6], while related to metal complexes, discusses hydride and dihydrogen complexes more generally without a specific focus on the carbon-based reactions, making it a minor outlier."
+    },
+    "outliers_sum": {
+      "n_outliers": 1,
+      "theme": "Catalytic conversion and hydrogenation processes involving carbon dioxide",
+      "reasoning": "While the target paper and its neighbors focus primarily on catalytic processes involving metal complexes for CO2 transformation, the outlier discusses broader concepts of sustainable fuels and chemicals without a specific focus on catalytic chemistry."
+    },
+    "outliers_boosted": {
+      "n_outliers": 1,
+      "theme": "Catalytic hydrogenation and conversion of CO2.",
+      "reasoning": "The outlier paper discusses hydride and dihydrogen complexes of earth abundant metals, which does not focus specifically on the catalytic conversion of CO2, unlike the other papers in the cluster."
+    }
+  },
+  {
+    "uid": "W4391338937",
+    "title": "Atomically synergistic Zn-Cr catalyst for iso-stoichiometric co-conversion of ethane and CO2 to ethylene and CO",
+    "sum_cluster": 3,
+    "sum_size": 861,
+    "boosted_cluster": 16,
+    "boosted_size": 260,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 5,
+      "reasoning": "The target paper discusses the use of a zinc-chromium catalyst for the co-conversion of ethane and CO2 to ethylene and CO, which aligns closely with Group B's focus on catalytic processes involving ethane and CO2. Both the target paper and Group B emphasize the catalytic conversions of hydrocarbons and CO2, making the target paper a natural fit for Group B."
+    },
+    "cohesion_sum": {
+      "score": 3,
+      "theme": "Ionic liquids and catalytic processes",
+      "n_outliers": 2,
+      "reasoning": "The majority of the papers focus on the study of ionic liquids and their properties using density functional theory (DFT), which creates a strong central theme. However, papers 1 and 3 shift towards nanocarbon catalysis and carbon dioxide activation mechanisms, which diverges from the main focus on ionic liquids."
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "theme": "Catalytic dehydrogenation processes utilizing CO2",
+      "n_outliers": 1,
+      "reasoning": "The majority of the papers focus on oxidative dehydrogenation processes involving ethane or propane and the utilization of CO2, indicating a strong shared theme in catalytic systems leveraging CO2. However, paper [3] discusses propane dehydrogenation with a focus on isolated Cr(VI) species and does not directly engage with CO2 as a reagent, positioning it as a minor outlier in this group."
+    },
+    "outliers_sum": {
+      "n_outliers": 4,
+      "theme": "Catalysis and reaction mechanisms involving carbon compounds and CO2 utilization.",
+      "reasoning": "The outlier papers focus on ionic liquids and methods for understanding noncovalent interactions, which are less directly related to the specific catalytic processes discussed in the target paper and its relevant neighbors."
+    },
+    "outliers_boosted": {
+      "n_outliers": 1,
+      "theme": "Bifunctional catalysts for catalytic conversion of hydrocarbons using CO2",
+      "reasoning": "The outlier paper focuses on the isolated Cr(VI) species in the context of propane dehydrogenation, which does not directly relate to the theme of ethane dehydrogenation and CO2 utilization for ethylene production present in the other papers."
+    }
+  }
+]

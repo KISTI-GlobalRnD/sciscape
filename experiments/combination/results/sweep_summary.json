@@ -1,0 +1,182 @@
+[
+  {
+    "strategy": "sum",
+    "gamma": 1e-06,
+    "n_clusters": 192,
+    "n_big": 192,
+    "max_size": 17692,
+    "max_pct": 15.3,
+    "top5": [
+      17692,
+      5906,
+      2707,
+      2519,
+      2244
+    ]
+  },
+  {
+    "strategy": "sum",
+    "gamma": 5e-06,
+    "n_clusters": 179,
+    "n_big": 179,
+    "max_size": 16335,
+    "max_pct": 14.2,
+    "top5": [
+      16335,
+      7442,
+      2774,
+      2592,
+      2357
+    ]
+  },
+  {
+    "strategy": "sum",
+    "gamma": 1e-05,
+    "n_clusters": 185,
+    "n_big": 185,
+    "max_size": 15834,
+    "max_pct": 13.7,
+    "top5": [
+      15834,
+      6437,
+      2566,
+      2309,
+      2239
+    ]
+  },
+  {
+    "strategy": "sum",
+    "gamma": 2e-05,
+    "n_clusters": 198,
+    "n_big": 198,
+    "max_size": 14403,
+    "max_pct": 12.5,
+    "top5": [
+      14403,
+      5201,
+      2933,
+      2548,
+      2371
+    ]
+  },
+  {
+    "strategy": "sum",
+    "gamma": 5e-05,
+    "n_clusters": 211,
+    "n_big": 211,
+    "max_size": 12889,
+    "max_pct": 11.2,
+    "top5": [
+      12889,
+      2691,
+      2643,
+      2348,
+      2252
+    ]
+  },
+  {
+    "strategy": "sum",
+    "gamma": 0.0001,
+    "n_clusters": 222,
+    "n_big": 222,
+    "max_size": 7643,
+    "max_pct": 6.6,
+    "top5": [
+      7643,
+      2522,
+      2159,
+      2052,
+      1998
+    ]
+  },
+  {
+    "strategy": "boosted",
+    "gamma": 1e-06,
+    "n_clusters": 225,
+    "n_big": 225,
+    "max_size": 7196,
+    "max_pct": 6.2,
+    "top5": [
+      7196,
+      4646,
+      2774,
+      2487,
+      2281
+    ]
+  },
+  {
+    "strategy": "boosted",
+    "gamma": 5e-06,
+    "n_clusters": 229,
+    "n_big": 229,
+    "max_size": 7066,
+    "max_pct": 6.1,
+    "top5": [
+      7066,
+      4706,
+      2719,
+      2538,
+      2532
+    ]
+  },
+  {
+    "strategy": "boosted",
+    "gamma": 1e-05,
+    "n_clusters": 226,
+    "n_big": 226,
+    "max_size": 6128,
+    "max_pct": 5.3,
+    "top5": [
+      6128,
+      3445,
+      3141,
+      2989,
+      2835
+    ]
+  },
+  {
+    "strategy": "boosted",
+    "gamma": 2e-05,
+    "n_clusters": 225,
+    "n_big": 225,
+    "max_size": 5521,
+    "max_pct": 4.8,
+    "top5": [
+      5521,
+      2829,
+      2731,
+      2400,
+      2158
+    ]
+  },
+  {
+    "strategy": "boosted",
+    "gamma": 5e-05,
+    "n_clusters": 237,
+    "n_big": 237,
+    "max_size": 4595,
+    "max_pct": 4.0,
+    "top5": [
+      4595,
+      2625,
+      2148,
+      2088,
+      2013
+    ]
+  },
+  {
+    "strategy": "boosted",
+    "gamma": 0.0001,
+    "n_clusters": 240,
+    "n_big": 240,
+    "max_size": 4279,
+    "max_pct": 3.7,
+    "top5": [
+      4279,
+      2566,
+      1966,
+      1873,
+      1863
+    ]
+  }
+]
