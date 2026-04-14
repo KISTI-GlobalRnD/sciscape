@@ -347,6 +347,58 @@ Emb provides two unique capabilities:
 
 When Emb agrees with a citation layer (2-layer consensus), BC is the strongest partner (4{,}826 edges)---``shared references + similar text'' produces high-confidence topical connections.
 
+\subsection{Field Comparison: Citation-Rich vs. Citation-Poor}
+
+Repeating the analysis on Field~12 (Arts \& Humanities, 754K papers) reveals strikingly different patterns (Figure~\ref{fig:f12_landscape}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/edge_landscape_f12.pdf}
+\caption{Field 12 edge landscape. DC is extremely broad (35\% diagonal); Emb is the \emph{most} diagonal-concentrated (71\%), reversing the Field~15 pattern.}
+\label{fig:f12_landscape}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Cross-field comparison of consensus and embedding properties.}
+\begin{tabular}{lrr}
+\toprule
+Metric & Field 15 (Chem.~Eng.) & Field 12 (Arts \& Hum.) \\
+\midrule
+\multicolumn{3}{l}{\emph{Temporal concentration (diagonal $\pm$3yr)}} \\
+\quad BC & 78\% & 68\% \\
+\quad CC & 74\% & 63\% \\
+\quad DC & 44\% & 35\% \\
+\quad Emb & 62\% & \textbf{71\%} \\
+\midrule
+\multicolumn{3}{l}{\emph{Consensus distribution}} \\
+\quad 2-layer & 8.1\% & 2.5\% \\
+\quad 3-layer & 1.0\% & 0.1\% \\
+\quad Strongest 2L pair & BC+CC (13K) & BC+Emb (4.8K) \\
+\midrule
+\multicolumn{3}{l}{\emph{Embedding contribution}} \\
+\quad Emb-only cross-subfield & 26.5\% & \textbf{56.1\%} \\
+\quad Citation cross-subfield & 1.6\% & 19.0\% \\
+\quad Emb year gap & 3.8yr & 3.0yr \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Key differences:
+\begin{itemize}[nosep]
+    \item \textbf{Emb dominance reversal}: In humanities, Emb is the most temporally concentrated layer (71\%), because citation layers are too sparse to form tight connections.
+    \item \textbf{Consensus rarity}: Only 2.5\% of edges achieve 2-layer consensus (vs. 8.1\% in engineering), making consensus weighting less differentiating.
+    \item \textbf{Emb as CC substitute}: The strongest 2-layer pair shifts from BC+CC to BC+Emb --- embedding replaces co-citation in citation-poor fields.
+    \item \textbf{Cross-disciplinary}: 56\% of Emb-only edges cross subfield boundaries (vs. 26.5\%), reflecting the inherently interdisciplinary nature of humanities.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/consensus_levels_year_f12.pdf}
+\caption{Field 12 consensus levels. Even 1-layer edges are highly diagonal (91\%) due to sparse, temporally narrow citation patterns. 3-layer achieves 98\% but contains only 458 edges.}
+\label{fig:f12_consensus}
+\end{figure}
+
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
