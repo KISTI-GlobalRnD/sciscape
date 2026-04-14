@@ -94,6 +94,17 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Resolution search bounds lo,hi (default: 1e-6,1e-3)")
     ls.add_argument("--force", action="store_true",
                      help="Ignore cached intermediate results and re-run from scratch")
+    ls.add_argument("--layers", type=str, default=None,
+                     help="Multi-layer edge files: name=path,name=path,... "
+                          "(e.g. bc=bc.parquet,cc=cc.parquet,dc=dc.parquet)")
+    ls.add_argument("--combine-strategy", type=str, default="boosted",
+                     help="Combination strategy: boosted, sum, max, vote (default: boosted)")
+    ls.add_argument("--combine-top-k", type=int, default=30,
+                     help="Per-node top-k filter for each layer (default: 30)")
+    ls.add_argument("--auto-gamma", action="store_true",
+                     help="Auto-select γ (target max cluster < 3%%)")
+    ls.add_argument("--auto-gamma-target", type=float, default=3.0,
+                     help="Max cluster %% target for auto-gamma (default: 3.0)")
     ls.add_argument("-v", "--verbose", action="store_true")
 
     # ---- viewer ----
@@ -305,6 +316,23 @@ def _run_landscape(args: argparse.Namespace) -> None:
             print(f"Invalid --gamma-range format. Expected: lo,hi (e.g., 1e-5,1e-2)",
                   file=sys.stderr)
             sys.exit(1)
+
+    # Multi-layer combination
+    if args.layers:
+        layer_paths = {}
+        for item in args.layers.split(","):
+            if "=" in item:
+                name, path = item.split("=", 1)
+                layer_paths[name.strip()] = Path(path.strip())
+            else:
+                layer_paths[Path(item).stem] = Path(item.strip())
+        cfg_kwargs["layer_paths"] = layer_paths
+        cfg_kwargs["combine_strategy"] = args.combine_strategy
+        cfg_kwargs["combine_top_k"] = args.combine_top_k
+
+    if args.auto_gamma:
+        cfg_kwargs["auto_gamma"] = True
+        cfg_kwargs["auto_gamma_target"] = args.auto_gamma_target
 
     cfg = LandscapeConfig(**cfg_kwargs)
 

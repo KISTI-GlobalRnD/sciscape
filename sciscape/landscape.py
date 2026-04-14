@@ -66,6 +66,13 @@ class LandscapeConfig:
     depth_enabled: bool = True
     n_jobs: int = -1
 
+    # Multi-layer combination
+    layer_paths: Dict[str, Path] | None = None  # {"bc": path, "cc": path, ...}
+    combine_strategy: str = "boosted"
+    combine_top_k: int = 30
+    auto_gamma: bool = False
+    auto_gamma_target: float = 3.0
+
     # Report
     report_title: str = "SciScape Landscape"
 
@@ -594,6 +601,47 @@ def run_landscape(
     abstract_path = Path(abstract_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Multi-layer combination (if configured) ──────────────
+    if cfg.layer_paths:
+        from .linkage.combine import combine_edge_layers
+        log.info("Multi-layer combination: %d layers, strategy=%s, top_k=%s",
+                 len(cfg.layer_paths), cfg.combine_strategy, cfg.combine_top_k)
+        layers = {}
+        for name, path in cfg.layer_paths.items():
+            path = Path(path)
+            if path.exists():
+                layers[name] = pl.read_parquet(path)
+                log.info("  %s: %d edges", name, layers[name].height)
+            else:
+                log.warning("  %s: file not found: %s", name, path)
+        if layers:
+            combined = combine_edge_layers(
+                layers,
+                strategy=cfg.combine_strategy,
+                gcc=True,
+                top_k=cfg.combine_top_k,
+            )
+            combined_path = output_dir / "combined_edges.parquet"
+            combined.write_parquet(combined_path)
+            edge_path = combined_path
+            log.info("Combined: %d edges → %s", combined.height, combined_path)
+
+    # ── Auto-gamma (if configured) ──────────────────────────
+    if cfg.auto_gamma and edge_path.exists():
+        from .clustering.auto_gamma import find_gamma
+        log.info("Auto-gamma: searching for target max < %.1f%%", cfg.auto_gamma_target)
+        edges_for_gamma = pl.read_parquet(edge_path)
+        ag_result = find_gamma(
+            edges_for_gamma,
+            target_max_pct=cfg.auto_gamma_target,
+            gamma_range=(1e-7, 1e-1),
+            progress=cfg.progress if hasattr(cfg, 'progress') else None,
+        )
+        # Narrow gamma_range around found γ
+        cfg.gamma_range = (ag_result.gamma * 0.5, ag_result.gamma * 2.0)
+        log.info("Auto-gamma: selected γ=%.2e, range narrowed to [%.2e, %.2e]",
+                 ag_result.gamma, cfg.gamma_range[0], cfg.gamma_range[1])
 
     # ── Input validation ──────────────────────────────────────
     if not edge_path.exists():

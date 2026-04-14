@@ -30,6 +30,16 @@ class LeidenConfig:
     stability_metric: str | None = None
     stability_seeds: Sequence[int] | None = None
 
+    # ── Multi-layer combination ──────────────────────────────
+    # If layer_paths is set, edges are combined before clustering.
+    # Each path should be a parquet file with uid1, uid2, rel_sum2.
+    layer_paths: Mapping[str, Path] | None = None  # e.g. {"bc": Path, "cc": Path, ...}
+    combine_strategy: str = "boosted"       # "sum" | "boosted" | "max" | "vote"
+    combine_top_k: int = 30                 # per-node top-k filter before normalization
+    combine_gcc: bool = True                # GCC filter after combining
+    auto_gamma: bool = False                # auto-select γ via binary search
+    auto_gamma_target: float = 3.0          # max cluster % target for auto_gamma
+
     # ── Backend selection ────────────────────────────────────
     backend: str = "auto"                   # "auto" | "rust" | "igraph" | "java"
     auto_backend_threshold: int = 5_000_000 # switch to java above this (if rust unavailable)
