@@ -46,10 +46,10 @@ class LandscapeConfig:
     leiden_objective: str = "cpm"
     leiden_iterations: int = 50
 
-    # Block-init mode: high-γ blocks → contraction → cascade hot start
+    # Pre-partition mode: high-γ parts → contraction → cascade hot start
     # "auto" → 10 × gamma_range[1]; None → disabled; float → explicit value
-    gamma_block: Optional[float] = "auto"  # type: ignore[assignment]
-    gamma_block_margin: float = 0.9  # multiplier for gamma_block upper bound in cascade
+    gamma_pre: Optional[float] = "auto"  # type: ignore[assignment]
+    gamma_pre_margin: float = 0.9  # multiplier for gamma_pre upper bound in cascade
     gamma_log_step: float = 0.3      # log10-step size for cascade gamma spacing
 
     # Keyword extraction
@@ -245,45 +245,45 @@ def _run_clustering(
         )
         t0_search = time.perf_counter()
 
-        # Resolve gamma_block: "auto" → 10 × gamma_range[1]
-        gamma_block = cfg.gamma_block
-        if gamma_block == "auto":
-            gamma_block = 10.0 * cfg.gamma_range[1]
+        # Resolve gamma_pre: "auto" → 10 × gamma_range[1]
+        gamma_pre = cfg.gamma_pre
+        if gamma_pre == "auto":
+            gamma_pre = 10.0 * cfg.gamma_range[1]
 
-        if gamma_block is not None:
-            # ── Block-init mode: blocks → contraction → cascade ──
+        if gamma_pre is not None:
+            # ── Pre-partition mode: parts → contraction → cascade ──
             import math as _math
-            from .clustering.block_init import (
-                block_init as _block_init,
+            from .clustering.prepartition import (
+                prepartition as _prepartition,
                 cascade_search as _cascade_search,
-                save_blocks, load_blocks, is_cache_valid,
+                save_prepartition, load_prepartition, is_cache_valid,
                 contract_graph,
             )
 
-            blocks_path = output_dir / "blocks.parquet"
+            parts_path = output_dir / "parts.parquet"
 
             if not cfg.force and is_cache_valid(
-                blocks_path, gamma_block, giant.vcount()
+                parts_path, gamma_pre, giant.vcount()
             ):
-                log.info("Loading cached blocks from %s", blocks_path)
-                blocks = load_blocks(blocks_path)
+                log.info("Loading cached parts from %s", parts_path)
+                parts = load_prepartition(parts_path)
             else:
-                log.info("Block init: γ_block=%.2e...", gamma_block)
-                blocks = _block_init(runner, gamma_block, seed=cfg.seed)
-                save_blocks(blocks, blocks_path, uids)
+                log.info("Pre-partition: γ_block=%.2e...", gamma_pre)
+                parts = _prepartition(runner, gamma_pre, seed=cfg.seed)
+                save_prepartition(parts, parts_path, uids)
 
             # Singleton warning
-            singleton_frac = blocks.n_singletons / blocks.n_nodes
+            singleton_frac = parts.n_singletons / parts.n_nodes
             if singleton_frac > 0.8:
                 log.warning(
-                    "Block init: %.0f%% singletons (%d/%d). "
-                    "Consider lowering gamma_block (currently %.2e).",
+                    "Pre-partition: %.0f%% singletons (%d/%d). "
+                    "Consider lowering gamma_pre (currently %.2e).",
                     singleton_frac * 100,
-                    blocks.n_singletons, blocks.n_nodes, gamma_block,
+                    parts.n_singletons, parts.n_nodes, gamma_pre,
                 )
 
-            contracted, contracted_runner = contract_graph(runner, blocks)
-            node_sizes = blocks.node_sizes_list
+            contracted, contracted_runner = contract_graph(runner, parts)
+            node_sizes = parts.node_sizes_list
             contraction_ratio = giant.vcount() / max(contracted.vcount(), 1)
             log.info("Contracted: %d → %d supernodes (%.1fx reduction)",
                      giant.vcount(), contracted.vcount(), contraction_ratio)
@@ -302,7 +302,7 @@ def _run_clustering(
 
             # Cascade targets: log-spaced from best_gamma up to near γ_block
             lo_g = _math.log10(best_gamma)
-            hi_g = _math.log10(gamma_block * cfg.gamma_block_margin)
+            hi_g = _math.log10(gamma_pre * cfg.gamma_pre_margin)
             if hi_g > lo_g:
                 n_steps = min(5, max(2, int((hi_g - lo_g) / cfg.gamma_log_step) + 1))
                 cascade_gammas = [
@@ -313,14 +313,14 @@ def _run_clustering(
                 cascade_gammas = [best_gamma]
 
             cascade_result = _cascade_search(
-                runner, blocks,
+                runner, parts,
                 gamma_targets=cascade_gammas,
                 seed=cfg.seed,
                 hot_start=True,
             )
             raw_membership = list(cascade_result.membership)
             search_elapsed = time.perf_counter() - t0_search
-            log.info("  Block-init + cascade: %.1fs (γ=%.4e, %d clusters)",
+            log.info("  Pre-partition + cascade: %.1fs (γ=%.4e, %d clusters)",
                      search_elapsed, best_gamma, cascade_result.n_clusters)
 
         else:

@@ -39,7 +39,7 @@ class TestBuildParser:
         if cmd == "convert":
             return ["convert", "wos", "data.txt"]
         if cmd == "landscape":
-            return ["landscape", "edges.parquet", "abs.parquet"]
+            return ["landscape", "abs.parquet", "edges.parquet"]
         if cmd == "viewer":
             return ["viewer"]
         if cmd == "gui":
@@ -52,56 +52,56 @@ class TestBuildParser:
 # ---------------------------------------------------------------------------
 
 class TestLandscapeArgs:
-    def test_gamma_block_default(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet"])
-        assert args.gamma_block == "auto"
+    def test_gamma_pre_default(self, parser):
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet"])
+        assert args.gamma_pre == "auto"
 
-    def test_gamma_block_none(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "--gamma-block", "none"])
-        assert args.gamma_block == "none"
+    def test_gamma_pre_none(self, parser):
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "--gamma-pre", "none"])
+        assert args.gamma_pre == "none"
 
-    def test_gamma_block_float(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "--gamma-block", "0.01"])
-        assert args.gamma_block == "0.01"
+    def test_gamma_pre_float(self, parser):
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "--gamma-pre", "0.01"])
+        assert args.gamma_pre == "0.01"
 
     def test_gamma_range_default_none(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet"])
         assert args.gamma_range is None
 
     def test_gamma_range_valid(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "--gamma-range", "1e-5,1e-2"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "--gamma-range", "1e-5,1e-2"])
         assert args.gamma_range == "1e-5,1e-2"
 
     def test_seed_default(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet"])
         assert args.seed == 42
 
     def test_seed_explicit(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "--seed", "123"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "--seed", "123"])
         assert args.seed == 123
 
     def test_n_nodes_default(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet"])
         assert args.n_nodes == 100_000
 
     def test_top_n_default(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet"])
         assert args.top_n == 80
 
     def test_force_flag(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "--force"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "--force"])
         assert args.force is True
 
     def test_verbose_flag(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "-v"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "-v"])
         assert args.verbose is True
 
     def test_output_dir_default(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet"])
         assert args.output_dir == Path("landscape_output")
 
     def test_output_dir_explicit(self, parser):
-        args = parser.parse_args(["landscape", "e.parquet", "a.parquet", "-o", "/tmp/out"])
+        args = parser.parse_args(["landscape", "a.parquet", "e.parquet", "-o", "/tmp/out"])
         assert args.output_dir == Path("/tmp/out")
 
 
@@ -110,7 +110,7 @@ class TestLandscapeArgs:
 # ---------------------------------------------------------------------------
 
 class TestLandscapeValidation:
-    """Test the gamma-range / gamma-block parsing logic from _run_landscape."""
+    """Test the gamma-range / gamma-pre parsing logic from _run_landscape."""
 
     @staticmethod
     def _parse_gamma_range(raw: str) -> tuple[float, float]:
@@ -119,8 +119,8 @@ class TestLandscapeValidation:
         return (float(lo), float(hi))
 
     @staticmethod
-    def _parse_gamma_block(raw: str):
-        """Replicate gamma_block parsing from _run_landscape."""
+    def _parse_gamma_pre(raw: str):
+        """Replicate gamma_pre parsing from _run_landscape."""
         gb = raw.strip().lower()
         if gb == "none":
             return None
@@ -146,14 +146,14 @@ class TestLandscapeValidation:
         with pytest.raises(ValueError):
             self._parse_gamma_range("1,2,3")
 
-    def test_gamma_block_auto(self):
-        assert self._parse_gamma_block("auto") == "auto"
+    def test_gamma_pre_auto(self):
+        assert self._parse_gamma_pre("auto") == "auto"
 
-    def test_gamma_block_none(self):
-        assert self._parse_gamma_block("none") is None
+    def test_gamma_pre_none(self):
+        assert self._parse_gamma_pre("none") is None
 
-    def test_gamma_block_float(self):
-        assert self._parse_gamma_block("0.01") == pytest.approx(0.01)
+    def test_gamma_pre_float(self):
+        assert self._parse_gamma_pre("0.01") == pytest.approx(0.01)
 
 
 # ---------------------------------------------------------------------------

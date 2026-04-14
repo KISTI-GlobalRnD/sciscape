@@ -36,4 +36,3 @@ pilot_*.html
 pilot_*.parquet
 *.parquet
 !tests/**/*.parquet
-!experiments/**/*.parquet

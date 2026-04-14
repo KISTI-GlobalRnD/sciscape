@@ -1,8 +1,13 @@
-"""Block initialization and cascade search for bottom-up hierarchical Leiden.
+"""Pre-partition and cascade search for bottom-up hierarchical Leiden.
 
-High-γ Leiden produces dense "Lego blocks" (including size-1 singletons).
-The graph is then contracted to super-nodes, and a γ-cascade with hot-start
-finds target clusters efficiently on the much smaller contracted graph.
+Pre-partition assembles small "Lego blocks" at high γ — tightly connected
+sub-groups that are unlikely to be split at any lower resolution.  The
+graph is then contracted (each block → one super-node), and a γ-cascade
+with hot-start finds target clusters on the much smaller contracted graph.
+
+This is analogous to pre-assembling Lego pieces before arranging them
+into larger structures: individual papers form blocks, blocks form
+nano-clusters, nano-clusters form micro-clusters, and so on.
 
 Functions are pure — caching is the caller's responsibility.
 """
@@ -30,21 +35,21 @@ log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class BlockInitResult:
+class PrepartitionResult:
     """Result of high-γ block initialization."""
 
-    block_membership: List[int]
-    gamma_block: float
+    pre_membership: List[int]
+    gamma_pre: float
     seed: int | None
     n_nodes: int
-    n_blocks: int
+    n_parts: int
     n_singletons: int
-    block_sizes: Dict[int, int]
+    pre_sizes: Dict[int, int]
 
     @property
     def node_sizes_list(self) -> List[int]:
         """Per-supernode sizes for the contracted graph (0-indexed order)."""
-        return [self.block_sizes[i] for i in range(self.n_blocks)]
+        return [self.pre_sizes[i] for i in range(self.n_parts)]
 
 
 @dataclass(frozen=True)
@@ -62,33 +67,33 @@ class CascadeResult:
 # ── Block initialization ─────────────────────────────────────
 
 
-def block_init(
+def prepartition(
     runner: "LeidenRunner | RustLeidenRunner",
-    gamma_block: float,
+    gamma_pre: float,
     *,
     seed: int | None = None,
-) -> BlockInitResult:
+) -> PrepartitionResult:
     """Form Lego blocks via high-γ Leiden on the full graph.
 
     Parameters
     ----------
     runner : LeidenRunner
         Runner bound to the original graph.
-    gamma_block : float
+    gamma_pre : float
         High resolution parameter for block formation.
     seed : int, optional
         Random seed for reproducibility.
 
     Returns
     -------
-    BlockInitResult
+    PrepartitionResult
         Block membership and metadata.
     """
-    result = runner.run(gamma_block, seed=seed, n_iterations=-1)
+    result = runner.run(gamma_pre, seed=seed, n_iterations=-1)
     mem = result.membership
 
     counts = Counter(mem)
-    n_blocks = len(counts)
+    n_parts = len(counts)
     n_singletons = sum(1 for s in counts.values() if s == 1)
 
     # Renumber to 0-based contiguous IDs (vectorized)
@@ -101,27 +106,24 @@ def block_init(
     sizes_remapped = {remap_arr[k]: v for k, v in counts.items()}
 
     log.info(
-        "Block init: γ=%.1e → %d blocks (%d singletons), %.1fs",
-        gamma_block,
-        n_blocks,
-        n_singletons,
-        0.0,  # caller can time externally
+        "Pre-partition: γ=%.1e → %d parts (%d singletons)",
+        gamma_pre, n_parts, n_singletons,
     )
 
-    return BlockInitResult(
-        block_membership=mem_remapped,
-        gamma_block=gamma_block,
+    return PrepartitionResult(
+        pre_membership=mem_remapped,
+        gamma_pre=gamma_pre,
         seed=seed,
         n_nodes=len(mem),
-        n_blocks=n_blocks,
+        n_parts=n_parts,
         n_singletons=n_singletons,
-        block_sizes=sizes_remapped,
+        pre_sizes=sizes_remapped,
     )
 
 
 def contract_graph(
     runner: "LeidenRunner | RustLeidenRunner",
-    blocks: BlockInitResult,
+    parts: PrepartitionResult,
 ) -> tuple["ig.Graph | RustLeidenRunner", "LeidenRunner | RustLeidenRunner"]:
     """Contract the original graph using block membership.
 
@@ -131,11 +133,11 @@ def contract_graph(
     from .runner import RustLeidenRunner
 
     if isinstance(runner, RustLeidenRunner):
-        contracted_runner = runner.contract(blocks.block_membership)
+        contracted_runner = runner.contract(parts.pre_membership)
         return contracted_runner, contracted_runner
     else:
         contracted = runner.contract(
-            blocks.block_membership,
+            parts.pre_membership,
             combine_weights="sum",
             keep_loops=True,
         )
@@ -148,7 +150,7 @@ def contract_graph(
 
 def cascade_search(
     runner: "LeidenRunner | RustLeidenRunner",
-    blocks: BlockInitResult,
+    parts: PrepartitionResult,
     gamma_targets: Sequence[float],
     *,
     seed: int | None = None,
@@ -163,7 +165,7 @@ def cascade_search(
     ----------
     runner : LeidenRunner
         Runner bound to the **original** graph.
-    blocks : BlockInitResult
+    blocks : PrepartitionResult
         Pre-computed block initialization.
     gamma_targets : sequence of float
         Target γ values, will be sorted descending internally.
@@ -178,19 +180,19 @@ def cascade_search(
     CascadeResult
         Final membership mapped to original node indices.
     """
-    contracted, contracted_runner = contract_graph(runner, blocks)
-    node_sizes = blocks.node_sizes_list
+    contracted, contracted_runner = contract_graph(runner, parts)
+    node_sizes = parts.node_sizes_list
     gammas = sorted(gamma_targets, reverse=True)
 
     prev_mem = None
     best_result = None
 
     for gamma in gammas:
-        if gamma >= blocks.gamma_block:
+        if gamma >= parts.gamma_pre:
             log.warning(
                 "Skipping γ=%.1e ≥ γ_block=%.1e (would violate monotonicity)",
                 gamma,
-                blocks.gamma_block,
+                parts.gamma_pre,
             )
             continue
 
@@ -220,11 +222,11 @@ def cascade_search(
 
     # Expand to original node indices
     mem_expanded = _expand_membership(
-        best_result.membership, blocks.block_membership
+        best_result.membership, parts.pre_membership
     )
 
     # Hot start: refine on original graph
-    final_gamma = gammas[-1] if gammas[-1] < blocks.gamma_block else gammas[0]
+    final_gamma = gammas[-1] if gammas[-1] < parts.gamma_pre else gammas[0]
     did_hot_start = False
 
     if hot_start:
@@ -245,50 +247,50 @@ def cascade_search(
         gamma=final_gamma,
         quality=quality,
         n_clusters=len(set(mem_expanded)),
-        cascade_path=[g for g in gammas if g < blocks.gamma_block],
+        cascade_path=[g for g in gammas if g < parts.gamma_pre],
         hot_started=did_hot_start,
     )
 
 
 # ── Persistence ───────────────────────────────────────────────
 
-_META_PREFIX = "block_init."
+_META_PREFIX = "prepartition."
 
 
-def save_blocks(
-    blocks: BlockInitResult,
+def save_prepartition(
+    parts: PrepartitionResult,
     path: Path,
     uids: Sequence[str],
     *,
     source: str | None = None,
 ) -> None:
-    """Save block membership as a Parquet file with metadata.
+    """Save pre-partition membership as a Parquet file with metadata.
 
     Parameters
     ----------
-    blocks : BlockInitResult
-        Block initialization result.
+    parts : PrepartitionResult
+        Pre-partition result.
     path : Path
         Output parquet file path.
     uids : sequence of str
-        Node UIDs matching the order of ``blocks.block_membership``.
+        Node UIDs matching the order of ``parts.pre_membership``.
     source : str, optional
         Path to the edge file used (for provenance tracking).
     """
     df = pl.DataFrame(
         {
             "uid": list(uids),
-            "block": blocks.block_membership,
+            "part": parts.pre_membership,
         }
     )
 
     metadata = {
-        f"{_META_PREFIX}gamma_block": str(blocks.gamma_block),
-        f"{_META_PREFIX}seed": str(blocks.seed) if blocks.seed is not None else "",
-        f"{_META_PREFIX}n_nodes": str(blocks.n_nodes),
+        f"{_META_PREFIX}gamma_pre": str(parts.gamma_pre),
+        f"{_META_PREFIX}seed": str(parts.seed) if parts.seed is not None else "",
+        f"{_META_PREFIX}n_nodes": str(parts.n_nodes),
         f"{_META_PREFIX}n_edges": "",  # filled by caller if desired
-        f"{_META_PREFIX}n_blocks": str(blocks.n_blocks),
-        f"{_META_PREFIX}n_singletons": str(blocks.n_singletons),
+        f"{_META_PREFIX}n_parts": str(parts.n_parts),
+        f"{_META_PREFIX}n_singletons": str(parts.n_singletons),
         f"{_META_PREFIX}source": source or "",
         f"{_META_PREFIX}created": datetime.now(timezone.utc).isoformat(),
     }
@@ -304,10 +306,10 @@ def save_blocks(
     import pyarrow.parquet as pq
 
     pq.write_table(table, str(path))
-    log.info("Blocks saved: %s (%d blocks)", path, blocks.n_blocks)
+    log.info("Pre-partition saved: %s (%d parts)", path, parts.n_parts)
 
 
-def load_blocks(path: Path) -> BlockInitResult | None:
+def load_prepartition(path: Path) -> PrepartitionResult | None:
     """Load cached blocks from a Parquet file.
 
     Returns None if the file does not exist.
@@ -326,30 +328,30 @@ def load_blocks(path: Path) -> BlockInitResult | None:
         if k.decode().startswith(_META_PREFIX)
     }
 
-    if f"{_META_PREFIX}gamma_block" not in meta:
+    if f"{_META_PREFIX}gamma_pre" not in meta:
         log.warning("No block_init metadata in %s", path)
         return None
 
     df = pl.from_arrow(table)
-    block_mem = df["block"].to_list()
-    gamma_block = float(meta[f"{_META_PREFIX}gamma_block"])
+    pre_mem = df["part"].to_list()
+    gamma_pre = float(meta[f"{_META_PREFIX}gamma_pre"])
     seed_str = meta.get(f"{_META_PREFIX}seed", "")
     seed = int(seed_str) if seed_str else None
 
-    counts = Counter(block_mem)
+    counts = Counter(pre_mem)
 
-    return BlockInitResult(
-        block_membership=block_mem,
-        gamma_block=gamma_block,
+    return PrepartitionResult(
+        pre_membership=pre_mem,
+        gamma_pre=gamma_pre,
         seed=seed,
-        n_nodes=len(block_mem),
-        n_blocks=len(counts),
+        n_nodes=len(pre_mem),
+        n_parts=len(counts),
         n_singletons=sum(1 for s in counts.values() if s == 1),
-        block_sizes=dict(counts),
+        pre_sizes=dict(counts),
     )
 
 
-def load_blocks_metadata(path: Path) -> dict | None:
+def load_prepartition_metadata(path: Path) -> dict | None:
     """Load only the metadata from a blocks Parquet file (without reading data).
 
     Returns a dict of metadata fields, or None if file doesn't exist.
@@ -372,16 +374,16 @@ def load_blocks_metadata(path: Path) -> dict | None:
 
 def is_cache_valid(
     path: Path,
-    gamma_block: float,
+    gamma_pre: float,
     n_nodes: int,
     source: str | None = None,
 ) -> bool:
     """Check if cached blocks are valid for the given parameters."""
-    meta = load_blocks_metadata(path)
+    meta = load_prepartition_metadata(path)
     if meta is None:
         return False
 
-    if float(meta.get("gamma_block", -1)) != gamma_block:
+    if float(meta.get("gamma_pre", -1)) != gamma_pre:
         return False
     if int(meta.get("n_nodes", -1)) != n_nodes:
         return False
@@ -396,20 +398,20 @@ def is_cache_valid(
 
 def _expand_membership(
     contracted_mem: Sequence[int],
-    block_mem: Sequence[int],
+    pre_mem: Sequence[int],
 ) -> List[int]:
     """Map contracted-graph membership back to original node indices."""
-    return np.array(contracted_mem)[np.array(block_mem)].tolist()
+    return np.array(contracted_mem)[np.array(pre_mem)].tolist()
 
 
 __all__ = [
-    "BlockInitResult",
+    "PrepartitionResult",
     "CascadeResult",
-    "block_init",
+    "prepartition",
     "contract_graph",
     "cascade_search",
-    "save_blocks",
-    "load_blocks",
-    "load_blocks_metadata",
+    "save_prepartition",
+    "load_prepartition",
+    "load_prepartition_metadata",
     "is_cache_valid",
 ]

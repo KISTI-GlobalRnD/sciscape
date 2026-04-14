@@ -102,13 +102,13 @@ class SciScapeApp:
         param_frame.pack(fill="x", **pad)
 
         self.min_docs_var = tk.StringVar(value="1000")
-        self.gamma_block_var = tk.StringVar(value="auto")
+        self.gamma_pre_var = tk.StringVar(value="auto")
         self.n_nodes_var = tk.StringVar(value="100000")
         self.seed_var = tk.StringVar(value="42")
 
         params = [
             ("Min docs/cluster:", self.min_docs_var, 0, 0),
-            ("γ block:", self.gamma_block_var, 0, 2),
+            ("γ block:", self.gamma_pre_var, 0, 2),
             ("Target nodes:", self.n_nodes_var, 1, 0),
             ("Seed:", self.seed_var, 1, 2),
         ]
@@ -221,15 +221,15 @@ class SciScapeApp:
             messagebox.showerror("Error", "Select an output directory.")
             return None
 
-        # Parse gamma_block
-        gb = self.gamma_block_var.get().strip().lower()
+        # Parse gamma_pre
+        gb = self.gamma_pre_var.get().strip().lower()
         if gb == "none":
-            gamma_block = None
+            gamma_pre = None
         elif gb == "auto":
-            gamma_block = "auto"
+            gamma_pre = "auto"
         else:
             try:
-                gamma_block = float(gb)
+                gamma_pre = float(gb)
             except ValueError:
                 messagebox.showerror("Error", f"Invalid γ block: {gb}")
                 return None
@@ -246,7 +246,7 @@ class SciScapeApp:
             edge_path=edge,
             abstract_path=abstract,
             output_dir=output,
-            gamma_block=gamma_block,
+            gamma_pre=gamma_pre,
             min_docs=min_docs,
             n_nodes=n_nodes,
             seed=seed,
@@ -284,7 +284,7 @@ class SciScapeApp:
                 n_target_nodes=params["n_nodes"],
                 seed=params["seed"],
                 min_docs_per_cluster=params["min_docs"],
-                gamma_block=params["gamma_block"],
+                gamma_pre=params["gamma_pre"],
             )
             self._result = run_landscape(
                 params["edge_path"],

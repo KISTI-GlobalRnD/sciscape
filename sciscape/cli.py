@@ -89,7 +89,7 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Min documents per cluster (default: 1000)")
     ls.add_argument("--top-n", type=int, default=80, help="Keywords per cluster (default: 80)")
     ls.add_argument("--title", type=str, default="SciScape Landscape", help="Report title")
-    ls.add_argument("--gamma-block", type=str, default="auto",
+    ls.add_argument("--gamma-pre", type=str, default="auto",
                      help="Block-init γ: 'auto' (10×γ_range upper), 'none' (disable), or float (default: auto)")
     ls.add_argument("--gamma-range", type=str, default=None,
                      help="Resolution search bounds lo,hi (default: 1e-6,1e-3)")
@@ -291,14 +291,14 @@ def _run_landscape(args: argparse.Namespace) -> None:
                             format="%(asctime)s %(levelname)s %(message)s",
                             datefmt="%H:%M:%S")
 
-    # Parse gamma_block: "auto" | "none" | float
-    gb = args.gamma_block.strip().lower()
+    # Parse gamma_pre: "auto" | "none" | float
+    gb = args.gamma_pre.strip().lower()
     if gb == "none":
-        gamma_block = None
+        gamma_pre = None
     elif gb == "auto":
-        gamma_block = "auto"
+        gamma_pre = "auto"
     else:
-        gamma_block = float(gb)
+        gamma_pre = float(gb)
 
     cfg_kwargs = dict(
         n_target_nodes=args.n_nodes,
@@ -307,7 +307,7 @@ def _run_landscape(args: argparse.Namespace) -> None:
         min_docs_per_cluster=args.min_docs,
         top_n_keywords=args.top_n,
         report_title=args.title,
-        gamma_block=gamma_block,
+        gamma_pre=gamma_pre,
     )
     if args.gamma_range:
         try:
