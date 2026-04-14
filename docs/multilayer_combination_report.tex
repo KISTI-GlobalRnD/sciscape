@@ -304,7 +304,29 @@ The consensus weight distribution and temporal profile per level are shown in Fi
 \label{fig:consensus_weight}
 \end{figure}
 
-This analysis confirms that consensus weighting achieves its intended effect: the small minority of multi-layer edges (9.2\%) receive disproportionate weight, forming temporally coherent cluster cores, while the single-layer majority (90.8\%) acts as supporting context.
+Figure~\ref{fig:combo} decomposes the consensus by specific layer combinations.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/consensus_combo_distribution_f15.pdf}
+\caption{Edge count by consensus combination. Among 2-layer pairs, BC+CC dominates (3.6\%); among 3-layer, BC+CC+Emb and BC+CC+DC are comparable. Only 240 edges (0.07\%) achieve full 4-layer consensus.}
+\label{fig:combo}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{figures/layer_overlap_heatmap_f15.pdf}
+\caption{Pairwise overlap rate (\% of smaller layer's edges). BC$\cap$CC has the highest overlap (16\%), while Emb overlaps least with citation layers ($<$7.3\%).}
+\label{fig:overlap}
+\end{figure}
+
+Key patterns:
+\begin{itemize}[nosep]
+    \item \textbf{BC+CC is the strongest pair} (12{,}947 edges, 3.6\%) --- papers sharing references tend to also be co-cited.
+    \item \textbf{Emb is the most independent layer} --- lowest pairwise overlap with all citation layers ($<$7.3\%), confirming it captures complementary information.
+    \item \textbf{3-layer combinations involving BC+CC dominate} --- BC+CC+Emb (1{,}479) and BC+CC+DC (1{,}353) are the most common triplets.
+    \item \textbf{Full consensus is rare but informative} --- only 240 edges achieve 4-layer agreement, but these form the densest cluster cores.
+\end{itemize}
 
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
