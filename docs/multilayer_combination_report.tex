@@ -328,6 +328,25 @@ Key patterns:
     \item \textbf{Full consensus is rare but informative} --- only 240 edges achieve 4-layer agreement, but these form the densest cluster cores.
 \end{itemize}
 
+\subsection{Embedding as Complementary Signal}
+
+Although Emb overlaps least with citation layers ($<$7.3\%), its independent edges are not noise---they capture complementary information (Figure~\ref{fig:emb}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/emb_contribution_f15.pdf}
+\caption{Embedding layer contribution. Left: 73.5\% of Emb-only edges connect same-subfield papers (vs. 98.4\% for citation). Center: Emb bridges wider temporal gaps (mean 3.8yr vs. 1.5yr). Right: BC is Emb's strongest consensus partner (4{,}826 edges).}
+\label{fig:emb}
+\end{figure}
+
+Emb provides two unique capabilities:
+\begin{enumerate}[nosep]
+    \item \textbf{Cross-subfield bridges}: 26.5\% of Emb-only edges cross subfield boundaries (vs. 1.6\% for citation), connecting topically related work across disciplinary lines.
+    \item \textbf{Temporal bridging}: Mean year gap of 3.8 years (vs. 1.5 for citation) connects recent papers to earlier related work not yet reflected in citation patterns.
+\end{enumerate}
+
+When Emb agrees with a citation layer (2-layer consensus), BC is the strongest partner (4{,}826 edges)---``shared references + similar text'' produces high-confidence topical connections.
+
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
