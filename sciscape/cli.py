@@ -77,8 +77,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ---- landscape ----
     ls = sub.add_parser("landscape", help="Full pipeline: edges → clustering → keywords → report")
-    ls.add_argument("edge_path", type=Path, help="Edge list file (.parquet, .csv, .tsv, .txt)")
     ls.add_argument("abstract_path", type=Path, help="Abstract parquet (uid, title, abstract, pubyear)")
+    ls.add_argument("edge_path", type=Path, nargs="?", default=None,
+                     help="Edge list file (optional if --layers is used)")
     ls.add_argument("-o", "--output-dir", type=Path, default=Path("landscape_output"),
                      help="Output directory (default: landscape_output)")
     ls.add_argument("--n-nodes", type=int, default=100_000,
@@ -336,7 +337,16 @@ def _run_landscape(args: argparse.Namespace) -> None:
 
     cfg = LandscapeConfig(**cfg_kwargs)
 
-    result = run_landscape(args.edge_path, args.abstract_path, args.output_dir, config=cfg)
+    # Determine edge_path
+    edge_path = args.edge_path
+    if edge_path is None and not args.layers:
+        print("Error: provide either edge_path or --layers", file=sys.stderr)
+        sys.exit(1)
+    if edge_path is None:
+        # Placeholder — will be replaced by combined edges inside run_landscape
+        edge_path = args.output_dir / "_placeholder_edges.parquet"
+
+    result = run_landscape(edge_path, args.abstract_path, args.output_dir, config=cfg)
     print(f"Landscape complete → {result['report_dir']}/report.html")
 
 

@@ -644,7 +644,7 @@ def run_landscape(
                  ag_result.gamma, cfg.gamma_range[0], cfg.gamma_range[1])
 
     # ── Input validation ──────────────────────────────────────
-    if not edge_path.exists():
+    if not edge_path.exists() and not cfg.layer_paths:
         raise FileNotFoundError(f"Edge file not found: {edge_path}")
     if not abstract_path.exists():
         raise FileNotFoundError(f"Abstract file not found: {abstract_path}")
