@@ -269,6 +269,43 @@ Stronger edges are temporally tighter: among BC edges, the top~1\% by weight hav
 \label{fig:marginal}
 \end{figure}
 
+\subsection{Consensus Level Analysis}
+
+Decomposing edges by consensus level reveals that higher consensus correlates with tighter temporal concentration (Figure~\ref{fig:consensus_year}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/consensus_levels_year_f15.pdf}
+\caption{Year$\times$year heatmaps by consensus level. 1-layer edges (91\% of total) spread broadly; 3--4 layer edges concentrate sharply on the diagonal.}
+\label{fig:consensus_year}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Consensus level statistics (Field 15, 4 layers).}
+\begin{tabular}{crrrrr}
+\toprule
+Consensus & Edges & Fraction & Diagonal $\pm$3yr & Median $w^{\text{cons}}$ \\
+\midrule
+1-layer & 328{,}905 & 90.8\% & 60\% & $\approx 0$ \\
+2-layer & 29{,}375 & 8.1\% & 84\% & 0.0001 \\
+3-layer & 3{,}795 & 1.0\% & 91\% & 0.0005 \\
+4-layer & 240 & 0.1\% & 95\% & 0.0012 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The consensus weight distribution and temporal profile per level are shown in Figure~\ref{fig:consensus_weight}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/consensus_weight_temporal_f15.pdf}
+\caption{Left: consensus weight distribution (violin) by level---higher consensus produces heavier, more distinguishable weights. Right: temporal edge distribution per level---multi-layer edges peak in recent years where all data sources overlap.}
+\label{fig:consensus_weight}
+\end{figure}
+
+This analysis confirms that consensus weighting achieves its intended effect: the small minority of multi-layer edges (9.2\%) receive disproportionate weight, forming temporally coherent cluster cores, while the single-layer majority (90.8\%) acts as supporting context.
+
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
