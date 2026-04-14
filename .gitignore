@@ -10,10 +10,30 @@ cpm-dendro/target/
 rust/target/
 rust-text/target/
 
+# Build artifacts
+build/
+dist/
+rust/dist/
+*.whl
+
+# LaTeX intermediate files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+
+# Lock files
+uv.lock
+
 # Local data / output / experiments
 data/
 output/
+reports/
 pilot_*.html
 pilot_*.parquet
 *.parquet
 !tests/**/*.parquet
+!experiments/**/*.parquet
