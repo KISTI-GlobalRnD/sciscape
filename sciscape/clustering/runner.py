@@ -203,6 +203,9 @@ class RustLeidenRunner:
 
         seed = self._default_seed if seed is None else seed
         n_iterations = self._default_iterations if n_iterations is None else n_iterations
+        # Rust uses 0 for "until convergence" (leidenalg uses -1)
+        if n_iterations is not None and n_iterations < 0:
+            n_iterations = 0
 
         # node_sizes from caller (hierarchy contraction) → node_weights for Rust
         nw = self._node_weights

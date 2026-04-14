@@ -21,7 +21,7 @@ import numpy as np
 import polars as pl
 
 if TYPE_CHECKING:
-    from .runner import LeidenRunner
+    from .runner import LeidenRunner, RustLeidenRunner
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class CascadeResult:
 
 
 def block_init(
-    runner: "LeidenRunner",
+    runner: "LeidenRunner | RustLeidenRunner",
     gamma_block: float,
     *,
     seed: int | None = None,
@@ -120,27 +120,34 @@ def block_init(
 
 
 def contract_graph(
-    runner: "LeidenRunner",
+    runner: "LeidenRunner | RustLeidenRunner",
     blocks: BlockInitResult,
-) -> tuple[ig.Graph, "LeidenRunner"]:
+) -> tuple["ig.Graph | RustLeidenRunner", "LeidenRunner | RustLeidenRunner"]:
     """Contract the original graph using block membership.
 
-    Returns the contracted graph (no self-loops) and a runner for it.
+    Returns the contracted graph/runner pair.
+    For RustLeidenRunner, contract() returns a new runner directly.
     """
-    contracted = runner.contract(
-        blocks.block_membership,
-        combine_weights="sum",
-        keep_loops=True,  # simplify(loops=True) removes self-loops
-    )
-    contracted_runner = runner.clone_for_graph(contracted)
-    return contracted, contracted_runner
+    from .runner import RustLeidenRunner
+
+    if isinstance(runner, RustLeidenRunner):
+        contracted_runner = runner.contract(blocks.block_membership)
+        return contracted_runner, contracted_runner
+    else:
+        contracted = runner.contract(
+            blocks.block_membership,
+            combine_weights="sum",
+            keep_loops=True,
+        )
+        contracted_runner = runner.clone_for_graph(contracted)
+        return contracted, contracted_runner
 
 
 # ── Cascade search ────────────────────────────────────────────
 
 
 def cascade_search(
-    runner: "LeidenRunner",
+    runner: "LeidenRunner | RustLeidenRunner",
     blocks: BlockInitResult,
     gamma_targets: Sequence[float],
     *,
