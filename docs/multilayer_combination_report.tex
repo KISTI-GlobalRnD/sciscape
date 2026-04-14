@@ -205,7 +205,14 @@ Adding embedding edges consistently improves partitioning:
     \item Field 12: \textbf{62\% fewer clusters, 160\% larger avg size} --- embedding fills citation gaps in humanities.
 \end{itemize}
 
-The $\gamma$ ratio between 3L and 4L is 24$\times$ (Field 15) to 32$\times$ (Field 12), confirming that automatic search is essential.
+The $\gamma$ ratio between 3L and 4L is 24$\times$ (Field 15) to 32$\times$ (Field 12), confirming that automatic search is essential (Figure~\ref{fig:autogamma}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/auto_gamma_comparison.pdf}
+\caption{Auto-$\gamma$ results. Left: cluster count decreases with 4L (Emb addition reduces over-fragmentation). Right: average cluster size increases, especially in Field~12 ($2.6\times$).  Auto-$\gamma$ adjusts resolution by 24--32$\times$ to maintain balanced distributions.}
+\label{fig:autogamma}
+\end{figure}
 
 \subsection{Consensus Mechanism Analysis}
 
