@@ -14,7 +14,7 @@
 
 \definecolor{accent}{RGB}{37,99,235}
 
-\title{\textbf{Boosted Multi-Layer Edge Combination\\for Scientific Paper Clustering}}
+\title{\textbf{Consensus Multi-Layer Edge Combination\\for Scientific Paper Clustering}}
 \author{Young Jin Kim}
 \date{April 2026}
 
@@ -22,7 +22,7 @@
 \maketitle
 
 \begin{abstract}
-We propose a multi-layer edge combination pipeline for CPM Leiden clustering of scientific paper networks. The pipeline combines citation-based edges (direct citation, bibliographic coupling, co-citation) with embedding-based edges using a \emph{boosted consensus} strategy: edges confirmed by multiple independent layers receive multiplicative weight amplification. Combined with per-node top-$k$ filtering, $1/\text{rank}$ normalization, and automatic resolution ($\gamma$) selection, the pipeline produces balanced cluster distributions across fields with varying citation densities. Experiments on two OpenAlex fields (Chemical Engineering, 115K papers; Arts \& Humanities, 754K papers) demonstrate that (1) boosted combination assigns boundary nodes more accurately than simple summation (29:26 in 55 LLM blind reviews), (2) adding embedding edges reduces cluster count by 60\% while doubling average cluster size, and (3) automatic $\gamma$ search is essential as optimal resolution shifts 24--32$\times$ between 3-layer and 4-layer configurations.
+We propose a multi-layer edge combination pipeline for CPM Leiden clustering of scientific paper networks. The pipeline combines citation-based edges (direct citation, bibliographic coupling, co-citation) with embedding-based edges using a \emph{consensus} strategy: edges confirmed by multiple independent layers receive multiplicative weight amplification. Combined with per-node top-$k$ filtering, $1/\text{rank}$ normalization, and automatic resolution ($\gamma$) selection, the pipeline produces balanced cluster distributions across fields with varying citation densities. Experiments on two OpenAlex fields (Chemical Engineering, 115K papers; Arts \& Humanities, 754K papers) demonstrate that (1) consensus combination assigns boundary nodes more accurately than simple summation (29:26 in 55 LLM blind reviews), (2) adding embedding edges reduces cluster count by 60\% while doubling average cluster size, and (3) automatic $\gamma$ search is essential as optimal resolution shifts 24--32$\times$ between 3-layer and 4-layer configurations.
 \end{abstract}
 
 %% ─────────────────────────────────────────────────────────
@@ -45,14 +45,14 @@ We address three sub-problems:
 \subsection{Pipeline Overview}
 
 \begin{algorithm}[h]
-\caption{Boosted Multi-Layer Combination}
+\caption{Consensus Multi-Layer Combination}
 \begin{algorithmic}[1]
 \REQUIRE Edge tables $\{E_\ell\}_{\ell=1}^{L}$ for $L$ layers, target $\text{max}_\%$
 \FOR{each layer $\ell$}
     \STATE $E_\ell' \leftarrow \textsc{TopK}(E_\ell, k{=}30)$ \COMMENT{per-node top-$k$ filter}
     \STATE $E_\ell'' \leftarrow \textsc{RankNorm}(E_\ell')$ \COMMENT{$w_{ij} \leftarrow 1/\text{rank}(w_{ij})$}
 \ENDFOR
-\STATE $E_{\text{combined}} \leftarrow \textsc{BoostedSum}(\{E_\ell''\})$ \COMMENT{Eq.~\ref{eq:boosted}}
+\STATE $E_{\text{combined}} \leftarrow \textsc{ConsensusSum}(\{E_\ell''\})$ \COMMENT{Eq.~\ref{eq:consensus}}
 \STATE $E_{\text{gcc}} \leftarrow \textsc{GCC}(E_{\text{combined}})$ \COMMENT{giant connected component}
 \STATE $\gamma^* \leftarrow \textsc{AutoGamma}(E_{\text{gcc}}, \text{max}_\%)$ \COMMENT{binary search}
 \STATE $\mathcal{C} \leftarrow \textsc{Leiden}(E_{\text{gcc}}, \gamma^*)$
@@ -69,10 +69,10 @@ Each layer independently retains only the $k$ strongest neighbors per node (symm
 
 Within each filtered layer, edges are sorted by weight descending and assigned $w_{ij} \leftarrow 1/\text{rank}(w_{ij})$. This is scale-free: it preserves only the ordering, making heterogeneous layers (BC cosine similarity vs. DC fractional counts vs. Emb $k$-NN distance) directly comparable.
 
-\subsection{Boosted Consensus Sum (Step 3)}
+\subsection{Consensus Sum (Step 3)}
 
-\begin{equation}\label{eq:boosted}
-    w_{ij}^{\text{boost}} = \left(\sum_{\ell=1}^{L} w_{ij}^{(\ell)}\right) \times n_{ij}
+\begin{equation}\label{eq:consensus}
+    w_{ij}^{\text{cons}} = \left(\sum_{\ell=1}^{L} w_{ij}^{(\ell)}\right) \times n_{ij}
 \end{equation}
 
 where $n_{ij} = |\{\ell : (i,j) \in E_\ell'\}|$ is the number of layers containing edge $(i,j)$ after top-$k$ filtering. Edges confirmed by multiple independent signals receive multiplicative amplification.
@@ -118,13 +118,13 @@ Emb avg degree & \multicolumn{2}{c}{50} & \multicolumn{2}{c}{51} \\
 \subsection{Comparison Methods}
 
 \paragraph{Normalization:} raw, $1/\text{rank}$, quantile.
-\paragraph{Combination:} sum ($\sum w$), max ($\max w$), vote (count), boosted ($\sum w \times n$).
+\paragraph{Combination:} sum ($\sum w$), max ($\max w$), vote (count), consensus ($\sum w \times n$).
 
 \subsection{Evaluation}
 
 \begin{enumerate}[nosep]
     \item \textbf{Structural}: cluster count, max cluster \%, size distribution balance.
-    \item \textbf{LLM blind review} (GPT-4o-mini, 55 cases): three criteria on disagreement nodes between sum and boosted:
+    \item \textbf{LLM blind review} (GPT-4o-mini, 55 cases): three criteria on disagreement nodes between sum and consensus:
     \begin{itemize}[nosep]
         \item \emph{Belonging}: ``Which group does this paper naturally belong to?''
         \item \emph{Group cohesion}: independent quality score per cluster (1--5).
@@ -147,37 +147,37 @@ Normalization & Combination & Clusters & Max \% \\
 raw & sum & 189 & 12.2 \\
 raw & vote & 149 & 15.5 \\
 \textbf{1/rank} & \textbf{sum} & \textbf{282} & \textbf{2.4} \\
-\textbf{1/rank} & \textbf{boosted} & \textbf{298} & \textbf{2.5} \\
+\textbf{1/rank} & \textbf{consensus} & \textbf{298} & \textbf{2.5} \\
 1/rank & vote & 149 & 16.5 \\
 quantile & sum & 156 & 15.8 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-$1/\text{rank}$ with sum or boosted produces the most balanced distributions. Vote is invariant to normalization (binary). Raw sum creates dominant clusters.
+$1/\text{rank}$ with sum or consensus produces the most balanced distributions. Vote is invariant to normalization (binary). Raw sum creates dominant clusters.
 
-\subsection{Sum vs. Boosted: LLM Evaluation}
+\subsection{Sum vs. Consensus: LLM Evaluation}
 
 \begin{table}[h]
 \centering
 \caption{Triple evaluation on disagreement nodes ($\gamma{=}10^{-4}$, Field 15).}
 \begin{tabular}{lccc}
 \toprule
-Criterion & Sum & Boosted & Better \\
+Criterion & Sum & Consensus & Better \\
 \midrule
-Belonging (wins, $n{=}55$) & 26 & \textbf{29} & Boosted \\
+Belonging (wins, $n{=}55$) & 26 & \textbf{29} & Consensus \\
 Cohesion (avg, 1--5) & 4.4 & 4.4 & Tie \\
 Outliers (avg per 8 neighbors) & 1.3 & 1.3 & Tie \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Boosted assigns boundary nodes more accurately. Internal cluster quality is equivalent.
+Consensus assigns boundary nodes more accurately. Internal cluster quality is equivalent.
 
 \paragraph{By cluster size bucket (30 cases):}
 \begin{itemize}[nosep]
     \item \textbf{Large ($>$500)}: Sum 7:3 --- sum's mega-clusters win by volume.
-    \item \textbf{Medium (200--500)}: Boosted 6:4 --- consensus correctly separates.
+    \item \textbf{Medium (200--500)}: Consensus 6:4 --- consensus correctly separates.
     \item \textbf{Small ($<$200)}: Tie 5:5.
 \end{itemize}
 
@@ -207,9 +207,9 @@ Adding embedding edges consistently improves partitioning:
 
 The $\gamma$ ratio between 3L and 4L is 24$\times$ (Field 15) to 32$\times$ (Field 12), confirming that automatic search is essential.
 
-\subsection{Boosted Mechanism Analysis}
+\subsection{Consensus Mechanism Analysis}
 
-The boosted/sum weight ratio is exactly $n_{ij} \in \{1, 2, 3, 4\}$:
+The consensus/sum weight ratio is exactly $n_{ij} \in \{1, 2, 3, 4\}$:
 
 \begin{table}[h]
 \centering
@@ -225,14 +225,14 @@ $n_{ij}$ & Fraction & Boost & Role \\
 \end{tabular}
 \end{table}
 
-The 6.5\% of 3-layer edges, boosted to $3\times$ weight, dominate Leiden's objective function and form cluster nuclei. Single-layer edges become relatively weak, preventing the mega-cluster absorption observed with simple summation.
+The 6.5\% of 3-layer edges, consensus to $3\times$ weight, dominate Leiden's objective function and form cluster nuclei. Single-layer edges become relatively weak, preventing the mega-cluster absorption observed with simple summation.
 
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
-\paragraph{Why boosted works.} CPM Leiden optimizes $H = \sum_c \left[e_c - \gamma \binom{n_c}{2}\right]$, where $e_c$ is internal edge weight. Boosted consensus amplifies edges that multiple independent measures agree on, concentrating weight in true communities. This creates a natural hierarchy: multi-layer cores attract single-layer periphery.
+\paragraph{Why consensus works.} CPM Leiden optimizes $H = \sum_c \left[e_c - \gamma \binom{n_c}{2}\right]$, where $e_c$ is internal edge weight. Consensus consensus amplifies edges that multiple independent measures agree on, concentrating weight in true communities. This creates a natural hierarchy: multi-layer cores attract single-layer periphery.
 
-\paragraph{Embedding layer integration.} Embedding $k$-NN edges have universal coverage (avg degree $\approx 50$) unlike citation layers (DC avg degree $= 5$ in humanities). Na\"ively adding Emb to boosted increases $n_{ij}$ globally, collapsing the differentiation. The solution is \textbf{not} to exclude Emb but to \textbf{automatically adjust $\gamma$}: auto-gamma search absorbs the density shift, letting Emb fill citation gaps while boosted consensus preserves cluster structure.
+\paragraph{Embedding layer integration.} Embedding $k$-NN edges have universal coverage (avg degree $\approx 50$) unlike citation layers (DC avg degree $= 5$ in humanities). Na\"ively adding Emb to consensus increases $n_{ij}$ globally, collapsing the differentiation. The solution is \textbf{not} to exclude Emb but to \textbf{automatically adjust $\gamma$}: auto-gamma search absorbs the density shift, letting Emb fill citation gaps while consensus preserves cluster structure.
 
 \paragraph{Field dependence.} Citation-poor fields (Arts \& Humanities: 3-layer overlap 0.1\%) benefit most from Emb addition (160\% avg size improvement) because citation layers alone produce excessive fragmentation. Citation-rich fields (Chemical Engineering: 3-layer overlap 2.2\%) see moderate improvement (13\%).
 
@@ -244,7 +244,7 @@ We recommend the following pipeline for multi-layer scientific paper clustering:
 \begin{enumerate}[nosep]
     \item \textbf{Top-30} per-node filtering on each layer.
     \item \textbf{$1/\text{rank}$} normalization for scale-free comparison.
-    \item \textbf{Boosted consensus sum} $(\sum w \times n_{\text{layers}})$ for multi-layer agreement.
+    \item \textbf{Consensus consensus sum} $(\sum w \times n_{\text{layers}})$ for multi-layer agreement.
     \item \textbf{GCC filtering} to remove isolated components.
     \item \textbf{Auto-gamma} binary search targeting max cluster $< 3\%$.
     \item \textbf{Leiden + postprocess} with cascading $\gamma$ descent.

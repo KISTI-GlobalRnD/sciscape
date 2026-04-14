@@ -94,7 +94,7 @@ def combine_vote(layers: Dict[str, pl.DataFrame]) -> pl.DataFrame:
         return pl.DataFrame({"uid1": [], "uid2": [], "rel_sum2": []})
     return pl.concat(parts).group_by(["uid1", "uid2"]).agg(pl.col("rel_sum2").sum())
 
-def combine_boosted(layers: Dict[str, pl.DataFrame]) -> pl.DataFrame:
+def combine_consensus(layers: Dict[str, pl.DataFrame]) -> pl.DataFrame:
     """Boosted sum: weight × number of layers containing this edge.
 
     edge(i,j) = sum_of_weights(i,j) × n_layers_present(i,j)
@@ -128,7 +128,7 @@ COMBINERS = {
     "sum": combine_sum,
     "max": combine_max,
     "vote": combine_vote,
-    "boosted": combine_boosted,
+    "consensus": combine_consensus,
 }
 
 

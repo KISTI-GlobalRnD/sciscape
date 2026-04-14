@@ -455,6 +455,39 @@ async def get_cluster_papers(job_id: str, cluster_id: int):
         return {"papers": [], "error": str(e)}
 
 
+@app.get("/api/jobs/{job_id}/consensus")
+async def get_consensus(job_id: str):
+    """Get consensus distribution stats for multi-layer edges."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    output_dir = result.get("output_dir")
+    if not output_dir:
+        return {"error": "no output"}
+
+    from .network_data import build_network_json
+    from sciscape.visualization.consensus import compute_consensus_stats
+    import polars as pl
+
+    # Load per-layer edge files
+    out = Path(output_dir)
+    layers = {}
+    for layer in ("dc", "bc", "cc"):
+        p = out / f"edges_{layer}.parquet"
+        if p.exists():
+            layers[layer] = pl.read_parquet(p)
+
+    if len(layers) < 2:
+        return {"error": "need at least 2 layers for consensus analysis"}
+
+    try:
+        stats = compute_consensus_stats(layers, top_k=30)
+        return stats
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs")
 async def list_jobs():
     """List all jobs."""

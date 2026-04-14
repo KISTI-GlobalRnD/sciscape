@@ -68,7 +68,7 @@ class LandscapeConfig:
 
     # Multi-layer combination
     layer_paths: Dict[str, Path] | None = None  # {"bc": path, "cc": path, ...}
-    combine_strategy: str = "boosted"
+    combine_strategy: str = "consensus"
     combine_top_k: int = 30
     auto_gamma: bool = False
     auto_gamma_target: float = 3.0

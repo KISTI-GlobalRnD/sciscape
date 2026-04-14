@@ -32,7 +32,7 @@ class TestCombineEdgeLayers:
         dc = _make_edges([("A", "B")], weight=1.0)
         result = combine_edge_layers(
             {"bc": bc, "cc": cc, "dc": dc},
-            strategy="boosted", gcc=False, top_k=0,
+            strategy="consensus", gcc=False, top_k=0,
         )
         ab = result.filter((pl.col("uid1") == "A") & (pl.col("uid2") == "B"))
         # sum = 3.0, n_layers = 3, boosted = 3 × 3 = 9
@@ -43,7 +43,7 @@ class TestCombineEdgeLayers:
         cc = _make_edges([("C", "D")], weight=3.0)
         result = combine_edge_layers(
             {"bc": bc, "cc": cc},
-            strategy="boosted", gcc=False, top_k=0,
+            strategy="consensus", gcc=False, top_k=0,
         )
         ab = result.filter((pl.col("uid1") == "A") & (pl.col("uid2") == "B"))
         # only in bc → n_layers=1, boosted = 2.0 × 1 = 2.0
@@ -147,12 +147,12 @@ class TestLandscapeConfig:
         from sciscape.landscape import LandscapeConfig
         cfg = LandscapeConfig(
             layer_paths={"bc": "bc.parquet", "cc": "cc.parquet"},
-            combine_strategy="boosted",
+            combine_strategy="consensus",
             auto_gamma=True,
         )
         assert cfg.layer_paths is not None
         assert len(cfg.layer_paths) == 2
-        assert cfg.combine_strategy == "boosted"
+        assert cfg.combine_strategy == "consensus"
         assert cfg.auto_gamma is True
 
     def test_default_no_layers(self):

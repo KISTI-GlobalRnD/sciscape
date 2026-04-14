@@ -43,7 +43,7 @@ def combine_edge_layers(
         Mapping from layer name to edge DataFrame.
         Each must have uid1, uid2, rel_sum2 columns.
     strategy : str
-        Combination strategy: "union", "rank", "max", "vote", "boosted".
+        Combination strategy: "union", "rank", "max", "vote", "consensus".
     weights : dict, optional
         Per-layer weight multiplier, e.g. {"bc": 1.0, "cc": 0.5}.
         Default: all layers weighted equally (1.0).
@@ -163,7 +163,7 @@ def combine_edge_layers(
         combined = all_edges.group_by([uid1_col, uid2_col]).agg(
             pl.col(weight_col).max()
         )
-    elif strategy == "boosted":
+    elif strategy == "consensus":
         # Boosted sum: weight × number of layers containing this edge
         w_sum = all_edges.group_by([uid1_col, uid2_col]).agg(
             pl.col(weight_col).sum()
@@ -263,7 +263,7 @@ def load_combine_and_cluster(
     edge_dir: Path,
     layer_names: Sequence[str] = ("bc_cosine", "cc_cosine", "dc_fractional"),
     *,
-    strategy: str = "boosted",
+    strategy: str = "consensus",
     top_k: int | str = 30,
     target_max_pct: float = 3.0,
     min_size: int = 100,

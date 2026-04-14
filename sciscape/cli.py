@@ -98,7 +98,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--layers", type=str, default=None,
                      help="Multi-layer edge files: name=path,name=path,... "
                           "(e.g. bc=bc.parquet,cc=cc.parquet,dc=dc.parquet)")
-    ls.add_argument("--combine-strategy", type=str, default="boosted",
+    ls.add_argument("--combine-strategy", type=str, default="consensus",
                      help="Combination strategy: boosted, sum, max, vote (default: boosted)")
     ls.add_argument("--combine-top-k", type=int, default=30,
                      help="Per-node top-k filter for each layer (default: 30)")
