@@ -23,6 +23,7 @@ def build_citation_edges(
     *,
     normalization: str = "fractional",
     bc: bool = True,
+    cc: bool = True,
     bc_topk: int = 50,
     min_shared_refs: int = 1,
 ) -> Dict[str, pl.DataFrame]:
@@ -174,6 +175,53 @@ def build_citation_edges(
         else:
             result["bc"] = pl.DataFrame({"uid1": [], "uid2": [], "rel_sum2": []})
             log.info("BC edges: 0 (no references)")
+
+    # ── CC: co-citation (from referenced_works, approximate) ──
+    if cc:
+        # CC approximation: two focal papers are "co-cited" if they share
+        # a common citer within the focal set.
+        # Build citing matrix: for each work, who cites it?
+        # cited_by[ref_id] = list of focal works that cite ref_id
+        cited_by: Dict[str, List[int]] = {}
+        for i, w in enumerate(works):
+            for ref_id in (w.referenced_works or []):
+                if ref_id in focal_ids:
+                    cited_by.setdefault(ref_id, []).append(i)
+
+        # CC: two focal works (A, B) are co-cited if a third focal work C
+        # cites both A and B (i.e., both A and B are in C's reference list)
+        # Equivalently: for each focal work C, all pairs in C's references
+        # that are also focal → co-citation edge
+        cc_weights: Dict[tuple, float] = {}
+        for w in works:
+            focal_refs = [r for r in (w.referenced_works or []) if r in focal_ids]
+            n_r = len(focal_refs)
+            if n_r < 2:
+                continue
+            w_frac = 1.0 / (n_r * (n_r - 1) / 2) if normalization == "fractional" else 1.0
+            for ii in range(len(focal_refs)):
+                for jj in range(ii + 1, len(focal_refs)):
+                    a, b = focal_refs[ii], focal_refs[jj]
+                    pair = (min(a, b), max(a, b))
+                    cc_weights[pair] = cc_weights.get(pair, 0) + w_frac
+
+        if cc_weights:
+            cc_rows = [{"uid1": p[0], "uid2": p[1], "rel_sum2": w}
+                       for p, w in cc_weights.items()]
+            cc_df = pl.DataFrame(cc_rows)
+            cc_rev = cc_df.select(
+                pl.col("uid2").alias("uid1"),
+                pl.col("uid1").alias("uid2"),
+                pl.col("rel_sum2"),
+            )
+            cc_sym = pl.concat([cc_df, cc_rev]).group_by(["uid1", "uid2"]).agg(
+                pl.col("rel_sum2").sum()
+            )
+            result["cc"] = cc_sym
+            log.info("CC edges: %d", cc_sym.height)
+        else:
+            result["cc"] = pl.DataFrame({"uid1": [], "uid2": [], "rel_sum2": []})
+            log.info("CC edges: 0")
 
     return result
 

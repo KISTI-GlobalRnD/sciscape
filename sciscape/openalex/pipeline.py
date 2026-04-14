@@ -44,6 +44,10 @@ class OpenAlexPipelineConfig:
 
     # ── Landscape (forwarded) ──
     run_landscape: bool = True
+    combine_strategy: str = "boosted"
+    combine_top_k: int = 30
+    auto_gamma: bool = True
+    auto_gamma_target: float = 3.0
 
     # ── Callbacks ──
     progress: Callable[[str], None] | None = None
@@ -155,14 +159,27 @@ def run_openalex_pipeline(
             landscape_dir = output_dir / "landscape"
             landscape_dir.mkdir(exist_ok=True)
 
+            # Use per-layer edges for multi-layer combination
+            layer_paths = {}
+            for etype in config.edge_types:
+                lp = output_dir / f"edges_{etype}.parquet"
+                if lp.exists():
+                    layer_paths[etype] = lp
+
             _log("Running landscape pipeline...")
+            lcfg = LandscapeConfig(progress=config.progress)
+            if len(layer_paths) >= 2:
+                lcfg.layer_paths = layer_paths
+                lcfg.combine_strategy = config.combine_strategy
+                lcfg.combine_top_k = config.combine_top_k
+                lcfg.auto_gamma = config.auto_gamma
+                lcfg.auto_gamma_target = config.auto_gamma_target
+
             run_landscape(
                 edge_path=edges_path,
                 abstract_path=abstracts_path,
                 output_dir=landscape_dir,
-                config=LandscapeConfig(
-                    progress=config.progress,
-                ),
+                config=lcfg,
             )
             _log(f"Landscape complete → {landscape_dir}")
         except ImportError as e:
