@@ -30,7 +30,7 @@ def combine_edge_layers(
     strategy: str = "rank",
     weights: Dict[str, float] | None = None,
     gcc: bool = True,
-    top_k: int = 30,
+    top_k: int | str = 30,
     uid1_col: str = "uid1",
     uid2_col: str = "uid2",
     weight_col: str = "rel_sum2",
@@ -62,20 +62,67 @@ def combine_edge_layers(
     if not layers:
         return pl.DataFrame({uid1_col: [], uid2_col: [], weight_col: []})
 
-    layer_weights = weights or {name: 1.0 for name in layers}
-    combined_parts: List[pl.DataFrame] = []
+    # Step 0: per-node top-k filter (BEFORE normalization)
+    # top_k="balanced": adaptive k per layer so each contributes ~equal edges
+    # top_k=int: same k for all layers
+    filtered_layers: Dict[str, pl.DataFrame] = {}
 
-    for name, df in layers.items():
-        if df.height == 0:
-            continue
+    if top_k == "balanced":
+        # Find sparsest layer's avg degree → use as target
+        layer_stats = {}
+        for name, df in layers.items():
+            if df.height == 0:
+                continue
+            n_nodes = pl.concat([df[uid1_col], df[uid2_col]]).n_unique()
+            avg_deg = 2 * df.height / n_nodes if n_nodes > 0 else 0
+            layer_stats[name] = {"n_nodes": n_nodes, "avg_deg": avg_deg, "n_edges": df.height}
 
-        # Step 0: per-node top-k filter (BEFORE normalization)
-        if top_k > 0:
+        if layer_stats:
+            min_deg = min(s["avg_deg"] for s in layer_stats.values())
+            target_deg = max(5, min(30, min_deg))  # clamp to [5, 30]
+            log.info("balanced top_k: target avg_degree=%.1f (from sparsest layer)", target_deg)
+
+            for name, df in layers.items():
+                if df.height == 0:
+                    continue
+                stats = layer_stats.get(name)
+                if stats:
+                    k = max(5, min(30, round(target_deg)))
+                    before = df.height
+                    df = filter_top_k(df, k, uid1_col=uid1_col, uid2_col=uid2_col,
+                                      weight_col=weight_col, mode="symmetric")
+                    log.info("balanced top_k=%d on %s: %d → %d edges", k, name, before, df.height)
+                filtered_layers[name] = df
+    elif isinstance(top_k, int) and top_k > 0:
+        for name, df in layers.items():
+            if df.height == 0:
+                continue
             before = df.height
             df = filter_top_k(df, top_k, uid1_col=uid1_col, uid2_col=uid2_col,
                               weight_col=weight_col, mode="symmetric")
             log.info("top_k=%d on %s: %d → %d edges", top_k, name, before, df.height)
+            filtered_layers[name] = df
+    else:
+        filtered_layers = {name: df for name, df in layers.items() if df.height > 0}
 
+    # Auto-compute layer weights if not specified:
+    # inverse of edge count → layers with more edges get less weight per edge
+    if weights is None and len(filtered_layers) > 1:
+        edge_counts = {name: df.height for name, df in filtered_layers.items()}
+        total_inv = sum(1.0 / c for c in edge_counts.values() if c > 0)
+        n_layers_total = len(edge_counts)
+        layer_weights = {
+            name: (1.0 / c) / total_inv * n_layers_total
+            for name, c in edge_counts.items() if c > 0
+        }
+        log.info("Auto layer weights (edge-count balanced): %s",
+                 {k: f"{v:.3f}" for k, v in layer_weights.items()})
+    else:
+        layer_weights = weights or {name: 1.0 for name in filtered_layers}
+
+    combined_parts: List[pl.DataFrame] = []
+
+    for name, df in filtered_layers.items():
         lw = layer_weights.get(name, 1.0)
 
         if strategy == "rank":
@@ -123,7 +170,7 @@ def combine_edge_layers(
         )
         # Count layers per edge (each layer contributes 1 per occurrence)
         vote_parts = []
-        for name, df in layers.items():
+        for name, df in filtered_layers.items():
             if df.height > 0:
                 vote_parts.append(
                     df.select(uid1_col, uid2_col).with_columns(pl.lit(1.0).alias("_v"))
@@ -212,4 +259,47 @@ def load_and_combine(
     )
 
 
-__all__ = ["combine_edge_layers", "load_and_combine"]
+def load_combine_and_cluster(
+    edge_dir: Path,
+    layer_names: Sequence[str] = ("bc_cosine", "cc_cosine", "dc_fractional"),
+    *,
+    strategy: str = "boosted",
+    top_k: int | str = 30,
+    target_max_pct: float = 3.0,
+    min_size: int = 100,
+    progress: callable | None = None,
+) -> Dict[str, Any]:
+    """End-to-end: load → combine → auto-γ → Leiden → postprocess.
+
+    Returns dict with gamma, membership, n_clusters, etc.
+    """
+    from ..clustering.auto_gamma import find_gamma
+
+    combined = load_and_combine(
+        edge_dir, layer_names,
+        strategy=strategy, gcc=True, top_k=top_k,
+    )
+    n = pl.concat([combined["uid1"], combined["uid2"]]).n_unique()
+    if progress:
+        progress(f"Combined: {n:,} nodes, {combined.height:,} edges")
+
+    result = find_gamma(
+        combined,
+        target_max_pct=target_max_pct,
+        min_size=min_size,
+        progress=progress,
+    )
+
+    return {
+        "gamma": result.gamma,
+        "n_clusters": result.n_clusters,
+        "max_pct": result.max_pct,
+        "top5": result.top5,
+        "membership": result.membership,
+        "n_nodes": n,
+        "n_edges": combined.height,
+        "combined_edges": combined,
+    }
+
+
+__all__ = ["combine_edge_layers", "load_and_combine", "load_combine_and_cluster"]
