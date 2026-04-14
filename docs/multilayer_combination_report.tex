@@ -225,12 +225,54 @@ $n_{ij}$ & Fraction & Boost & Role \\
 \end{tabular}
 \end{table}
 
-The 6.5\% of 3-layer edges, consensus to $3\times$ weight, dominate Leiden's objective function and form cluster nuclei. Single-layer edges become relatively weak, preventing the mega-cluster absorption observed with simple summation.
+The 6.5\% of 3-layer edges, amplified to $3\times$ weight, dominate Leiden's objective function and form cluster nuclei. Single-layer edges become relatively weak, preventing the mega-cluster absorption observed with simple summation.
+
+\subsection{Temporal Edge Landscape}
+
+Each layer exhibits a distinct temporal pattern, visible in the year$\times$year edge density heatmaps (Figure~\ref{fig:landscape}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/edge_landscape_f15.pdf}
+\caption{Year$\times$year edge density (log scale) for four layers in Field~15. BC concentrates on the diagonal (same-era papers); DC spreads widely (citing past); CC lies between; Emb shows moderate diagonal concentration.}
+\label{fig:landscape}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Temporal concentration: fraction of edges within $\pm$3 years of the diagonal.}
+\begin{tabular}{lrrl}
+\toprule
+Layer & Diagonal $\pm$3yr & Asymmetry & Character \\
+\midrule
+BC & 78.0\% & 0.50 & Same-era shared references \\
+CC & 73.7\% & 0.50 & Slightly broader (classic papers) \\
+Emb & 62.3\% & 0.50 & Text similarity $\propto$ era \\
+DC & 44.0\% & 0.50 & Widest (past citations) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Stronger edges are temporally tighter: among BC edges, the top~1\% by weight have 99.4\% of connections within $\pm$3~years (Figure~\ref{fig:quantiles}).  This confirms that consensus weighting preferentially amplifies temporally coherent, topically focused connections.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/bc_weight_quantiles_f15.pdf}
+\caption{BC weight quantile maps: stronger edges concentrate increasingly on the diagonal. Top~1\% edges connect almost exclusively same-era papers.}
+\label{fig:quantiles}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/marginal_comparison_f15.pdf}
+\caption{Temporal edge distribution (marginal) across layers. BC and CC peak in recent years; DC is flatter due to cumulative citations; Emb coverage is uniform.}
+\label{fig:marginal}
+\end{figure}
 
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
-\paragraph{Why consensus works.} CPM Leiden optimizes $H = \sum_c \left[e_c - \gamma \binom{n_c}{2}\right]$, where $e_c$ is internal edge weight. Consensus consensus amplifies edges that multiple independent measures agree on, concentrating weight in true communities. This creates a natural hierarchy: multi-layer cores attract single-layer periphery.
+\paragraph{Why consensus works.} CPM Leiden optimizes $H = \sum_c \left[e_c - \gamma \binom{n_c}{2}\right]$, where $e_c$ is internal edge weight. Consensus weighting amplifies edges that multiple independent measures agree on, concentrating weight in true communities. This creates a natural hierarchy: multi-layer cores attract single-layer periphery.
 
 \paragraph{Embedding layer integration.} Embedding $k$-NN edges have universal coverage (avg degree $\approx 50$) unlike citation layers (DC avg degree $= 5$ in humanities). Na\"ively adding Emb to consensus increases $n_{ij}$ globally, collapsing the differentiation. The solution is \textbf{not} to exclude Emb but to \textbf{automatically adjust $\gamma$}: auto-gamma search absorbs the density shift, letting Emb fill citation gaps while consensus preserves cluster structure.
 
@@ -244,7 +286,7 @@ We recommend the following pipeline for multi-layer scientific paper clustering:
 \begin{enumerate}[nosep]
     \item \textbf{Top-30} per-node filtering on each layer.
     \item \textbf{$1/\text{rank}$} normalization for scale-free comparison.
-    \item \textbf{Consensus consensus sum} $(\sum w \times n_{\text{layers}})$ for multi-layer agreement.
+    \item \textbf{Consensus weighting sum} $(\sum w \times n_{\text{layers}})$ for multi-layer agreement.
     \item \textbf{GCC filtering} to remove isolated components.
     \item \textbf{Auto-gamma} binary search targeting max cluster $< 3\%$.
     \item \textbf{Leiden + postprocess} with cascading $\gamma$ descent.
