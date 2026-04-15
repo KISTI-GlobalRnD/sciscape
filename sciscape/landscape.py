@@ -631,30 +631,21 @@ def run_landscape(
             log.info("Combined: %d edges → %s", combined.height, combined_path)
 
     # ── Auto-gamma (if configured) ──────────────────────────
-    if cfg.auto_gamma and edge_path.exists():
+    # Auto-gamma is now handled inside build_hierarchy path above.
+    # Legacy path: simple γ range adjustment if auto_gamma + no layer_paths
+    if cfg.auto_gamma and not cfg.layer_paths and edge_path.exists():
         from .clustering.auto_gamma import find_gamma
+        log.info("Auto-gamma (legacy path): target max < %.1f%%", cfg.auto_gamma_target)
         edges_for_gamma = pl.read_parquet(edge_path)
-        n_nodes_est = pl.concat([edges_for_gamma["uid1"], edges_for_gamma["uid2"]]).n_unique()
-        log.info("Auto-gamma: %d nodes, searching for target max < %.1f%%",
-                 n_nodes_est, cfg.auto_gamma_target)
-        # For small graphs: relax target and widen gamma range
-        target = cfg.auto_gamma_target
-        gamma_hi = 1e-1
-        if n_nodes_est < 500:
-            target = max(target, 20.0)  # allow larger max cluster for small graphs
-            gamma_hi = 1e2  # need much higher γ for dense small graphs
         ag_result = find_gamma(
             edges_for_gamma,
-            target_max_pct=target,
-            gamma_range=(1e-7, gamma_hi),
+            target_max_pct=cfg.auto_gamma_target,
             progress=cfg.progress,
         )
         if ag_result.n_clusters > 1:
             cfg.gamma_range = (ag_result.gamma * 0.5, ag_result.gamma * 2.0)
-            log.info("Auto-gamma: selected γ=%.2e (%d cl, max=%.1f%%)",
+            log.info("Auto-gamma: γ=%.2e (%d cl, max=%.1f%%)",
                      ag_result.gamma, ag_result.n_clusters, ag_result.max_pct)
-        else:
-            log.info("Auto-gamma: could not split graph, using default γ range")
 
     # ── Input validation ──────────────────────────────────────
     if not edge_path.exists() and not cfg.layer_paths:
@@ -694,6 +685,54 @@ def run_landscape(
     if all_cached and not cfg.force:
         log.info("All hierarchy levels cached, skipping edge load + clustering")
         membership_df = pl.read_parquet(membership_path)
+    elif cfg.layer_paths or cfg.auto_gamma:
+        # ── New path: build_hierarchy (Rust + consensus + auto-γ per level) ──
+        from .clustering.hierarchical import build_hierarchy
+        from .clustering.leiden_rust import RUST_AVAILABLE
+
+        if RUST_AVAILABLE:
+            log.info("Using build_hierarchy (Rust + consensus + auto-gamma)")
+            hier_result = build_hierarchy(
+                edges=pl.read_parquet(edge_path) if edge_path.exists() else None,
+                layer_paths=cfg.layer_paths,
+                n_levels=cfg.n_hierarchy_levels,
+                combine_strategy=cfg.combine_strategy,
+                combine_top_k=cfg.combine_top_k,
+                seed=cfg.seed,
+                cache_dir=output_dir,
+                progress=cfg.progress,
+            )
+            # Build membership DataFrame from hierarchy result
+            uids = None
+            if hier_result.levels:
+                first_mem = hier_result.levels[0].membership
+                # Need UIDs — load from combined edges or abstract
+                edges_for_uids = pl.read_parquet(edge_path) if edge_path.exists() else None
+                if edges_for_uids is not None:
+                    all_uids = sorted(set(edges_for_uids["uid1"].to_list()) | set(edges_for_uids["uid2"].to_list()))
+                    if len(all_uids) == len(first_mem):
+                        uids = all_uids
+
+                if uids:
+                    membership_df = hier_result.to_dataframe(uids)
+                else:
+                    # Fallback: use integer indices
+                    data = {"uid": [str(i) for i in range(hier_result.n_nodes)]}
+                    for level in hier_result.levels:
+                        data[f"cluster_{level.name}"] = level.membership.tolist()
+                    membership_df = pl.DataFrame(data)
+
+                membership_df.write_parquet(membership_path)
+                log.info("Hierarchy: %d levels, saved → %s",
+                         len(hier_result.levels), membership_path)
+            else:
+                log.warning("build_hierarchy returned no levels, falling back")
+                edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
+                membership_df = _run_clustering(edges, cfg, output_dir)
+        else:
+            log.info("Rust not available, using legacy clustering")
+            edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
+            membership_df = _run_clustering(edges, cfg, output_dir)
     else:
         edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
         membership_df = _run_clustering(edges, cfg, output_dir)

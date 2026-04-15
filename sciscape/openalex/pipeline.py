@@ -168,12 +168,13 @@ def run_openalex_pipeline(
 
             _log("Running landscape pipeline...")
             lcfg = LandscapeConfig(progress=config.progress)
+            # Always enable auto-gamma + consensus for multi-layer
+            lcfg.auto_gamma = config.auto_gamma
+            lcfg.auto_gamma_target = config.auto_gamma_target
             if len(layer_paths) >= 2:
                 lcfg.layer_paths = layer_paths
                 lcfg.combine_strategy = config.combine_strategy
                 lcfg.combine_top_k = config.combine_top_k
-                lcfg.auto_gamma = config.auto_gamma
-                lcfg.auto_gamma_target = config.auto_gamma_target
 
             run_landscape(
                 edge_path=edges_path,
