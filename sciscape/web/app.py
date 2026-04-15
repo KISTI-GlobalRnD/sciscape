@@ -515,6 +515,25 @@ async def apply_label_merges(job_id: str, req: MergeRequest):
     return {"status": "applied", "level": req.level, "n_merges": len(req.merge_map)}
 
 
+@app.get("/api/jobs/{job_id}/abbreviations")
+async def get_abbreviations(job_id: str, min_count: int = 3):
+    """Extract abbreviation dictionary from paper abstracts."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    abs_path = job.get("result", {}).get("abstracts_path")
+    if not abs_path:
+        return {"error": "no abstracts"}
+    import polars as pl
+    from sciscape.clustering.abbreviation_dict import extract_abbreviations
+    try:
+        abs_df = pl.read_parquet(abs_path)
+        abbr = extract_abbreviations(abs_df, min_count=min_count)
+        return {"abbreviations": abbr, "count": len(abbr)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs/{job_id}/consensus")
 async def get_consensus(job_id: str):
     """Get consensus distribution stats for multi-layer edges."""

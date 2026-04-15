@@ -394,6 +394,11 @@ def label_hierarchy(
     present = [l for l in levels if f"cluster_{l}" in hierarchy_df.columns]
     _log(f"Labeling {len(present)} levels: {present}")
 
+    # Extract abbreviation dictionary from abstracts
+    from .abbreviation_dict import extract_abbreviations, expand_labels_with_abbreviations
+    abbr_dict = extract_abbreviations(abstracts, min_count=3)
+    _log(f"Abbreviation dictionary: {len(abbr_dict)} entries")
+
     level_labels = {}
     for level in present:
         _log(f"  {level}: extracting keywords...")
@@ -403,6 +408,13 @@ def label_hierarchy(
         if cleanse:
             _log(f"  {level}: cleansing labels...")
             labels = cleanse_labels(labels, min_similarity=min_similarity)
+        # Expand abbreviations in labels
+        if abbr_dict:
+            expanded = expand_labels_with_abbreviations(
+                labels["label"].to_list(), abbr_dict, mode="append",
+            )
+            labels = labels.with_columns(pl.Series("label", expanded))
+
         level_labels[level] = labels
         _log(f"  {level}: {labels.height} clusters labeled")
 
