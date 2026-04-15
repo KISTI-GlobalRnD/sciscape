@@ -407,6 +407,61 @@ Key differences:
 \end{figure}
 
 %% ─────────────────────────────────────────────────────────
+\subsection{Top-$k$ Filter Effect}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{figures/topk_before_after.pdf}
+\caption{Effect of per-node top-30 filter on edge composition. Without filtering, 70\% of combined edges are cross-cluster noise; with top-30, this drops to 31\%.}
+\label{fig:topk}
+\end{figure}
+
+\subsection{LLM Blind Evaluation Summary}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/llm_evaluation_summary.pdf}
+\caption{55-case LLM evaluation across three criteria. Consensus wins belonging (especially in large clusters), while cohesion and outlier counts are statistically equivalent.}
+\label{fig:llm}
+\end{figure}
+
+\subsection{Field 12: Embedding Contribution and Consensus Structure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/emb_contribution_f12.pdf}
+\caption{Field 12 embedding: 56\% cross-subfield (vs.\ 27\% in Field~15), BC+Emb is the dominant 2-layer pair (replacing BC+CC).}
+\label{fig:emb_f12}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/consensus_combo_f12.pdf}
+\caption{Field 12 consensus combinations: 97.4\% single-layer, BC+Emb dominates 2-layer. Contrast with Field~15 where BC+CC leads.}
+\label{fig:combo_f12}
+\end{figure}
+
+\subsection{Cross-Field Summary}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/cross_field_summary.pdf}
+\caption{Head-to-head comparison of all key metrics between citation-rich (Field~15) and citation-poor (Field~12) fields.}
+\label{fig:crossfield}
+\end{figure}
+
+\subsection{Clustering Stability}
+
+We evaluate partition stability by running Leiden with 5 different random seeds at $\gamma=5.62\times10^{-5}$ on the consensus 3-layer network.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/stability_ami_ari.pdf}
+\caption{Pairwise stability across 5 seeds. AMI $= 0.902 \pm 0.009$ indicates highly reproducible cluster structure; ARI $= 0.740 \pm 0.093$ reflects moderate variation in small clusters.}
+\label{fig:stability}
+\end{figure}
+
+%% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
 \paragraph{Why consensus works.} CPM Leiden optimizes $H = \sum_c \left[e_c - \gamma \binom{n_c}{2}\right]$, where $e_c$ is internal edge weight. Consensus weighting amplifies edges that multiple independent measures agree on, concentrating weight in true communities. This creates a natural hierarchy: multi-layer cores attract single-layer periphery.
