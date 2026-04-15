@@ -54,7 +54,7 @@ def find_gamma(
     edges: pl.DataFrame,
     *,
     target_max_pct: float = 3.0,
-    gamma_range: Tuple[float, float] = (1e-7, 1e-2),
+    gamma_range: Tuple[float, float] | str = "auto",
     n_coarse: int = 6,
     max_refine: int = 3,
     min_size: int = 100,
@@ -95,6 +95,20 @@ def find_gamma(
         log.info(msg)
         if progress:
             progress(msg)
+
+    # Auto gamma_range based on edge weight distribution
+    if gamma_range == "auto":
+        w_arr = edges["rel_sum2"].to_numpy()
+        n_est = pl.concat([edges["uid1"], edges["uid2"]]).n_unique()
+        # CPM: γ competes with edge_weight / (degree product)
+        # Heuristic: γ_low ≈ median_weight / n², γ_high ≈ max_weight
+        w_median = float(np.median(w_arr))
+        w_max = float(w_arr.max())
+        gamma_lo = max(1e-10, w_median / max(n_est, 1))
+        gamma_hi = max(w_max * 10, gamma_lo * 1e6)
+        gamma_range = (gamma_lo, gamma_hi)
+        log.info("auto gamma_range: [%.2e, %.2e] (from weight median=%.4f, max=%.2f, n=%d)",
+                 gamma_lo, gamma_hi, w_median, w_max, n_est)
 
     # Prepare edges once
     with tempfile.TemporaryDirectory() as td:
