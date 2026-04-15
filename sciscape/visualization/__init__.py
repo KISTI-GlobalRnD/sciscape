@@ -6,6 +6,12 @@ from .consensus import (
     format_consensus_report,
     consensus_to_plotly,
 )
+from .hierarchy_treemap import (
+    build_treemap_data,
+    treemap_to_plotly,
+    save_treemap_html,
+    hierarchy_summary_table,
+)
 from .edge_landscape import (
     compute_edge_year_matrix,
     compute_multilayer_year_matrices,

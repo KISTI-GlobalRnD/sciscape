@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SciScape</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
 
@@ -594,7 +595,8 @@ input[type="range"]::-webkit-slider-thumb {
       <div class="stats-row" id="stats-row"></div>
 
       <div class="tab-bar" id="tab-bar">
-        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn active" data-tab="overview">Network</button>
+        <button class="tab-btn" data-tab="hierarchy">Hierarchy</button>
         <button class="tab-btn" data-tab="clusters">Clusters</button>
         <button class="tab-btn" data-tab="keywords">Keywords</button>
         <button class="tab-btn" data-tab="downloads">Download</button>
@@ -610,6 +612,14 @@ input[type="range"]::-webkit-slider-thumb {
             Network visualization will appear here after analysis completes.
           </div>
         </div>
+      </div>
+
+      <div class="tab-content" id="tab-hierarchy">
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">
+          <button class="net-chip active" id="btn-treemap" onclick="loadHierarchy('treemap')">Treemap</button>
+          <button class="net-chip" id="btn-sunburst" onclick="loadHierarchy('sunburst')">Sunburst</button>
+        </div>
+        <div id="hierarchy-chart" style="width:100%;height:650px;"></div>
       </div>
 
       <div class="tab-content" id="tab-clusters">
@@ -777,6 +787,8 @@ function showResults(result) {
 
   // Network visualization
   loadNetwork(currentJobId);
+  // Pre-load hierarchy
+  loadHierarchy('treemap');
 
   // Tabs: activate overview
   switchTab('overview');
@@ -873,6 +885,21 @@ async function loadTermNetwork(jobId) {
   document.getElementById('viz-placeholder').style.display = 'none';
   termNetViz = new TermCooccurrenceNetwork('network-container');
   await termNetViz.load(jobId);
+}
+
+/* ── HIERARCHY VIZ ─────────────────────────────────────── */
+async function loadHierarchy(mode) {
+  if (!currentJobId) return;
+  document.getElementById('btn-treemap').classList.toggle('active', mode === 'treemap');
+  document.getElementById('btn-sunburst').classList.toggle('active', mode === 'sunburst');
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/treemap?mode=${mode}`);
+    const fig = await r.json();
+    if (fig.error) { document.getElementById('hierarchy-chart').textContent = fig.error; return; }
+    Plotly.newPlot('hierarchy-chart', fig.data, fig.layout);
+  } catch(e) {
+    document.getElementById('hierarchy-chart').textContent = 'Error: ' + e.message;
+  }
 }
 
 /* ── LABEL MERGE UI ────────────────────────────────────── */

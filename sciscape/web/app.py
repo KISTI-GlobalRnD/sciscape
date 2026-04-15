@@ -515,6 +515,37 @@ async def apply_label_merges(job_id: str, req: MergeRequest):
     return {"status": "applied", "level": req.level, "n_merges": len(req.merge_map)}
 
 
+@app.get("/api/jobs/{job_id}/treemap")
+async def get_treemap(job_id: str, mode: str = "treemap"):
+    """Get Plotly treemap/sunburst data for cluster hierarchy."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    landscape_dir = result.get("landscape_dir")
+    if not landscape_dir:
+        return {"error": "no landscape"}
+    import polars as pl
+    from sciscape.visualization.hierarchy_treemap import build_treemap_data, treemap_to_plotly
+
+    mem_path = None
+    for f in Path(landscape_dir).glob("*hierarchy*.parquet"):
+        mem_path = f
+        break
+    if not mem_path:
+        for f in Path(landscape_dir).glob("membership*.parquet"):
+            mem_path = f
+            break
+    if not mem_path:
+        return {"error": "no membership"}
+    try:
+        hier_df = pl.read_parquet(mem_path)
+        data = build_treemap_data(hier_df)
+        return treemap_to_plotly(data, mode=mode)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs/{job_id}/abbreviations")
 async def get_abbreviations(job_id: str, min_count: int = 3):
     """Extract abbreviation dictionary from paper abstracts."""
