@@ -461,6 +461,34 @@ We evaluate partition stability by running Leiden with 5 different random seeds 
 \label{fig:stability}
 \end{figure}
 
+\subsection{Example Cluster Labels}
+
+Table~\ref{tab:labels} shows the top clusters produced by the consensus pipeline on Field~15, with automatically extracted keyword labels.
+
+\begin{table}[h]
+\centering
+\caption{Top 10 cluster labels from the consensus pipeline (Field~15, 4-layer, 58 clusters).}
+\label{tab:labels}
+\begin{tabular}{rlrl}
+\toprule
+Cluster & Papers & Label \\
+\midrule
+C8 & 12{,}771 & ionic liquids, liquid \\
+C21 & 4{,}743 & ammonia, nitrogen reduction \\
+C44 & 4{,}413 & carbon dioxide, reaction \\
+C45 & 2{,}160 & polymer, shear flow \\
+C24 & 1{,}672 & catalysts, hydrogenation, methanol \\
+C42 & 1{,}457 & propane dehydrogenation, catalysts \\
+C25 & 1{,}376 & deep eutectic solvents \\
+C40 & 1{,}070 & acid, hydrogenation complexes \\
+C33 & 1{,}056 & combustion, engine, ignition \\
+C2 & 760 & copolymerization, epoxides, carbonate \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Labels are generated automatically via per-cluster TF-IDF with HTML tag removal, abbreviation expansion (74 abbreviations extracted from abstracts), and string-similarity deduplication.
+
 %% ─────────────────────────────────────────────────────────
 \section{Discussion}
 
@@ -485,5 +513,33 @@ We recommend the following pipeline for multi-layer scientific paper clustering:
 \end{enumerate}
 
 This pipeline adapts automatically to varying citation densities across fields and layer configurations, producing balanced cluster distributions without manual parameter tuning.
+
+Key empirical findings:
+\begin{itemize}[nosep]
+    \item Consensus weighting assigns boundary nodes more accurately than simple summation (29:26 in 55 LLM blind reviews), with equivalent internal cohesion.
+    \item The consensus mechanism works because 6.5\% of 3-layer edges receive $3\times$ weight, forming temporally coherent cluster cores (95\% within $\pm$3 years).
+    \item Embedding adds unique value: 26--56\% cross-subfield bridging and 3--4 year temporal bridging that citation layers cannot provide.
+    \item The pipeline is stable (AMI $= 0.902$) and scales from citation-rich to citation-poor fields via auto-$\gamma$ adaptation.
+\end{itemize}
+
+\subsection{Limitations}
+
+\begin{itemize}[nosep]
+    \item \textbf{Two fields only}: Validated on Chemical Engineering and Arts \& Humanities. Generalization to all 26 OpenAlex fields requires further testing.
+    \item \textbf{Fixed top-$k{=}30$}: Optimal per-node neighbor count may vary by field density. A data-driven $k$ selection method is desirable.
+    \item \textbf{Embedding quality}: SPECTER2 embeddings may introduce stylistic rather than topical similarity for short/non-English abstracts. The pipeline's effectiveness depends on embedding quality.
+    \item \textbf{LLM evaluation}: GPT-4o-mini evaluations are approximate; human expert validation would strengthen the findings.
+    \item \textbf{Static snapshot}: Analysis uses a single temporal snapshot. Temporal evolution of consensus structure is not yet studied.
+\end{itemize}
+
+\subsection{Future Work}
+
+\begin{itemize}[nosep]
+    \item \textbf{Field generalization}: Test on all 26 OpenAlex fields with varying citation densities and interdisciplinarity levels.
+    \item \textbf{Adaptive top-$k$}: Set $k$ per-layer based on local degree distribution rather than a fixed constant.
+    \item \textbf{Temporal tracking}: Monitor how consensus backbone evolves as new papers are added, enabling research trend detection.
+    \item \textbf{Hierarchical keyword extraction}: Cascade cluster labels from nano to macro, ensuring parent labels generalize child labels.
+    \item \textbf{Interactive web tool}: SciScape web interface with real-time OpenAlex queries, consensus visualization, and label editing.
+\end{itemize}
 
 \end{document}
