@@ -656,13 +656,45 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
 
       <div class="tab-content" id="tab-downloads">
+        <div class="section-label">Analysis Results</div>
         <div class="dl-grid" id="dl-grid"></div>
+        <div class="section-label" style="margin-top:1.5rem;">Export</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="net-chip" onclick="exportAllJSON()">Export All (JSON)</button>
+          <button class="net-chip" onclick="copyShareLink()">Copy Share Link</button>
+        </div>
+        <div id="export-status" style="font-size:0.8rem;color:var(--silver);margin-top:0.5rem;"></div>
       </div>
     </div>
   </div>
 
   <!-- SIDEBAR -->
   <div class="side-col">
+    <div class="history-title">Settings</div>
+    <div style="margin-bottom:1.2rem;font-size:0.82rem;">
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Combine strategy</label>
+        <select id="cfg-strategy" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;font-size:0.82rem;">
+          <option value="consensus" selected>Consensus (recommended)</option>
+          <option value="sum">Sum</option>
+          <option value="max">Max</option>
+          <option value="vote">Vote</option>
+        </select>
+      </div>
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Top-k per node</label>
+        <input type="number" id="cfg-topk" value="30" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+      </div>
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Auto-gamma target (%)</label>
+        <input type="number" id="cfg-gamma-target" value="3.0" step="0.5" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+      </div>
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Hierarchy levels</label>
+        <input type="number" id="cfg-levels" value="4" min="1" max="5" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+      </div>
+    </div>
+
     <div class="history-title">Analysis History</div>
     <ul class="job-list" id="job-list">
       <li class="empty-state">
@@ -893,6 +925,31 @@ async function loadTermNetwork(jobId) {
   document.getElementById('viz-placeholder').style.display = 'none';
   termNetViz = new TermCooccurrenceNetwork('network-container');
   await termNetViz.load(jobId);
+}
+
+/* ── EXPORT ─────────────────────────────────────────────── */
+async function exportAllJSON() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}`);
+    const job = await r.json();
+    const blob = new Blob([JSON.stringify(job, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `sciscape_${currentJobId}.json`;
+    a.click();
+    document.getElementById('export-status').textContent = 'Exported!';
+  } catch(e) {
+    document.getElementById('export-status').textContent = 'Error: ' + e.message;
+  }
+}
+
+function copyShareLink() {
+  if (!currentJobId) return;
+  const url = `${window.location.origin}/?job=${currentJobId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    document.getElementById('export-status').textContent = 'Link copied!';
+  });
 }
 
 /* ── TEMPORAL TRACKING ──────────────────────────────────── */
