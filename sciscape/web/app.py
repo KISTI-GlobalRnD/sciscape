@@ -455,6 +455,66 @@ async def get_cluster_papers(job_id: str, cluster_id: int):
         return {"papers": [], "error": str(e)}
 
 
+class MergeRequest(BaseModel):
+    merge_map: dict  # {source_label: target_label}
+    level: str = "nano"
+
+
+@app.get("/api/jobs/{job_id}/label-merges/{level}")
+async def get_label_merges(job_id: str, level: str = "nano", min_sim: float = 0.5):
+    """Get suggested label merge candidates for a hierarchy level."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+
+    result = job.get("result", {})
+    landscape_dir = result.get("landscape_dir")
+    if not landscape_dir:
+        return {"error": "no landscape"}
+
+    import polars as pl
+    from sciscape.clustering.label_pipeline import extract_cluster_labels, suggest_merges
+
+    abs_path = result.get("abstracts_path")
+    if not abs_path:
+        return {"error": "no abstracts"}
+
+    # Find membership
+    ld = Path(landscape_dir)
+    mem_path = None
+    for f in ld.glob("membership*.parquet"):
+        mem_path = f
+        break
+    if not mem_path:
+        return {"error": "no membership"}
+
+    try:
+        abs_df = pl.read_parquet(abs_path)
+        mem_df = pl.read_parquet(mem_path)
+        labels = extract_cluster_labels(abs_df, mem_df, level=level, top_k=5)
+        candidates = suggest_merges(labels, min_similarity=min_sim)
+        return {"candidates": candidates, "labels": labels.to_dicts()}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/jobs/{job_id}/label-merges/apply")
+async def apply_label_merges(job_id: str, req: MergeRequest):
+    """Apply confirmed label merges."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+
+    from sciscape.clustering.label_pipeline import apply_merges
+    import polars as pl
+
+    # Store merge map in job
+    if "label_merges" not in job:
+        job["label_merges"] = {}
+    job["label_merges"][req.level] = req.merge_map
+    return {"status": "applied", "level": req.level, "n_merges": len(req.merge_map)}
+
+
 @app.get("/api/jobs/{job_id}/consensus")
 async def get_consensus(job_id: str):
     """Get consensus distribution stats for multi-layer edges."""

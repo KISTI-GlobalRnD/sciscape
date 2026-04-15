@@ -116,6 +116,95 @@ def extract_cluster_labels(
     return pl.DataFrame(rows)
 
 
+def suggest_merges(
+    labels_df: pl.DataFrame,
+    *,
+    min_similarity: float = 0.5,
+) -> List[Dict[str, Any]]:
+    """Suggest label merges based on string similarity.
+
+    Returns a list of merge candidates, each:
+    {
+        "source": label_a,
+        "target": label_b (representative),
+        "similarity": cosine score,
+        "source_cluster": cluster_id,
+        "target_cluster": cluster_id,
+        "source_papers": n,
+        "target_papers": n,
+    }
+
+    The caller (UI or script) decides which to apply.
+    """
+    from string_grouper import match_strings
+    import pandas as pd
+
+    labels = labels_df["label"].to_list()
+    clusters = labels_df["cluster"].to_list()
+    n_papers = labels_df["n_papers"].to_list()
+
+    if len(labels) < 2:
+        return []
+
+    series = pd.Series(labels)
+    try:
+        matches = match_strings(series, min_similarity=min_similarity)
+    except Exception as e:
+        log.warning("string_grouper failed: %s", e)
+        return []
+
+    candidates = []
+    seen = set()
+    for _, row in matches.iterrows():
+        left, right = int(row["left_index"]), int(row["right_index"])
+        if left == right:
+            continue
+        pair = (min(left, right), max(left, right))
+        if pair in seen:
+            continue
+        seen.add(pair)
+        sim = float(row["similarity"])
+
+        # Source = smaller cluster, target = larger
+        if n_papers[left] >= n_papers[right]:
+            src, tgt = right, left
+        else:
+            src, tgt = left, right
+
+        candidates.append({
+            "source": labels[src],
+            "target": labels[tgt],
+            "similarity": round(sim, 3),
+            "source_cluster": clusters[src],
+            "target_cluster": clusters[tgt],
+            "source_papers": n_papers[src],
+            "target_papers": n_papers[tgt],
+        })
+
+    candidates.sort(key=lambda x: -x["similarity"])
+    log.info("suggest_merges: %d candidates (threshold=%.2f)", len(candidates), min_similarity)
+    return candidates
+
+
+def apply_merges(
+    labels_df: pl.DataFrame,
+    merge_map: Dict[str, str],
+) -> pl.DataFrame:
+    """Apply confirmed label merges.
+
+    Parameters
+    ----------
+    merge_map : dict
+        {source_label: target_label} — source gets renamed to target.
+    """
+    labels = labels_df["label"].to_list()
+    new_labels = [merge_map.get(l, l) for l in labels]
+    n_changed = sum(1 for a, b in zip(labels, new_labels) if a != b)
+    if n_changed:
+        log.info("apply_merges: %d labels renamed", n_changed)
+    return labels_df.with_columns(pl.Series("label", new_labels))
+
+
 def cleanse_labels(
     labels_df: pl.DataFrame,
     *,
@@ -326,6 +415,8 @@ def label_hierarchy(
 
 __all__ = [
     "extract_cluster_labels",
+    "suggest_merges",
+    "apply_merges",
     "cleanse_labels",
     "ensure_hierarchy_consistency",
     "label_hierarchy",

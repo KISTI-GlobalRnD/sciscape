@@ -530,6 +530,9 @@ input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; width: 12px; height: 12px;
   background: var(--slate); border-radius: 50%; cursor: pointer;
 }
+
+/* ── MERGE CHECKBOX ────────────────────────────────────── */
+.merge-cb { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -617,6 +620,18 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
 
       <div class="tab-content" id="tab-keywords">
+        <div style="margin-bottom:1rem;">
+          <button class="net-chip" onclick="loadMergeCandidates()">Label Cleansing</button>
+          <span id="merge-status" style="font-size:0.8rem;color:var(--silver);margin-left:0.5rem;"></span>
+        </div>
+        <div id="merge-panel" style="display:none;background:var(--paper);border:1px solid var(--fog);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+          <div style="font-weight:600;margin-bottom:0.5rem;">Suggested Label Merges</div>
+          <div id="merge-list" style="max-height:300px;overflow-y:auto;"></div>
+          <div style="margin-top:0.8rem;">
+            <button class="btn-analyze" onclick="applyMerges()" style="width:auto;padding:0.4rem 1rem;">Apply Selected</button>
+            <button class="net-chip" onclick="document.getElementById('merge-panel').style.display='none'">Close</button>
+          </div>
+        </div>
         <table class="data-table" id="keyword-table">
           <thead><tr><th>Cluster</th><th>Top Keywords</th><th class="num">Score</th></tr></thead>
           <tbody></tbody>
@@ -858,6 +873,69 @@ async function loadTermNetwork(jobId) {
   document.getElementById('viz-placeholder').style.display = 'none';
   termNetViz = new TermCooccurrenceNetwork('network-container');
   await termNetViz.load(jobId);
+}
+
+/* ── LABEL MERGE UI ────────────────────────────────────── */
+let mergeCandidates = [];
+
+async function loadMergeCandidates() {
+  if (!currentJobId) return;
+  const status = document.getElementById('merge-status');
+  status.textContent = 'Loading...';
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/label-merges/nano?min_sim=0.4`);
+    const data = await r.json();
+    if (data.error) { status.textContent = data.error; return; }
+    mergeCandidates = data.candidates || [];
+    const panel = document.getElementById('merge-panel');
+    const list = document.getElementById('merge-list');
+    panel.style.display = 'block';
+    status.textContent = `${mergeCandidates.length} candidates`;
+
+    if (!mergeCandidates.length) {
+      list.innerHTML = '<div style="color:var(--silver);">No similar labels found.</div>';
+      return;
+    }
+
+    list.innerHTML = mergeCandidates.map((c, i) =>
+      `<label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;border-bottom:1px solid var(--paper);cursor:pointer;">
+        <input type="checkbox" checked data-idx="${i}" class="merge-cb">
+        <span style="flex:1;">
+          <span style="color:var(--coral);text-decoration:line-through;">${esc(c.source)}</span>
+          <span style="color:var(--silver);margin:0 0.3rem;">→</span>
+          <span style="color:var(--teal);font-weight:500;">${esc(c.target)}</span>
+        </span>
+        <span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--silver);">${c.similarity}</span>
+        <span style="font-size:0.72rem;color:var(--silver);">${c.source_papers}→${c.target_papers}</span>
+      </label>`
+    ).join('');
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function applyMerges() {
+  if (!currentJobId || !mergeCandidates.length) return;
+  const cbs = document.querySelectorAll('.merge-cb:checked');
+  const mergeMap = {};
+  cbs.forEach(cb => {
+    const c = mergeCandidates[parseInt(cb.dataset.idx)];
+    mergeMap[c.source] = c.target;
+  });
+  if (!Object.keys(mergeMap).length) return;
+
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/label-merges/apply`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({merge_map: mergeMap, level: 'nano'}),
+    });
+    const data = await r.json();
+    document.getElementById('merge-status').textContent = `Applied ${Object.keys(mergeMap).length} merges`;
+    document.getElementById('merge-panel').style.display = 'none';
+  } catch(e) {
+    document.getElementById('merge-status').textContent = 'Error: ' + e.message;
+  }
 }
 
 /* ── INIT ──────────────────────────────────────────────── */
