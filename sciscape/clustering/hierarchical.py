@@ -134,16 +134,16 @@ def build_hierarchy(
         if progress:
             progress(msg)
 
-    # ── Cache setup ──
-    if cache_dir:
-        cache_dir = Path(cache_dir)
-        cache_dir.mkdir(parents=True, exist_ok=True)
+    # ── Output directory setup ──
+    out = Path(cache_dir) if cache_dir else None
+    if out:
+        out.mkdir(parents=True, exist_ok=True)
 
-    # ── Step 1: Combine edges (cached) ──
-    combined_cache = cache_dir / "combined_edges.parquet" if cache_dir else None
-    if combined_cache and combined_cache.exists():
-        _log(f"Loading cached combined edges: {combined_cache}")
-        combined = pl.read_parquet(combined_cache)
+    # ── Step 1: Combine edges (saved/loaded) ──
+    combined_path = out / "combined_edges.parquet" if out else None
+    if combined_path and combined_path.exists():
+        _log(f"Loading combined edges: {combined_path}")
+        combined = pl.read_parquet(combined_path)
     elif layers or layer_paths:
         if layers is None:
             layers = {}
@@ -157,9 +157,9 @@ def build_hierarchy(
         combined = combine_edge_layers(
             layers, strategy=combine_strategy, gcc=True, top_k=combine_top_k,
         )
-        if combined_cache:
-            combined.write_parquet(combined_cache)
-            _log(f"Cached combined edges → {combined_cache}")
+        if combined_path:
+            combined.write_parquet(combined_path)
+            _log(f"Saved combined edges → {combined_path}")
     elif edges is not None:
         combined = edges
     else:
@@ -240,12 +240,17 @@ def build_hierarchy(
         target_pct = targets.get(level_name, 30.0)
         min_size = min_sizes.get(level_name, 2)
 
-        # Check level cache
-        level_cache = cache_dir / f"level_{level_name}.npz" if cache_dir else None
-        if level_cache and level_cache.exists():
-            cached = np.load(level_cache, allow_pickle=True)
-            original_mem = cached["membership"]
-            gamma = float(cached["gamma"])
+        # Check saved level result
+        level_dir = out / level_name if out else None
+        level_mem_path = level_dir / "membership.parquet" if level_dir else None
+        level_meta_path = level_dir / "meta.json" if level_dir else None
+
+        if level_mem_path and level_mem_path.exists() and level_meta_path and level_meta_path.exists():
+            import json as _json
+            level_mem_df = pl.read_parquet(level_mem_path)
+            level_meta = _json.load(open(level_meta_path))
+            original_mem = np.array(level_mem_df["cluster"].to_list(), dtype=np.uint64)
+            gamma = level_meta["gamma"]
             sizes = Counter(original_mem.tolist())
             mx = max(sizes.values())
             level = HierarchyLevel(
@@ -255,13 +260,28 @@ def build_hierarchy(
                 membership=original_mem, elapsed=0,
             )
             levels.append(level)
-            _log(f"Cached {level_name}: {level.n_clusters} cl, γ={gamma:.2e}")
+            _log(f"Loaded {level_name}: {level.n_clusters} cl, γ={gamma:.2e}")
+
             # Contract for next level
             prev_membership_original = original_mem.astype(np.uint64)
-            # Need to contract cur edges with the local membership
-            local_mem = original_mem if prev_membership_original is None else mem
-            # Skip — will be handled below in contraction block
-            continue  # TODO: need to contract here too
+            mem = original_mem  # needed for contraction below
+            # Re-contract current edges
+            new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
+                cur_src, cur_dst, cur_w, mem, node_sizes,
+            )
+            contracted_top_k = min(max(3, new_n // 3), 30)
+            cdf = pl.DataFrame({"uid1": new_src.astype(str), "uid2": new_dst.astype(str), "rel_sum2": new_w})
+            if cdf.height > contracted_top_k * new_n:
+                from ..linkage.filters import filter_top_k
+                cdf = filter_top_k(cdf, contracted_top_k)
+            cdf = cdf.sort("rel_sum2", descending=True).with_row_index("_r").with_columns(
+                (1.0 / (pl.col("_r") + 1).cast(pl.Float64)).alias("rel_sum2")).drop("_r")
+            cur_src = cdf["uid1"].to_numpy().astype(np.uint32)
+            cur_dst = cdf["uid2"].to_numpy().astype(np.uint32)
+            cur_w = cdf["rel_sum2"].to_numpy().astype(np.float64)
+            cur_n = new_n
+            node_sizes = new_sizes
+            continue
 
         _log(f"\n{'='*50}")
         _log(f"Level {level_idx}: {level_name} (target_max<{target_pct}%, min_size={min_size})")
@@ -340,10 +360,17 @@ def build_hierarchy(
         levels.append(level)
         _log(f"→ {level_name}: {level.n_clusters} cl, max={level.max_pct}%, avg={avg}, {elapsed:.0f}s")
 
-        # Save level cache
-        if level_cache:
-            np.savez(level_cache, membership=original_mem, gamma=np.float64(gamma))
-            _log(f"Cached → {level_cache}")
+        # Save level result
+        if level_dir:
+            import json as _json
+            level_dir.mkdir(parents=True, exist_ok=True)
+            pl.DataFrame({"uid": uids, "cluster": original_mem.tolist()}).write_parquet(level_mem_path)
+            _json.dump({
+                "gamma": gamma, "n_clusters": level.n_clusters,
+                "max_pct": level.max_pct, "avg_size": level.avg_size,
+                "top5": level.top5, "target_pct": target_pct, "min_size": min_size,
+            }, open(level_meta_path, "w"), indent=2)
+            _log(f"Saved → {level_dir}/")
 
         # Stop condition
         if len(sizes) <= stop_at_clusters:
@@ -382,7 +409,16 @@ def build_hierarchy(
         node_sizes = new_sizes
         _log(f"Contracted: {new_n} super-nodes, {contracted_df.height} edges (top-{contracted_top_k} + 1/rank)")
 
-    return HierarchyResult(levels=levels, n_nodes=n_total)
+    result = HierarchyResult(levels=levels, n_nodes=n_total)
+
+    # Save full hierarchy
+    if out and uids:
+        hierarchy_df = result.to_dataframe(uids)
+        hierarchy_path = out / "hierarchy.parquet"
+        hierarchy_df.write_parquet(hierarchy_path)
+        _log(f"Saved hierarchy → {hierarchy_path}")
+
+    return result
 
 
 def _sweep_gamma_direct(
