@@ -32,19 +32,19 @@ LEVEL_NAMES = ["nano", "micro", "meso", "macro", "mega"]
 
 # Default target_max_pct per level — coarser levels allow larger clusters
 DEFAULT_TARGETS = {
-    "nano": 3.0,
-    "micro": 10.0,
-    "meso": 25.0,
+    "nano": 1.0,       # tight clusters (~400 papers avg)
+    "micro": 5.0,      # broader grouping
+    "meso": 20.0,      # field-level
     "macro": 40.0,
     "mega": 50.0,
 }
 
 DEFAULT_MIN_SIZE = {
-    "nano": 100,
-    "micro": 3,
-    "meso": 2,
-    "macro": 2,
-    "mega": 2,
+    "nano": 50,         # min 50 papers per nano cluster
+    "micro": 500,       # min 500 papers per micro cluster
+    "meso": 2000,       # min 2000 per meso
+    "macro": 5000,
+    "mega": 10000,
 }
 
 
@@ -158,8 +158,8 @@ def build_hierarchy(
     import tempfile
     from .integer_remap import integer_remap, join_back_uids
 
-    tmpdir = tempfile.mkdtemp()
-    remap = integer_remap(combined, Path(tmpdir) / "remap")
+    _tmpdir = tempfile.mkdtemp()
+    remap = integer_remap(combined, Path(_tmpdir) / "remap")
     ie = pl.read_parquet(remap.int_edges_path)
     src = ie["src"].to_numpy().astype(np.uint32)
     dst = ie["dst"].to_numpy().astype(np.uint32)
@@ -180,25 +180,45 @@ def build_hierarchy(
     # Resume from cached levels (skip re-computation)
     start_level = 0
     if cached_levels:
-        for cached in cached_levels:
+        for i, cached in enumerate(cached_levels):
             levels.append(cached)
             _log(f"Cached {cached.name}: {cached.n_clusters} cl, γ={cached.gamma:.2e}")
-        start_level = len(cached_levels)
-        # Contract to resume point
-        last_mem = cached_levels[-1].membership
-        for i in range(start_level):
-            mem_for_contract = levels[i].membership if i == 0 else levels[i].membership
-            # For first level, contract original edges
+
+            # Sequentially contract for each cached level
+            # Need to get per-level membership relative to current graph
             if i == 0:
-                new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
-                    cur_src, cur_dst, cur_w,
-                    np.array([levels[0].membership[j] for j in range(n_nodes)], dtype=np.uint64),
-                    node_sizes,
-                )
-                cur_src, cur_dst, cur_w, cur_n = new_src, new_dst, new_w, new_n
-                node_sizes = new_sizes
-                prev_membership_original = levels[0].membership.astype(np.uint64)
-            # TODO: multi-level resume needs sequential contraction
+                # First level: membership is on original graph nodes
+                level_mem = cached.membership[:n_nodes].astype(np.uint64)
+            else:
+                # Higher level: membership is relative to previous contraction
+                # Map original → current super-node → this level's cluster
+                level_mem = cached.membership[prev_membership_original].astype(np.uint64)
+
+            new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
+                cur_src, cur_dst, cur_w, level_mem, node_sizes,
+            )
+            # Apply 1/rank + top-k on contracted edges
+            contracted_top_k = min(max(3, new_n // 3), 30)
+            contracted_df = pl.DataFrame({
+                "uid1": new_src.astype(str), "uid2": new_dst.astype(str), "rel_sum2": new_w,
+            })
+            if contracted_df.height > contracted_top_k * new_n:
+                from ..linkage.filters import filter_top_k
+                contracted_df = filter_top_k(contracted_df, contracted_top_k)
+            contracted_df = (
+                contracted_df.sort("rel_sum2", descending=True)
+                .with_row_index("_r")
+                .with_columns((1.0 / (pl.col("_r") + 1).cast(pl.Float64)).alias("rel_sum2"))
+                .drop("_r")
+            )
+            cur_src = contracted_df["uid1"].to_numpy().astype(np.uint32)
+            cur_dst = contracted_df["uid2"].to_numpy().astype(np.uint32)
+            cur_w = contracted_df["rel_sum2"].to_numpy().astype(np.float64)
+            cur_n = new_n
+            node_sizes = new_sizes
+            prev_membership_original = cached.membership.astype(np.uint64)
+
+        start_level = len(cached_levels)
         _log(f"Resumed from {start_level} cached levels, contracted to {cur_n} nodes")
 
     for level_idx in range(start_level, n_levels):
