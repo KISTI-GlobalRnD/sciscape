@@ -73,6 +73,9 @@ class LandscapeConfig:
     auto_gamma: bool = False
     auto_gamma_target: float = 3.0
 
+    # Callbacks
+    progress: Any = None  # callable(str) for progress messages
+
     # Report
     report_title: str = "SciScape Landscape"
 
@@ -627,21 +630,23 @@ def run_landscape(
             edge_path = combined_path
             log.info("Combined: %d edges → %s", combined.height, combined_path)
 
-    # ── Auto-gamma (if configured) ──────────────────────────
+    # ── Auto-gamma (if configured, skip for small graphs) ──
     if cfg.auto_gamma and edge_path.exists():
-        from .clustering.auto_gamma import find_gamma
-        log.info("Auto-gamma: searching for target max < %.1f%%", cfg.auto_gamma_target)
         edges_for_gamma = pl.read_parquet(edge_path)
-        ag_result = find_gamma(
-            edges_for_gamma,
-            target_max_pct=cfg.auto_gamma_target,
-            gamma_range=(1e-7, 1e-1),
-            progress=cfg.progress if hasattr(cfg, 'progress') else None,
-        )
-        # Narrow gamma_range around found γ
-        cfg.gamma_range = (ag_result.gamma * 0.5, ag_result.gamma * 2.0)
-        log.info("Auto-gamma: selected γ=%.2e, range narrowed to [%.2e, %.2e]",
-                 ag_result.gamma, cfg.gamma_range[0], cfg.gamma_range[1])
+        n_nodes_est = pl.concat([edges_for_gamma["uid1"], edges_for_gamma["uid2"]]).n_unique()
+        if n_nodes_est >= 200:
+            from .clustering.auto_gamma import find_gamma
+            log.info("Auto-gamma: searching for target max < %.1f%%", cfg.auto_gamma_target)
+            ag_result = find_gamma(
+                edges_for_gamma,
+                target_max_pct=cfg.auto_gamma_target,
+                progress=cfg.progress,
+            )
+            cfg.gamma_range = (ag_result.gamma * 0.5, ag_result.gamma * 2.0)
+            log.info("Auto-gamma: selected γ=%.2e, range narrowed to [%.2e, %.2e]",
+                     ag_result.gamma, cfg.gamma_range[0], cfg.gamma_range[1])
+        else:
+            log.info("Auto-gamma skipped: %d nodes < 200 (using default γ range)", n_nodes_est)
 
     # ── Input validation ──────────────────────────────────────
     if not edge_path.exists() and not cfg.layer_paths:
