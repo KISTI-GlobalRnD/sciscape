@@ -324,7 +324,7 @@ def _run_clustering(
                      search_elapsed, best_gamma, cascade_result.n_clusters)
 
         else:
-            # ── Standard mode (no block-init) ────────────────────
+            # ── Standard mode (no pre-partition) ────────────────────
             log.info("Searching optimal γ for nano (min_docs=%d)...", min_docs)
             search_result = gamma_search(
                 runner,

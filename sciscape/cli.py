@@ -90,7 +90,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--top-n", type=int, default=80, help="Keywords per cluster (default: 80)")
     ls.add_argument("--title", type=str, default="SciScape Landscape", help="Report title")
     ls.add_argument("--gamma-pre", type=str, default="auto",
-                     help="Block-init γ: 'auto' (10×γ_range upper), 'none' (disable), or float (default: auto)")
+                     help="Pre-partition γ: 'auto' (10×γ_range upper), 'none' (disable), or float (default: auto)")
     ls.add_argument("--gamma-range", type=str, default=None,
                      help="Resolution search bounds lo,hi (default: 1e-6,1e-3)")
     ls.add_argument("--force", action="store_true",

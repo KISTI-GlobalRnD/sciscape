@@ -181,8 +181,8 @@ class SciScapeApp:
 
     def _parse_progress(self, msg: str):
         """Extract status hints from log messages."""
-        if "Block init" in msg:
-            self.status_var.set("Block initialization...")
+        if "Pre-partition" in msg:
+            self.status_var.set("Pre-partition...")
         elif "Contracted" in msg:
             self.status_var.set("Graph contraction...")
         elif "Searching optimal" in msg:

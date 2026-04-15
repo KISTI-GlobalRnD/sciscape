@@ -146,8 +146,8 @@ class TestClustering:
         n_clusters = result["cluster_nano"].n_unique()
         assert n_clusters > 1
 
-    def test_block_init_mode(self, sample_dir):
-        """Block-init mode (gamma_pre="auto"): blocks → contraction → cascade."""
+    def test_prepartition_mode(self, sample_dir):
+        """Pre-partition mode (gamma_pre="auto"): blocks → contraction → cascade."""
         from sciscape.landscape import _run_clustering
 
         tmp_path, edge_path, _ = sample_dir
@@ -173,7 +173,7 @@ class TestClustering:
         # parts.parquet should be cached
         assert (out / "parts.parquet").exists()
 
-    def test_block_init_explicit_gamma(self, sample_dir):
+    def test_prepartition_explicit_gamma(self, sample_dir):
         """Explicit gamma_pre value."""
         from sciscape.landscape import _run_clustering
 

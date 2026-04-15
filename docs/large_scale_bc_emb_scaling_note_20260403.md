@@ -1,7 +1,7 @@
 # Large-Scale BC+Emb Scaling Note (2026-04-03)
 
 ## Problem
-Full `BC + Emb` weighted-sum graph construction succeeded, but the original SciScape block-init path did not scale to the full graph.
+Full `BC + Emb` weighted-sum graph construction succeeded, but the original SciScape pre-partition path did not scale to the full graph.
 
 Observed full graph size:
 - nodes: about `56.6M`
@@ -19,7 +19,7 @@ Use a two-stage sparse-native path.
 
 1. Build the full generalized `BC + Emb` graph once.
 2. Sparsify it before clustering.
-3. Run high-gamma block-init on the sparsified graph using an integer-edge backend.
+3. Run high-gamma pre-partition on the sparsified graph using an integer-edge backend.
 
 ## What was done
 ### 1. Full fusion
@@ -41,7 +41,7 @@ The sparsified graph was converted to:
 
 This avoids repeated string-UID handling during clustering.
 
-### 4. Sparse-native block-init backend
+### 4. Sparse-native pre-partition backend
 A sparse-native `NetworKit` path was introduced.
 
 Why:
@@ -56,11 +56,11 @@ Preferred large-scale pattern:
 1. full fusion
 2. top-k or threshold sparsification
 3. integer remap
-4. sparse-native community detection / block-init
+4. sparse-native community detection / pre-partition
 5. only join back to string UIDs at the output stage
 
 ## Recommended default
-For future large runs, treat this as the default block-init pattern:
+For future large runs, treat this as the default pre-partition pattern:
 - full multilayer fusion graph
 - symmetric top-k sparsification
 - integer edge list

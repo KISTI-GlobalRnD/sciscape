@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class PrepartitionResult:
-    """Result of high-γ block initialization."""
+    """Result of high-γ pre-partition."""
 
     pre_membership: List[int]
     gamma_pre: float
@@ -64,7 +64,7 @@ class CascadeResult:
     hot_started: bool
 
 
-# ── Block initialization ─────────────────────────────────────
+# ── Pre-partition ─────────────────────────────────────
 
 
 def prepartition(
@@ -166,7 +166,7 @@ def cascade_search(
     runner : LeidenRunner
         Runner bound to the **original** graph.
     blocks : PrepartitionResult
-        Pre-computed block initialization.
+        Pre-computed pre-partition.
     gamma_targets : sequence of float
         Target γ values, will be sorted descending internally.
     seed : int, optional
@@ -329,7 +329,7 @@ def load_prepartition(path: Path) -> PrepartitionResult | None:
     }
 
     if f"{_META_PREFIX}gamma_pre" not in meta:
-        log.warning("No block_init metadata in %s", path)
+        log.warning("No prepartition metadata in %s", path)
         return None
 
     df = pl.from_arrow(table)
