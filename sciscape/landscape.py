@@ -630,23 +630,31 @@ def run_landscape(
             edge_path = combined_path
             log.info("Combined: %d edges → %s", combined.height, combined_path)
 
-    # ── Auto-gamma (if configured, skip for small graphs) ──
+    # ── Auto-gamma (if configured) ──────────────────────────
     if cfg.auto_gamma and edge_path.exists():
+        from .clustering.auto_gamma import find_gamma
         edges_for_gamma = pl.read_parquet(edge_path)
         n_nodes_est = pl.concat([edges_for_gamma["uid1"], edges_for_gamma["uid2"]]).n_unique()
-        if n_nodes_est >= 200:
-            from .clustering.auto_gamma import find_gamma
-            log.info("Auto-gamma: searching for target max < %.1f%%", cfg.auto_gamma_target)
-            ag_result = find_gamma(
-                edges_for_gamma,
-                target_max_pct=cfg.auto_gamma_target,
-                progress=cfg.progress,
-            )
+        log.info("Auto-gamma: %d nodes, searching for target max < %.1f%%",
+                 n_nodes_est, cfg.auto_gamma_target)
+        # For small graphs: relax target and widen gamma range
+        target = cfg.auto_gamma_target
+        gamma_hi = 1e-1
+        if n_nodes_est < 500:
+            target = max(target, 20.0)  # allow larger max cluster for small graphs
+            gamma_hi = 1e2  # need much higher γ for dense small graphs
+        ag_result = find_gamma(
+            edges_for_gamma,
+            target_max_pct=target,
+            gamma_range=(1e-7, gamma_hi),
+            progress=cfg.progress,
+        )
+        if ag_result.n_clusters > 1:
             cfg.gamma_range = (ag_result.gamma * 0.5, ag_result.gamma * 2.0)
-            log.info("Auto-gamma: selected γ=%.2e, range narrowed to [%.2e, %.2e]",
-                     ag_result.gamma, cfg.gamma_range[0], cfg.gamma_range[1])
+            log.info("Auto-gamma: selected γ=%.2e (%d cl, max=%.1f%%)",
+                     ag_result.gamma, ag_result.n_clusters, ag_result.max_pct)
         else:
-            log.info("Auto-gamma skipped: %d nodes < 200 (using default γ range)", n_nodes_est)
+            log.info("Auto-gamma: could not split graph, using default γ range")
 
     # ── Input validation ──────────────────────────────────────
     if not edge_path.exists() and not cfg.layer_paths:
