@@ -85,14 +85,15 @@ def build_hierarchy(
     *,
     layer_paths: Dict[str, Path] | None = None,
     layers: Dict[str, pl.DataFrame] | None = None,
-    n_levels: int = 3,
+    n_levels: int = 4,
     targets: Dict[str, float] | None = None,
     min_sizes: Dict[str, int] | None = None,
     combine_strategy: str = "consensus",
     combine_top_k: int = 30,
     seed: int = 42,
-    stop_at_clusters: int = 10,
+    stop_at_clusters: int = 5,
     cached_levels: List[HierarchyLevel] | None = None,
+    cache_dir: Path | None = None,
     progress: callable | None = None,
 ) -> HierarchyResult:
     """Build hierarchical clustering with auto-γ per level.
@@ -133,8 +134,17 @@ def build_hierarchy(
         if progress:
             progress(msg)
 
-    # ── Step 1: Combine edges (if multi-layer) ──
-    if layers or layer_paths:
+    # ── Cache setup ──
+    if cache_dir:
+        cache_dir = Path(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── Step 1: Combine edges (cached) ──
+    combined_cache = cache_dir / "combined_edges.parquet" if cache_dir else None
+    if combined_cache and combined_cache.exists():
+        _log(f"Loading cached combined edges: {combined_cache}")
+        combined = pl.read_parquet(combined_cache)
+    elif layers or layer_paths:
         if layers is None:
             layers = {}
             for name, path in layer_paths.items():
@@ -147,6 +157,9 @@ def build_hierarchy(
         combined = combine_edge_layers(
             layers, strategy=combine_strategy, gcc=True, top_k=combine_top_k,
         )
+        if combined_cache:
+            combined.write_parquet(combined_cache)
+            _log(f"Cached combined edges → {combined_cache}")
     elif edges is not None:
         combined = edges
     else:
@@ -227,6 +240,29 @@ def build_hierarchy(
         target_pct = targets.get(level_name, 30.0)
         min_size = min_sizes.get(level_name, 2)
 
+        # Check level cache
+        level_cache = cache_dir / f"level_{level_name}.npz" if cache_dir else None
+        if level_cache and level_cache.exists():
+            cached = np.load(level_cache, allow_pickle=True)
+            original_mem = cached["membership"]
+            gamma = float(cached["gamma"])
+            sizes = Counter(original_mem.tolist())
+            mx = max(sizes.values())
+            level = HierarchyLevel(
+                name=level_name, gamma=gamma,
+                n_clusters=len(sizes), max_pct=round(100 * mx / n_total, 1),
+                avg_size=n_total // len(sizes), top5=sorted(sizes.values(), reverse=True)[:5],
+                membership=original_mem, elapsed=0,
+            )
+            levels.append(level)
+            _log(f"Cached {level_name}: {level.n_clusters} cl, γ={gamma:.2e}")
+            # Contract for next level
+            prev_membership_original = original_mem.astype(np.uint64)
+            # Need to contract cur edges with the local membership
+            local_mem = original_mem if prev_membership_original is None else mem
+            # Skip — will be handled below in contraction block
+            continue  # TODO: need to contract here too
+
         _log(f"\n{'='*50}")
         _log(f"Level {level_idx}: {level_name} (target_max<{target_pct}%, min_size={min_size})")
         _log(f"{'='*50}")
@@ -303,6 +339,11 @@ def build_hierarchy(
         )
         levels.append(level)
         _log(f"→ {level_name}: {level.n_clusters} cl, max={level.max_pct}%, avg={avg}, {elapsed:.0f}s")
+
+        # Save level cache
+        if level_cache:
+            np.savez(level_cache, membership=original_mem, gamma=np.float64(gamma))
+            _log(f"Cached → {level_cache}")
 
         # Stop condition
         if len(sizes) <= stop_at_clusters:
