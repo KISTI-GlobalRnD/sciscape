@@ -40,8 +40,13 @@ class QueryRequest(BaseModel):
     years: str | None = None
     max_works: int = 5000
     email: str | None = None
-    edge_types: str = "dc,bc"
+    edge_types: str = "dc,bc,cc"
     run_landscape: bool = True
+    combine_strategy: str = "consensus"
+    combine_top_k: int = 30
+    auto_gamma: bool = True
+    auto_gamma_target: float = 3.0
+    n_levels: int = 4
 
 
 class JobStatus(BaseModel):
@@ -666,6 +671,10 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             edge_types=req.edge_types.split(","),
             output_dir=output_dir,
             run_landscape=req.run_landscape,
+            combine_strategy=req.combine_strategy,
+            combine_top_k=req.combine_top_k,
+            auto_gamma=req.auto_gamma,
+            auto_gamma_target=req.auto_gamma_target,
             progress=progress_cb,
         )
         result = run_openalex_pipeline(config)

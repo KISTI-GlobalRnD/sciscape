@@ -574,7 +574,7 @@ input[type="range"]::-webkit-slider-thumb {
         </div>
         <div class="field-group">
           <label>Edge types</label>
-          <input type="text" id="q-edges" value="dc,bc" />
+          <input type="text" id="q-edges" value="dc,bc,cc" />
         </div>
       </div>
       <div class="query-actions">
@@ -734,8 +734,13 @@ async function submitQuery() {
     years: document.getElementById('q-years').value || null,
     max_works: parseInt(document.getElementById('q-max').value) || 5000,
     email: document.getElementById('q-email').value || null,
-    edge_types: document.getElementById('q-edges').value || 'dc,bc',
+    edge_types: document.getElementById('q-edges').value || 'dc,bc,cc',
     run_landscape: true,
+    combine_strategy: document.getElementById('cfg-strategy')?.value || 'consensus',
+    combine_top_k: parseInt(document.getElementById('cfg-topk')?.value) || 30,
+    auto_gamma: true,
+    auto_gamma_target: parseFloat(document.getElementById('cfg-gamma-target')?.value) || 3.0,
+    n_levels: parseInt(document.getElementById('cfg-levels')?.value) || 4,
   };
 
   try {
@@ -824,11 +829,13 @@ function showResults(result) {
   if (result.edges_path)
     grid.innerHTML += dlCard('edges.parquet', 'Citation edges', 'EDG', currentJobId);
 
-  // Network visualization
+  // Load all tabs
   loadNetwork(currentJobId);
-  // Pre-load hierarchy + temporal
   loadHierarchy('treemap');
   loadTemporal();
+  loadClusterTable();
+  loadKeywordTable();
+  updateDownloads(result);
 
   // Tabs: activate overview
   switchTab('overview');
@@ -925,6 +932,59 @@ async function loadTermNetwork(jobId) {
   document.getElementById('viz-placeholder').style.display = 'none';
   termNetViz = new TermCooccurrenceNetwork('network-container');
   await termNetViz.load(jobId);
+}
+
+/* ── CLUSTER TABLE ──────────────────────────────────────── */
+async function loadClusterTable() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/labels?strategy=tfidf_distinct&top_k=3`);
+    const data = await r.json();
+    const tbody = document.querySelector('#cluster-table tbody');
+    if (data.labels) {
+      const entries = Object.entries(data.labels).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+      tbody.innerHTML = entries.map(([cid, label]) =>
+        `<tr><td>C${cid}</td><td>${esc(label)}</td><td class="num">—</td></tr>`
+      ).join('');
+    }
+  } catch(e) {}
+}
+
+/* ── KEYWORD TABLE ─────────────────────────────────────── */
+async function loadKeywordTable() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/labels?strategy=tfidf_distinct&top_k=5`);
+    const data = await r.json();
+    const tbody = document.querySelector('#keyword-table tbody');
+    if (data.labels) {
+      const entries = Object.entries(data.labels).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+      tbody.innerHTML = entries.map(([cid, label]) => {
+        const kws = label.split(', ').map(k => `<span class="stat-pill" style="font-size:0.72rem;">${esc(k)}</span>`).join(' ');
+        return `<tr><td>C${cid}</td><td>${kws}</td><td class="num">—</td></tr>`;
+      }).join('');
+    }
+  } catch(e) {}
+}
+
+/* ── DOWNLOADS UPDATE ──────────────────────────────────── */
+function updateDownloads(result) {
+  const grid = document.getElementById('dl-grid');
+  grid.innerHTML = '';
+  const files = [
+    ['abstracts.parquet', 'Paper metadata', 'ABS'],
+    ['edges.parquet', 'Citation edges', 'EDG'],
+    ['edges_dc.parquet', 'Direct citation', 'DC'],
+    ['edges_bc.parquet', 'Bibliographic coupling', 'BC'],
+    ['edges_cc.parquet', 'Co-citation', 'CC'],
+  ];
+  for (const [fname, desc, icon] of files) {
+    grid.innerHTML += dlCard(fname, desc, icon, currentJobId);
+  }
+  if (result.landscape_dir) {
+    grid.innerHTML += dlCard('landscape/membership.parquet', 'Cluster membership', 'MEM', currentJobId);
+    grid.innerHTML += dlCard('landscape/keywords.parquet', 'Keywords', 'KW', currentJobId);
+  }
 }
 
 /* ── EXPORT ─────────────────────────────────────────────── */
