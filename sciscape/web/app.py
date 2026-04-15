@@ -515,6 +515,39 @@ async def apply_label_merges(job_id: str, req: MergeRequest):
     return {"status": "applied", "level": req.level, "n_merges": len(req.merge_map)}
 
 
+@app.get("/api/jobs/{job_id}/temporal-tracking")
+async def get_temporal_tracking(job_id: str, window: int = 5, step: int = 1):
+    """Get temporal cluster evolution data."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+
+    from sciscape.visualization.temporal_tracking import (
+        compute_temporal_snapshots, detect_emerging_clusters, temporal_to_plotly,
+    )
+    import polars as pl
+
+    edges_path = result.get("edges_path")
+    abs_path = result.get("abstracts_path")
+    if not edges_path or not abs_path:
+        return {"error": "missing data"}
+
+    try:
+        edges = pl.read_parquet(edges_path)
+        abs_df = pl.read_parquet(abs_path)
+        year_map = dict(zip(abs_df["uid"].to_list(),
+                            abs_df["pubyear"].to_list() if "pubyear" in abs_df.columns else [None]*abs_df.height))
+
+        snapshots = compute_temporal_snapshots(edges, year_map, window_years=window, step_years=step)
+        emerging = detect_emerging_clusters(snapshots)
+        figures = temporal_to_plotly(snapshots)
+
+        return {"snapshots": snapshots[:50], "emerging": emerging[:10], "figures": figures}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/jobs/{job_id}/treemap")
 async def get_treemap(job_id: str, mode: str = "treemap"):
     """Get Plotly treemap/sunburst data for cluster hierarchy."""

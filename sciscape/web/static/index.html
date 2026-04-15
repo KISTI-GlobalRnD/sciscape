@@ -597,6 +597,7 @@ input[type="range"]::-webkit-slider-thumb {
       <div class="tab-bar" id="tab-bar">
         <button class="tab-btn active" data-tab="overview">Network</button>
         <button class="tab-btn" data-tab="hierarchy">Hierarchy</button>
+        <button class="tab-btn" data-tab="temporal">Temporal</button>
         <button class="tab-btn" data-tab="clusters">Clusters</button>
         <button class="tab-btn" data-tab="keywords">Keywords</button>
         <button class="tab-btn" data-tab="downloads">Download</button>
@@ -620,6 +621,12 @@ input[type="range"]::-webkit-slider-thumb {
           <button class="net-chip" id="btn-sunburst" onclick="loadHierarchy('sunburst')">Sunburst</button>
         </div>
         <div id="hierarchy-chart" style="width:100%;height:650px;"></div>
+      </div>
+
+      <div class="tab-content" id="tab-temporal">
+        <div id="temporal-activity" style="width:100%;height:350px;"></div>
+        <div id="temporal-growth" style="width:100%;height:400px;margin-top:1rem;"></div>
+        <div id="temporal-emerging" style="margin-top:1rem;"></div>
       </div>
 
       <div class="tab-content" id="tab-clusters">
@@ -787,8 +794,9 @@ function showResults(result) {
 
   // Network visualization
   loadNetwork(currentJobId);
-  // Pre-load hierarchy
+  // Pre-load hierarchy + temporal
   loadHierarchy('treemap');
+  loadTemporal();
 
   // Tabs: activate overview
   switchTab('overview');
@@ -885,6 +893,25 @@ async function loadTermNetwork(jobId) {
   document.getElementById('viz-placeholder').style.display = 'none';
   termNetViz = new TermCooccurrenceNetwork('network-container');
   await termNetViz.load(jobId);
+}
+
+/* ── TEMPORAL TRACKING ──────────────────────────────────── */
+async function loadTemporal() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/temporal-tracking?window=5&step=1`);
+    const data = await r.json();
+    if (data.error) return;
+    if (data.figures?.activity) Plotly.newPlot('temporal-activity', data.figures.activity.data, data.figures.activity.layout);
+    if (data.figures?.growth_curves) Plotly.newPlot('temporal-growth', data.figures.growth_curves.data, data.figures.growth_curves.layout);
+    if (data.emerging?.length) {
+      document.getElementById('temporal-emerging').innerHTML =
+        '<div class="section-label">Emerging Clusters</div>' +
+        data.emerging.map(e =>
+          `<span class="stat-pill">C${e.cluster}: ${e.growth_rate}x growth (${e.first_count}→${e.last_count})</span>`
+        ).join(' ');
+    }
+  } catch(e) {}
 }
 
 /* ── HIERARCHY VIZ ─────────────────────────────────────── */

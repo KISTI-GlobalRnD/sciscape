@@ -12,6 +12,12 @@ from .hierarchy_treemap import (
     save_treemap_html,
     hierarchy_summary_table,
 )
+from .temporal_tracking import (
+    compute_temporal_snapshots,
+    compute_cluster_growth,
+    detect_emerging_clusters,
+    temporal_to_plotly,
+)
 from .edge_landscape import (
     compute_edge_year_matrix,
     compute_multilayer_year_matrices,
