@@ -30,21 +30,22 @@ log = logging.getLogger(__name__)
 
 LEVEL_NAMES = ["nano", "micro", "meso", "macro", "mega"]
 
-# Default target_max_pct per level — coarser levels allow larger clusters
+# Default: each level ~1/3 of previous cluster count
+# For 100k papers: nano ~900, micro ~300, meso ~100, macro ~30
 DEFAULT_TARGETS = {
-    "nano": 1.0,       # tight clusters (~400 papers avg)
-    "micro": 5.0,      # broader grouping
-    "meso": 20.0,      # field-level
-    "macro": 40.0,
-    "mega": 50.0,
+    "nano": 0.5,        # ~900 clusters (avg ~110)
+    "micro": 1.5,       # ~300 clusters (avg ~330)
+    "meso": 5.0,        # ~100 clusters (avg ~1000)
+    "macro": 15.0,      # ~30 clusters (avg ~3300)
+    "mega": 40.0,
 }
 
 DEFAULT_MIN_SIZE = {
-    "nano": 50,         # min 50 papers per nano cluster
-    "micro": 500,       # min 500 papers per micro cluster
-    "meso": 2000,       # min 2000 per meso
-    "macro": 5000,
-    "mega": 10000,
+    "nano": 30,
+    "micro": 100,
+    "meso": 300,
+    "macro": 1000,
+    "mega": 3000,
 }
 
 
