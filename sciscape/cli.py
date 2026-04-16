@@ -99,13 +99,16 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Multi-layer edge files: name=path,name=path,... "
                           "(e.g. bc=bc.parquet,cc=cc.parquet,dc=dc.parquet)")
     ls.add_argument("--combine-strategy", type=str, default="consensus",
-                     help="Combination strategy: boosted, sum, max, vote (default: boosted)")
-    ls.add_argument("--combine-top-k", type=int, default=30,
-                     help="Per-node top-k filter for each layer (default: 30)")
+                     choices=["consensus", "rank", "sum", "max", "vote"],
+                     help="Edge combination strategy (default: consensus)")
+    ls.add_argument("--combine-top-k", type=str, default="auto",
+                     help="Per-node top-k filter: 'auto' (sqrt-based), integer, or 'balanced' (default: auto)")
     ls.add_argument("--auto-gamma", action="store_true",
                      help="Auto-select γ (target max cluster < 3%%)")
     ls.add_argument("--auto-gamma-target", type=float, default=3.0,
                      help="Max cluster %% target for auto-gamma (default: 3.0)")
+    ls.add_argument("--evaluate", action="store_true",
+                     help="Run stability evaluation (AMI/ARI with 5 seeds) + quality report")
     ls.add_argument("-v", "--verbose", action="store_true")
 
     # ---- viewer ----
@@ -114,6 +117,17 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Output HTML path (default: viewer.html)")
     vw.add_argument("--title", type=str, default="SciScape Viewer", help="Viewer title")
     vw.add_argument("--open", action="store_true", help="Open in browser after generation")
+
+    # ---- export ----
+    ex = sub.add_parser("export", help="Export network to GEXF (Gephi) or GraphML (Cytoscape)")
+    ex.add_argument("edge_path", type=Path, help="Edge parquet file")
+    ex.add_argument("membership_path", type=Path, help="Membership parquet file")
+    ex.add_argument("-o", "--output", type=Path, default=Path("network.gexf"),
+                     help="Output file (default: network.gexf)")
+    ex.add_argument("--format", choices=["gexf", "graphml"], default="gexf",
+                     help="Export format (default: gexf)")
+    ex.add_argument("--abstracts", type=Path, default=None,
+                     help="Abstracts parquet for title/year attributes")
 
     # ---- query (OpenAlex) ----
     qa = sub.add_parser("query", help="Query OpenAlex → fetch → edges → landscape (all-in-one)")
@@ -329,7 +343,14 @@ def _run_landscape(args: argparse.Namespace) -> None:
                 layer_paths[Path(item).stem] = Path(item.strip())
         cfg_kwargs["layer_paths"] = layer_paths
         cfg_kwargs["combine_strategy"] = args.combine_strategy
-        cfg_kwargs["combine_top_k"] = args.combine_top_k
+        # Parse combine_top_k: "auto", "balanced", or integer
+        tk = args.combine_top_k
+        if tk not in ("auto", "balanced"):
+            try:
+                tk = int(tk)
+            except ValueError:
+                tk = "auto"
+        cfg_kwargs["combine_top_k"] = tk
 
     if args.auto_gamma:
         cfg_kwargs["auto_gamma"] = True
@@ -349,6 +370,37 @@ def _run_landscape(args: argparse.Namespace) -> None:
     result = run_landscape(edge_path, args.abstract_path, args.output_dir, config=cfg)
     print(f"Landscape complete → {result['report_dir']}/report.html")
 
+    # Optional evaluation
+    if getattr(args, "evaluate", False):
+        try:
+            from sciscape.evaluation.stability import evaluate_stability, compute_quality_report
+            import polars as pl
+            import numpy as np
+
+            # Load edges and membership
+            membership_path = args.output_dir / "membership.parquet"
+            if membership_path.exists() and edge_path.exists():
+                edges = pl.read_parquet(edge_path)
+                mem_df = pl.read_parquet(membership_path)
+                cluster_col = next((c for c in mem_df.columns if c.startswith("cluster_")), None)
+                if cluster_col:
+                    membership = mem_df[cluster_col].to_numpy()
+                    gamma = result.get("gamma", 1.0)
+
+                    # Stability
+                    print("\n--- Stability Evaluation ---")
+                    stab = evaluate_stability(edges, gamma=gamma, n_seeds=5,
+                                              min_size=cfg.min_docs if hasattr(cfg, 'min_docs') else 10)
+                    print(stab.summary())
+
+                    # Quality report
+                    print("\n--- Quality Report ---")
+                    qr = compute_quality_report(edges, membership, gamma=gamma,
+                                                target_pct=cfg.auto_gamma_target)
+                    print(qr.summary())
+        except Exception as e:
+            print(f"Evaluation skipped: {e}")
+
 
 def _run_viewer(args: argparse.Namespace) -> None:
     from sciscape.keyword_extraction.visualization import export_viewer
@@ -364,6 +416,21 @@ def _run_viewer(args: argparse.Namespace) -> None:
     if args.open:
         import webbrowser
         webbrowser.open(f"file://{path}")
+
+
+def _run_export(args: argparse.Namespace) -> None:
+    import polars as pl
+    from sciscape.export import export_gexf, export_graphml
+
+    edges = pl.read_parquet(args.edge_path)
+    membership = pl.read_parquet(args.membership_path)
+    abstracts = pl.read_parquet(args.abstracts) if args.abstracts else None
+
+    if args.format == "graphml":
+        path = export_graphml(edges, membership, args.output, abstracts=abstracts)
+    else:
+        path = export_gexf(edges, membership, args.output, abstracts=abstracts)
+    print(f"Exported → {path}")
 
 
 def _run_query(args: argparse.Namespace) -> None:
@@ -411,6 +478,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_landscape(args)
     elif args.command == "viewer":
         _run_viewer(args)
+    elif args.command == "export":
+        _run_export(args)
     elif args.command == "query":
         _run_query(args)
     elif args.command == "web":
