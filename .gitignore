@@ -36,3 +36,6 @@ pilot_*.html
 pilot_*.parquet
 *.parquet
 !tests/**/*.parquet
+
+# Web output (temporary job results)
+sciscape_web_output/

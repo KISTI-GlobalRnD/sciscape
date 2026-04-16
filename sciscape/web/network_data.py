@@ -246,12 +246,14 @@ def _build_hierarchy_links(
         pairs = mem_df.select(child_col, parent_col).group_by(child_col).agg(
             pl.col(parent_col).mode().first().alias("parent")
         )
-        for row in pairs.iter_rows(named=True):
+        child_level = levels[i]
+        parent_level = levels[i + 1]
+        for child_id, parent_id in zip(pairs[child_col].to_list(), pairs["parent"].to_list()):
             links.append({
-                "child_level": levels[i],
-                "parent_level": levels[i + 1],
-                "child": int(row[child_col]),
-                "parent": int(row["parent"]),
+                "child_level": child_level,
+                "parent_level": parent_level,
+                "child": int(child_id),
+                "parent": int(parent_id),
             })
 
     return links
@@ -302,19 +304,28 @@ def build_term_network_json(
     term_scores: Dict[str, float] = defaultdict(float)       # term → max score
     term_dominant: Dict[str, int] = {}                        # term → dominant cluster
 
-    cluster_ids = sorted(kw_df[cluster_col].unique().to_list())
-    for cid in cluster_ids:
-        cluster_kws = kw_df.filter(pl.col(cluster_col) == cid)
-        if score_col:
-            cluster_kws = cluster_kws.sort(score_col, descending=True)
-        top = cluster_kws.head(top_k_per_cluster)
-        for row in top.iter_rows(named=True):
-            term = str(row[keyword_col])
-            score = float(row[score_col]) if score_col else 1.0
-            term_clusters[term].append(int(cid))
-            if score > term_scores[term]:
-                term_scores[term] = score
-                term_dominant[term] = int(cid)
+    # Top-k keywords per cluster (vectorized: sort + group_by head)
+    if score_col and score_col in kw_df.columns:
+        top_all = (
+            kw_df.sort(score_col, descending=True)
+            .group_by(cluster_col, maintain_order=True)
+            .head(top_k_per_cluster)
+        )
+    else:
+        top_all = kw_df.group_by(cluster_col, maintain_order=True).head(top_k_per_cluster)
+
+    for term, cid, score in zip(
+        top_all[keyword_col].cast(pl.Utf8).to_list(),
+        top_all[cluster_col].to_list(),
+        top_all[score_col].to_list() if score_col and score_col in top_all.columns else [1.0] * top_all.height,
+    ):
+        term = str(term)
+        cid = int(cid)
+        score = float(score)
+        term_clusters[term].append(cid)
+        if score > term_scores[term]:
+            term_scores[term] = score
+            term_dominant[term] = cid
 
     # Select top terms by score
     sorted_terms = sorted(term_scores.keys(), key=lambda t: -term_scores[t])[:max_terms]

@@ -22,15 +22,16 @@ from starlette.responses import StreamingResponse
 
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="SciScape", version="0.1.0")
+app = FastAPI(title="SciScape", version="0.2.0")
 
 # Serve static files (frontend)
 _STATIC_DIR = Path(__file__).parent / "static"
 if _STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
-# In-memory job store
-_jobs: Dict[str, Dict[str, Any]] = {}
+# Persistent job store (SQLite with in-memory fallback)
+from .jobstore import get_store as _get_store
+_jobs = _get_store()
 
 
 # ── Models ──────────────────────────────────────────────────
@@ -703,8 +704,10 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             "edges_path": str(result.edges_path) if result.edges_path else None,
             "landscape_dir": str(result.landscape_dir) if result.landscape_dir else None,
         }
+        _jobs.persist(job_id)
     except Exception as e:
         job["status"] = "error"
         job["progress"].append(f"ERROR: {e}")
         job["result"] = {"error": str(e)}
+        _jobs.persist(job_id)
         log.exception("Job %s failed", job_id)
