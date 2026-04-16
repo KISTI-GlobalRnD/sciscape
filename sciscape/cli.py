@@ -379,7 +379,11 @@ def _run_landscape(args: argparse.Namespace) -> None:
 
             # Load edges and membership
             membership_path = args.output_dir / "membership.parquet"
-            if membership_path.exists() and edge_path.exists():
+            if not membership_path.exists():
+                print("Evaluation skipped: membership.parquet not found")
+            elif not edge_path or not edge_path.exists():
+                print(f"Evaluation skipped: edge file not found at {edge_path}")
+            elif membership_path.exists():
                 edges = pl.read_parquet(edge_path)
                 mem_df = pl.read_parquet(membership_path)
                 cluster_col = next((c for c in mem_df.columns if c.startswith("cluster_")), None)

@@ -98,12 +98,19 @@ def evaluate_stability(
     -------
     StabilityResult
     """
-    from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
+    try:
+        from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
+    except ImportError:
+        raise ImportError("scikit-learn required for stability evaluation: pip install scikit-learn")
     from ..clustering.integer_remap import integer_remap_memory
     from ..clustering.leiden_rust import run_leiden_rust, postprocess_small_clusters_rust, RUST_AVAILABLE
 
     if not RUST_AVAILABLE:
         raise ImportError("Rust backend required for stability evaluation")
+    if edges.height == 0:
+        raise ValueError("Cannot evaluate stability: edges DataFrame is empty")
+    if n_seeds < 2:
+        raise ValueError("n_seeds must be >= 2 for pairwise comparison")
 
     def _log(msg):
         log.info(msg)
