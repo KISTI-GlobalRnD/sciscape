@@ -661,6 +661,130 @@ async def list_jobs():
     ]
 
 
+# ── What-if gamma re-clustering ───────────────────────────────
+
+@app.post("/api/jobs/{job_id}/what-if")
+async def what_if_gamma(job_id: str, gamma: float, min_size: int = 10):
+    """Re-cluster with a different gamma without full pipeline re-run."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not ready"}
+    result = job.get("result", {})
+    edges_path = result.get("edges_path")
+    if not edges_path or not Path(edges_path).exists():
+        return {"error": "edges not found"}
+
+    import polars as pl
+    from sciscape.clustering.leiden_rust import run_leiden_rust, postprocess_small_clusters_rust, RUST_AVAILABLE
+    from sciscape.clustering.integer_remap import integer_remap_memory
+    import numpy as np
+
+    if not RUST_AVAILABLE:
+        return {"error": "Rust backend required"}
+
+    edges = pl.read_parquet(edges_path)
+    src, dst, w, n_nodes, uids = integer_remap_memory(edges)
+    r = run_leiden_rust(edges_src=src, edges_dst=dst, edges_weight=w,
+                        resolution=gamma, n_nodes=n_nodes, seed=42, n_iterations=10)
+    p = postprocess_small_clusters_rust(
+        resolution=gamma, min_size=min_size, membership=r.membership,
+        edges_src=src, edges_dst=dst, edges_weight=w, n_nodes=n_nodes, seed=42,
+        gamma_decay=0.5, max_rounds=3, use_greedy=True, use_component_merge=True,
+    )
+    mem = np.asarray(p.membership, dtype=np.int32)
+    size_arr = np.bincount(mem)
+    size_arr_nz = size_arr[size_arr > 0]
+    n_cl = len(size_arr_nz)
+    mx = int(size_arr_nz.max()) if n_cl > 0 else 0
+    return {
+        "gamma": gamma,
+        "n_clusters": n_cl,
+        "max_pct": round(100 * mx / max(n_nodes, 1), 1),
+        "top10": sorted(size_arr_nz.tolist(), reverse=True)[:10],
+        "n_nodes": n_nodes,
+    }
+
+
+@app.get("/api/jobs/{job_id}/quality")
+async def get_quality_report(job_id: str):
+    """Get quality metrics + stability for a completed job."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not ready"}
+    result = job.get("result", {})
+    edges_path = result.get("edges_path")
+    landscape_dir = result.get("landscape_dir")
+    if not edges_path or not Path(edges_path).exists():
+        return {"error": "edges not found"}
+
+    import polars as pl
+    import numpy as np
+    from sciscape.evaluation.stability import compute_quality_report
+
+    edges = pl.read_parquet(edges_path)
+    mem_path = None
+    if landscape_dir:
+        ld = Path(landscape_dir)
+        for f in ld.glob("**/membership*.parquet"):
+            mem_path = f
+            break
+    if not mem_path or not mem_path.exists():
+        return {"error": "membership not found"}
+
+    mem_df = pl.read_parquet(mem_path)
+    cluster_cols = [c for c in mem_df.columns if c.startswith("cluster_")]
+    if not cluster_cols:
+        return {"error": "no cluster columns"}
+    membership = mem_df[cluster_cols[0]].to_numpy()
+    qr = compute_quality_report(edges, membership, gamma=1.0)
+    return {
+        "n_nodes": qr.n_nodes, "n_edges": qr.n_edges,
+        "n_clusters": qr.n_clusters, "max_pct": qr.max_cluster_pct,
+        "singleton_pct": qr.singleton_pct, "top5": qr.top5_sizes,
+        "consensus_edges": qr.consensus_edge_pct,
+    }
+
+
+@app.get("/api/jobs/{job_id}/export/{fmt}")
+async def export_network(job_id: str, fmt: str):
+    """Export network as GEXF or GraphML."""
+    if fmt not in ("gexf", "graphml"):
+        return {"error": f"unsupported format: {fmt}"}
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not ready"}
+    result = job.get("result", {})
+    edges_path = result.get("edges_path")
+    landscape_dir = result.get("landscape_dir")
+    if not edges_path or not Path(edges_path).exists():
+        return {"error": "edges not found"}
+
+    import polars as pl
+    from sciscape.export import export_gexf, export_graphml
+
+    edges = pl.read_parquet(edges_path)
+    mem_path = None
+    if landscape_dir:
+        for f in Path(landscape_dir).glob("**/membership*.parquet"):
+            mem_path = f
+            break
+    membership = pl.read_parquet(mem_path) if mem_path and mem_path.exists() else {}
+
+    out_dir = Path(result.get("output_dir", "."))
+    out_path = out_dir / f"network.{fmt}"
+
+    abs_path = result.get("abstracts_path")
+    abstracts = pl.read_parquet(abs_path) if abs_path and Path(abs_path).exists() else None
+
+    if fmt == "graphml":
+        export_graphml(edges, membership, out_path, abstracts=abstracts)
+    else:
+        export_gexf(edges, membership, out_path, abstracts=abstracts)
+
+    return FileResponse(str(out_path), filename=f"sciscape_network.{fmt}",
+                        media_type="application/xml")
+
+
 # ── Background job runner ────────────────────────────────────
 
 def _run_job(job_id: str, req: QueryRequest) -> None:

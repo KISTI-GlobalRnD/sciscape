@@ -600,6 +600,8 @@ input[type="range"]::-webkit-slider-thumb {
         <button class="tab-btn" data-tab="temporal">Temporal</button>
         <button class="tab-btn" data-tab="clusters">Clusters</button>
         <button class="tab-btn" data-tab="keywords">Keywords</button>
+        <button class="tab-btn" data-tab="whatif">What-if</button>
+        <button class="tab-btn" data-tab="quality">Quality</button>
         <button class="tab-btn" data-tab="downloads">Download</button>
       </div>
 
@@ -653,6 +655,48 @@ input[type="range"]::-webkit-slider-thumb {
           <thead><tr><th>Cluster</th><th>Top Keywords</th><th class="num">Score</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+
+      <!-- What-if Tab -->
+      <div class="tab-content" id="tab-whatif">
+        <div class="section-label">Gamma What-if Analysis</div>
+        <p style="color:var(--silver);font-size:0.85rem;margin-bottom:1rem;">
+          Adjust gamma to explore how resolution affects clustering without re-running the full pipeline.
+        </p>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <label style="font-weight:600;min-width:80px;">Gamma:</label>
+          <input type="range" id="whatif-gamma" min="-6" max="0" step="0.1" value="-3"
+                 style="flex:1;" oninput="updateGammaLabel()">
+          <span id="whatif-gamma-label" style="font-family:var(--font-mono);min-width:80px;">1.00e-03</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <label style="font-weight:600;min-width:80px;">Min size:</label>
+          <input type="number" id="whatif-minsize" value="10" min="1" max="1000"
+                 style="width:80px;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+          <button class="net-chip active" onclick="runWhatIf()">Run</button>
+        </div>
+        <div id="whatif-result" style="margin-top:1rem;"></div>
+        <div id="whatif-history" style="margin-top:1.5rem;">
+          <div class="section-label">History</div>
+          <table class="cl-table" id="whatif-table">
+            <thead><tr><th>Gamma</th><th>Clusters</th><th>Max %</th><th>Top-3 sizes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quality Tab -->
+      <div class="tab-content" id="tab-quality">
+        <div class="section-label">Quality Report</div>
+        <div id="quality-content" style="color:var(--silver);">Click "Load" to compute quality metrics.</div>
+        <button class="net-chip active" onclick="loadQuality()" style="margin-top:0.5rem;">Load Quality Report</button>
+        <div style="margin-top:1.5rem;">
+          <div class="section-label">Export Network</div>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="net-chip" onclick="exportNetwork('gexf')">Export GEXF (Gephi)</button>
+            <button class="net-chip" onclick="exportNetwork('graphml')">Export GraphML (Cytoscape)</button>
+          </div>
+        </div>
       </div>
 
       <div class="tab-content" id="tab-downloads">
@@ -1107,6 +1151,87 @@ async function applyMerges() {
   } catch(e) {
     document.getElementById('merge-status').textContent = 'Error: ' + e.message;
   }
+}
+
+/* ── WHAT-IF GAMMA ─────────────────────────────────────── */
+let whatifHistory = [];
+
+function updateGammaLabel() {
+  const logVal = parseFloat(document.getElementById('whatif-gamma').value);
+  const gamma = Math.pow(10, logVal);
+  document.getElementById('whatif-gamma-label').textContent = gamma.toExponential(2);
+}
+
+async function runWhatIf() {
+  if (!window._currentJobId) return;
+  const logVal = parseFloat(document.getElementById('whatif-gamma').value);
+  const gamma = Math.pow(10, logVal);
+  const minSize = parseInt(document.getElementById('whatif-minsize').value) || 10;
+  const el = document.getElementById('whatif-result');
+  el.innerHTML = '<span style="color:var(--amber);">Running...</span>';
+
+  try {
+    const r = await fetch(`/api/jobs/${window._currentJobId}/what-if?gamma=${gamma}&min_size=${minSize}`, {method:'POST'});
+    const d = await r.json();
+    if (d.error) { el.innerHTML = `<span style="color:var(--coral);">${d.error}</span>`; return; }
+    el.innerHTML = `
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+        <div class="stat-pill">${d.n_clusters} clusters</div>
+        <div class="stat-pill">max ${d.max_pct}%</div>
+        <div class="stat-pill">${d.n_nodes.toLocaleString()} nodes</div>
+      </div>
+      <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--silver);">
+        Top sizes: ${d.top10.join(', ')}
+      </div>`;
+    whatifHistory.unshift(d);
+    renderWhatifTable();
+  } catch(e) { el.innerHTML = `<span style="color:var(--coral);">${e.message}</span>`; }
+}
+
+function renderWhatifTable() {
+  const tbody = document.querySelector('#whatif-table tbody');
+  tbody.innerHTML = whatifHistory.slice(0, 20).map(d => `
+    <tr>
+      <td style="font-family:var(--font-mono);">${d.gamma.toExponential(2)}</td>
+      <td>${d.n_clusters}</td>
+      <td>${d.max_pct}%</td>
+      <td>${d.top10.slice(0,3).join(', ')}</td>
+    </tr>`).join('');
+}
+
+/* ── QUALITY REPORT ───────────────────────────────────── */
+async function loadQuality() {
+  if (!window._currentJobId) return;
+  const el = document.getElementById('quality-content');
+  el.innerHTML = '<span style="color:var(--amber);">Loading...</span>';
+  try {
+    const r = await fetch(`/api/jobs/${window._currentJobId}/quality`);
+    const d = await r.json();
+    if (d.error) { el.innerHTML = `<span style="color:var(--coral);">${d.error}</span>`; return; }
+    let html = `
+      <table class="cl-table">
+        <tr><td style="font-weight:600;">Nodes</td><td>${d.n_nodes.toLocaleString()}</td></tr>
+        <tr><td style="font-weight:600;">Edges</td><td>${d.n_edges.toLocaleString()}</td></tr>
+        <tr><td style="font-weight:600;">Clusters</td><td>${d.n_clusters}</td></tr>
+        <tr><td style="font-weight:600;">Max cluster</td><td>${d.max_pct}%</td></tr>
+        <tr><td style="font-weight:600;">Singletons</td><td>${d.singleton_pct}%</td></tr>
+        <tr><td style="font-weight:600;">Top-5 sizes</td><td>${d.top5.join(', ')}</td></tr>
+      </table>`;
+    if (d.consensus_edges && Object.keys(d.consensus_edges).length > 0) {
+      html += '<div class="section-label" style="margin-top:1rem;">Consensus Edge Distribution</div>';
+      html += '<table class="cl-table"><thead><tr><th>Layers</th><th>% of edges</th></tr></thead><tbody>';
+      for (const [nl, pct] of Object.entries(d.consensus_edges).sort((a,b) => a[0]-b[0])) {
+        html += `<tr><td>${nl}-layer</td><td>${pct}%</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<span style="color:var(--coral);">${e.message}</span>`; }
+}
+
+async function exportNetwork(fmt) {
+  if (!window._currentJobId) return;
+  window.open(`/api/jobs/${window._currentJobId}/export/${fmt}`, '_blank');
 }
 
 /* ── INIT ──────────────────────────────────────────────── */
