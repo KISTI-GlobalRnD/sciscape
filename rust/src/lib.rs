@@ -16,6 +16,7 @@ pub mod leiden;
 pub mod postprocess;
 pub mod io;
 pub mod workspace;
+pub mod graph_utils;
 #[cfg(feature = "python")]
 pub mod python;
 

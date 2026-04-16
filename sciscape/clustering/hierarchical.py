@@ -14,10 +14,9 @@ from __future__ import annotations
 
 import logging
 import time
-from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Dict, List, Sequence
 
 import numpy as np
 import polars as pl
@@ -89,7 +88,7 @@ def build_hierarchy(
     targets: Dict[str, float] | None = None,
     min_sizes: Dict[str, int] | None = None,
     combine_strategy: str = "consensus",
-    combine_top_k: int = 30,
+    combine_top_k: int | str = "auto",
     seed: int = 42,
     stop_at_clusters: int = 5,
     cached_levels: List[HierarchyLevel] | None = None,
@@ -165,24 +164,19 @@ def build_hierarchy(
     else:
         raise ValueError("Provide edges, layers, or layer_paths")
 
+    # Validate edge columns
+    required_cols = {"uid1", "uid2", "rel_sum2"}
+    missing = required_cols - set(combined.columns)
+    if missing:
+        raise ValueError(f"Edge DataFrame missing columns: {missing}")
+
     n_total = pl.concat([combined["uid1"], combined["uid2"]]).n_unique()
     _log(f"Combined: {n_total:,} nodes, {combined.height:,} edges")
 
-    # ── Step 2: Integer remap (once) ──
-    import tempfile
-    from .integer_remap import integer_remap, join_back_uids
+    # ── Step 2: Integer remap (in-memory, no disk I/O) ──
+    from .integer_remap import integer_remap_memory
 
-    _tmpdir = tempfile.mkdtemp()
-    remap = integer_remap(combined, Path(_tmpdir) / "remap")
-    ie = pl.read_parquet(remap.int_edges_path)
-    src = ie["src"].to_numpy().astype(np.uint32)
-    dst = ie["dst"].to_numpy().astype(np.uint32)
-    w = ie["weight"].to_numpy().astype(np.float64)
-    n_nodes = remap.n_nodes
-
-    # uid mapping for back-projection
-    uid_mem = join_back_uids(np.arange(n_nodes), remap.node_manifest_path)
-    uids = uid_mem["uid"].to_list()
+    src, dst, w, n_nodes, uids = integer_remap_memory(combined)
 
     # ── Step 3: Hierarchical levels ──
     levels: List[HierarchyLevel] = []
@@ -199,37 +193,30 @@ def build_hierarchy(
             _log(f"Cached {cached.name}: {cached.n_clusters} cl, γ={cached.gamma:.2e}")
 
             # Sequentially contract for each cached level
-            # Need to get per-level membership relative to current graph
+            # Need per-level membership relative to CURRENT graph nodes
             if i == 0:
-                # First level: membership is on original graph nodes
+                # First level: current graph = original graph
                 level_mem = cached.membership[:n_nodes].astype(np.uint64)
             else:
-                # Higher level: membership is relative to previous contraction
-                # Map original → current super-node → this level's cluster
-                level_mem = cached.membership[prev_membership_original].astype(np.uint64)
+                # Higher level: current graph has cur_n super-nodes
+                # Build super-node → cluster mapping from cached original-node membership
+                # Each super-node inherits its cluster from any member original node
+                # prev_membership_original[v] = super-node ID for original node v
+                # cached.membership[v] = cluster at this level for original node v
+                # We need: level_mem[super_node_s] = cluster of any node in super_node_s
+                cached_mem = cached.membership.astype(np.uint64)
+                prev_mem = prev_membership_original.astype(np.uint64)
+                if int(prev_mem.max()) >= cur_n:
+                    log.warning("Cached level %s: prev_mem max %d >= cur_n %d, re-indexing",
+                                cached.name, int(prev_mem.max()), cur_n)
+                    cur_n = int(prev_mem.max()) + 1
+                level_mem = np.zeros(cur_n, dtype=np.uint64)
+                # Direct scatter: last write wins (all nodes in same super-node → same cluster)
+                level_mem[prev_mem] = cached_mem[:len(prev_mem)]
 
-            new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
+            cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
                 cur_src, cur_dst, cur_w, level_mem, node_sizes,
             )
-            # Apply 1/rank + top-k on contracted edges
-            contracted_top_k = min(max(3, new_n // 3), 30)
-            contracted_df = pl.DataFrame({
-                "uid1": new_src.astype(str), "uid2": new_dst.astype(str), "rel_sum2": new_w,
-            })
-            if contracted_df.height > contracted_top_k * new_n:
-                from ..linkage.filters import filter_top_k
-                contracted_df = filter_top_k(contracted_df, contracted_top_k)
-            contracted_df = (
-                contracted_df.sort("rel_sum2", descending=True)
-                .with_row_index("_r")
-                .with_columns((1.0 / (pl.col("_r") + 1).cast(pl.Float64)).alias("rel_sum2"))
-                .drop("_r")
-            )
-            cur_src = contracted_df["uid1"].to_numpy().astype(np.uint32)
-            cur_dst = contracted_df["uid2"].to_numpy().astype(np.uint32)
-            cur_w = contracted_df["rel_sum2"].to_numpy().astype(np.float64)
-            cur_n = new_n
-            node_sizes = new_sizes
             prev_membership_original = cached.membership.astype(np.uint64)
 
         start_level = len(cached_levels)
@@ -248,39 +235,40 @@ def build_hierarchy(
         if level_mem_path and level_mem_path.exists() and level_meta_path and level_meta_path.exists():
             import json as _json
             level_mem_df = pl.read_parquet(level_mem_path)
-            level_meta = _json.load(open(level_meta_path))
+            with open(level_meta_path) as _f:
+                level_meta = _json.load(_f)
             original_mem = np.array(level_mem_df["cluster"].to_list(), dtype=np.uint64)
             gamma = level_meta["gamma"]
-            sizes = Counter(original_mem.tolist())
-            mx = max(sizes.values())
+            size_arr = np.bincount(original_mem.astype(np.int32))
+            size_arr = size_arr[size_arr > 0]
+            if len(size_arr) == 0:
+                _log(f"WARNING: empty cached clustering at {level_name}, skipping")
+                continue
+            mx = int(size_arr.max())
+            n_cl = len(size_arr)
             level = HierarchyLevel(
                 name=level_name, gamma=gamma,
-                n_clusters=len(sizes), max_pct=round(100 * mx / n_total, 1),
-                avg_size=n_total // len(sizes), top5=sorted(sizes.values(), reverse=True)[:5],
+                n_clusters=n_cl, max_pct=round(100 * mx / max(n_total, 1), 1),
+                avg_size=n_total // n_cl, top5=sorted(size_arr.tolist(), reverse=True)[:5],
                 membership=original_mem, elapsed=0,
             )
             levels.append(level)
             _log(f"Loaded {level_name}: {level.n_clusters} cl, γ={gamma:.2e}")
 
             # Contract for next level
+            if prev_membership_original is None:
+                # First level: mem is on original graph
+                level_mem_for_contract = original_mem[:n_nodes].astype(np.uint64)
+            else:
+                # Subsequent: build super-node membership from original-node membership
+                pm = prev_membership_original.astype(np.uint64)
+                alloc_n = max(cur_n, int(pm.max()) + 1) if len(pm) > 0 else cur_n
+                level_mem_for_contract = np.zeros(alloc_n, dtype=np.uint64)
+                level_mem_for_contract[pm] = original_mem[:len(pm)]
             prev_membership_original = original_mem.astype(np.uint64)
-            mem = original_mem  # needed for contraction below
-            # Re-contract current edges
-            new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
-                cur_src, cur_dst, cur_w, mem, node_sizes,
+            cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
+                cur_src, cur_dst, cur_w, level_mem_for_contract, node_sizes,
             )
-            contracted_top_k = min(max(3, new_n // 3), 30)
-            cdf = pl.DataFrame({"uid1": new_src.astype(str), "uid2": new_dst.astype(str), "rel_sum2": new_w})
-            if cdf.height > contracted_top_k * new_n:
-                from ..linkage.filters import filter_top_k
-                cdf = filter_top_k(cdf, contracted_top_k)
-            cdf = cdf.sort("rel_sum2", descending=True).with_row_index("_r").with_columns(
-                (1.0 / (pl.col("_r") + 1).cast(pl.Float64)).alias("rel_sum2")).drop("_r")
-            cur_src = cdf["uid1"].to_numpy().astype(np.uint32)
-            cur_dst = cdf["uid2"].to_numpy().astype(np.uint32)
-            cur_w = cdf["rel_sum2"].to_numpy().astype(np.float64)
-            cur_n = new_n
-            node_sizes = new_sizes
             continue
 
         _log(f"\n{'='*50}")
@@ -345,15 +333,20 @@ def build_hierarchy(
         else:
             original_mem = mem[prev_membership_original]
 
-        sizes = Counter(original_mem.tolist())
-        mx = max(sizes.values())
-        top5 = sorted(sizes.values(), reverse=True)[:5]
-        avg = n_total // len(sizes) if sizes else 0
+        size_arr = np.bincount(original_mem.astype(np.int32))
+        size_arr = size_arr[size_arr > 0]
+        if len(size_arr) == 0:
+            _log(f"WARNING: empty clustering at {level_name}, stopping")
+            break
+        mx = int(size_arr.max())
+        top5 = sorted(size_arr.tolist(), reverse=True)[:5]
+        n_cl = len(size_arr)
+        avg = n_total // n_cl
         elapsed = time.perf_counter() - t0
 
         level = HierarchyLevel(
             name=level_name, gamma=gamma,
-            n_clusters=len(sizes), max_pct=round(100 * mx / n_total, 1),
+            n_clusters=n_cl, max_pct=round(100 * mx / max(n_total, 1), 1),
             avg_size=avg, top5=top5,
             membership=original_mem, elapsed=round(elapsed, 1),
         )
@@ -365,49 +358,27 @@ def build_hierarchy(
             import json as _json
             level_dir.mkdir(parents=True, exist_ok=True)
             pl.DataFrame({"uid": uids, "cluster": original_mem.tolist()}).write_parquet(level_mem_path)
-            _json.dump({
+            meta_dict = {
                 "gamma": gamma, "n_clusters": level.n_clusters,
                 "max_pct": level.max_pct, "avg_size": level.avg_size,
                 "top5": level.top5, "target_pct": target_pct, "min_size": min_size,
-            }, open(level_meta_path, "w"), indent=2)
+            }
+            with open(level_meta_path, "w") as _f:
+                _json.dump(meta_dict, _f, indent=2)
             _log(f"Saved → {level_dir}/")
 
         # Stop condition
-        if len(sizes) <= stop_at_clusters:
-            _log(f"Stopping: {len(sizes)} clusters ≤ {stop_at_clusters}")
+        if n_cl <= stop_at_clusters:
+            _log(f"Stopping: {n_cl} clusters ≤ {stop_at_clusters}")
             break
 
         # Contract for next level
         prev_membership_original = original_mem.astype(np.uint64)
 
-        new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
+        cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
             cur_src, cur_dst, cur_w, mem, node_sizes,
         )
-
-        # Re-normalize contracted edges: 1/rank + top-k pruning
-        # Without this, contracted graph is near-complete and CPM can't split
-        contracted_df = pl.DataFrame({
-            "uid1": new_src.astype(str),
-            "uid2": new_dst.astype(str),
-            "rel_sum2": new_w,
-        })
-        contracted_top_k = min(max(3, new_n // 3), 30)
-        from ..linkage.filters import filter_top_k
-        if contracted_df.height > contracted_top_k * new_n:
-            contracted_df = filter_top_k(contracted_df, contracted_top_k)
-        # 1/rank re-normalization
-        contracted_df = (
-            contracted_df.sort("rel_sum2", descending=True)
-            .with_row_index("_r")
-            .with_columns((1.0 / (pl.col("_r") + 1).cast(pl.Float64)).alias("rel_sum2"))
-            .drop("_r")
-        )
-        cur_src = contracted_df["uid1"].to_numpy().astype(np.uint32)
-        cur_dst = contracted_df["uid2"].to_numpy().astype(np.uint32)
-        cur_w = contracted_df["rel_sum2"].to_numpy().astype(np.float64)
-        cur_n = new_n
-        node_sizes = new_sizes
-        _log(f"Contracted: {new_n} super-nodes, {contracted_df.height} edges (top-{contracted_top_k} + 1/rank)")
+        _log(f"Contracted: {cur_n} super-nodes, {len(cur_w)} edges")
 
     result = HierarchyResult(levels=levels, n_nodes=n_total)
 
@@ -429,45 +400,144 @@ def _sweep_gamma_direct(
     seed: int = 42,
     _log=None,
 ) -> float:
-    """Direct γ sweep on small contracted graph (no integer_remap)."""
+    """Direct γ sweep on small contracted graph (no integer_remap).
+
+    Uses density-aware range estimation + binary refinement for
+    contracted graphs that tend to be near-complete after contraction.
+    """
     import math
 
-    # Estimate γ range from edge weights
-    w_median = float(np.median(w)) if len(w) > 0 else 1.0
-    w_max = float(w.max()) if len(w) > 0 else 1.0
-    lo = max(1e-6, w_median * 0.01)
+    n_edges = len(w)
+    w_median = float(np.median(w)) if n_edges > 0 else 1.0
+    w_max = float(w.max()) if n_edges > 0 else 1.0
+
+    # Density-aware bounds (contracted graphs are often dense)
+    max_possible = n_nodes * (n_nodes - 1) / 2 if n_nodes > 1 else 1
+    density = n_edges / max_possible
+    density_boost = 1.0 + 50.0 * density
+
+    lo = max(1e-6, w_median * 0.01 * density_boost)
     hi = w_max * 100
 
-    n_probes = 8
+    # Phase 1: coarse sweep (12 probes for better coverage)
+    n_probes = 12
     gammas = [10 ** (math.log10(lo) + i * (math.log10(hi) - math.log10(lo)) / max(n_probes - 1, 1))
               for i in range(n_probes)]
 
-    best_gamma = gammas[0]
-    best_pct = 100.0
-
+    cache = {}
     for gamma in gammas:
         r = run_leiden_rust(
             edges_src=src, edges_dst=dst, edges_weight=w,
             resolution=gamma, n_nodes=n_nodes, seed=seed,
             node_weights=node_weights,
         )
-        from collections import Counter
-        sizes = Counter(r.membership.tolist())
-        mx = max(sizes.values())
-        pct = 100 * mx / n_nodes
-        n_cl = len(sizes)
+        mem = np.asarray(r.membership, dtype=np.int64)
+        n_cl = len(set(mem.tolist()))
+        if n_cl == 0:
+            cache[gamma] = (0, 100.0)
+            continue
+        # Use node_weights-aware pct if available
+        if node_weights is not None:
+            total_weight = float(node_weights.sum())
+            cluster_weights = np.bincount(mem, weights=node_weights.astype(np.float64))
+            max_weight = float(cluster_weights.max())
+            pct = 100 * max_weight / max(total_weight, 1)
+        else:
+            sizes = np.bincount(mem)
+            mx = int(sizes.max())
+            pct = 100 * mx / max(n_nodes, 1)
+        cache[gamma] = (n_cl, pct)
         if _log:
             _log(f"  γ={gamma:.2e}: {n_cl} cl, max={pct:.1f}%")
-        if pct <= target_max_pct and (pct > best_pct or best_pct > target_max_pct):
-            best_pct = pct
-            best_gamma = gamma
-        elif pct > target_max_pct and pct < best_pct:
-            best_pct = pct
-            best_gamma = gamma
+
+    # Phase 2: binary refinement between best bracket
+    sorted_gammas = sorted(cache.keys())
+    for _ in range(4):
+        below = [(g, cache[g]) for g in sorted_gammas if cache[g][1] <= target_max_pct]
+        above = [(g, cache[g]) for g in sorted_gammas if cache[g][1] > target_max_pct]
+
+        if not below or not above:
+            break
+
+        # Bracket: highest γ above target, lowest γ below target
+        hi_g = max(above, key=lambda x: x[0])[0]
+        lo_g = min(below, key=lambda x: x[0])[0]
+
+        if lo_g / hi_g < 1.5:
+            break  # close enough
+
+        mid_g = 10 ** ((math.log10(hi_g) + math.log10(lo_g)) / 2)
+        r = run_leiden_rust(
+            edges_src=src, edges_dst=dst, edges_weight=w,
+            resolution=mid_g, n_nodes=n_nodes, seed=seed,
+            node_weights=node_weights,
+        )
+        mem = np.asarray(r.membership, dtype=np.int64)
+        n_cl = len(set(mem.tolist()))
+        if n_cl == 0:
+            cache[mid_g] = (0, 100.0)
+            sorted_gammas = sorted(cache.keys())
+            continue
+        if node_weights is not None:
+            total_weight = float(node_weights.sum())
+            cluster_weights = np.bincount(mem, weights=node_weights.astype(np.float64))
+            pct = 100 * float(cluster_weights.max()) / max(total_weight, 1)
+        else:
+            sizes = np.bincount(mem)
+            pct = 100 * int(sizes.max()) / max(n_nodes, 1)
+        cache[mid_g] = (n_cl, pct)
+        sorted_gammas = sorted(cache.keys())
+        if _log:
+            _log(f"  γ={mid_g:.2e}: {n_cl} cl, max={pct:.1f}% (refine)")
+
+    # Select best: closest to target from below
+    candidates = [(g, info) for g, info in cache.items() if info[1] <= target_max_pct]
+    if candidates:
+        best_gamma, (_, best_pct) = max(candidates, key=lambda x: x[1][1])
+    else:
+        best_gamma, (_, best_pct) = min(cache.items(), key=lambda x: x[1][1])
 
     if _log:
         _log(f"  Selected γ={best_gamma:.2e} (max={best_pct:.1f}%)")
     return best_gamma
+
+
+def _contract_and_normalize(cur_src, cur_dst, cur_w, mem, node_sizes):
+    """Contract graph, apply top-k pruning, and 1/rank re-normalization.
+
+    Returns (new_src, new_dst, new_w, n_clusters, node_sizes).
+    """
+    new_src, new_dst, new_w, new_n, new_sizes = _contract_edges(
+        cur_src, cur_dst, cur_w, mem, node_sizes,
+    )
+    contracted_top_k = _adaptive_contracted_k(new_n)
+    if len(new_w) > contracted_top_k * new_n:
+        cdf = pl.DataFrame({
+            "uid1": new_src.astype(str), "uid2": new_dst.astype(str), "rel_sum2": new_w,
+        })
+        from ..linkage.filters import filter_top_k
+        cdf = filter_top_k(cdf, contracted_top_k)
+        new_src = cdf["uid1"].to_numpy().astype(np.uint32)
+        new_dst = cdf["uid2"].to_numpy().astype(np.uint32)
+        new_w = cdf["rel_sum2"].to_numpy().astype(np.float64)
+    # 1/rank re-normalization
+    if len(new_w) > 0:
+        order = np.argsort(-new_w)
+        ranked_w = np.empty_like(new_w)
+        ranked_w[order] = 1.0 / np.arange(1, len(new_w) + 1, dtype=np.float64)
+    else:
+        ranked_w = new_w
+    return new_src, new_dst, ranked_w, new_n, new_sizes
+
+
+def _adaptive_contracted_k(n_nodes: int) -> int:
+    """Adaptive top-k for contracted graphs.
+
+    Same sqrt-based formula as combine.py's compute_adaptive_k,
+    but with lower floor (3) since contracted graphs are small.
+    """
+    import math
+    return max(3, min(30, int(math.sqrt(n_nodes))))
 
 
 def _edges_to_df(src, dst, w, n) -> pl.DataFrame:
@@ -480,10 +550,23 @@ def _edges_to_df(src, dst, w, n) -> pl.DataFrame:
 
 
 def _contract_edges(src, dst, weight, membership, prev_node_sizes):
-    """Contract edges via membership (same as pipeline._contract_edges)."""
-    from scipy.sparse import coo_matrix
+    """Contract edges via membership. Uses Rust when available."""
+    # ── Rust fast path (only for large graphs where overhead is worthwhile) ──
+    if RUST_AVAILABLE and len(weight) > 500_000:
+        try:
+            from sciscape_leiden import rust_contract_edges
+            mem64 = membership.astype(np.uint64)
+            pns = prev_node_sizes.astype(np.int64) if prev_node_sizes is not None else None
+            out_src, out_dst, out_w, n_cl, sizes = rust_contract_edges(
+                src.astype(np.uint32), dst.astype(np.uint32), weight.astype(np.float64),
+                mem64, pns,
+            )
+            return out_src, out_dst, out_w, n_cl, sizes
+        except Exception:
+            pass  # fallback to Python
 
-    mem = membership.astype(np.int64)
+    from scipy.sparse import coo_matrix
+    mem = np.array(membership, dtype=np.int64)
     new_src = mem[src.astype(np.int64)]
     new_dst = mem[dst.astype(np.int64)]
     mask = new_src != new_dst
@@ -499,9 +582,9 @@ def _contract_edges(src, dst, weight, membership, prev_node_sizes):
     out_w = sym.data[upper]
 
     if prev_node_sizes is not None:
-        node_sizes = np.zeros(n_clusters, dtype=np.int64)
-        for v in range(len(mem)):
-            node_sizes[mem[v]] += prev_node_sizes[v]
+        # Vectorized weighted bincount: sum prev_node_sizes per cluster
+        node_sizes = np.bincount(mem, weights=prev_node_sizes.astype(np.float64),
+                                 minlength=n_clusters).astype(np.int64)
     else:
         node_sizes = np.bincount(mem, minlength=n_clusters)
 

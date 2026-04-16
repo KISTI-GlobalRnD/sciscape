@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import polars as pl
@@ -108,8 +108,8 @@ def _build_level_network(
         ))
     else:
         # No membership: each uid is its own node
-        all_uids = set(edges["uid1"].to_list()) | set(edges["uid2"].to_list())
-        uid_to_cluster = {uid: i for i, uid in enumerate(sorted(all_uids))}
+        all_uids_series = pl.concat([edges["uid1"], edges["uid2"]]).unique().sort()
+        uid_to_cluster = {uid: i for i, uid in enumerate(all_uids_series.to_list())}
 
     # Cluster sizes
     cluster_sizes = Counter(uid_to_cluster.values())
@@ -134,27 +134,18 @@ def _build_level_network(
             else:
                 keyword_key = kw_df.columns[1] if len(kw_df.columns) > 1 else kw_df.columns[0]
 
-            # Top keyword per cluster
-            for row in kw_df.iter_rows(named=True):
-                cid = row.get(cluster_key)
-                kw = row.get(keyword_key, "")
-                if cid is not None and cid not in cluster_labels:
-                    cluster_labels[int(cid)] = str(kw)
+            # Top keyword per cluster (vectorized: first keyword per group)
+            first_kw = kw_df.group_by(cluster_key).agg(
+                pl.col(keyword_key).first()
+            )
+            cluster_labels = dict(zip(
+                first_kw[cluster_key].cast(pl.Int64).to_list(),
+                first_kw[keyword_key].cast(pl.Utf8).to_list(),
+            ))
         except Exception:
             pass
 
-    # Compute per-cluster average year and citations if abstracts available
-    cluster_years: Dict[int, float] = {}
-    cluster_citations: Dict[int, float] = {}
-    if mem_df is not None and cluster_col:
-        for col in mem_df.columns:
-            if col == "pubyear":
-                for row in mem_df.iter_rows(named=True):
-                    cid = uid_to_cluster.get(row.get("uid"))
-                    yr = row.get("pubyear")
-                    if cid is not None and yr:
-                        cluster_years.setdefault(cid, []).append(yr) if isinstance(cluster_years.get(cid), list) else None
-                break
+    # (cluster_years/citations: removed — computed on-demand in temporal_snapshots)
 
     # Build nodes
     nodes = []
@@ -196,21 +187,33 @@ def _aggregate_to_cluster_edges(
     max_edges: int,
 ) -> List[Dict]:
     """Aggregate paper-level edges to cluster-level, sum weights."""
-    cluster_edge_weights: Dict[tuple, float] = defaultdict(float)
+    # Vectorized: join cluster IDs, filter, aggregate
+    mapping = pl.DataFrame({
+        "uid": list(uid_to_cluster.keys()),
+        "_cl": list(uid_to_cluster.values()),
+    })
+    agg = (
+        edges
+        .join(mapping.rename({"uid": "uid1", "_cl": "_c1"}), on="uid1", how="inner")
+        .join(mapping.rename({"uid": "uid2", "_cl": "_c2"}), on="uid2", how="inner")
+        .filter(pl.col("_c1") != pl.col("_c2"))
+        .with_columns(
+            pl.min_horizontal("_c1", "_c2").alias("_lo"),
+            pl.max_horizontal("_c1", "_c2").alias("_hi"),
+        )
+        .group_by(["_lo", "_hi"])
+        .agg(pl.col("rel_sum2").sum().alias("_w"))
+        .sort("_w", descending=True)
+        .head(max_edges)
+    )
 
-    for row in edges.iter_rows(named=True):
-        u1 = row.get("uid1")
-        u2 = row.get("uid2")
-        w = row.get("rel_sum2", 1.0)
-        c1 = uid_to_cluster.get(u1)
-        c2 = uid_to_cluster.get(u2)
-        if c1 is None or c2 is None or c1 == c2:
-            continue
-        pair = (min(c1, c2), max(c1, c2))
-        cluster_edge_weights[pair] += float(w)
+    if agg.height == 0:
+        return []
 
-    # Sort by weight, take top
-    sorted_edges = sorted(cluster_edge_weights.items(), key=lambda x: -x[1])[:max_edges]
+    sorted_edges = list(zip(
+        zip(agg["_lo"].to_list(), agg["_hi"].to_list()),
+        agg["_w"].to_list(),
+    ))
 
     if not sorted_edges:
         return []
@@ -390,25 +393,54 @@ def build_temporal_snapshots(
     if not years:
         return {"snapshots": {}, "years": []}
 
-    # Cumulative: each year includes all papers up to that year
+    # Pre-compute: node table with year + cluster for vectorized snapshots
+    node_df = pl.DataFrame({
+        "uid": list(uid_to_year.keys()),
+        "_yr": [uid_to_year[u] or 0 for u in uid_to_year],
+        "_cl": [uid_to_cluster.get(u) for u in uid_to_year],
+    }).filter(pl.col("_cl").is_not_null())
+
+    # Pre-compute: edges with cluster mapping
+    cl_map = pl.DataFrame({"uid": list(uid_to_cluster.keys()), "_cl": list(uid_to_cluster.values())})
+    edge_mapped = (
+        edges
+        .join(cl_map.rename({"uid": "uid1", "_cl": "_c1"}), on="uid1", how="inner")
+        .join(cl_map.rename({"uid": "uid2", "_cl": "_c2"}), on="uid2", how="inner")
+        .filter(pl.col("_c1") != pl.col("_c2"))
+    )
+    # Add year info for filtering
+    yr_map = pl.DataFrame({"uid": list(uid_to_year.keys()), "_yr": [uid_to_year[u] or 0 for u in uid_to_year]})
+    edge_mapped = (
+        edge_mapped
+        .join(yr_map.rename({"uid": "uid1", "_yr": "_yr1"}), on="uid1", how="left")
+        .join(yr_map.rename({"uid": "uid2", "_yr": "_yr2"}), on="uid2", how="left")
+        .with_columns(
+            pl.max_horizontal("_yr1", "_yr2").alias("_max_yr"),
+            pl.min_horizontal("_c1", "_c2").alias("_lo"),
+            pl.max_horizontal("_c1", "_c2").alias("_hi"),
+        )
+    )
+
+    # Cumulative snapshots: for each cutoff, filter by year
     snapshots = {}
     for cutoff in years:
-        active_uids = {uid for uid, yr in uid_to_year.items() if yr and yr <= cutoff}
-        cluster_sizes: Counter = Counter()
-        for uid in active_uids:
-            cid = uid_to_cluster.get(uid)
-            if cid is not None:
-                cluster_sizes[cid] += 1
+        # Cluster sizes: count nodes with year <= cutoff
+        cs = (
+            node_df.filter(pl.col("_yr") <= cutoff)
+            .group_by("_cl").len(name="_sz")
+        )
+        cluster_sizes = dict(zip(cs["_cl"].to_list(), cs["_sz"].to_list()))
 
-        # Cluster edges for active papers only
-        edge_weights: Dict[tuple, float] = defaultdict(float)
-        for row in edges.iter_rows(named=True):
-            u1, u2 = row.get("uid1"), row.get("uid2")
-            if u1 in active_uids and u2 in active_uids:
-                c1, c2 = uid_to_cluster.get(u1), uid_to_cluster.get(u2)
-                if c1 is not None and c2 is not None and c1 != c2:
-                    pair = (min(c1, c2), max(c1, c2))
-                    edge_weights[pair] += float(row.get("rel_sum2", 1.0))
+        # Edge weights: filter edges where both endpoints ≤ cutoff
+        ew = (
+            edge_mapped.filter(pl.col("_max_yr") <= cutoff)
+            .group_by(["_lo", "_hi"])
+            .agg(pl.col("rel_sum2").sum().alias("_w"))
+        )
+        edge_weights = {
+            (lo, hi): w
+            for lo, hi, w in zip(ew["_lo"].to_list(), ew["_hi"].to_list(), ew["_w"].to_list())
+        }
 
         n_total = sum(cluster_sizes.values()) or 1
         nodes = [
@@ -446,19 +478,26 @@ def find_bridge_papers(
 
     uid_to_cluster = dict(zip(mem_df["uid"].to_list(), mem_df[cluster_col].to_list()))
 
-    # Find edges between cluster_a and cluster_b
-    bridge_scores: Dict[str, float] = defaultdict(float)
-    for row in edges.iter_rows(named=True):
-        u1, u2 = row.get("uid1"), row.get("uid2")
-        c1 = uid_to_cluster.get(u1)
-        c2 = uid_to_cluster.get(u2)
-        w = float(row.get("rel_sum2", 1.0))
-        if (c1 == cluster_a and c2 == cluster_b) or (c1 == cluster_b and c2 == cluster_a):
-            bridge_scores[u1] = bridge_scores.get(u1, 0) + w
-            bridge_scores[u2] = bridge_scores.get(u2, 0) + w
-
-    # Sort by bridge score
-    top = sorted(bridge_scores.items(), key=lambda x: -x[1])[:top_k]
+    # Find edges between cluster_a and cluster_b (vectorized)
+    cl_map = pl.DataFrame({"uid": list(uid_to_cluster.keys()), "_cl": list(uid_to_cluster.values())})
+    bridge_edges = (
+        edges
+        .join(cl_map.rename({"uid": "uid1", "_cl": "_c1"}), on="uid1", how="inner")
+        .join(cl_map.rename({"uid": "uid2", "_cl": "_c2"}), on="uid2", how="inner")
+        .filter(
+            ((pl.col("_c1") == cluster_a) & (pl.col("_c2") == cluster_b)) |
+            ((pl.col("_c1") == cluster_b) & (pl.col("_c2") == cluster_a))
+        )
+    )
+    # Accumulate bridge scores per node (both endpoints)
+    if bridge_edges.height == 0:
+        top = []
+    else:
+        s1 = bridge_edges.select(pl.col("uid1").alias("uid"), pl.col("rel_sum2").alias("_w"))
+        s2 = bridge_edges.select(pl.col("uid2").alias("uid"), pl.col("rel_sum2").alias("_w"))
+        scores = pl.concat([s1, s2]).group_by("uid").agg(pl.col("_w").sum())
+        scores = scores.sort("_w", descending=True).head(top_k)
+        top = list(zip(scores["uid"].to_list(), scores["_w"].to_list()))
 
     # Get paper metadata
     results = []

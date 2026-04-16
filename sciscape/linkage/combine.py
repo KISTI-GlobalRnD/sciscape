@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 import polars as pl
 
-from .filters import filter_giant_component, filter_top_k
+from .filters import compute_adaptive_k, filter_giant_component, filter_top_k
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def combine_edge_layers(
     strategy: str = "rank",
     weights: Dict[str, float] | None = None,
     gcc: bool = True,
-    top_k: int | str = 30,
+    top_k: int | str = "auto",
     uid1_col: str = "uid1",
     uid2_col: str = "uid2",
     weight_col: str = "rel_sum2",
@@ -59,15 +59,45 @@ def combine_edge_layers(
     pl.DataFrame
         Combined edge table with uid1, uid2, rel_sum2.
     """
+    _VALID_STRATEGIES = {"union", "sum", "rank", "max", "vote", "consensus"}
+    if strategy not in _VALID_STRATEGIES:
+        raise ValueError(f"Unknown strategy {strategy!r}, choose from {_VALID_STRATEGIES}")
+    # "sum" is an alias for "union"
+    if strategy == "sum":
+        strategy = "union"
+
     if not layers:
         return pl.DataFrame({uid1_col: [], uid2_col: [], weight_col: []})
 
     # Step 0: per-node top-k filter (BEFORE normalization)
+    # top_k="auto": adaptive k = sqrt(n), clamped to [5, 30]
     # top_k="balanced": adaptive k per layer so each contributes ~equal edges
     # top_k=int: same k for all layers
     filtered_layers: Dict[str, pl.DataFrame] = {}
 
-    if top_k == "balanced":
+    if top_k == "auto":
+        # Estimate n_nodes from all layers combined
+        _uid_parts = [
+            pl.concat([df[uid1_col], df[uid2_col]])
+            for df in layers.values() if df.height > 0
+        ]
+        if not _uid_parts:
+            # All layers empty — no filtering needed
+            filtered_layers = {name: df for name, df in layers.items()}
+        else:
+            all_uids = pl.concat(_uid_parts).unique()
+            n_nodes_est = all_uids.len()
+            effective_k = compute_adaptive_k(n_nodes_est)
+            log.info("adaptive top_k: n=%d → k=%d (sqrt-based)", n_nodes_est, effective_k)
+            for name, df in layers.items():
+                if df.height == 0:
+                    continue
+                before = df.height
+                df = filter_top_k(df, effective_k, uid1_col=uid1_col, uid2_col=uid2_col,
+                                  weight_col=weight_col, mode="symmetric")
+                log.info("top_k=%d on %s: %d → %d edges", effective_k, name, before, df.height)
+                filtered_layers[name] = df
+    elif top_k == "balanced":
         # Find sparsest layer's avg degree → use as target
         layer_stats = {}
         for name, df in layers.items():
@@ -126,11 +156,10 @@ def combine_edge_layers(
         lw = layer_weights.get(name, 1.0)
 
         if strategy == "rank":
-            # 1/rank normalization: sort by weight desc, assign 1/rank score
-            ranked = df.sort(weight_col, descending=True).with_row_index("_rank")
-            normed = ranked.with_columns(
-                (lw / (pl.col("_rank") + 1).cast(pl.Float64)).alias(weight_col)
-            ).drop("_rank")
+            # 1/rank normalization: rank by weight desc, score = 1/rank
+            normed = df.with_columns(
+                (lw / pl.col(weight_col).rank("ordinal", descending=True).cast(pl.Float64)).alias(weight_col)
+            )
             combined_parts.append(normed.select(uid1_col, uid2_col, weight_col))
 
         elif strategy == "vote":
@@ -164,26 +193,16 @@ def combine_edge_layers(
             pl.col(weight_col).max()
         )
     elif strategy == "consensus":
-        # Boosted sum: weight × number of layers containing this edge
-        w_sum = all_edges.group_by([uid1_col, uid2_col]).agg(
-            pl.col(weight_col).sum()
-        )
-        # Count layers per edge (each layer contributes 1 per occurrence)
-        vote_parts = []
-        for name, df in filtered_layers.items():
-            if df.height > 0:
-                vote_parts.append(
-                    df.select(uid1_col, uid2_col).with_columns(pl.lit(1.0).alias("_v"))
-                )
-        if vote_parts:
-            v_count = pl.concat(vote_parts).group_by([uid1_col, uid2_col]).agg(
-                pl.col("_v").sum().alias("_n")
-            )
-            combined = w_sum.join(v_count, on=[uid1_col, uid2_col], how="left").with_columns(
-                (pl.col(weight_col) * pl.col("_n")).alias(weight_col)
-            ).drop("_n")
-        else:
-            combined = w_sum
+        # Consensus: weight_sum × n_layers (single group_by, no join)
+        # all_edges already has per-layer weights from the loop above
+        # Add vote column, then single aggregation
+        vote_tagged = all_edges.with_columns(pl.lit(1.0).alias("_v"))
+        combined = vote_tagged.group_by([uid1_col, uid2_col]).agg(
+            pl.col(weight_col).sum().alias("_w"),
+            pl.col("_v").sum().alias("_n"),
+        ).with_columns(
+            (pl.col("_w") * pl.col("_n")).alias(weight_col)
+        ).drop("_w", "_n")
     else:
         # Sum weights per pair (union, rank, vote)
         combined = all_edges.group_by([uid1_col, uid2_col]).agg(
@@ -217,7 +236,7 @@ def load_and_combine(
     strategy: str = "rank",
     weights: Dict[str, float] | None = None,
     gcc: bool = True,
-    top_k: int = 30,
+    top_k: int | str = "auto",
 ) -> pl.DataFrame:
     """Load parquet edge files from a directory and combine them.
 
@@ -264,7 +283,7 @@ def load_combine_and_cluster(
     layer_names: Sequence[str] = ("bc_cosine", "cc_cosine", "dc_fractional"),
     *,
     strategy: str = "consensus",
-    top_k: int | str = 30,
+    top_k: int | str = "auto",
     target_max_pct: float = 3.0,
     min_size: int = 100,
     progress: callable | None = None,

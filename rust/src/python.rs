@@ -266,6 +266,85 @@ fn cpm_quality(
     Ok(cpm.quality(&graph, &clustering))
 }
 
+// ── Graph utility bindings ──────────────────────────────────────
+
+/// Per-node top-k edge filter (returns kept edge indices).
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (src, dst, weight, k, mutual = false))]
+fn rust_filter_top_k<'py>(
+    py: Python<'py>,
+    src: PyReadonlyArray1<u32>,
+    dst: PyReadonlyArray1<u32>,
+    weight: PyReadonlyArray1<f64>,
+    k: usize,
+    mutual: bool,
+) -> PyResult<Py<PyArray1<u32>>> {
+    let kept = crate::graph_utils::filter_top_k(
+        src.as_slice()?,
+        dst.as_slice()?,
+        weight.as_slice()?,
+        k,
+        mutual,
+    );
+    let indices: Vec<u32> = kept.into_iter().map(|i| i as u32).collect();
+    Ok(PyArray1::from_vec(py, indices).into())
+}
+
+/// Find GCC membership mask (returns bool array).
+#[cfg(feature = "python")]
+#[pyfunction]
+fn rust_find_gcc<'py>(
+    py: Python<'py>,
+    src: PyReadonlyArray1<u32>,
+    dst: PyReadonlyArray1<u32>,
+    n_nodes: usize,
+) -> PyResult<Py<PyArray1<bool>>> {
+    let mask = crate::graph_utils::find_gcc(
+        src.as_slice()?,
+        dst.as_slice()?,
+        n_nodes,
+    );
+    Ok(PyArray1::from_vec(py, mask).into())
+}
+
+/// Contract graph by cluster membership.
+///
+/// Returns (src, dst, weight, n_clusters, node_sizes).
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (src, dst, weight, membership, prev_node_sizes = None))]
+fn rust_contract_edges<'py>(
+    py: Python<'py>,
+    src: PyReadonlyArray1<u32>,
+    dst: PyReadonlyArray1<u32>,
+    weight: PyReadonlyArray1<f64>,
+    membership: PyReadonlyArray1<u64>,
+    prev_node_sizes: Option<PyReadonlyArray1<i64>>,
+) -> PyResult<(
+    Py<PyArray1<u32>>,
+    Py<PyArray1<u32>>,
+    Py<PyArray1<f64>>,
+    usize,
+    Py<PyArray1<i64>>,
+)> {
+    let prev = prev_node_sizes.as_ref().map(|p| p.as_slice()).transpose()?;
+    let (out_src, out_dst, out_w, n_cl, sizes) = crate::graph_utils::contract_edges(
+        src.as_slice()?,
+        dst.as_slice()?,
+        weight.as_slice()?,
+        membership.as_slice()?,
+        prev,
+    );
+    Ok((
+        PyArray1::from_vec(py, out_src).into(),
+        PyArray1::from_vec(py, out_dst).into(),
+        PyArray1::from_vec(py, out_w).into(),
+        n_cl,
+        PyArray1::from_vec(py, sizes).into(),
+    ))
+}
+
 /// Python module definition.
 #[cfg(feature = "python")]
 #[pymodule]
@@ -273,5 +352,8 @@ fn sciscape_leiden(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(run_leiden, m)?)?;
     m.add_function(wrap_pyfunction!(run_postprocess, m)?)?;
     m.add_function(wrap_pyfunction!(cpm_quality, m)?)?;
+    m.add_function(wrap_pyfunction!(rust_filter_top_k, m)?)?;
+    m.add_function(wrap_pyfunction!(rust_find_gcc, m)?)?;
+    m.add_function(wrap_pyfunction!(rust_contract_edges, m)?)?;
     Ok(())
 }

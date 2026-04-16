@@ -8,8 +8,8 @@ correlates with cluster structure.
 from __future__ import annotations
 
 import logging
-from collections import Counter, defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections import defaultdict
+from typing import Any, Dict, List
 
 import numpy as np
 import polars as pl
@@ -44,39 +44,60 @@ def compute_consensus_stats(
             df = filter_top_k(df, top_k, uid1_col=uid1_col, uid2_col=uid2_col)
         filtered[name] = df
 
-    # Build pair → set of layers
-    pair_layers: Dict[Tuple[str, str], set] = defaultdict(set)
+    # Normalize pairs (lo, hi) and count layers per edge — fully vectorized
+    # Step 1: build normalized pair table per layer with layer tag
+    tagged_parts = []
     for name, df in filtered.items():
-        for row in df.iter_rows(named=True):
-            pair = (min(row[uid1_col], row[uid2_col]),
-                    max(row[uid1_col], row[uid2_col]))
-            pair_layers[pair].add(name)
+        normed = df.select(
+            pl.min_horizontal(uid1_col, uid2_col).alias("_lo"),
+            pl.max_horizontal(uid1_col, uid2_col).alias("_hi"),
+        ).with_columns(pl.lit(name).alias("_layer"))
+        tagged_parts.append(normed)
 
-    # N-layers distribution
-    n_layers_dist = Counter(len(v) for v in pair_layers.values())
+    if not tagged_parts:
+        return {
+            "n_layers_distribution": {}, "per_layer_coverage": {},
+            "per_layer_edges": {}, "overlap_matrix": {}, "overlap_layer_names": [],
+            "backbone_size": 0, "total_edges": 0, "n_layers": 0,
+        }
+
+    all_tagged = pl.concat(tagged_parts)
+
+    # N-layers distribution: count distinct layers per pair
+    pair_counts = all_tagged.group_by(["_lo", "_hi"]).agg(
+        pl.col("_layer").n_unique().alias("_n_layers")
+    )
+    n_layers_dist = dict(
+        pair_counts.group_by("_n_layers").len()
+        .sort("_n_layers")
+        .iter_rows()
+    )
 
     # Per-layer coverage
     layer_nodes = {}
     for name, df in filtered.items():
-        nodes = set(df[uid1_col].to_list()) | set(df[uid2_col].to_list())
-        layer_nodes[name] = len(nodes)
+        layer_nodes[name] = pl.concat([df[uid1_col], df[uid2_col]]).n_unique()
 
-    # Pairwise overlap matrix
+    # Pairwise overlap matrix: precompute pair sets once per layer
     layer_names = sorted(filtered.keys())
+    pair_sets: Dict[str, set] = {}
+    for name, df in filtered.items():
+        normed = df.select(
+            pl.min_horizontal(uid1_col, uid2_col).alias("_lo"),
+            pl.max_horizontal(uid1_col, uid2_col).alias("_hi"),
+        )
+        pair_sets[name] = set(zip(normed["_lo"].to_list(), normed["_hi"].to_list()))
+
     overlap = {}
     for i, a in enumerate(layer_names):
         for j, b in enumerate(layer_names):
             if i <= j:
-                pairs_a = {(min(r[uid1_col], r[uid2_col]), max(r[uid1_col], r[uid2_col]))
-                           for r in filtered[a].iter_rows(named=True)}
-                pairs_b = {(min(r[uid1_col], r[uid2_col]), max(r[uid1_col], r[uid2_col]))
-                           for r in filtered[b].iter_rows(named=True)}
-                overlap[(a, b)] = len(pairs_a & pairs_b)
+                overlap[(a, b)] = len(pair_sets[a] & pair_sets[b])
                 overlap[(b, a)] = overlap[(a, b)]
 
     # Backbone: edges in ALL layers
     n_all = len(filtered)
-    backbone = [pair for pair, ls in pair_layers.items() if len(ls) == n_all]
+    backbone_count = pair_counts.filter(pl.col("_n_layers") == n_all).height
 
     return {
         "n_layers_distribution": dict(sorted(n_layers_dist.items())),
@@ -84,8 +105,8 @@ def compute_consensus_stats(
         "per_layer_edges": {name: df.height for name, df in filtered.items()},
         "overlap_matrix": {f"{a}_{b}": c for (a, b), c in overlap.items()},
         "overlap_layer_names": layer_names,
-        "backbone_size": len(backbone),
-        "total_edges": len(pair_layers),
+        "backbone_size": backbone_count,
+        "total_edges": pair_counts.height,
         "n_layers": n_all,
     }
 
@@ -114,12 +135,22 @@ def compute_consensus_vs_cluster(
             df = filter_top_k(df, top_k)
         filtered[name] = df
 
-    # Build pair → n_layers
-    pair_nlayers: Dict[Tuple, int] = defaultdict(int)
+    # Build pair → n_layers (vectorized)
+    tagged_parts = []
     for name, df in filtered.items():
-        for row in df.iter_rows(named=True):
-            pair = (min(row["uid1"], row["uid2"]), max(row["uid1"], row["uid2"]))
-            pair_nlayers[pair] += 1
+        normed = df.select(
+            pl.min_horizontal("uid1", "uid2").alias("_lo"),
+            pl.max_horizontal("uid1", "uid2").alias("_hi"),
+        )
+        tagged_parts.append(normed)
+
+    if not tagged_parts:
+        return {}
+
+    pair_nlayers_df = pl.concat(tagged_parts).group_by(["_lo", "_hi"]).len(name="_nl")
+    pair_nlayers: Dict[tuple, int] = {
+        (r[0], r[1]): r[2] for r in pair_nlayers_df.iter_rows()
+    }
 
     # Classify intra/cross per consensus level
     level_stats: Dict[int, Dict[str, int]] = defaultdict(lambda: {"intra": 0, "cross": 0, "unknown": 0})

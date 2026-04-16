@@ -35,7 +35,7 @@ class LeidenConfig:
     # Each path should be a parquet file with uid1, uid2, rel_sum2.
     layer_paths: Mapping[str, Path] | None = None  # e.g. {"bc": Path, "cc": Path, ...}
     combine_strategy: str = "consensus"       # "sum" | "consensus" | "max" | "vote"
-    combine_top_k: int = 30                 # per-node top-k filter before normalization
+    combine_top_k: int | str = "auto"       # per-node top-k filter ("auto" = sqrt(n))
     combine_gcc: bool = True                # GCC filter after combining
     auto_gamma: bool = False                # auto-select γ via binary search
     auto_gamma_target: float = 3.0          # max cluster % target for auto_gamma

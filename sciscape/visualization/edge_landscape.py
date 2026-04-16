@@ -11,8 +11,7 @@ revealing temporal patterns unique to each edge type:
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 import polars as pl
@@ -37,15 +36,15 @@ def compute_edge_year_matrix(
     - marginal_x: count per year (uid1)
     - marginal_y: count per year (uid2)
     """
-    years_present = sorted(set(y for y in year_map.values() if y and y > 0))
+    years_present = sorted(set(int(y) for y in year_map.values() if y and y > 0))
     if not years_present:
         return {"error": "no year data"}
 
     if year_range:
-        yr_min, yr_max = year_range
+        yr_min, yr_max = int(year_range[0]), int(year_range[1])
     else:
-        yr_min = min(years_present)
-        yr_max = max(years_present)
+        yr_min = years_present[0]
+        yr_max = years_present[-1]
 
     years = list(range(yr_min, yr_max + 1))
     n = len(years)
@@ -54,22 +53,24 @@ def compute_edge_year_matrix(
     count_mat = np.zeros((n, n), dtype=np.int64)
     weight_sum = np.zeros((n, n), dtype=np.float64)
 
-    for row in edges.iter_rows(named=True):
-        u1, u2 = row["uid1"], row["uid2"]
-        y1, y2 = year_map.get(u1), year_map.get(u2)
-        if y1 is None or y2 is None or y1 < yr_min or y2 < yr_min:
-            continue
-        if y1 > yr_max or y2 > yr_max:
-            continue
-        i, j = yr_to_idx.get(y1), yr_to_idx.get(y2)
-        if i is None or j is None:
-            continue
-        w = float(row.get(weight_col, 1.0))
-        # Symmetric: count both directions
-        count_mat[i, j] += 1
-        count_mat[j, i] += 1
-        weight_sum[i, j] += w
-        weight_sum[j, i] += w
+    # Vectorized: join years, filter valid, accumulate via np.add.at
+    u1_arr = edges["uid1"].to_list()
+    u2_arr = edges["uid2"].to_list()
+    w_arr = edges[weight_col].to_numpy() if weight_col in edges.columns else np.ones(edges.height)
+
+    y1_arr = np.array([year_map.get(u, -1) for u in u1_arr], dtype=np.int32)
+    y2_arr = np.array([year_map.get(u, -1) for u in u2_arr], dtype=np.int32)
+
+    valid = (y1_arr >= yr_min) & (y1_arr <= yr_max) & (y2_arr >= yr_min) & (y2_arr <= yr_max)
+    y1_v = y1_arr[valid] - yr_min  # direct index (yr_min → 0)
+    y2_v = y2_arr[valid] - yr_min
+    w_v = w_arr[valid]
+
+    # Symmetric accumulation
+    np.add.at(count_mat, (y1_v, y2_v), 1)
+    np.add.at(count_mat, (y2_v, y1_v), 1)
+    np.add.at(weight_sum, (y1_v, y2_v), w_v)
+    np.add.at(weight_sum, (y2_v, y1_v), w_v)
 
     # Average weight (avoid div by zero)
     with np.errstate(divide='ignore', invalid='ignore'):

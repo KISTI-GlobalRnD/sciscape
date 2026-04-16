@@ -63,7 +63,6 @@ def integer_remap(
     # Check cache
     if not overwrite and manifest_path.exists() and int_edges_path.exists():
         manifest = pl.read_parquet(manifest_path)
-        n_edges = pl.read_parquet_schema(int_edges_path)  # just check existence
         n_edges = pl.scan_parquet(int_edges_path).select(pl.len()).collect().item()
         log.info("integer_remap: using cached files in %s", output_dir)
         return RemapResult(
@@ -104,7 +103,7 @@ def integer_remap(
     int_edges = pl.DataFrame({
         "src": src,
         "dst": dst,
-        "weight": edges[weight_col].cast(pl.Float32),
+        "weight": edges[weight_col].cast(pl.Float64),
     })
 
     int_edges.write_parquet(int_edges_path, compression="zstd")
@@ -151,4 +150,35 @@ def join_back_uids(
     ).select("uid", "cluster")
 
 
-__all__ = ["RemapResult", "integer_remap", "join_back_uids", "load_manifest"]
+def integer_remap_memory(
+    edges: pl.DataFrame,
+    *,
+    uid1_col: str = "uid1",
+    uid2_col: str = "uid2",
+    weight_col: str = "rel_sum2",
+) -> tuple:
+    """In-memory integer remap (no disk I/O).
+
+    Returns (src, dst, weight, n_nodes, uids) where:
+    - src, dst: numpy uint32 arrays
+    - weight: numpy float64 array
+    - n_nodes: int
+    - uids: list of str (index → uid mapping)
+    """
+    with pl.StringCache():
+        cats = edges.with_columns(
+            pl.col(uid1_col).cast(pl.Categorical).alias("_c1"),
+            pl.col(uid2_col).cast(pl.Categorical).alias("_c2"),
+        )
+        src = cats["_c1"].to_physical().to_numpy().astype(np.uint32)
+        dst = cats["_c2"].to_physical().to_numpy().astype(np.uint32)
+        categories = cats["_c1"].cat.get_categories()
+
+    n_nodes = categories.len()
+    uids = categories.to_list()
+    w = edges[weight_col].to_numpy().astype(np.float64)
+    log.info("integer_remap_memory: %d edges, %d nodes (no disk I/O)", len(w), n_nodes)
+    return src, dst, w, n_nodes, uids
+
+
+__all__ = ["RemapResult", "integer_remap", "integer_remap_memory", "join_back_uids", "load_manifest"]

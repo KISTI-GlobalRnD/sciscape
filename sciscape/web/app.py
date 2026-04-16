@@ -43,7 +43,7 @@ class QueryRequest(BaseModel):
     edge_types: str = "dc,bc,cc"
     run_landscape: bool = True
     combine_strategy: str = "consensus"
-    combine_top_k: int = 30
+    combine_top_k: int | str = "auto"
     auto_gamma: bool = True
     auto_gamma_target: float = 3.0
     n_levels: int = 4
@@ -274,7 +274,11 @@ def _run_llm_labeling(job_id: str) -> None:
             return
 
         mem_df = pl.read_parquet(mem_path)
-        cluster_col = [c for c in mem_df.columns if c.startswith("cluster_")][0]
+        cluster_cols = [c for c in mem_df.columns if c.startswith("cluster_")]
+        if not cluster_cols:
+            job["llm_labels"] = {"status": "error", "error": "no cluster columns found"}
+            return
+        cluster_col = cluster_cols[0]
 
         # Join
         joined = abs_df.join(mem_df.select("uid", cluster_col), on="uid", how="inner")
@@ -441,7 +445,10 @@ async def get_cluster_papers(job_id: str, cluster_id: int):
             return {"papers": []}
 
         mem_df = pl.read_parquet(mem_path)
-        cluster_col = [c for c in mem_df.columns if c.startswith("cluster_")][0]
+        cluster_cols = [c for c in mem_df.columns if c.startswith("cluster_")]
+        if not cluster_cols:
+            return {"error": "no cluster columns found in membership data"}
+        cluster_col = cluster_cols[0]
 
         # Join and filter
         joined = abs_df.join(mem_df.select("uid", cluster_col), on="uid", how="inner")
@@ -626,11 +633,19 @@ async def get_consensus(job_id: str):
         if p.exists():
             layers[layer] = pl.read_parquet(p)
 
-    if len(layers) < 2:
-        return {"error": "need at least 2 layers for consensus analysis"}
+    nonempty = {k: v for k, v in layers.items() if v.height > 0}
+    if len(nonempty) < 2:
+        return {"error": "need at least 2 non-empty layers for consensus analysis"}
 
     try:
-        stats = compute_consensus_stats(layers, top_k=30)
+        # adaptive top-k for consensus stats
+        from sciscape.linkage.filters import compute_adaptive_k
+        all_uids = pl.concat([
+            pl.concat([df["uid1"], df["uid2"]])
+            for df in nonempty.values()
+        ]).unique()
+        k = compute_adaptive_k(all_uids.len())
+        stats = compute_consensus_stats(layers, top_k=k)
         return stats
     except Exception as e:
         return {"error": str(e)}

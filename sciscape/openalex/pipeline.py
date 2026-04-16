@@ -45,7 +45,7 @@ class OpenAlexPipelineConfig:
     # ── Landscape (forwarded) ──
     run_landscape: bool = True
     combine_strategy: str = "consensus"
-    combine_top_k: int = 30
+    combine_top_k: int | str = "auto"
     auto_gamma: bool = True
     auto_gamma_target: float = 3.0
 

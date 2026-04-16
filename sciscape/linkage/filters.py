@@ -15,6 +15,13 @@ from scipy.sparse.csgraph import connected_components
 
 log = logging.getLogger(__name__)
 
+# Try Rust backend for graph utilities
+try:
+    import sciscape_leiden as _rust
+    _RUST_GRAPH = True
+except ImportError:
+    _RUST_GRAPH = False
+
 
 # ═══════════════════════════════════════════════════════════════════
 # Weight normalization
@@ -69,7 +76,6 @@ def normalize_weights(
         if span > 0:
             normed = (w - mn) / span
         else:
-            normed = pl.lit(0.0).alias(weight_col).cast(pl.Float64)
             normed = pl.Series(weight_col, [0.0] * edges.height)
     elif method == WeightNorm.RANK:
         # rank / N → (0, 1]  (average ties)
@@ -148,6 +154,14 @@ def filter_top_k(
 
     before = edges.height
 
+    # ── Rust fast path: integer UIDs → Rust filter → index back ──
+    if _RUST_GRAPH and edges.height > 200:
+        try:
+            return _filter_top_k_rust(edges, k, uid1_col, uid2_col, weight_col, mode)
+        except Exception as e:
+            log.debug("Rust filter_top_k fallback: %s", e)
+
+    # ── Python fallback ──
     # Expand to bidirectional for per-node ranking
     fwd = edges.select(
         pl.col(uid1_col).alias("node"),
@@ -218,6 +232,36 @@ def filter_top_k(
     return result
 
 
+def _filter_top_k_rust(
+    edges: pl.DataFrame,
+    k: int,
+    uid1_col: str,
+    uid2_col: str,
+    weight_col: str,
+    mode: str,
+) -> pl.DataFrame:
+    """Rust-accelerated top-k filter via Polars Categorical remapping."""
+    before = edges.height
+    # Map string UIDs → integers using Polars Categorical (fast, no Python loop)
+    with pl.StringCache():
+        cats = edges.with_columns(
+            pl.col(uid1_col).cast(pl.Categorical).alias("_c1"),
+            pl.col(uid2_col).cast(pl.Categorical).alias("_c2"),
+        )
+        src = cats["_c1"].to_physical().to_numpy().astype(np.uint32)
+        dst = cats["_c2"].to_physical().to_numpy().astype(np.uint32)
+    w = edges[weight_col].to_numpy().astype(np.float64)
+
+    kept_idx = _rust.rust_filter_top_k(src, dst, w, k, mutual=(mode == "mutual"))
+
+    result = edges.with_row_index("_idx").filter(
+        pl.col("_idx").is_in(pl.Series(kept_idx.astype(np.uint32)))
+    ).drop("_idx")
+
+    log.info("filter_top_k(k=%d, mode=%s, rust): %d → %d edges", k, mode, before, result.height)
+    return result
+
+
 def filter_giant_component(
     edges: pl.DataFrame,
     *,
@@ -232,7 +276,14 @@ def filter_giant_component(
     if edges.height == 0:
         return edges
 
-    # ── Vectorized UID → int mapping via Polars join ──────────────
+    # ── Rust fast path (Union-Find, no scipy needed) ──
+    if _RUST_GRAPH and edges.height > 100:
+        try:
+            return _filter_gcc_rust(edges, uid1_col, uid2_col)
+        except Exception as e:
+            log.debug("Rust GCC fallback: %s", e)
+
+    # ── Python fallback: Vectorized UID → int mapping via Polars join ──
     all_uids = pl.concat([edges[uid1_col], edges[uid2_col]]).unique().sort()
     n = all_uids.len()
     uid_map = pl.DataFrame({
@@ -282,8 +333,63 @@ def filter_giant_component(
     return result
 
 
+def _filter_gcc_rust(
+    edges: pl.DataFrame,
+    uid1_col: str,
+    uid2_col: str,
+) -> pl.DataFrame:
+    """Rust-accelerated GCC filter via Union-Find."""
+    before = edges.height
+    # Map UIDs → integers using Polars Categorical (fast, no Python loop)
+    with pl.StringCache():
+        cats = edges.with_columns(
+            pl.col(uid1_col).cast(pl.Categorical).alias("_c1"),
+            pl.col(uid2_col).cast(pl.Categorical).alias("_c2"),
+        )
+        src = cats["_c1"].to_physical().to_numpy().astype(np.uint32)
+        dst = cats["_c2"].to_physical().to_numpy().astype(np.uint32)
+        n = cats["_c1"].cat.get_categories().len()
+
+    if n == 0:
+        return edges
+
+    gcc_mask = _rust.rust_find_gcc(src, dst, n)
+    # Vectorized: both endpoints in GCC
+    keep = gcc_mask[src] & gcc_mask[dst]
+
+    if keep.all():
+        log.info("filter_giant_component(rust): graph already connected (%d edges)", before)
+        return edges
+
+    result = edges.filter(pl.Series(keep))
+    gcc_count = int(gcc_mask.sum())
+    log.info("filter_giant_component(rust): %d → %d edges (%d nodes)",
+             before, result.height, gcc_count)
+    return result
+
+
+def compute_adaptive_k(n_nodes: int, *, k_max: int = 30, k_min: int = 5) -> int:
+    """Compute adaptive top-k based on graph size.
+
+    For small graphs, k=30 means each node keeps 10%+ of all nodes
+    as neighbors → overly dense for CPM.  This scales k with sqrt(n)
+    so density stays manageable.
+
+    Formula: k = clamp(floor(sqrt(n)), k_min, k_max)
+
+    Examples:
+        n=100  → k=10
+        n=300  → k=17
+        n=500  → k=22
+        n=1000 → k=30 (capped)
+    """
+    import math
+    return max(k_min, min(k_max, int(math.sqrt(n_nodes))))
+
+
 __all__ = [
     "WeightNorm",
+    "compute_adaptive_k",
     "filter_giant_component",
     "filter_min_weight",
     "filter_top_k",

@@ -7,6 +7,7 @@ BC (bibliographic coupling) edge tables in sciscape format.
 from __future__ import annotations
 
 import logging
+from itertools import combinations
 from typing import Dict, List, Sequence
 
 import numpy as np
@@ -55,22 +56,20 @@ def build_citation_edges(
     result: Dict[str, pl.DataFrame] = {}
 
     # ── DC: direct citation within focal set ──────────────────
-    dc_rows: List[dict] = []
+    dc_uid1, dc_uid2, dc_weight = [], [], []
     for w in works:
-        n_refs = len(w.referenced_works) if w.referenced_works else 0
-        for ref_id in (w.referenced_works or []):
-            if ref_id in focal_ids:
-                weight = 1.0
-                if normalization == "fractional" and n_refs > 0:
-                    weight = 1.0 / n_refs
-                dc_rows.append({
-                    "uid1": w.id,
-                    "uid2": ref_id,
-                    "rel_sum2": weight,
-                })
+        refs = w.referenced_works or []
+        n_refs = len(refs)
+        wt = 1.0 / n_refs if normalization == "fractional" and n_refs > 0 else 1.0
+        wid = w.id
+        for ref_id in refs:
+            if ref_id in focal_ids and ref_id != wid:  # exclude self-citation
+                dc_uid1.append(wid)
+                dc_uid2.append(ref_id)
+                dc_weight.append(wt)
 
-    if dc_rows:
-        dc_df = pl.DataFrame(dc_rows)
+    if dc_uid1:
+        dc_df = pl.DataFrame({"uid1": dc_uid1, "uid2": dc_uid2, "rel_sum2": dc_weight})
         # Symmetrize: add reverse direction (swap uid1 ↔ uid2)
         dc_rev = dc_df.select(
             pl.col("uid2").alias("uid1"),
@@ -97,17 +96,29 @@ def build_citation_edges(
         n_refs_total = len(ref_list)
 
         if n_refs_total > 0:
-            # Sparse matrix: works × references
-            row_idx, col_idx, data = [], [], []
+            # Sparse matrix: works × references (vectorized COO construction)
+            # Pre-compute per-work ref counts and column indices in batch
+            _rows, _cols, _data = [], [], []
             for i, w in enumerate(works):
                 refs = w.referenced_works or []
                 n_r = len(refs)
-                for ref_id in refs:
-                    if ref_id in ref_to_col:
-                        row_idx.append(i)
-                        col_idx.append(ref_to_col[ref_id])
-                        # Fractional counting
-                        data.append(1.0 / n_r if n_r > 0 else 1.0)
+                if n_r == 0:
+                    continue
+                wt = 1.0 / n_r if normalization == "fractional" else 1.0
+                mapped = [ref_to_col[r] for r in refs if r in ref_to_col]
+                if mapped:
+                    _rows.append(np.full(len(mapped), i, dtype=np.int32))
+                    _cols.append(np.array(mapped, dtype=np.int32))
+                    _data.append(np.full(len(mapped), wt))
+
+            if _rows:
+                row_idx = np.concatenate(_rows)
+                col_idx = np.concatenate(_cols)
+                data = np.concatenate(_data)
+            else:
+                row_idx = np.array([], dtype=np.int32)
+                col_idx = np.array([], dtype=np.int32)
+                data = np.array([], dtype=np.float64)
 
             M = csr_matrix(
                 (data, (row_idx, col_idx)),
@@ -116,8 +127,16 @@ def build_citation_edges(
             # BC = M @ M^T
             BC = (M @ M.T).tocsr()
 
-            # Extract top-k edges
-            bc_rows: List[dict] = []
+            # Pre-compute binary count matrix (once, outside loop)
+            BC_count = None
+            if min_shared_refs > 1:
+                M_bin = M.copy()
+                M_bin.data[:] = 1.0
+                BC_count = (M_bin @ M_bin.T).tocsr()
+
+            # Extract top-k edges (vectorized: collect arrays, not dict list)
+            work_ids = [w.id for w in works]  # pre-map index → UID
+            bc_uid1, bc_uid2, bc_val = [], [], []
             for i in range(n):
                 start, end = BC.indptr[i], BC.indptr[i + 1]
                 if start == end:
@@ -130,12 +149,18 @@ def build_citation_edges(
                 cols_f = cols[mask]
                 vals_f = vals[mask]
 
-                if min_shared_refs > 1:
-                    # Count shared refs (use binary matrix)
-                    M_bin = M.copy()
-                    M_bin.data[:] = 1.0
-                    BC_count = (M_bin @ M_bin.T).tocsr()
-                    counts = np.array(BC_count[i, cols_f].todense()).ravel()
+                if BC_count is not None:
+                    cnt_start = BC_count.indptr[i]
+                    cnt_end = BC_count.indptr[i + 1]
+                    cnt_cols = BC_count.indices[cnt_start:cnt_end]
+                    cnt_data = BC_count.data[cnt_start:cnt_end]
+                    if len(cnt_cols) > 0:
+                        cnt_idx = np.searchsorted(cnt_cols, cols_f)
+                        cnt_idx_safe = np.clip(cnt_idx, 0, len(cnt_cols) - 1)
+                        cnt_valid = (cnt_idx < len(cnt_cols)) & (cnt_cols[cnt_idx_safe] == cols_f)
+                        counts = np.where(cnt_valid, cnt_data[cnt_idx_safe], 0)
+                    else:
+                        counts = np.zeros(len(cols_f), dtype=np.int32)
                     keep = counts >= min_shared_refs
                     cols_f = cols_f[keep]
                     vals_f = vals_f[keep]
@@ -149,15 +174,14 @@ def build_citation_edges(
                     cols_f = cols_f[topk_idx]
                     vals_f = vals_f[topk_idx]
 
-                for j_idx, (j, val) in enumerate(zip(cols_f, vals_f)):
-                    bc_rows.append({
-                        "uid1": works[i].id,
-                        "uid2": works[j].id,
-                        "rel_sum2": float(val),
-                    })
+                # Batch append (avoid per-edge dict creation)
+                wid = work_ids[i]
+                bc_uid1.extend([wid] * len(cols_f))
+                bc_uid2.extend(work_ids[j] for j in cols_f)
+                bc_val.extend(vals_f.tolist())
 
-            if bc_rows:
-                bc_df = pl.DataFrame(bc_rows)
+            if bc_uid1:
+                bc_df = pl.DataFrame({"uid1": bc_uid1, "uid2": bc_uid2, "rel_sum2": bc_val})
                 # Symmetrize
                 bc_rev = bc_df.select(
                     pl.col("uid2").alias("uid1"),
@@ -199,16 +223,17 @@ def build_citation_edges(
             if n_r < 2:
                 continue
             w_frac = 1.0 / (n_r * (n_r - 1) / 2) if normalization == "fractional" else 1.0
-            for ii in range(len(focal_refs)):
-                for jj in range(ii + 1, len(focal_refs)):
-                    a, b = focal_refs[ii], focal_refs[jj]
-                    pair = (min(a, b), max(a, b))
-                    cc_weights[pair] = cc_weights.get(pair, 0) + w_frac
+            focal_refs_sorted = sorted(focal_refs)
+            for a, b in combinations(focal_refs_sorted, 2):
+                cc_weights[(a, b)] = cc_weights.get((a, b), 0) + w_frac
 
         if cc_weights:
-            cc_rows = [{"uid1": p[0], "uid2": p[1], "rel_sum2": w}
-                       for p, w in cc_weights.items()]
-            cc_df = pl.DataFrame(cc_rows)
+            cc_pairs = list(cc_weights.keys())
+            cc_df = pl.DataFrame({
+                "uid1": [p[0] for p in cc_pairs],
+                "uid2": [p[1] for p in cc_pairs],
+                "rel_sum2": [cc_weights[p] for p in cc_pairs],
+            })
             cc_rev = cc_df.select(
                 pl.col("uid2").alias("uid1"),
                 pl.col("uid1").alias("uid2"),
