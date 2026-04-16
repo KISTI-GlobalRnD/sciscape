@@ -1,4 +1,4 @@
-.PHONY: install install-dev install-rust install-rust-text install-python test test-rust test-python clean build
+.PHONY: install install-dev install-rust install-rust-text install-python test test-rust test-python clean build docs
 
 # Install everything via pip (Rust crates + Python package)
 install:
@@ -31,6 +31,16 @@ test-python:
 # Build distributable package
 build:
 	python -m build
+
+# Generate API documentation
+docs:
+	pdoc sciscape.clustering.auto_gamma sciscape.clustering.hierarchical \
+		sciscape.clustering.integer_remap sciscape.clustering.config \
+		sciscape.linkage.combine sciscape.linkage.filters \
+		sciscape.openalex.edges sciscape.openalex.pipeline \
+		sciscape.visualization.consensus sciscape.visualization.edge_landscape \
+		sciscape.landscape \
+		--output-directory docs/api --no-show-source
 
 # Clean build artifacts
 clean:
