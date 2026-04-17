@@ -30,10 +30,10 @@ dependencies = [
   "scipy>=1.10",
   "scikit-learn>=1.2",
   "joblib>=1.2",
+  "pyarrow>=12",
 ]
 
 [project.optional-dependencies]
-arrow = ["pyarrow>=12"]
 llm = ["openai>=1.0"]
 mysql = ["pymysql>=1.0"]
 viz = ["plotly>=5.0"]

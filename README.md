@@ -149,7 +149,7 @@ See `docs/multilayer_combination_report.pdf` for the full 15-page analysis.
 ## Tests
 
 ```bash
-pytest -q   # 739 tests
+pytest -q   # 818+ tests
 ```
 
 ## License
