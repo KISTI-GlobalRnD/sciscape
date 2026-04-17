@@ -156,6 +156,9 @@ class ClusterNetwork {
       h += `<button class="net-chip${this.showHierarchy?' active':''}" id="btn-hierarchy">Hier</button>`;
     }
     h += `<button class="net-chip${this.showDensity?' active':''}" id="btn-density">Density</button>`;
+    h += `<span id="density-min-wrap" style="display:${this.showDensity?'inline-flex':'none'};align-items:center;gap:3px;font-size:0.7rem;color:#8899b3;">
+      <span>Min</span><input type="range" min="0" max="500" value="${this.densityMinSize||0}" step="10" id="sl-density-min" style="width:60px;">
+      <span id="density-min-val">${this.densityMinSize||0}</span></span>`;
     h += `<button class="net-chip" id="btn-reset-layout" title="Reset node positions">Reset</button>`;
     h += `<button class="net-chip" id="btn-temporal">Timeline</button>`;
     h += `<button class="net-chip" id="btn-bridge">Bridge</button>`;
@@ -198,7 +201,20 @@ class ClusterNetwork {
     if (hBtn) hBtn.onclick = () => { this.showHierarchy = !this.showHierarchy; this.render(); };
 
     const dBtn = controls.querySelector('#btn-density');
-    if (dBtn) dBtn.onclick = () => { this.showDensity = !this.showDensity; this._toggleDensity(); dBtn.classList.toggle('active'); };
+    const dMinWrap = controls.querySelector('#density-min-wrap');
+    if (dBtn) dBtn.onclick = () => {
+      this.showDensity = !this.showDensity;
+      this._toggleDensity();
+      dBtn.classList.toggle('active');
+      if (dMinWrap) dMinWrap.style.display = this.showDensity ? 'inline-flex' : 'none';
+    };
+    const slDensityMin = controls.querySelector('#sl-density-min');
+    if (slDensityMin) slDensityMin.oninput = () => {
+      this.densityMinSize = parseInt(slDensityMin.value) || 0;
+      const valEl = controls.querySelector('#density-min-val');
+      if (valEl) valEl.textContent = this.densityMinSize;
+      if (this.showDensity) this._renderDensity();
+    };
     const rlBtn = controls.querySelector('#btn-reset-layout');
     if (rlBtn) rlBtn.onclick = () => { this.resetLayout(); };
 
@@ -481,74 +497,130 @@ class ClusterNetwork {
     this._linkEls.attr('display', d => d.weight >= minW ? null : 'none');
   }
 
-  // ── DENSITY HEATMAP ─────────────────────────────────────
+  // ── CLUSTER TERRITORY DENSITY ────────────────────────────
   _toggleDensity() {
     const existing = this.container.querySelector('.density-overlay');
     if (existing) { existing.remove(); this.showDensity = false; return; }
     if (!this._nodes.length || !this._nodes[0].x) return;
+    this._renderDensity();
+    this.showDensity = true;
+  }
+
+  _renderDensity() {
+    // Remove old
+    const old = this.container.querySelector('.density-overlay');
+    if (old) old.remove();
 
     const W = this._svgW, H = this._svgH;
     const canvas = document.createElement('canvas');
     canvas.className = 'density-overlay';
     canvas.width = W; canvas.height = H;
-    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;opacity:0.55;';
+    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;opacity:0.5;';
     this.container.querySelector('div[style*="flex"]>div:first-child').appendChild(canvas);
 
-    // 2D Kernel Density Estimation on a grid
-    const gridSize = 2; // pixel resolution
+    const gridSize = 2;
     const cols = Math.ceil(W / gridSize), rows = Math.ceil(H / gridSize);
-    const grid = new Float32Array(cols * rows);
-    const bandwidth = 50; // kernel bandwidth in pixels
+    const bandwidth = 50;
     const bw2 = bandwidth * bandwidth;
+    const kernelRadius = Math.ceil(bandwidth / gridSize);
 
-    // Accumulate density from each node (weighted by size)
-    this._nodes.forEach(n => {
-      if (!n.x || !n.y) return;
+    // Min cluster size filter (from slider, default 0 = show all)
+    const minSize = this.densityMinSize || 0;
+
+    // Filter nodes by min cluster size
+    const activeNodes = this._nodes.filter(n => n.x && n.y && (n.size || 0) >= minSize);
+    if (!activeNodes.length) return;
+
+    // Collect unique cluster IDs + colors
+    const clusterIds = [...new Set(activeNodes.map(n => n.id))];
+    const clusterColor = {};
+    activeNodes.forEach(n => {
+      const hex = this._nodeColor(n);
+      clusterColor[n.id] = this._hexToRgb(hex);
+    });
+
+    // Per-cluster KDE grids
+    const clusterGrids = {};
+    clusterIds.forEach(cid => { clusterGrids[cid] = new Float32Array(cols * rows); });
+
+    activeNodes.forEach(n => {
+      const grid = clusterGrids[n.id];
+      if (!grid) return;
       const weight = (n.size || 1);
       const cx = Math.floor(n.x / gridSize), cy = Math.floor(n.y / gridSize);
-      const r = Math.ceil(bandwidth / gridSize);
-      for (let dy = -r; dy <= r; dy++) {
+      for (let dy = -kernelRadius; dy <= kernelRadius; dy++) {
         const gy = cy + dy;
         if (gy < 0 || gy >= rows) continue;
-        for (let dx = -r; dx <= r; dx++) {
+        for (let dx = -kernelRadius; dx <= kernelRadius; dx++) {
           const gx = cx + dx;
           if (gx < 0 || gx >= cols) continue;
           const dist2 = (dx * gridSize) ** 2 + (dy * gridSize) ** 2;
           if (dist2 > bw2) continue;
-          // Gaussian kernel
           grid[gy * cols + gx] += weight * Math.exp(-dist2 / (2 * bw2 * 0.15));
         }
       }
     });
 
-    // Normalize to [0, 1]
-    let maxVal = 0;
-    for (let i = 0; i < grid.length; i++) if (grid[i] > maxVal) maxVal = grid[i];
-    if (maxVal === 0) maxVal = 1;
-
-    // Render with viridis-like colormap
+    // For each pixel: find dominant cluster + compute entropy
     const ctx = canvas.getContext('2d');
     const img = ctx.createImageData(cols, rows);
-    for (let i = 0; i < grid.length; i++) {
-      const t = grid[i] / maxVal;
-      if (t < 0.01) { img.data[i*4+3] = 0; continue; } // transparent below threshold
-      // Viridis approximation: dark purple → blue → teal → yellow
-      const r_ = Math.round(t < 0.5 ? 68 + t * 200 : 50 + t * 400);
-      const g_ = Math.round(t < 0.5 ? 1 + t * 300 : t * 255);
-      const b_ = Math.round(t < 0.5 ? 84 + t * 200 : 255 - t * 200);
-      img.data[i*4]   = Math.min(255, r_);
-      img.data[i*4+1] = Math.min(255, g_);
-      img.data[i*4+2] = Math.min(255, Math.max(0, b_));
-      img.data[i*4+3] = Math.round(180 * Math.sqrt(t)); // alpha
+
+    for (let i = 0; i < cols * rows; i++) {
+      // Sum density across all clusters at this pixel
+      let totalDensity = 0;
+      let maxDensity = 0;
+      let dominantId = null;
+
+      for (const cid of clusterIds) {
+        const d = clusterGrids[cid][i];
+        totalDensity += d;
+        if (d > maxDensity) { maxDensity = d; dominantId = cid; }
+      }
+
+      if (totalDensity < 0.001 || dominantId === null) {
+        img.data[i * 4 + 3] = 0; // transparent
+        continue;
+      }
+
+      // Compute Shannon entropy (normalized) for boundary detection
+      let entropy = 0;
+      const logN = Math.log(Math.max(clusterIds.length, 2));
+      for (const cid of clusterIds) {
+        const p = clusterGrids[cid][i] / totalDensity;
+        if (p > 0.001) entropy -= p * Math.log(p);
+      }
+      entropy /= logN; // normalize to [0, 1]
+
+      // Color: dominant cluster's color
+      const rgb = clusterColor[dominantId] || { r: 128, g: 128, b: 128 };
+
+      // Brightness: total density (stronger = more opaque)
+      const densityNorm = Math.min(1, totalDensity / (this._maxSize * 0.3));
+
+      // At high entropy (boundary): blend toward white
+      const whiteBlend = entropy * 0.6; // 0 = pure cluster color, 0.6 = mostly white at boundary
+      const r_ = Math.round(rgb.r * (1 - whiteBlend) + 255 * whiteBlend);
+      const g_ = Math.round(rgb.g * (1 - whiteBlend) + 255 * whiteBlend);
+      const b_ = Math.round(rgb.b * (1 - whiteBlend) + 255 * whiteBlend);
+      const alpha = Math.round(160 * Math.sqrt(densityNorm) * (1 - entropy * 0.4));
+
+      img.data[i * 4]     = Math.min(255, r_);
+      img.data[i * 4 + 1] = Math.min(255, g_);
+      img.data[i * 4 + 2] = Math.min(255, b_);
+      img.data[i * 4 + 3] = Math.max(0, alpha);
     }
 
-    // Scale up to canvas size
-    const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = cols; tmpCanvas.height = rows;
-    tmpCanvas.getContext('2d').putImageData(img, 0, 0);
+    // Scale up to canvas
+    const tmp = document.createElement('canvas');
+    tmp.width = cols; tmp.height = rows;
+    tmp.getContext('2d').putImageData(img, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(tmpCanvas, 0, 0, W, H);
-    this.showDensity = true;
+    ctx.drawImage(tmp, 0, 0, W, H);
+  }
+
+  _hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 128, g: 128, b: 128 };
   }
 
   // ── CLICK DETAIL PANEL ──────────────────────────────────
