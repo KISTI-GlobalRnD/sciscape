@@ -39,3 +39,9 @@ pilot_*.parquet
 
 # Web output (temporary job results)
 sciscape_web_output/
+
+# Generated API docs (rebuild with: make docs)
+docs/api/
+
+# SQLite job store
+sciscape_jobs.db

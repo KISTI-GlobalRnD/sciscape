@@ -1,0 +1,28 @@
+{
+  "clustering": "sum_target10",
+  "n_clusters": 4404,
+  "n_valid_100": 200,
+  "tiers": {
+    "1": {
+      "intra_count": 61030,
+      "cross_count": 7337680,
+      "intra_pct": 89.71,
+      "cross_pct": 89.75,
+      "enrichment_ratio": 1.0
+    },
+    "2": {
+      "intra_count": 5774,
+      "cross_count": 688739,
+      "intra_pct": 8.49,
+      "cross_pct": 8.42,
+      "enrichment_ratio": 1.007
+    },
+    "3": {
+      "intra_count": 1228,
+      "cross_count": 149165,
+      "intra_pct": 1.81,
+      "cross_pct": 1.82,
+      "enrichment_ratio": 0.989
+    }
+  }
+}

@@ -112,6 +112,9 @@ def sample_worst_case(
 
     # Filter: only nodes in large enough clusters
     cluster_sizes = Counter(membership.values())
+    cluster_members: Dict[int, List[str]] = defaultdict(list)
+    for uid, cid in membership.items():
+        cluster_members[cid].append(uid)
     eligible = [
         uid for uid, cid in membership.items()
         if cluster_sizes[cid] >= min_cluster_size and uid in cross_ratios
@@ -160,13 +163,22 @@ def sample_worst_case(
     for uid in targets:
         cid = membership[uid]
         neighbors = node_neighbors.get(uid, {})
-        if not neighbors:
-            continue
 
-        # Sort neighbors by weight
-        sorted_nbrs = sorted(neighbors.items(), key=lambda x: -x[1])
-        easy = [n for n, _ in sorted_nbrs[:n_easy]]
-        hard = [n for n, _ in sorted_nbrs[-n_hard:]] if len(sorted_nbrs) > n_easy else []
+        if neighbors:
+            # Sort direct same-cluster neighbors by weight
+            sorted_nbrs = sorted(neighbors.items(), key=lambda x: -x[1])
+            easy = [n for n, _ in sorted_nbrs[:n_easy]]
+            hard = [n for n, _ in sorted_nbrs[-n_hard:]] if len(sorted_nbrs) > n_easy else []
+        else:
+            # Postprocess may merge nodes into clusters without direct same-cluster
+            # edges. Fall back to representative cluster members so review-set
+            # construction still works on merged partitions.
+            candidates = [v for v in cluster_members[cid] if v != uid]
+            candidates.sort(key=lambda v: (-node_intra.get(v, 0.0), v))
+            easy = candidates[:n_easy]
+            hard = candidates[-n_hard:] if len(candidates) > n_easy else []
+            if not easy and not hard:
+                continue
 
         meta = uid_meta.get(uid, {})
         cases.append(SampleCase(

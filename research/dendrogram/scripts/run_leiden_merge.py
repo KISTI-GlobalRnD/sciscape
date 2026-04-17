@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from sciscape.clustering.auto_gamma import find_gamma
 from sciscape.evaluation.stability import evaluate_stability, compute_quality_report
@@ -58,10 +58,12 @@ def main():
     out = {
         "field": args.field,
         "method": "leiden_merge",
+        "edge_path": str(args.edge_path),
         "gamma": result.gamma,
         "n_clusters": result.n_clusters,
         "max_pct": result.max_pct,
         "min_size": args.min_size,
+        "target_pct": args.target_pct,
         "top5": result.top5,
         "ami_mean": stab.ami_mean,
         "ami_std": stab.ami_std,
