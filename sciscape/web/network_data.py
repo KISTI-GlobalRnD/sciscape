@@ -145,18 +145,39 @@ def _build_level_network(
         except Exception:
             pass
 
-    # (cluster_years/citations: removed — computed on-demand in temporal_snapshots)
+    # Compute per-cluster year stats from abstracts if available
+    cluster_year_stats: Dict[int, Dict] = {}
+    if mem_df is not None and cluster_col and "pubyear" in mem_df.columns:
+        year_agg = (
+            mem_df.filter(pl.col("pubyear").is_not_null() & (pl.col("pubyear") > 0))
+            .with_columns(pl.col("uid").replace_strict(uid_to_cluster, default=None).alias("_cl"))
+            .filter(pl.col("_cl").is_not_null())
+            .group_by("_cl")
+            .agg(
+                pl.col("pubyear").mean().alias("avg_year"),
+                pl.col("pubyear").min().alias("min_year"),
+                pl.col("pubyear").max().alias("max_year"),
+            )
+        )
+        for row in year_agg.iter_rows():
+            cluster_year_stats[int(row[0])] = {
+                "avg_year": round(row[1], 1) if row[1] else 0,
+                "year_range": [int(row[2]) if row[2] else 0, int(row[3]) if row[3] else 0],
+            }
 
     # Build nodes
     nodes = []
     for cid in sorted(cluster_sizes.keys()):
         size = cluster_sizes[cid]
+        ys = cluster_year_stats.get(int(cid), {})
         nodes.append({
             "id": int(cid),
             "size": size,
             "pct": round(100 * size / n_total, 2) if n_total else 0,
             "label": cluster_labels.get(int(cid), f"C{cid}"),
-            "year": 0,
+            "avg_year": ys.get("avg_year", 0),
+            "year_range": ys.get("year_range", [0, 0]),
+            "year": ys.get("avg_year", 0),
             "citations": 0,
         })
 

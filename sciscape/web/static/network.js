@@ -34,6 +34,8 @@ class ClusterNetwork {
     this.colorMode = 'cluster'; // 'cluster' | 'year' | 'citations'
     // Sliders
     this.labelThreshold = 0.5; // 0..1 (0=all, 1=none)
+    this.labelFontSize = 9.5;  // px
+    this.labelRotate = false;
     this.edgeMinWeight = 0;
     this.sizeMetric = 'size'; // 'size' | 'citations' | 'link_strength'
     // Density
@@ -166,9 +168,13 @@ class ClusterNetwork {
     // Sliders + Search row
     h += '<div class="net-ctrl-row" style="margin-top:4px;">';
     h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Labels</span>
-      <input type="range" min="0" max="100" value="${Math.round((1-this.labelThreshold)*100)}" id="sl-labels" style="width:80px;"></div>`;
+      <input type="range" min="0" max="100" value="${Math.round((1-this.labelThreshold)*100)}" id="sl-labels" style="width:70px;"></div>`;
+    h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Font</span>
+      <input type="range" min="6" max="18" value="10" step="1" id="sl-fontsize" style="width:60px;"></div>`;
+    h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Rotate</span>
+      <input type="checkbox" id="cb-rotate"></div>`;
     h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Min edge</span>
-      <input type="range" min="0" max="100" value="0" id="sl-edge" style="width:80px;"></div>`;
+      <input type="range" min="0" max="100" value="0" id="sl-edge" style="width:70px;"></div>`;
     h += `<div class="net-ctrl-group"><span class="net-ctrl-label">Search</span>
       <input type="text" id="net-search" placeholder="keyword..." style="width:120px;font-family:var(--font-mono,monospace);font-size:0.72rem;padding:2px 6px;border:1px solid #c5cfe0;border-radius:3px;"></div>`;
     h += '</div>';
@@ -196,6 +202,10 @@ class ClusterNetwork {
     // Sliders
     const slLabels = controls.querySelector('#sl-labels');
     if (slLabels) slLabels.oninput = () => { this.labelThreshold = 1 - slLabels.value / 100; this._updateLabels(); };
+    const slFont = controls.querySelector('#sl-fontsize');
+    if (slFont) slFont.oninput = () => { this.setLabelFontSize(parseFloat(slFont.value)); };
+    const cbRotate = controls.querySelector('#cb-rotate');
+    if (cbRotate) cbRotate.onchange = () => { this.setLabelRotate(cbRotate.checked); };
     const slEdge = controls.querySelector('#sl-edge');
     if (slEdge) slEdge.oninput = () => { this.edgeMinWeight = slEdge.value / 100; this._updateEdgeFilter(); };
 
@@ -306,7 +316,8 @@ class ClusterNetwork {
         .on('end', (ev, d) => { if (!ev.active) self.simulation.alphaTarget(0); d.fx = null; d.fy = null; })
       )
       .on('click', (ev, d) => self._showDetail(d))
-      .on('dblclick', (ev, d) => self._semanticZoom(d));
+      .on('dblclick', (ev, d) => self._semanticZoom(d))
+      .on('contextmenu', (ev, d) => { ev.preventDefault(); self._renameCluster(d); });
 
     this._nodeEls.append('circle')
       .attr('r', d => rScale(d[sizeKey] || d.size))
@@ -315,20 +326,29 @@ class ClusterNetwork {
       .attr('filter', 'url(#glow)');
 
     // Labels
+    const fs = this.labelFontSize;
+    const rot = this.labelRotate;
     this._labelEls = this._nodeEls.append('text')
       .text(d => d.label)
-      .attr('text-anchor', 'middle')
-      .attr('dy', d => rScale(d[sizeKey] || d.size) + 12)
-      .attr('font-size', '9.5px')
+      .attr('text-anchor', rot ? 'start' : 'middle')
+      .attr('dy', d => rot ? 4 : rScale(d[sizeKey] || d.size) + 12)
+      .attr('dx', d => rot ? rScale(d[sizeKey] || d.size) + 4 : 0)
+      .attr('transform', rot ? 'rotate(-30)' : null)
+      .attr('font-size', `${fs}px`)
       .attr('font-family', 'Source Sans 3, sans-serif')
       .attr('fill', '#2d3a52').attr('font-weight', '500')
       .attr('pointer-events', 'none');
     this._updateLabels();
 
-    // Tooltips
-    this._nodeEls.append('title').text(d =>
-      `${d.label}\nSize: ${d.size} papers (${d.pct}%)\nLinks: ${(d.link_strength||0).toFixed(1)}`
-    );
+    // Tooltips (with year range and citations)
+    this._nodeEls.append('title').text(d => {
+      let tip = `${d.label}\nSize: ${d.size} papers (${d.pct}%)`;
+      if (d.avg_year) tip += `\nAvg year: ${Math.round(d.avg_year)}`;
+      if (d.year_range) tip += ` (${d.year_range[0]}–${d.year_range[1]})`;
+      if (d.citations) tip += `\nCitations: ${d.citations}`;
+      tip += `\nLinks: ${(d.link_strength||0).toFixed(1)}`;
+      return tip;
+    });
 
     // Simulation
     this.simulation = d3.forceSimulation(nodes)
@@ -367,14 +387,31 @@ class ClusterNetwork {
     this.container.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('active', b.dataset.color === this.colorMode));
   }
 
-  // ── LABEL DENSITY ───────────────────────────────────────
+  // ── LABEL DENSITY + FONT SIZE ────────────────────────────
   _updateLabels() {
     if (!this._labelEls) return;
     const threshold = this.labelThreshold;
-    this._labelEls.attr('display', d => {
-      const rank = (d[this.sizeMetric] || d.size) / this._maxSize;
-      return rank >= threshold ? null : 'none';
-    });
+    const fs = this.labelFontSize;
+    this._labelEls
+      .attr('display', d => {
+        const rank = (d[this.sizeMetric] || d.size) / this._maxSize;
+        return rank >= threshold ? null : 'none';
+      })
+      .attr('font-size', `${fs}px`);
+  }
+
+  setLabelFontSize(px) {
+    this.labelFontSize = px;
+    this._updateLabels();
+  }
+
+  setLabelRotate(on) {
+    this.labelRotate = on;
+    if (this._labelEls) {
+      this._labelEls
+        .attr('text-anchor', on ? 'start' : 'middle')
+        .attr('transform', on ? 'rotate(-30)' : null);
+    }
   }
 
   // ── EDGE FILTER ─────────────────────────────────────────
@@ -413,6 +450,23 @@ class ClusterNetwork {
   }
 
   // ── CLICK DETAIL PANEL ──────────────────────────────────
+  _renameCluster(d) {
+    const newLabel = prompt(`Rename cluster "${d.label}":`, d.label);
+    if (newLabel && newLabel !== d.label) {
+      d.label = newLabel;
+      // Update label in SVG
+      if (this._labelEls) {
+        this._labelEls.filter(n => n.id === d.id).text(newLabel);
+      }
+      // Update tooltip
+      if (this._nodeEls) {
+        this._nodeEls.filter(n => n.id === d.id).select('title').text(
+          `${newLabel}\nSize: ${d.size} papers (${d.pct}%)\nLinks: ${(d.link_strength||0).toFixed(1)}`
+        );
+      }
+    }
+  }
+
   async _showDetail(d) {
     const panel = document.getElementById('net-detail');
     if (!panel) return;
