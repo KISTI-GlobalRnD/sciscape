@@ -254,8 +254,9 @@ def _filter_top_k_rust(
 
     kept_idx = _rust.rust_filter_top_k(src, dst, w, k, mutual=(mode == "mutual"))
 
+    kept_set = set(kept_idx.tolist())
     result = edges.with_row_index("_idx").filter(
-        pl.col("_idx").is_in(pl.Series(kept_idx.astype(np.uint32)))
+        pl.col("_idx").is_in(list(kept_set))
     ).drop("_idx")
 
     log.info("filter_top_k(k=%d, mode=%s, rust): %d → %d edges", k, mode, before, result.height)

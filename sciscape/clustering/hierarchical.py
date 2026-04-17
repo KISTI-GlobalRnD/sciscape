@@ -66,6 +66,7 @@ class HierarchyResult:
     """Complete hierarchical clustering result."""
     levels: List[HierarchyLevel]
     n_nodes: int
+    uids: List[str] | None = None  # UID list in remap order (authoritative)
 
     @property
     def memberships_by_level(self) -> Dict[str, np.ndarray]:
@@ -380,7 +381,7 @@ def build_hierarchy(
         )
         _log(f"Contracted: {cur_n} super-nodes, {len(cur_w)} edges")
 
-    result = HierarchyResult(levels=levels, n_nodes=n_total)
+    result = HierarchyResult(levels=levels, n_nodes=n_total, uids=uids)
 
     # Save full hierarchy
     if out and uids:

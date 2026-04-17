@@ -393,8 +393,9 @@ def _run_landscape(args: argparse.Namespace) -> None:
 
                     # Stability
                     print("\n--- Stability Evaluation ---")
+                    min_sz = getattr(cfg, 'min_docs_per_cluster', None) or args.min_docs or 10
                     stab = evaluate_stability(edges, gamma=gamma, n_seeds=5,
-                                              min_size=cfg.min_docs if hasattr(cfg, 'min_docs') else 10)
+                                              min_size=min_sz)
                     print(stab.summary())
 
                     # Quality report

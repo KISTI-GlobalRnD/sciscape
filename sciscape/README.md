@@ -38,7 +38,7 @@ pip install ".[dev]"          # + 개발/테스트
 ### `sciscape landscape` — 전체 파이프라인
 
 ```bash
-sciscape landscape edges.parquet abstracts.parquet -o output/ [options]
+sciscape landscape abstracts.parquet edges.parquet -o output/ [options]
 ```
 
 | 옵션 | 기본값 | 설명 |

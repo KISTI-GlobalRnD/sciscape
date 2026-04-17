@@ -703,25 +703,18 @@ def run_landscape(
                 progress=cfg.progress,
             )
             # Build membership DataFrame from hierarchy result
-            uids = None
+            # Use authoritative UID list from integer_remap (NOT sorted set)
+            uids = hier_result.uids
+            if uids and hier_result.levels:
+                membership_df = hier_result.to_dataframe(uids)
+            elif hier_result.levels:
+                # Fallback: use integer indices
+                data = {"uid": [str(i) for i in range(hier_result.n_nodes)]}
+                for level in hier_result.levels:
+                    data[f"cluster_{level.name}"] = level.membership.tolist()
+                membership_df = pl.DataFrame(data)
+
             if hier_result.levels:
-                first_mem = hier_result.levels[0].membership
-                # Need UIDs — load from combined edges or abstract
-                edges_for_uids = pl.read_parquet(edge_path) if edge_path.exists() else None
-                if edges_for_uids is not None:
-                    all_uids = sorted(set(edges_for_uids["uid1"].to_list()) | set(edges_for_uids["uid2"].to_list()))
-                    if len(all_uids) == len(first_mem):
-                        uids = all_uids
-
-                if uids:
-                    membership_df = hier_result.to_dataframe(uids)
-                else:
-                    # Fallback: use integer indices
-                    data = {"uid": [str(i) for i in range(hier_result.n_nodes)]}
-                    for level in hier_result.levels:
-                        data[f"cluster_{level.name}"] = level.membership.tolist()
-                    membership_df = pl.DataFrame(data)
-
                 membership_df.write_parquet(membership_path)
                 log.info("Hierarchy: %d levels, saved → %s",
                          len(hier_result.levels), membership_path)
