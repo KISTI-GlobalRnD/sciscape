@@ -156,6 +156,7 @@ class ClusterNetwork {
       h += `<button class="net-chip${this.showHierarchy?' active':''}" id="btn-hierarchy">Hier</button>`;
     }
     h += `<button class="net-chip${this.showDensity?' active':''}" id="btn-density">Density</button>`;
+    h += `<button class="net-chip" id="btn-reset-layout" title="Reset node positions">Reset</button>`;
     h += `<button class="net-chip" id="btn-temporal">Timeline</button>`;
     h += `<button class="net-chip" id="btn-bridge">Bridge</button>`;
     h += `<button class="net-chip" id="btn-split">Split</button>`;
@@ -198,6 +199,8 @@ class ClusterNetwork {
 
     const dBtn = controls.querySelector('#btn-density');
     if (dBtn) dBtn.onclick = () => { this.showDensity = !this.showDensity; this._toggleDensity(); dBtn.classList.toggle('active'); };
+    const rlBtn = controls.querySelector('#btn-reset-layout');
+    if (rlBtn) rlBtn.onclick = () => { this.resetLayout(); };
 
     // Sliders
     const slLabels = controls.querySelector('#sl-labels');
@@ -313,7 +316,12 @@ class ClusterNetwork {
       .call(d3.drag()
         .on('start', (ev, d) => { if (!ev.active) self.simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
         .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
-        .on('end', (ev, d) => { if (!ev.active) self.simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+        .on('end', (ev, d) => {
+          if (!ev.active) self.simulation.alphaTarget(0);
+          // Keep pinned position and save layout
+          d.fx = d.x; d.fy = d.y;
+          self._saveLayout();
+        })
       )
       .on('click', (ev, d) => self._showDetail(d))
       .on('dblclick', (ev, d) => self._semanticZoom(d))
@@ -361,6 +369,14 @@ class ClusterNetwork {
           .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
         this._nodeEls.attr('transform', d => `translate(${d.x},${d.y})`);
       });
+
+    // Restore saved layout (if any)
+    if (this._restoreLayout()) {
+      // Force one tick to apply positions
+      this._linkEls.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      this._nodeEls.attr('transform', d => `translate(${d.x},${d.y})`);
+    }
   }
 
   // ── OVERLAY COLORS ──────────────────────────────────────
@@ -400,6 +416,49 @@ class ClusterNetwork {
       .attr('font-size', `${fs}px`);
   }
 
+  // ── LAYOUT PERSISTENCE ──────────────────────────────────
+  _layoutKey() {
+    return `sciscape_layout_${this.jobId}_${this.currentLevel}`;
+  }
+
+  _saveLayout() {
+    if (!this._nodes.length) return;
+    const positions = {};
+    this._nodes.forEach(n => {
+      if (n.fx != null && n.fy != null) {
+        positions[n.id] = { x: Math.round(n.fx), y: Math.round(n.fy) };
+      }
+    });
+    if (Object.keys(positions).length > 0) {
+      try { localStorage.setItem(this._layoutKey(), JSON.stringify(positions)); } catch(e) {}
+    }
+  }
+
+  _restoreLayout() {
+    try {
+      const saved = localStorage.getItem(this._layoutKey());
+      if (!saved) return false;
+      const positions = JSON.parse(saved);
+      let restored = 0;
+      this._nodes.forEach(n => {
+        const p = positions[n.id];
+        if (p) { n.x = n.fx = p.x; n.y = n.fy = p.y; restored++; }
+      });
+      if (restored > 0) {
+        // Stop simulation since we have fixed positions
+        if (this.simulation) this.simulation.alpha(0).stop();
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  resetLayout() {
+    try { localStorage.removeItem(this._layoutKey()); } catch(e) {}
+    this._nodes.forEach(n => { n.fx = null; n.fy = null; });
+    if (this.simulation) this.simulation.alpha(1).restart();
+  }
+
   setLabelFontSize(px) {
     this.labelFontSize = px;
     this._updateLabels();
@@ -428,24 +487,67 @@ class ClusterNetwork {
     if (existing) { existing.remove(); this.showDensity = false; return; }
     if (!this._nodes.length || !this._nodes[0].x) return;
 
+    const W = this._svgW, H = this._svgH;
     const canvas = document.createElement('canvas');
     canvas.className = 'density-overlay';
-    canvas.width = this._svgW;
-    canvas.height = this._svgH;
-    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;opacity:0.35;';
+    canvas.width = W; canvas.height = H;
+    canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;opacity:0.55;';
     this.container.querySelector('div[style*="flex"]>div:first-child').appendChild(canvas);
 
-    const ctx = canvas.getContext('2d');
-    const r = 60;
+    // 2D Kernel Density Estimation on a grid
+    const gridSize = 2; // pixel resolution
+    const cols = Math.ceil(W / gridSize), rows = Math.ceil(H / gridSize);
+    const grid = new Float32Array(cols * rows);
+    const bandwidth = 50; // kernel bandwidth in pixels
+    const bw2 = bandwidth * bandwidth;
+
+    // Accumulate density from each node (weighted by size)
     this._nodes.forEach(n => {
       if (!n.x || !n.y) return;
-      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r);
-      const intensity = (n.size / this._maxSize);
-      grad.addColorStop(0, `rgba(37, 99, 235, ${0.4 * intensity})`);
-      grad.addColorStop(1, 'rgba(37, 99, 235, 0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(n.x - r, n.y - r, r * 2, r * 2);
+      const weight = (n.size || 1);
+      const cx = Math.floor(n.x / gridSize), cy = Math.floor(n.y / gridSize);
+      const r = Math.ceil(bandwidth / gridSize);
+      for (let dy = -r; dy <= r; dy++) {
+        const gy = cy + dy;
+        if (gy < 0 || gy >= rows) continue;
+        for (let dx = -r; dx <= r; dx++) {
+          const gx = cx + dx;
+          if (gx < 0 || gx >= cols) continue;
+          const dist2 = (dx * gridSize) ** 2 + (dy * gridSize) ** 2;
+          if (dist2 > bw2) continue;
+          // Gaussian kernel
+          grid[gy * cols + gx] += weight * Math.exp(-dist2 / (2 * bw2 * 0.15));
+        }
+      }
     });
+
+    // Normalize to [0, 1]
+    let maxVal = 0;
+    for (let i = 0; i < grid.length; i++) if (grid[i] > maxVal) maxVal = grid[i];
+    if (maxVal === 0) maxVal = 1;
+
+    // Render with viridis-like colormap
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(cols, rows);
+    for (let i = 0; i < grid.length; i++) {
+      const t = grid[i] / maxVal;
+      if (t < 0.01) { img.data[i*4+3] = 0; continue; } // transparent below threshold
+      // Viridis approximation: dark purple → blue → teal → yellow
+      const r_ = Math.round(t < 0.5 ? 68 + t * 200 : 50 + t * 400);
+      const g_ = Math.round(t < 0.5 ? 1 + t * 300 : t * 255);
+      const b_ = Math.round(t < 0.5 ? 84 + t * 200 : 255 - t * 200);
+      img.data[i*4]   = Math.min(255, r_);
+      img.data[i*4+1] = Math.min(255, g_);
+      img.data[i*4+2] = Math.min(255, Math.max(0, b_));
+      img.data[i*4+3] = Math.round(180 * Math.sqrt(t)); // alpha
+    }
+
+    // Scale up to canvas size
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = cols; tmpCanvas.height = rows;
+    tmpCanvas.getContext('2d').putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(tmpCanvas, 0, 0, W, H);
     this.showDensity = true;
   }
 
