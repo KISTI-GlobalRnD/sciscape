@@ -50,5 +50,9 @@ sciscape = "sciscape.cli:main"
 [tool.setuptools]
 include-package-data = false
 
+[tool.setuptools.package-data]
+"sciscape.keyword_extraction.visualization" = ["*.html"]
+"sciscape.web" = ["static/*"]
+
 [tool.setuptools.packages.find]
 include = ["sciscape*", "sos*"]
