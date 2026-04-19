@@ -177,8 +177,8 @@ def _all_levels_cached(membership_path: Path, cfg: "LandscapeConfig") -> bool:
     import pyarrow.parquet as pq
     schema = pq.read_schema(membership_path)
     existing = {f.name.removeprefix("cluster_") for f in schema if f.name.startswith("cluster_")}
-    required = {"nano", "micro"}
-    required = set(["nano", "micro"][:cfg.n_hierarchy_levels])
+    level_names = ["nano", "micro", "meso", "macro", "mega"]
+    required = set(level_names[:cfg.n_hierarchy_levels])
     return required.issubset(existing)
 
 
@@ -630,22 +630,8 @@ def run_landscape(
             edge_path = combined_path
             log.info("Combined: %d edges → %s", combined.height, combined_path)
 
-    # ── Auto-gamma (if configured) ──────────────────────────
-    # Auto-gamma is now handled inside build_hierarchy path above.
-    # Legacy path: simple γ range adjustment if auto_gamma + no layer_paths
-    if cfg.auto_gamma and not cfg.layer_paths and edge_path.exists():
-        from .clustering.auto_gamma import find_gamma
-        log.info("Auto-gamma (legacy path): target max < %.1f%%", cfg.auto_gamma_target)
-        edges_for_gamma = pl.read_parquet(edge_path)
-        ag_result = find_gamma(
-            edges_for_gamma,
-            target_max_pct=cfg.auto_gamma_target,
-            progress=cfg.progress,
-        )
-        if ag_result.n_clusters > 1:
-            cfg.gamma_range = (ag_result.gamma * 0.5, ag_result.gamma * 2.0)
-            log.info("Auto-gamma: γ=%.2e (%d cl, max=%.1f%%)",
-                     ag_result.gamma, ag_result.n_clusters, ag_result.max_pct)
+    # Auto-gamma is handled inside build_hierarchy (new path) or
+    # _run_clustering (legacy path). No pre-processing needed here.
 
     # ── Input validation ──────────────────────────────────────
     if not edge_path.exists() and not cfg.layer_paths:
