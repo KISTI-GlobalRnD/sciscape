@@ -148,10 +148,11 @@ async def download_file(job_id: str, filename: str):
 @app.get("/api/jobs/{job_id}/network")
 async def get_network(job_id: str):
     """Get cluster network data for D3 visualization."""
-    job = _jobs.get(job_id)
-    if not job or job["status"] != "done":
+    from ._helpers import require_done_job, get_edges_path, find_membership, find_keywords
+    try:
+        job, result = require_done_job(_jobs, job_id)
+    except Exception:
         return {"error": "job not done"}
-    result = job.get("result", {})
     output_dir = result.get("output_dir")
     if not output_dir:
         return {"error": "no output directory"}
