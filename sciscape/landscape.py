@@ -182,6 +182,12 @@ def _all_levels_cached(membership_path: Path, cfg: "LandscapeConfig") -> bool:
     return required.issubset(existing)
 
 
+def _legacy_cluster(edge_path: Path, cfg: "LandscapeConfig", output_dir: Path):
+    """Run legacy igraph-based clustering (subsample + Leiden + merge)."""
+    edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
+    return _run_clustering(edges, cfg, output_dir)
+
+
 # ---------------------------------------------------------------------------
 # Step 2: Hierarchical clustering
 # ---------------------------------------------------------------------------
@@ -706,15 +712,12 @@ def run_landscape(
                          len(hier_result.levels), membership_path)
             else:
                 log.warning("build_hierarchy returned no levels, falling back")
-                edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
-                membership_df = _run_clustering(edges, cfg, output_dir)
+                membership_df = _legacy_cluster(edge_path, cfg, output_dir)
         else:
             log.info("Rust not available, using legacy clustering")
-            edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
-            membership_df = _run_clustering(edges, cfg, output_dir)
+            membership_df = _legacy_cluster(edge_path, cfg, output_dir)
     else:
-        edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
-        membership_df = _run_clustering(edges, cfg, output_dir)
+        membership_df = _legacy_cluster(edge_path, cfg, output_dir)
 
     # ------------------------------------------------------------------
     # Step 3: Keyword extraction (skip if keywords exist)
