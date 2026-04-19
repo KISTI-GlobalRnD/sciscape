@@ -314,9 +314,11 @@ def _run_llm_labeling(job_id: str) -> None:
                 labels[str(cid)] = {"name": f"Cluster {cid}", "error": str(e)}
 
         job["llm_labels"] = {"status": "done", "labels": labels}
+        _jobs.persist(job_id)
 
     except Exception as e:
         job["llm_labels"] = {"status": "error", "error": str(e)}
+        _jobs.persist(job_id)
 
 
 @app.get("/api/jobs/{job_id}/labels/llm/status")
@@ -526,6 +528,7 @@ async def apply_label_merges(job_id: str, req: MergeRequest):
     if "label_merges" not in job:
         job["label_merges"] = {}
     job["label_merges"][req.level] = req.merge_map
+    _jobs.persist(job_id)
     return {"status": "applied", "level": req.level, "n_merges": len(req.merge_map)}
 
 
