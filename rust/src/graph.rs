@@ -16,23 +16,18 @@ pub struct Graph {
     /// Edge weights: length n_edges
     pub edge_weights: Vec<f64>,
     /// Per-node weight (= original node count for contracted graphs).
-    /// For non-contracted graphs, all values are 1.0.
-    pub node_weights: Vec<f64>,
+    /// For most non-contracted graphs this is absent and implicitly 1.0.
+    pub node_weights: Option<Vec<f64>>,
     /// Per-node self-loop weight (internal edge weight for contracted graphs).
-    /// For non-contracted graphs, all values are 0.0.
-    pub self_loop_weights: Vec<f64>,
+    /// For most non-contracted graphs this is absent to save memory.
+    pub self_loop_weights: Option<Vec<f64>>,
 }
 
 impl Graph {
     /// Build from edge list (src, dst, weight). Automatically symmetrizes.
     ///
     /// `n_nodes` must be >= max node index + 1.
-    pub fn from_edge_list(
-        n_nodes: usize,
-        src: &[u32],
-        dst: &[u32],
-        weights: &[f64],
-    ) -> Self {
+    pub fn from_edge_list(n_nodes: usize, src: &[u32], dst: &[u32], weights: &[f64]) -> Self {
         assert_eq!(src.len(), dst.len());
         assert_eq!(src.len(), weights.len());
 
@@ -40,11 +35,17 @@ impl Graph {
         for i in 0..src.len() {
             assert!(
                 (src[i] as usize) < n_nodes,
-                "src[{}] = {} >= n_nodes = {}", i, src[i], n_nodes
+                "src[{}] = {} >= n_nodes = {}",
+                i,
+                src[i],
+                n_nodes
             );
             assert!(
                 (dst[i] as usize) < n_nodes,
-                "dst[{}] = {} >= n_nodes = {}", i, dst[i], n_nodes
+                "dst[{}] = {} >= n_nodes = {}",
+                i,
+                dst[i],
+                n_nodes
             );
         }
 
@@ -83,17 +84,14 @@ impl Graph {
             offset[d] += 1;
         }
 
-        let node_weights = vec![1.0; n_nodes];
-        let self_loop_weights = vec![0.0; n_nodes];
-
         Graph {
             n_nodes,
             n_edges,
             first_neighbor_index,
             neighbors,
             edge_weights,
-            node_weights,
-            self_loop_weights,
+            node_weights: None,
+            self_loop_weights: None,
         }
     }
 
@@ -109,8 +107,16 @@ impl Graph {
     ) -> Self {
         assert_eq!(node_weights.len(), n_nodes);
         let mut g = Self::from_edge_list(n_nodes, src, dst, weights);
-        g.node_weights = node_weights.to_vec();
+        g.node_weights = Some(node_weights.to_vec());
         g
+    }
+
+    #[inline]
+    pub fn node_weight(&self, node: usize) -> f64 {
+        self.node_weights
+            .as_ref()
+            .map(|weights| weights[node])
+            .unwrap_or(1.0)
     }
 
     /// Remove duplicate edges and self-loops, summing weights.
@@ -183,15 +189,10 @@ impl Graph {
 
     /// Total edge weight of self-loops.
     pub fn total_self_loop_weight(&self) -> f64 {
-        let mut total = 0.0;
-        for node in 0..self.n_nodes {
-            for (nbr, w) in self.neighbors_of(node) {
-                if nbr == node as u32 {
-                    total += w;
-                }
-            }
-        }
-        total / 2.0 // each self-loop counted twice in CSR
+        self.self_loop_weights
+            .as_ref()
+            .map(|weights| weights.iter().sum())
+            .unwrap_or(0.0)
     }
 
     /// Extract subgraph induced by the given node set.
@@ -226,8 +227,14 @@ impl Graph {
         }
 
         let mut sub_graph = Graph::from_edge_list(n_sub, &sub_src, &sub_dst, &sub_w);
-        sub_graph.node_weights = nodes.iter().map(|&n| self.node_weights[n]).collect();
-        sub_graph.self_loop_weights = nodes.iter().map(|&n| self.self_loop_weights[n]).collect();
+        sub_graph.node_weights = self
+            .node_weights
+            .as_ref()
+            .map(|weights| nodes.iter().map(|&n| weights[n]).collect());
+        sub_graph.self_loop_weights = self
+            .self_loop_weights
+            .as_ref()
+            .map(|weights| nodes.iter().map(|&n| weights[n]).collect());
 
         // Build full old_to_new Vec for compatibility (sparse → only cluster nodes valid)
         let mut map_vec = vec![usize::MAX; self.n_nodes];
@@ -243,10 +250,7 @@ impl Graph {
     /// Returns Vec<(Graph, Vec<usize>)> indexed by cluster ID,
     /// where Vec<usize> is the list of original node IDs in that cluster.
     /// Much more efficient than calling `subgraph()` per cluster.
-    pub fn create_subnetworks(
-        &self,
-        nodes_per_cluster: &[Vec<usize>],
-    ) -> Vec<(Graph, Vec<usize>)> {
+    pub fn create_subnetworks(&self, nodes_per_cluster: &[Vec<usize>]) -> Vec<(Graph, Vec<usize>)> {
         let n_clusters = nodes_per_cluster.len();
 
         // Build node → (cluster, intra-cluster-index) mapping
@@ -281,8 +285,8 @@ impl Graph {
         // Build subgraphs (parallel across clusters)
         use rayon::prelude::*;
 
-        let node_weights = &self.node_weights;
-        let self_loop_weights = &self.self_loop_weights;
+        let node_weights = self.node_weights.as_ref();
+        let self_loop_weights = self.self_loop_weights.as_ref();
 
         let result: Vec<(Graph, Vec<usize>)> = (0..n_clusters)
             .into_par_iter()
@@ -295,8 +299,10 @@ impl Graph {
                     &cluster_dst[cid],
                     &cluster_w[cid],
                 );
-                g.node_weights = nodes.iter().map(|&n| node_weights[n]).collect();
-                g.self_loop_weights = nodes.iter().map(|&n| self_loop_weights[n]).collect();
+                g.node_weights =
+                    node_weights.map(|weights| nodes.iter().map(|&n| weights[n]).collect());
+                g.self_loop_weights =
+                    self_loop_weights.map(|weights| nodes.iter().map(|&n| weights[n]).collect());
                 (g, nodes.clone())
             })
             .collect();
@@ -342,12 +348,7 @@ mod tests {
     #[test]
     fn test_triangle() {
         // Triangle: 0-1, 1-2, 2-0
-        let g = Graph::from_edge_list(
-            3,
-            &[0, 1, 2],
-            &[1, 2, 0],
-            &[1.0, 1.0, 1.0],
-        );
+        let g = Graph::from_edge_list(3, &[0, 1, 2], &[1, 2, 0], &[1.0, 1.0, 1.0]);
         assert_eq!(g.n_nodes, 3);
         assert_eq!(g.n_edges, 6); // 3 undirected = 6 directed
         assert_eq!(g.degree(0), 2);
@@ -359,12 +360,7 @@ mod tests {
     #[test]
     fn test_subgraph() {
         // 4 nodes: 0-1, 1-2, 2-3
-        let g = Graph::from_edge_list(
-            4,
-            &[0, 1, 2],
-            &[1, 2, 3],
-            &[1.0, 2.0, 3.0],
-        );
+        let g = Graph::from_edge_list(4, &[0, 1, 2], &[1, 2, 3], &[1.0, 2.0, 3.0]);
         let (sub, map) = g.subgraph(&[1, 2]);
         assert_eq!(sub.n_nodes, 2);
         assert_eq!(sub.n_edges, 2); // 1 undirected = 2 directed

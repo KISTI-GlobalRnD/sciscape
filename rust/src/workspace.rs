@@ -17,6 +17,10 @@ pub struct Workspace {
     pub npc: Vec<u32>,
     /// Stable node flags
     pub stable: Vec<bool>,
+    /// Reusable node processing order buffer
+    pub order_u32: Vec<u32>,
+    /// Reusable empty-cluster stack
+    pub unused_u32: Vec<u32>,
     /// Neighbor cluster buffer
     pub nc_buf: Vec<u32>,
     /// Temporary weight array (contraction scatter)
@@ -29,8 +33,6 @@ pub struct Workspace {
     pub npc_starts: Vec<u32>,
     /// Node-per-cluster offsets (temporary)
     pub npc_off: Vec<u32>,
-    /// Degree array for contraction
-    pub degree: Vec<u32>,
 }
 
 impl Workspace {
@@ -42,13 +44,14 @@ impl Workspace {
             cw: vec![0.0; n],
             npc: vec![0; n],
             stable: vec![false; n],
+            order_u32: Vec::with_capacity(n),
+            unused_u32: Vec::with_capacity(n.min(1024)),
             nc_buf: Vec::with_capacity(256),
             temp_w: vec![0.0; n],
             temp_used: Vec::with_capacity(256),
             npc_nodes: vec![0; n],
             npc_starts: vec![0; n + 1],
             npc_off: vec![0; n],
-            degree: vec![0; n],
         }
     }
 
@@ -61,11 +64,14 @@ impl Workspace {
             self.cw.resize(n, 0.0);
             self.npc.resize(n, 0);
             self.stable.resize(n, false);
+            self.order_u32
+                .reserve(n.saturating_sub(self.order_u32.capacity()));
+            self.unused_u32
+                .reserve(n.saturating_sub(self.unused_u32.capacity()));
             self.temp_w.resize(n, 0.0);
             self.npc_nodes.resize(n, 0);
             self.npc_starts.resize(n + 1, 0);
             self.npc_off.resize(n, 0);
-            self.degree.resize(n, 0);
         }
     }
 
@@ -78,6 +84,8 @@ impl Workspace {
         self.cw[..n].fill(0.0);
         self.npc[..n].fill(0);
         self.stable[..n].fill(false);
+        self.order_u32.clear();
+        self.unused_u32.clear();
         self.nc_buf.clear();
         self.temp_w[..n].fill(0.0);
         self.temp_used.clear();

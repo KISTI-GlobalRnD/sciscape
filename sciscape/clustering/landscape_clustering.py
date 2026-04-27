@@ -39,6 +39,7 @@ def _run_clustering(
         build_graph,
         giant_component,
     )
+    from .leiden_rust import write_membership_sidecars_for_dataframe
     from .runner import LeidenRunner
     from .postprocess import refine_clusters, gamma_search
 
@@ -204,7 +205,9 @@ def _run_clustering(
 
         # Save nano
         cols: Dict[str, Any] = {"uid": uids, "cluster_nano": nano_for_save}
-        pl.DataFrame(cols).write_parquet(membership_path, compression="zstd")
+        membership_df = pl.DataFrame(cols)
+        membership_df.write_parquet(membership_path, compression="zstd")
+        write_membership_sidecars_for_dataframe(membership_path, membership_df)
         log.info("  nano membership saved")
     else:
         log.info("Nano cached, loading...")
@@ -287,8 +290,9 @@ def _run_clustering(
             "cluster_nano": nano_for_save,
             "cluster_micro": micro_membership,
         }
-        pl.DataFrame(cols).write_parquet(membership_path, compression="zstd")
+        membership_df = pl.DataFrame(cols)
+        membership_df.write_parquet(membership_path, compression="zstd")
+        write_membership_sidecars_for_dataframe(membership_path, membership_df)
         log.info("  membership saved (nano + micro)")
 
     return pl.read_parquet(membership_path)
-

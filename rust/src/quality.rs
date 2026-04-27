@@ -6,8 +6,8 @@
 //!       s_c = sum of node weights in cluster c,
 //!       γ   = resolution parameter.
 
-use crate::graph::Graph;
 use crate::clustering::Clustering;
+use crate::graph::Graph;
 
 /// Quality function trait for extensibility.
 pub trait QualityFunction {
@@ -48,11 +48,11 @@ impl QualityFunction for CPM {
         let mut cluster_weight = vec![0.0f64; clustering.n_clusters];
 
         for node in 0..graph.n_nodes {
-            let cid = clustering.clusters[node];
-            cluster_weight[cid] += graph.node_weights[node];
+            let cid = clustering.clusters[node] as usize;
+            cluster_weight[cid] += graph.node_weight(node);
 
             for (nbr, w) in graph.neighbors_of(node) {
-                if clustering.clusters[nbr as usize] == cid {
+                if clustering.clusters[nbr as usize] as usize == cid {
                     internal_weight[cid] += w;
                 }
             }
@@ -60,8 +60,11 @@ impl QualityFunction for CPM {
 
         // Accumulate self-loop weights per cluster (O(n) total)
         let mut self_loop_per_cluster = vec![0.0f64; clustering.n_clusters];
-        for node in 0..graph.n_nodes {
-            self_loop_per_cluster[clustering.clusters[node]] += graph.self_loop_weights[node];
+        if let Some(self_loop_weights) = graph.self_loop_weights.as_ref() {
+            for node in 0..graph.n_nodes {
+                self_loop_per_cluster[clustering.clusters[node] as usize] +=
+                    self_loop_weights[node];
+            }
         }
 
         // internal_weight counted each edge twice (both directions in CSR)
@@ -88,8 +91,8 @@ impl QualityFunction for CPM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::Graph;
     use crate::clustering::Clustering;
+    use crate::graph::Graph;
 
     #[test]
     fn test_cpm_quality_triangle() {

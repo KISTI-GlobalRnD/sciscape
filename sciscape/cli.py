@@ -187,6 +187,7 @@ def _run_convert(args: argparse.Namespace) -> None:
 
 def _run_cluster(args: argparse.Namespace) -> None:
     from sciscape.clustering import LeidenConfig, run_pipeline
+    from sciscape.clustering.leiden_rust import write_membership_sidecars_for_dataframe
 
     level_constraints = None
     if args.levels:
@@ -219,6 +220,7 @@ def _run_cluster(args: argparse.Namespace) -> None:
     )
 
     tables.membership.write_parquet(args.output)
+    write_membership_sidecars_for_dataframe(args.output, tables.membership)
     print(f"Membership saved: {args.output} ({len(tables.membership)} rows)")
 
     desc_path = args.output.with_name(args.output.stem + "_description.parquet")

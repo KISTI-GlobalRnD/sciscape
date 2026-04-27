@@ -66,6 +66,7 @@ from .integer_remap import (
     RemapResult,
     integer_remap,
     join_back_uids,
+    load_binary_edge_arrays,
     load_manifest,
 )
 from .leiden_java import (
@@ -78,8 +79,12 @@ from .leiden_java import (
 )
 from .leiden_rust import (
     RUST_AVAILABLE,
+    RustGraphHandle,
     RustLeidenResult,
+    load_graph_rust,
+    run_leiden_rust_handle,
     run_leiden_rust,
+    postprocess_small_clusters_rust_handle,
     postprocess_small_clusters_rust,
 )
 from .prepartition import (
@@ -160,6 +165,7 @@ __all__ = [
     "RemapResult",
     "integer_remap",
     "join_back_uids",
+    "load_binary_edge_arrays",
     "load_manifest",
     "JavaLeidenResult",
     "JavaMultiLevelResult",
@@ -168,7 +174,11 @@ __all__ = [
     "run_multilevel_java",
     "postprocess_small_clusters_java",
     "RUST_AVAILABLE",
+    "RustGraphHandle",
     "RustLeidenResult",
+    "load_graph_rust",
+    "run_leiden_rust_handle",
     "run_leiden_rust",
+    "postprocess_small_clusters_rust_handle",
     "postprocess_small_clusters_rust",
 ]

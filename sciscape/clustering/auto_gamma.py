@@ -19,7 +19,8 @@ from typing import Dict, List, Tuple
 import numpy as np
 import polars as pl
 
-from .leiden_rust import run_leiden_rust, postprocess_small_clusters_rust
+from .integer_remap import RemapResult
+from .runner import RustLeidenRunner
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ def find_gamma(
     n_iterations: int = 10,
     postprocess: bool = True,
     progress: callable | None = None,
+    remap: RemapResult | None = None,
 ) -> AutoGammaResult:
     """Find γ where max cluster < target_max_pct% of total nodes.
 
@@ -146,9 +148,23 @@ def find_gamma(
     if max_refine == "auto":
         max_refine = 5 if n_est < 1000 else 3
 
-    # Prepare edges once (in-memory, no disk I/O)
-    from .integer_remap import integer_remap_memory
-    src, dst, w, n_nodes, _uids = integer_remap_memory(edges)
+    # Prepare graph once and reuse the Rust CSR handle across all probes.
+    if remap is not None:
+        n_nodes = remap.n_nodes
+        rust_runner = RustLeidenRunner.from_edge_path(
+            str(remap.int_edges_path),
+            n_nodes,
+            default_iterations=n_iterations,
+            default_seed=seed,
+        )
+    else:
+        from .integer_remap import integer_remap_memory
+        src, dst, w, n_nodes, _uids = integer_remap_memory(edges)
+        rust_runner = RustLeidenRunner(
+            src, dst, w, n_nodes,
+            default_iterations=n_iterations,
+            default_seed=seed,
+        )
 
     n_total = n_nodes
     probes: List[GammaProbe] = []
@@ -161,18 +177,13 @@ def find_gamma(
             if gamma in cache:
                 return cache[gamma]
         t0 = time.perf_counter()
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=gamma, n_nodes=n_nodes, seed=seed,
-            n_iterations=n_iterations,
-        )
+        r = rust_runner.run_array(gamma, seed=seed, n_iterations=n_iterations)
         mem = r.membership
         if postprocess and do_postprocess:
-            p = postprocess_small_clusters_rust(
+            p = rust_runner.postprocess(
                 resolution=gamma, min_size=min_size,
                 membership=mem,
-                edges_src=src, edges_dst=dst, edges_weight=w,
-                n_nodes=n_nodes, seed=seed,
+                seed=seed,
                 gamma_decay=0.5, max_rounds=5,
                 use_greedy=True, use_component_merge=True,
             )

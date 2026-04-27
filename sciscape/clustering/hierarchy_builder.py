@@ -141,9 +141,7 @@ class HierarchyBuilder:
         post_result: PostprocessResult | None = None
 
         if post_cfg is not None and isinstance(runner, RustLeidenRunner):
-            # Rust path: use Rust postprocess with weighted thresholds
-            from .leiden_rust import postprocess_small_clusters_rust
-            import numpy as np
+            # Rust path: reuse the runner's graph handle for postprocess.
             has_nw = runner._node_weights is not None
             min_size, min_weight = post_cfg.resolve_thresholds(
                 has_node_weights=has_nw
@@ -153,17 +151,11 @@ class HierarchyBuilder:
                 or (min_size is not None and min_size > 1)
             )
             if do_post:
-                mem = np.asarray(best_run.membership, dtype=np.uint64)
-                rust_post = postprocess_small_clusters_rust(
+                rust_post = runner.postprocess(
                     resolution=level_cfg.resolution,
                     min_size=int(min_size or 0),
                     min_weight=float(min_weight or 0.0),
-                    membership=mem,
-                    edges_src=runner._src,
-                    edges_dst=runner._dst,
-                    edges_weight=runner._weight,
-                    node_weights=runner._node_weights,
-                    n_nodes=runner.n_nodes,
+                    membership=best_run.membership,
                     seed=best_seed or 0,
                 )
                 final_membership = rust_post.membership.tolist()

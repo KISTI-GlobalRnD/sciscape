@@ -5,16 +5,150 @@
 #[cfg(feature = "python")]
 use numpy::{PyArray1, PyReadonlyArray1};
 #[cfg(feature = "python")]
+use pyo3::conversion::IntoPyObject;
+#[cfg(feature = "python")]
+use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
-use pyo3::conversion::IntoPyObject;
+use std::fs;
 
 #[cfg(feature = "python")]
-use crate::{Graph, Clustering, LeidenConfig, leiden, leiden_multi_start, postprocess_small_clusters};
+use crate::quality::{QualityFunction, CPM};
 #[cfg(feature = "python")]
-use crate::quality::{CPM, QualityFunction};
+use crate::{
+    contraction::create_reduced_network, leiden, leiden_multi_start, postprocess_small_clusters,
+    workspace::Workspace, Clustering, Graph, LeidenConfig,
+};
 #[cfg(feature = "python")]
 use rand::SeedableRng;
+
+#[cfg(feature = "python")]
+#[pyclass(module = "sciscape_leiden")]
+struct PyGraphHandle {
+    graph: Graph,
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl PyGraphHandle {
+    #[getter]
+    fn n_nodes(&self) -> usize {
+        self.graph.n_nodes
+    }
+
+    #[getter]
+    fn n_edges(&self) -> usize {
+        self.graph.n_edges
+    }
+}
+
+#[cfg(feature = "python")]
+fn build_graph(
+    n_nodes: usize,
+    src: &[u32],
+    dst: &[u32],
+    weights: &[f64],
+    node_weights: Option<&[f64]>,
+) -> Graph {
+    if let Some(nw) = node_weights {
+        Graph::from_edge_list_weighted(n_nodes, src, dst, weights, nw)
+    } else {
+        Graph::from_edge_list(n_nodes, src, dst, weights)
+    }
+}
+
+#[cfg(feature = "python")]
+fn read_u32_bin(path: &str) -> PyResult<Vec<u32>> {
+    let bytes = fs::read(path)?;
+    if bytes.len() % 4 != 0 {
+        return Err(PyValueError::new_err(format!(
+            "u32 binary file length not divisible by 4: {path}"
+        )));
+    }
+    let mut out = Vec::with_capacity(bytes.len() / 4);
+    for chunk in bytes.chunks_exact(4) {
+        out.push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+    Ok(out)
+}
+
+#[cfg(feature = "python")]
+fn read_f64_bin(path: &str) -> PyResult<Vec<f64>> {
+    let bytes = fs::read(path)?;
+    if bytes.len() % 8 != 0 {
+        return Err(PyValueError::new_err(format!(
+            "f64 binary file length not divisible by 8: {path}"
+        )));
+    }
+    let mut out = Vec::with_capacity(bytes.len() / 8);
+    for chunk in bytes.chunks_exact(8) {
+        out.push(f64::from_le_bytes([
+            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+        ]));
+    }
+    Ok(out)
+}
+
+#[cfg(feature = "python")]
+fn validate_len(name: &str, got: usize, expected: usize) -> PyResult<()> {
+    if got != expected {
+        return Err(PyValueError::new_err(format!(
+            "{name} length mismatch: expected {expected} got {got}"
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "python")]
+fn build_initial_clustering(
+    n_nodes: usize,
+    initial_membership: Option<PyReadonlyArray1<u64>>,
+    fixed_nodes: Option<PyReadonlyArray1<bool>>,
+) -> PyResult<Option<Clustering>> {
+    let fixed = if let Some(fixed) = fixed_nodes {
+        let fixed_slice = fixed.as_slice()?;
+        validate_len("fixed_nodes", fixed_slice.len(), n_nodes)?;
+        Some(fixed_slice.to_vec())
+    } else {
+        None
+    };
+
+    let mut initial = if let Some(mem) = initial_membership {
+        let mem_slice = mem.as_slice()?;
+        validate_len("initial_membership", mem_slice.len(), n_nodes)?;
+        Some(Clustering::from_assignments(
+            mem_slice.iter().map(|&x| x as u32).collect(),
+        ))
+    } else if fixed.is_some() {
+        Some(Clustering::singleton(n_nodes))
+    } else {
+        None
+    };
+
+    if let Some(clustering) = initial.as_mut() {
+        if let Some(fixed) = fixed {
+            clustering.set_fixed(fixed);
+        }
+    }
+
+    Ok(initial)
+}
+
+#[cfg(feature = "python")]
+fn run_leiden_on_graph(
+    graph: &Graph,
+    config: &LeidenConfig,
+    n_starts: usize,
+    initial: Option<Clustering>,
+) -> crate::leiden::LeidenResult {
+    if n_starts > 1 {
+        leiden_multi_start(graph, config, n_starts, initial.as_ref())
+    } else {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(config.seed);
+        leiden(graph, config, initial, &mut rng)
+    }
+}
 
 /// Run CPM Leiden clustering on an edge list.
 ///
@@ -69,12 +203,8 @@ fn run_leiden<'py>(
     let src_slice = src.as_slice()?;
     let dst_slice = dst.as_slice()?;
     let w_slice = weights.as_slice()?;
-
-    let graph = if let Some(nw) = node_weights {
-        Graph::from_edge_list_weighted(n_nodes, src_slice, dst_slice, w_slice, nw.as_slice()?)
-    } else {
-        Graph::from_edge_list(n_nodes, src_slice, dst_slice, w_slice)
-    };
+    let node_weights_slice = node_weights.as_ref().map(|nw| nw.as_slice()).transpose()?;
+    let graph = build_graph(n_nodes, src_slice, dst_slice, w_slice, node_weights_slice);
 
     let config = LeidenConfig {
         resolution,
@@ -83,28 +213,204 @@ fn run_leiden<'py>(
         seed,
     };
 
-    let initial = if let Some(mem) = initial_membership {
-        let mem_slice = mem.as_slice()?;
-        let mut clustering = Clustering::from_assignments(
-            mem_slice.iter().map(|&x| x as usize).collect()
-        );
-        if let Some(fixed) = fixed_nodes {
-            let fixed_slice = fixed.as_slice()?;
-            clustering.set_fixed(fixed_slice.to_vec());
+    let initial = build_initial_clustering(n_nodes, initial_membership, fixed_nodes)?;
+    let result = run_leiden_on_graph(&graph, &config, n_starts, initial);
+
+    let membership: Vec<u64> = result
+        .clustering
+        .clusters
+        .iter()
+        .map(|&c| c as u64)
+        .collect();
+    let n_clusters = result.clustering.n_clusters;
+    let quality = result.quality;
+
+    let py_arr = PyArray1::from_vec(py, membership).into();
+    Ok((py_arr, quality, n_clusters))
+}
+
+/// Build an opaque graph handle for repeated Leiden/postprocess runs.
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (
+    n_nodes,
+    src,
+    dst,
+    weights,
+    node_weights = None,
+))]
+fn load_graph(
+    n_nodes: usize,
+    src: PyReadonlyArray1<u32>,
+    dst: PyReadonlyArray1<u32>,
+    weights: PyReadonlyArray1<f64>,
+    node_weights: Option<PyReadonlyArray1<f64>>,
+) -> PyResult<PyGraphHandle> {
+    let node_weights_slice = node_weights.as_ref().map(|nw| nw.as_slice()).transpose()?;
+    let graph = build_graph(
+        n_nodes,
+        src.as_slice()?,
+        dst.as_slice()?,
+        weights.as_slice()?,
+        node_weights_slice,
+    );
+    Ok(PyGraphHandle { graph })
+}
+
+/// Build an opaque graph handle from raw binary edge-array files.
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (
+    n_nodes,
+    src_path,
+    dst_path,
+    weights_path,
+    node_weights_path = None,
+))]
+fn load_graph_raw_files(
+    n_nodes: usize,
+    src_path: &str,
+    dst_path: &str,
+    weights_path: &str,
+    node_weights_path: Option<&str>,
+) -> PyResult<PyGraphHandle> {
+    let src = read_u32_bin(src_path)?;
+    let dst = read_u32_bin(dst_path)?;
+    let weights = read_f64_bin(weights_path)?;
+    if src.len() != dst.len() || src.len() != weights.len() {
+        return Err(PyValueError::new_err(format!(
+            "raw edge file lengths differ: src={} dst={} weights={}",
+            src.len(),
+            dst.len(),
+            weights.len()
+        )));
+    }
+    let node_weights = if let Some(path) = node_weights_path {
+        let nw = read_f64_bin(path)?;
+        if nw.len() != n_nodes {
+            return Err(PyValueError::new_err(format!(
+                "node_weights length mismatch: expected {} got {}",
+                n_nodes,
+                nw.len()
+            )));
         }
-        Some(clustering)
+        Some(nw)
     } else {
         None
     };
+    let graph = build_graph(n_nodes, &src, &dst, &weights, node_weights.as_deref());
+    Ok(PyGraphHandle { graph })
+}
 
-    let result = if n_starts > 1 {
-        leiden_multi_start(&graph, &config, n_starts, initial.as_ref())
+/// Contract a graph handle by cluster membership and return a new graph handle.
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (graph, membership, materialize_node_weights = true))]
+fn contract_graph_handle<'py>(
+    py: Python<'py>,
+    graph: PyRef<'_, PyGraphHandle>,
+    membership: PyReadonlyArray1<u64>,
+    materialize_node_weights: bool,
+) -> PyResult<(PyGraphHandle, Option<Py<PyArray1<f64>>>)> {
+    let membership_slice = membership.as_slice()?;
+    validate_len("membership", membership_slice.len(), graph.graph.n_nodes)?;
+    let clustering =
+        Clustering::from_assignments(membership_slice.iter().map(|&x| x as u32).collect());
+    let mut ws = Workspace::new(graph.graph.n_nodes.max(clustering.n_clusters));
+    let reduced = create_reduced_network(&graph.graph, &clustering, false, &mut ws);
+    let node_weights = if materialize_node_weights {
+        Some(
+            PyArray1::from_vec(
+                py,
+                reduced
+                    .node_weights
+                    .clone()
+                    .unwrap_or_else(|| vec![1.0; reduced.n_nodes]),
+            )
+            .into(),
+        )
     } else {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        leiden(&graph, &config, initial, &mut rng)
+        None
     };
+    Ok((PyGraphHandle { graph: reduced }, node_weights))
+}
 
-    let membership: Vec<u64> = result.clustering.clusters.iter().map(|&c| c as u64).collect();
+/// Summarize a cluster membership against a preloaded graph handle.
+#[cfg(feature = "python")]
+#[pyfunction]
+fn summarize_membership_handle(
+    graph: PyRef<'_, PyGraphHandle>,
+    membership: PyReadonlyArray1<u64>,
+) -> PyResult<(usize, usize, f64, f64)> {
+    let membership_slice = membership.as_slice()?;
+    validate_len("membership", membership_slice.len(), graph.graph.n_nodes)?;
+    let clustering =
+        Clustering::from_assignments(membership_slice.iter().map(|&x| x as u32).collect());
+    let mut sizes = vec![0u32; clustering.n_clusters];
+    let mut weights = vec![0.0f64; clustering.n_clusters];
+    let mut total_weight = 0.0f64;
+
+    for node in 0..graph.graph.n_nodes {
+        let cid = clustering.clusters[node] as usize;
+        sizes[cid] += 1;
+        let w = graph.graph.node_weight(node);
+        weights[cid] += w;
+        total_weight += w;
+    }
+
+    let mut active = 0usize;
+    let mut max_size = 0usize;
+    let mut max_weight = 0.0f64;
+    for cid in 0..clustering.n_clusters {
+        if sizes[cid] > 0 {
+            active += 1;
+            max_size = max_size.max(sizes[cid] as usize);
+            max_weight = max_weight.max(weights[cid]);
+        }
+    }
+
+    Ok((active, max_size, max_weight, total_weight))
+}
+
+/// Run CPM Leiden clustering on a preloaded graph handle.
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (
+    graph,
+    resolution = 1.0,
+    n_iterations = 10,
+    n_starts = 1,
+    randomness = 0.01,
+    seed = 0,
+    initial_membership = None,
+    fixed_nodes = None,
+))]
+fn run_leiden_handle<'py>(
+    py: Python<'py>,
+    graph: PyRef<'_, PyGraphHandle>,
+    resolution: f64,
+    n_iterations: usize,
+    n_starts: usize,
+    randomness: f64,
+    seed: u64,
+    initial_membership: Option<PyReadonlyArray1<u64>>,
+    fixed_nodes: Option<PyReadonlyArray1<bool>>,
+) -> PyResult<(Py<PyArray1<u64>>, f64, usize)> {
+    let config = LeidenConfig {
+        resolution,
+        n_iterations,
+        randomness,
+        seed,
+    };
+    let initial = build_initial_clustering(graph.graph.n_nodes, initial_membership, fixed_nodes)?;
+    let result = run_leiden_on_graph(&graph.graph, &config, n_starts, initial);
+
+    let membership: Vec<u64> = result
+        .clustering
+        .clusters
+        .iter()
+        .map(|&c| c as u64)
+        .collect();
     let n_clusters = result.clustering.n_clusters;
     let quality = result.quality;
 
@@ -142,6 +448,7 @@ fn run_leiden<'py>(
     greedy_max_weight = 0.0,
     use_component_merge = true,
     component_max_weight = 0.0,
+    track_changed_rounds = true,
 ))]
 fn run_postprocess<'py>(
     py: Python<'py>,
@@ -165,27 +472,26 @@ fn run_postprocess<'py>(
     greedy_max_weight: f64,
     use_component_merge: bool,
     component_max_weight: f64,
-) -> PyResult<(Py<PyArray1<u64>>, usize, Py<PyArray1<i32>>, Vec<std::collections::HashMap<String, pyo3::PyObject>>)> {
-    let graph = if let Some(nw) = node_weights {
-        Graph::from_edge_list_weighted(
-            n_nodes,
-            src.as_slice()?,
-            dst.as_slice()?,
-            weights.as_slice()?,
-            nw.as_slice()?,
-        )
-    } else {
-        Graph::from_edge_list(
-            n_nodes,
-            src.as_slice()?,
-            dst.as_slice()?,
-            weights.as_slice()?,
-        )
-    };
-
-    let clustering = Clustering::from_assignments(
-        membership.as_slice()?.iter().map(|&x| x as usize).collect()
+    track_changed_rounds: bool,
+) -> PyResult<(
+    Py<PyArray1<u64>>,
+    usize,
+    Py<PyArray1<i32>>,
+    Vec<std::collections::HashMap<String, pyo3::PyObject>>,
+)> {
+    let node_weights_slice = node_weights.as_ref().map(|nw| nw.as_slice()).transpose()?;
+    let graph = build_graph(
+        n_nodes,
+        src.as_slice()?,
+        dst.as_slice()?,
+        weights.as_slice()?,
+        node_weights_slice,
     );
+
+    let membership_slice = membership.as_slice()?;
+    validate_len("membership", membership_slice.len(), n_nodes)?;
+    let clustering =
+        Clustering::from_assignments(membership_slice.iter().map(|&x| x as u32).collect());
 
     let config = LeidenConfig {
         resolution,
@@ -209,29 +515,252 @@ fn run_postprocess<'py>(
         greedy_max_weight,
         use_component_merge,
         component_max_weight,
+        track_changed_rounds,
         &mut rng,
     );
 
-    let mem_out: Vec<u64> = pp_result.clustering.clusters.iter().map(|&c| c as u64).collect();
+    let mem_out: Vec<u64> = pp_result
+        .clustering
+        .clusters
+        .iter()
+        .map(|&c| c as u64)
+        .collect();
     let n_clusters = pp_result.clustering.n_clusters;
-    let changed_at: Py<PyArray1<i32>> = PyArray1::from_vec(py, pp_result.changed_at_round).into();
+    let changed_at: Py<PyArray1<i32>> =
+        PyArray1::from_vec(py, pp_result.changed_at_round.unwrap_or_default()).into();
 
     // Build rounds info as list of dicts
-    let rounds_info: Vec<std::collections::HashMap<String, pyo3::PyObject>> = pp_result.rounds.iter().map(|r| {
-        Python::with_gil(|py| {
+    let rounds_info: Vec<std::collections::HashMap<String, pyo3::PyObject>> = pp_result
+        .rounds
+        .iter()
+        .map(|r| {
             let mut d = std::collections::HashMap::new();
-            d.insert("round".to_string(), r.round.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("gamma".to_string(), r.gamma.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("method".to_string(), r.method.clone().into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("n_small_before".to_string(), r.n_small_before.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("n_small_after".to_string(), r.n_small_after.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("n_merged".to_string(), r.n_merged.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("n_total_clusters".to_string(), r.n_total_clusters.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("max_cluster_size".to_string(), r.max_cluster_size.into_pyobject(py).unwrap().into_any().unbind());
-            d.insert("max_cluster_weight".to_string(), r.max_cluster_weight.into_pyobject(py).unwrap().into_any().unbind());
+            d.insert(
+                "round".to_string(),
+                r.round.into_pyobject(py).unwrap().into_any().unbind(),
+            );
+            d.insert(
+                "gamma".to_string(),
+                r.gamma.into_pyobject(py).unwrap().into_any().unbind(),
+            );
+            d.insert(
+                "method".to_string(),
+                r.method
+                    .clone()
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "n_small_before".to_string(),
+                r.n_small_before
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "n_small_after".to_string(),
+                r.n_small_after
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "n_merged".to_string(),
+                r.n_merged.into_pyobject(py).unwrap().into_any().unbind(),
+            );
+            d.insert(
+                "n_total_clusters".to_string(),
+                r.n_total_clusters
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "max_cluster_size".to_string(),
+                r.max_cluster_size
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "max_cluster_weight".to_string(),
+                r.max_cluster_weight
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
             d
         })
-    }).collect();
+        .collect();
+
+    let py_arr = PyArray1::from_vec(py, mem_out).into();
+    Ok((py_arr, n_clusters, changed_at, rounds_info))
+}
+
+/// Reassign small clusters using constrained Leiden on a preloaded graph handle.
+#[cfg(feature = "python")]
+#[pyfunction]
+#[pyo3(signature = (
+    graph,
+    membership,
+    resolution,
+    min_size,
+    n_iterations = 10,
+    randomness = 0.01,
+    seed = 0,
+    min_weight = 0.0,
+    max_rounds = 5,
+    gamma_decay = 0.5,
+    use_greedy = true,
+    greedy_anchor_only = false,
+    greedy_fallback_to_small = false,
+    greedy_max_weight = 0.0,
+    use_component_merge = true,
+    component_max_weight = 0.0,
+    track_changed_rounds = true,
+))]
+fn run_postprocess_handle<'py>(
+    py: Python<'py>,
+    graph: PyRef<'_, PyGraphHandle>,
+    membership: PyReadonlyArray1<u64>,
+    resolution: f64,
+    min_size: usize,
+    n_iterations: usize,
+    randomness: f64,
+    seed: u64,
+    min_weight: f64,
+    max_rounds: usize,
+    gamma_decay: f64,
+    use_greedy: bool,
+    greedy_anchor_only: bool,
+    greedy_fallback_to_small: bool,
+    greedy_max_weight: f64,
+    use_component_merge: bool,
+    component_max_weight: f64,
+    track_changed_rounds: bool,
+) -> PyResult<(
+    Py<PyArray1<u64>>,
+    usize,
+    Py<PyArray1<i32>>,
+    Vec<std::collections::HashMap<String, pyo3::PyObject>>,
+)> {
+    let membership_slice = membership.as_slice()?;
+    validate_len("membership", membership_slice.len(), graph.graph.n_nodes)?;
+    let clustering =
+        Clustering::from_assignments(membership_slice.iter().map(|&x| x as u32).collect());
+
+    let config = LeidenConfig {
+        resolution,
+        n_iterations,
+        randomness,
+        seed,
+    };
+
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let pp_result = postprocess_small_clusters(
+        &graph.graph,
+        &clustering,
+        &config,
+        min_size,
+        min_weight,
+        max_rounds,
+        gamma_decay,
+        use_greedy,
+        greedy_anchor_only,
+        greedy_fallback_to_small,
+        greedy_max_weight,
+        use_component_merge,
+        component_max_weight,
+        track_changed_rounds,
+        &mut rng,
+    );
+
+    let mem_out: Vec<u64> = pp_result
+        .clustering
+        .clusters
+        .iter()
+        .map(|&c| c as u64)
+        .collect();
+    let n_clusters = pp_result.clustering.n_clusters;
+    let changed_at: Py<PyArray1<i32>> =
+        PyArray1::from_vec(py, pp_result.changed_at_round.unwrap_or_default()).into();
+
+    let rounds_info: Vec<std::collections::HashMap<String, pyo3::PyObject>> = pp_result
+        .rounds
+        .iter()
+        .map(|r| {
+            let mut d = std::collections::HashMap::new();
+            d.insert(
+                "round".to_string(),
+                r.round.into_pyobject(py).unwrap().into_any().unbind(),
+            );
+            d.insert(
+                "gamma".to_string(),
+                r.gamma.into_pyobject(py).unwrap().into_any().unbind(),
+            );
+            d.insert(
+                "method".to_string(),
+                r.method
+                    .clone()
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "n_small_before".to_string(),
+                r.n_small_before
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "n_small_after".to_string(),
+                r.n_small_after
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "n_merged".to_string(),
+                r.n_merged.into_pyobject(py).unwrap().into_any().unbind(),
+            );
+            d.insert(
+                "n_total_clusters".to_string(),
+                r.n_total_clusters
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "max_cluster_size".to_string(),
+                r.max_cluster_size
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d.insert(
+                "max_cluster_weight".to_string(),
+                r.max_cluster_weight
+                    .into_pyobject(py)
+                    .unwrap()
+                    .into_any()
+                    .unbind(),
+            );
+            d
+        })
+        .collect();
 
     let py_arr = PyArray1::from_vec(py, mem_out).into();
     Ok((py_arr, n_clusters, changed_at, rounds_info))
@@ -252,16 +781,22 @@ fn cpm_quality(
 ) -> PyResult<f64> {
     let graph = if let Some(nw) = node_weights {
         Graph::from_edge_list_weighted(
-            n_nodes, src.as_slice()?, dst.as_slice()?, weights.as_slice()?, nw.as_slice()?,
+            n_nodes,
+            src.as_slice()?,
+            dst.as_slice()?,
+            weights.as_slice()?,
+            nw.as_slice()?,
         )
     } else {
         Graph::from_edge_list(
-            n_nodes, src.as_slice()?, dst.as_slice()?, weights.as_slice()?,
+            n_nodes,
+            src.as_slice()?,
+            dst.as_slice()?,
+            weights.as_slice()?,
         )
     };
-    let clustering = Clustering::from_assignments(
-        membership.as_slice()?.iter().map(|&x| x as usize).collect()
-    );
+    let clustering =
+        Clustering::from_assignments(membership.as_slice()?.iter().map(|&x| x as u32).collect());
     let cpm = CPM::new(resolution);
     Ok(cpm.quality(&graph, &clustering))
 }
@@ -300,11 +835,7 @@ fn rust_find_gcc<'py>(
     dst: PyReadonlyArray1<u32>,
     n_nodes: usize,
 ) -> PyResult<Py<PyArray1<bool>>> {
-    let mask = crate::graph_utils::find_gcc(
-        src.as_slice()?,
-        dst.as_slice()?,
-        n_nodes,
-    );
+    let mask = crate::graph_utils::find_gcc(src.as_slice()?, dst.as_slice()?, n_nodes);
     Ok(PyArray1::from_vec(py, mask).into())
 }
 
@@ -349,8 +880,15 @@ fn rust_contract_edges<'py>(
 #[cfg(feature = "python")]
 #[pymodule]
 fn sciscape_leiden(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyGraphHandle>()?;
+    m.add_function(wrap_pyfunction!(load_graph, m)?)?;
+    m.add_function(wrap_pyfunction!(load_graph_raw_files, m)?)?;
+    m.add_function(wrap_pyfunction!(contract_graph_handle, m)?)?;
+    m.add_function(wrap_pyfunction!(summarize_membership_handle, m)?)?;
     m.add_function(wrap_pyfunction!(run_leiden, m)?)?;
+    m.add_function(wrap_pyfunction!(run_leiden_handle, m)?)?;
     m.add_function(wrap_pyfunction!(run_postprocess, m)?)?;
+    m.add_function(wrap_pyfunction!(run_postprocess_handle, m)?)?;
     m.add_function(wrap_pyfunction!(cpm_quality, m)?)?;
     m.add_function(wrap_pyfunction!(rust_filter_top_k, m)?)?;
     m.add_function(wrap_pyfunction!(rust_find_gcc, m)?)?;

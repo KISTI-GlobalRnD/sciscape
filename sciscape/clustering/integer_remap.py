@@ -28,6 +28,50 @@ class RemapResult:
     n_edges: int
     node_manifest_path: Path
     int_edges_path: Path
+    src_bin_path: Path
+    dst_bin_path: Path
+    weight_bin_path: Path
+
+
+def _binary_edge_paths(output_dir: Path) -> tuple[Path, Path, Path]:
+    return (
+        output_dir / "src.u32.bin",
+        output_dir / "dst.u32.bin",
+        output_dir / "weight.f64.bin",
+    )
+
+
+def _write_binary_edge_sidecars(
+    int_edges: pl.DataFrame,
+    output_dir: Path,
+) -> tuple[Path, Path, Path]:
+    src_path, dst_path, weight_path = _binary_edge_paths(output_dir)
+    src = np.ascontiguousarray(int_edges["src"].to_numpy(), dtype=np.uint32)
+    dst = np.ascontiguousarray(int_edges["dst"].to_numpy(), dtype=np.uint32)
+    weight = np.ascontiguousarray(int_edges["weight"].to_numpy(), dtype=np.float64)
+    src.tofile(src_path)
+    dst.tofile(dst_path)
+    weight.tofile(weight_path)
+    return src_path, dst_path, weight_path
+
+
+def load_binary_edge_arrays(
+    remap: RemapResult | Path,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load cached binary edge arrays from integer_remap output."""
+    if isinstance(remap, (str, Path)):
+        output_dir = Path(remap)
+        src_path, dst_path, weight_path = _binary_edge_paths(output_dir)
+    else:
+        src_path, dst_path, weight_path = (
+            remap.src_bin_path,
+            remap.dst_bin_path,
+            remap.weight_bin_path,
+        )
+    src = np.fromfile(src_path, dtype=np.uint32)
+    dst = np.fromfile(dst_path, dtype=np.uint32)
+    weight = np.fromfile(weight_path, dtype=np.float64)
+    return src, dst, weight
 
 
 def integer_remap(
@@ -59,17 +103,26 @@ def integer_remap(
     output_dir = Path(output_dir)
     manifest_path = output_dir / "node_manifest.parquet"
     int_edges_path = output_dir / "int_edges.parquet"
+    src_bin_path, dst_bin_path, weight_bin_path = _binary_edge_paths(output_dir)
 
     # Check cache
     if not overwrite and manifest_path.exists() and int_edges_path.exists():
         manifest = pl.read_parquet(manifest_path)
         n_edges = pl.scan_parquet(int_edges_path).select(pl.len()).collect().item()
+        if not (src_bin_path.exists() and dst_bin_path.exists() and weight_bin_path.exists()):
+            int_edges = pl.read_parquet(int_edges_path)
+            src_bin_path, dst_bin_path, weight_bin_path = _write_binary_edge_sidecars(
+                int_edges, output_dir
+            )
         log.info("integer_remap: using cached files in %s", output_dir)
         return RemapResult(
             n_nodes=manifest.height,
             n_edges=n_edges,
             node_manifest_path=manifest_path,
             int_edges_path=int_edges_path,
+            src_bin_path=src_bin_path,
+            dst_bin_path=dst_bin_path,
+            weight_bin_path=weight_bin_path,
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -109,12 +162,19 @@ def integer_remap(
     int_edges.write_parquet(int_edges_path, compression="zstd")
     n_edges = int_edges.height
     log.info("integer_remap: %d int edges → %s", n_edges, int_edges_path)
+    src_bin_path, dst_bin_path, weight_bin_path = _write_binary_edge_sidecars(
+        int_edges, output_dir
+    )
+    log.info("integer_remap: wrote binary edge sidecars in %s", output_dir)
 
     return RemapResult(
         n_nodes=n_nodes,
         n_edges=n_edges,
         node_manifest_path=manifest_path,
         int_edges_path=int_edges_path,
+        src_bin_path=src_bin_path,
+        dst_bin_path=dst_bin_path,
+        weight_bin_path=weight_bin_path,
     )
 
 
@@ -181,4 +241,11 @@ def integer_remap_memory(
     return src, dst, w, n_nodes, uids
 
 
-__all__ = ["RemapResult", "integer_remap", "integer_remap_memory", "join_back_uids", "load_manifest"]
+__all__ = [
+    "RemapResult",
+    "integer_remap",
+    "integer_remap_memory",
+    "join_back_uids",
+    "load_binary_edge_arrays",
+    "load_manifest",
+]

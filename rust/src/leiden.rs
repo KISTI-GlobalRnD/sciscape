@@ -104,7 +104,10 @@ pub fn leiden_multi_start(
         })
         .collect();
 
-    results.into_iter().max_by(|a, b| a.quality.total_cmp(&b.quality)).unwrap()
+    results
+        .into_iter()
+        .max_by(|a, b| a.quality.total_cmp(&b.quality))
+        .unwrap()
 }
 
 /// One iteration of Leiden: move → refine → aggregate → recurse.
@@ -124,14 +127,14 @@ fn improve_one_iteration(
     }
 
     // Phase 2: Refinement
-    // Extract ALL cluster subnetworks in one O(n+m) pass.
+    // Build and refine one cluster subgraph at a time to avoid
+    // materializing every cluster subnetwork simultaneously.
     let nodes_per_cluster = clustering.nodes_per_cluster();
-    let subnetworks = graph.create_subnetworks(&nodes_per_cluster);
 
     let mut refinement = Clustering::singleton(graph.n_nodes);
     refinement.n_clusters = 0;
 
-    for (_cid, (subgraph, nodes)) in subnetworks.iter().enumerate() {
+    for nodes in nodes_per_cluster.iter() {
         if nodes.is_empty() {
             continue;
         }
@@ -141,17 +144,24 @@ fn improve_one_iteration(
 
         if has_fixed {
             // Keep cluster intact: all nodes get the same refinement cluster
-            for &node in nodes {
-                refinement.clusters[node] = refinement.n_clusters;
+            for &node in nodes.iter() {
+                refinement.clusters[node] = refinement.n_clusters as u32;
             }
             refinement.n_clusters += 1;
         } else {
+            let (subgraph, _) = graph.subgraph(nodes);
             // Find sub-communities within this cluster's subnetwork
-            let sub_clustering =
-                local_merge::find_clustering(subgraph, config.resolution, config.randomness, rng);
+            let sub_clustering = local_merge::find_clustering(
+                &subgraph,
+                config.resolution,
+                config.randomness,
+                rng,
+                ws,
+            );
 
             for (local_idx, &node) in nodes.iter().enumerate() {
-                refinement.clusters[node] = refinement.n_clusters + sub_clustering.clusters[local_idx];
+                refinement.clusters[node] =
+                    (refinement.n_clusters + sub_clustering.clusters[local_idx] as usize) as u32;
             }
             refinement.n_clusters += sub_clustering.n_clusters;
         }
@@ -167,7 +177,7 @@ fn improve_one_iteration(
             let mut rf = vec![false; clustering.n_clusters];
             for i in 0..graph.n_nodes {
                 if clustering.is_fixed(i) {
-                    rf[clustering.clusters[i]] = true;
+                    rf[clustering.clusters[i] as usize] = true;
                 }
             }
             reduced_clustering.fixed = Some(rf);
@@ -184,18 +194,18 @@ fn improve_one_iteration(
     // Initial clustering for aggregate network: map non-refined clusters
     // to the move-phase cluster assignments (before refinement).
     // Each refined sub-cluster inherits the move-phase cluster ID of its parent.
-    let mut reduced_clusters = vec![0usize; refinement.n_clusters];
+    let mut reduced_clusters = vec![0u32; refinement.n_clusters];
     for i in 0..graph.n_nodes {
-        reduced_clusters[refinement.clusters[i]] = clustering.clusters[i];
+        reduced_clusters[refinement.clusters[i] as usize] = clustering.clusters[i];
     }
-    let max_cid = reduced_clusters.iter().copied().max().unwrap_or(0);
+    let max_cid = reduced_clusters.iter().copied().max().unwrap_or(0) as usize;
     // Propagate fixed status: if any original node in a refined sub-cluster
     // is fixed, the super-node in the reduced graph must also be fixed.
     let reduced_fixed = if clustering.fixed.is_some() {
         let mut rf = vec![false; refinement.n_clusters];
         for i in 0..graph.n_nodes {
             if clustering.is_fixed(i) {
-                rf[refinement.clusters[i]] = true;
+                rf[refinement.clusters[i] as usize] = true;
             }
         }
         Some(rf)

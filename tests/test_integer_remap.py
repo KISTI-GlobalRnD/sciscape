@@ -10,6 +10,7 @@ from sciscape.clustering.integer_remap import (
     RemapResult,
     integer_remap,
     join_back_uids,
+    load_binary_edge_arrays,
     load_manifest,
 )
 
@@ -49,6 +50,17 @@ class TestIntegerRemap:
         edges = pl.read_parquet(result.int_edges_path)
         assert set(edges.columns) == {"src", "dst", "weight"}
         assert edges.height == 4
+        assert result.src_bin_path.exists()
+        assert result.dst_bin_path.exists()
+        assert result.weight_bin_path.exists()
+
+    def test_binary_edge_sidecars_roundtrip(self, sample_edges, tmp_path):
+        result = integer_remap(sample_edges, tmp_path)
+        src, dst, weight = load_binary_edge_arrays(result)
+        edges = pl.read_parquet(result.int_edges_path)
+        assert np.array_equal(src, edges["src"].to_numpy().astype(np.uint32))
+        assert np.array_equal(dst, edges["dst"].to_numpy().astype(np.uint32))
+        assert np.allclose(weight, edges["weight"].to_numpy().astype(np.float64))
 
     def test_integer_indices_are_contiguous(self, sample_edges, tmp_path):
         integer_remap(sample_edges, tmp_path)
