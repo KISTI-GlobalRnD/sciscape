@@ -410,6 +410,7 @@ def run_landscape(
     elif cfg.layer_paths or cfg.auto_gamma:
         # ── New path: build_hierarchy (Rust + consensus + auto-γ per level) ──
         from .clustering.hierarchical import build_hierarchy
+        from .clustering.leiden_rust import write_membership_sidecars_for_dataframe
         from .clustering.leiden_rust import RUST_AVAILABLE
 
         if RUST_AVAILABLE:
@@ -438,6 +439,7 @@ def run_landscape(
 
             if hier_result.levels:
                 membership_df.write_parquet(membership_path)
+                write_membership_sidecars_for_dataframe(membership_path, membership_df)
                 log.info("Hierarchy: %d levels, saved → %s",
                          len(hier_result.levels), membership_path)
             else:

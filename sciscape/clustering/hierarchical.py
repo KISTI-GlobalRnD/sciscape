@@ -13,6 +13,7 @@ edge density, so γ must be re-calibrated.
 from __future__ import annotations
 
 import logging
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,7 +23,12 @@ import numpy as np
 import polars as pl
 
 from .auto_gamma import find_gamma
-from .leiden_rust import run_leiden_rust, postprocess_small_clusters_rust, RUST_AVAILABLE
+from .integer_remap import integer_remap, load_manifest
+from .leiden_rust import (
+    RUST_AVAILABLE,
+    write_membership_raw_sidecar,
+)
+from .runner import RustLeidenRunner
 from ..linkage.combine import combine_edge_layers
 
 log = logging.getLogger(__name__)
@@ -174,17 +180,27 @@ def build_hierarchy(
     n_total = pl.concat([combined["uid1"], combined["uid2"]]).n_unique()
     _log(f"Combined: {n_total:,} nodes, {combined.height:,} edges")
 
-    # ── Step 2: Integer remap (in-memory, no disk I/O) ──
-    from .integer_remap import integer_remap_memory
-
-    src, dst, w, n_nodes, uids = integer_remap_memory(combined)
+    # ── Step 2: Integer remap (disk cache for file-backed Rust handles) ──
+    temp_remap_dir: tempfile.TemporaryDirectory[str] | None = None
+    if out:
+        remap_dir = out / "remap"
+    else:
+        temp_remap_dir = tempfile.TemporaryDirectory(prefix="sciscape_hierarchy_remap_")
+        remap_dir = Path(temp_remap_dir.name)
+    remap = integer_remap(combined, remap_dir)
+    manifest = load_manifest(remap.node_manifest_path)
+    n_nodes = remap.n_nodes
+    uids = manifest["uid"].to_list()
 
     # ── Step 3: Hierarchical levels ──
     levels: List[HierarchyLevel] = []
-    cur_src, cur_dst, cur_w = src, dst, w
-    cur_n = n_nodes
     prev_membership_original: np.ndarray | None = None
     node_sizes: np.ndarray | None = None
+    rust_runner = RustLeidenRunner.from_edge_path(
+        str(remap.int_edges_path), n_nodes,
+        default_iterations=10,
+        default_seed=seed,
+    )
 
     # Resume from cached levels (skip re-computation)
     start_level = 0
@@ -207,21 +223,20 @@ def build_hierarchy(
                 # We need: level_mem[super_node_s] = cluster of any node in super_node_s
                 cached_mem = cached.membership.astype(np.uint64)
                 prev_mem = prev_membership_original.astype(np.uint64)
-                if int(prev_mem.max()) >= cur_n:
+                if int(prev_mem.max()) >= rust_runner.n_nodes:
                     log.warning("Cached level %s: prev_mem max %d >= cur_n %d, re-indexing",
-                                cached.name, int(prev_mem.max()), cur_n)
-                    cur_n = int(prev_mem.max()) + 1
-                level_mem = np.zeros(cur_n, dtype=np.uint64)
+                                cached.name, int(prev_mem.max()), rust_runner.n_nodes)
+                alloc_n = max(rust_runner.n_nodes, int(prev_mem.max()) + 1)
+                level_mem = np.zeros(alloc_n, dtype=np.uint64)
                 # Direct scatter: last write wins (all nodes in same super-node → same cluster)
                 level_mem[prev_mem] = cached_mem[:len(prev_mem)]
 
-            cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
-                cur_src, cur_dst, cur_w, level_mem, node_sizes,
-            )
+            rust_runner = rust_runner.contract(level_mem)
+            node_sizes = None
             prev_membership_original = cached.membership.astype(np.uint64)
 
         start_level = len(cached_levels)
-        _log(f"Resumed from {start_level} cached levels, contracted to {cur_n} nodes")
+        _log(f"Resumed from {start_level} cached levels, contracted to {rust_runner.n_nodes} nodes")
 
     for level_idx in range(start_level, n_levels):
         level_name = LEVEL_NAMES[level_idx] if level_idx < len(LEVEL_NAMES) else f"level_{level_idx}"
@@ -263,13 +278,12 @@ def build_hierarchy(
             else:
                 # Subsequent: build super-node membership from original-node membership
                 pm = prev_membership_original.astype(np.uint64)
-                alloc_n = max(cur_n, int(pm.max()) + 1) if len(pm) > 0 else cur_n
+                alloc_n = max(rust_runner.n_nodes, int(pm.max()) + 1) if len(pm) > 0 else rust_runner.n_nodes
                 level_mem_for_contract = np.zeros(alloc_n, dtype=np.uint64)
                 level_mem_for_contract[pm] = original_mem[:len(pm)]
             prev_membership_original = original_mem.astype(np.uint64)
-            cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
-                cur_src, cur_dst, cur_w, level_mem_for_contract, node_sizes,
-            )
+            rust_runner = rust_runner.contract(level_mem_for_contract)
+            node_sizes = None
             continue
 
         _log(f"\n{'='*50}")
@@ -278,51 +292,46 @@ def build_hierarchy(
         t0 = time.perf_counter()
 
         # Find γ and run Leiden
-        nw = node_sizes.astype(np.float64) if node_sizes is not None else None
+        has_node_weights = rust_runner.has_node_weights
 
         if level_idx == 0 and prev_membership_original is None:
             # First level on full graph: use auto_gamma with integer_remap
             gamma_result = find_gamma(
-                _edges_to_df(cur_src, cur_dst, cur_w, cur_n),
+                combined,
                 target_max_pct=target_pct,
                 min_size=min_size,
                 postprocess=True,
                 progress=_log,
+                remap=remap,
             )
             gamma = gamma_result.gamma
             _log(f"Auto-γ: {gamma:.2e} ({gamma_result.n_clusters} cl, max={gamma_result.max_pct}%)")
         else:
             # Contracted graph: direct γ sweep (small graph, fast)
             gamma = _sweep_gamma_direct(
-                cur_src, cur_dst, cur_w, cur_n, nw,
+                rust_runner,
                 target_max_pct=target_pct, min_size=min_size, seed=seed,
                 _log=_log,
             )
 
-        r = run_leiden_rust(
-            edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
-            resolution=gamma, n_nodes=cur_n, seed=seed, n_iterations=10,
-            node_weights=nw,
-        )
+        r = rust_runner.run_array(gamma, seed=seed, n_iterations=10, node_sizes=None)
         # Postprocess: use node_weights for min_size on contracted graphs
         # On contracted graphs, "size" means original paper count (via node_weights)
-        if node_sizes is not None:
+        if has_node_weights:
             # Contracted: use min_weight (doc count sum) instead of min_size (super-node count)
-            p = postprocess_small_clusters_rust(
+            p = rust_runner.postprocess(
                 resolution=gamma, min_size=0,
                 min_weight=float(min_size),
                 membership=r.membership,
-                edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
-                node_weights=nw, n_nodes=cur_n, seed=seed,
+                seed=seed,
                 gamma_decay=0.5, max_rounds=3,
                 use_greedy=True, use_component_merge=True,
             )
         else:
-            p = postprocess_small_clusters_rust(
+            p = rust_runner.postprocess(
                 resolution=gamma, min_size=min_size,
                 membership=r.membership,
-                edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
-                n_nodes=cur_n, seed=seed,
+                seed=seed,
                 gamma_decay=0.5, max_rounds=5,
                 use_greedy=True, use_component_merge=True,
             )
@@ -359,6 +368,7 @@ def build_hierarchy(
             import json as _json
             level_dir.mkdir(parents=True, exist_ok=True)
             pl.DataFrame({"uid": uids, "cluster": original_mem.tolist()}).write_parquet(level_mem_path)
+            write_membership_raw_sidecar(level_mem_path, original_mem)
             meta_dict = {
                 "gamma": gamma, "n_clusters": level.n_clusters,
                 "max_pct": level.max_pct, "avg_size": level.avg_size,
@@ -376,10 +386,9 @@ def build_hierarchy(
         # Contract for next level
         prev_membership_original = original_mem.astype(np.uint64)
 
-        cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
-            cur_src, cur_dst, cur_w, mem, node_sizes,
-        )
-        _log(f"Contracted: {cur_n} super-nodes, {len(cur_w)} edges")
+        rust_runner = rust_runner.contract(mem)
+        node_sizes = None
+        _log(f"Contracted: {rust_runner.n_nodes} super-nodes")
 
     result = HierarchyResult(levels=levels, n_nodes=n_total, uids=uids)
 
@@ -390,11 +399,14 @@ def build_hierarchy(
         hierarchy_df.write_parquet(hierarchy_path)
         _log(f"Saved hierarchy → {hierarchy_path}")
 
+    if temp_remap_dir is not None:
+        temp_remap_dir.cleanup()
+
     return result
 
 
 def _sweep_gamma_direct(
-    src, dst, w, n_nodes, node_weights,
+    rust_runner,
     *,
     target_max_pct: float = 10.0,
     min_size: int = 3,
@@ -408,9 +420,16 @@ def _sweep_gamma_direct(
     """
     import math
 
-    n_edges = len(w)
-    w_median = float(np.median(w)) if n_edges > 0 else 1.0
-    w_max = float(w.max()) if n_edges > 0 else 1.0
+    n_nodes = rust_runner.n_nodes
+    if getattr(rust_runner, "_weight", None) is not None:
+        w = rust_runner._weight
+        n_edges = len(w)
+        w_median = float(np.median(w)) if n_edges > 0 else 1.0
+        w_max = float(w.max()) if n_edges > 0 else 1.0
+    else:
+        n_edges = rust_runner._handle.n_edges
+        w_median = 1.0
+        w_max = 1.0
 
     # Density-aware bounds (contracted graphs are often dense)
     max_possible = n_nodes * (n_nodes - 1) / 2 if n_nodes > 1 else 1
@@ -419,7 +438,6 @@ def _sweep_gamma_direct(
 
     lo = max(1e-6, w_median * 0.01 * density_boost)
     hi = w_max * 100
-
     # Phase 1: coarse sweep (12 probes for better coverage)
     n_probes = 12
     gammas = [10 ** (math.log10(lo) + i * (math.log10(hi) - math.log10(lo)) / max(n_probes - 1, 1))
@@ -427,25 +445,16 @@ def _sweep_gamma_direct(
 
     cache = {}
     for gamma in gammas:
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=gamma, n_nodes=n_nodes, seed=seed,
-            node_weights=node_weights,
-        )
+        r = rust_runner.run_array(gamma, seed=seed, n_iterations=10, node_sizes=None)
         mem = np.asarray(r.membership, dtype=np.int64)
-        n_cl = len(set(mem.tolist()))
+        n_cl, mx, max_weight, total_weight = rust_runner.summarize_membership(mem)
         if n_cl == 0:
             cache[gamma] = (0, 100.0)
             continue
         # Use node_weights-aware pct if available
-        if node_weights is not None:
-            total_weight = float(node_weights.sum())
-            cluster_weights = np.bincount(mem, weights=node_weights.astype(np.float64))
-            max_weight = float(cluster_weights.max())
+        if rust_runner.has_node_weights:
             pct = 100 * max_weight / max(total_weight, 1)
         else:
-            sizes = np.bincount(mem)
-            mx = int(sizes.max())
             pct = 100 * mx / max(n_nodes, 1)
         cache[gamma] = (n_cl, pct)
         if _log:
@@ -468,24 +477,17 @@ def _sweep_gamma_direct(
             break  # close enough
 
         mid_g = 10 ** ((math.log10(hi_g) + math.log10(lo_g)) / 2)
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=mid_g, n_nodes=n_nodes, seed=seed,
-            node_weights=node_weights,
-        )
+        r = rust_runner.run_array(mid_g, seed=seed, n_iterations=10, node_sizes=None)
         mem = np.asarray(r.membership, dtype=np.int64)
-        n_cl = len(set(mem.tolist()))
+        n_cl, mx, max_weight, total_weight = rust_runner.summarize_membership(mem)
         if n_cl == 0:
             cache[mid_g] = (0, 100.0)
             sorted_gammas = sorted(cache.keys())
             continue
-        if node_weights is not None:
-            total_weight = float(node_weights.sum())
-            cluster_weights = np.bincount(mem, weights=node_weights.astype(np.float64))
-            pct = 100 * float(cluster_weights.max()) / max(total_weight, 1)
+        if rust_runner.has_node_weights:
+            pct = 100 * float(max_weight) / max(total_weight, 1)
         else:
-            sizes = np.bincount(mem)
-            pct = 100 * int(sizes.max()) / max(n_nodes, 1)
+            pct = 100 * int(mx) / max(n_nodes, 1)
         cache[mid_g] = (n_cl, pct)
         sorted_gammas = sorted(cache.keys())
         if _log:

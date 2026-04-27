@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub struct Clustering {
     pub n_nodes: usize,
     pub n_clusters: usize,
-    pub clusters: Vec<usize>,
+    pub clusters: Vec<u32>,
     /// If Some, nodes where fixed[i] == true cannot change cluster.
     pub fixed: Option<Vec<bool>>,
 }
@@ -15,18 +15,26 @@ pub struct Clustering {
 impl Clustering {
     /// Singleton clustering: each node in its own cluster.
     pub fn singleton(n_nodes: usize) -> Self {
+        assert!(
+            u32::try_from(n_nodes).is_ok(),
+            "n_nodes exceeds u32 cluster-id capacity"
+        );
         Clustering {
             n_nodes,
             n_clusters: n_nodes,
-            clusters: (0..n_nodes).collect(),
+            clusters: (0..n_nodes as u32).collect(),
             fixed: None,
         }
     }
 
     /// From explicit cluster assignments.
-    pub fn from_assignments(clusters: Vec<usize>) -> Self {
+    pub fn from_assignments(clusters: Vec<u32>) -> Self {
         let n_nodes = clusters.len();
-        let n_clusters = clusters.iter().copied().max().map_or(0, |m| m + 1);
+        let n_clusters = clusters
+            .iter()
+            .copied()
+            .max()
+            .map_or(0usize, |m| m as usize + 1);
         Clustering {
             n_nodes,
             n_clusters,
@@ -51,6 +59,7 @@ impl Clustering {
     pub fn nodes_per_cluster(&self) -> Vec<Vec<usize>> {
         let mut result = vec![Vec::new(); self.n_clusters];
         for (node, &cid) in self.clusters.iter().enumerate() {
+            let cid = cid as usize;
             if cid < self.n_clusters {
                 result[cid].push(node);
             }
@@ -62,6 +71,7 @@ impl Clustering {
     pub fn cluster_sizes(&self) -> Vec<usize> {
         let mut sizes = vec![0usize; self.n_clusters];
         for &cid in &self.clusters {
+            let cid = cid as usize;
             if cid < self.n_clusters {
                 sizes[cid] += 1;
             }
@@ -74,6 +84,7 @@ impl Clustering {
     pub fn cluster_weights(&self, node_weights: &[f64]) -> Vec<f64> {
         let mut weights = vec![0.0f64; self.n_clusters];
         for (node, &cid) in self.clusters.iter().enumerate() {
+            let cid = cid as usize;
             if cid < self.n_clusters {
                 weights[cid] += node_weights[node];
             }
@@ -85,18 +96,18 @@ impl Clustering {
     pub fn remove_empty_clusters(&mut self) {
         let mut used = vec![false; self.n_clusters];
         for &cid in &self.clusters {
-            used[cid] = true;
+            used[cid as usize] = true;
         }
-        let mut remap = vec![0usize; self.n_clusters];
+        let mut remap = vec![0u32; self.n_clusters];
         let mut new_id = 0;
         for (old_id, &is_used) in used.iter().enumerate() {
             if is_used {
-                remap[old_id] = new_id;
+                remap[old_id] = new_id as u32;
                 new_id += 1;
             }
         }
         for c in &mut self.clusters {
-            *c = remap[*c];
+            *c = remap[*c as usize];
         }
         self.n_clusters = new_id;
     }
@@ -107,13 +118,13 @@ impl Clustering {
     /// After merge, each node gets the cluster assignment from `other`.
     pub fn merge_clusters(&mut self, other: &Clustering) {
         for c in &mut self.clusters {
-            *c = other.clusters[*c];
+            *c = other.clusters[*c as usize];
         }
         self.n_clusters = other.n_clusters;
     }
 
     /// Count nodes per cluster as HashMap (useful for sparse clusters).
-    pub fn cluster_counts(&self) -> HashMap<usize, usize> {
+    pub fn cluster_counts(&self) -> HashMap<u32, usize> {
         let mut counts = HashMap::new();
         for &cid in &self.clusters {
             *counts.entry(cid).or_insert(0) += 1;

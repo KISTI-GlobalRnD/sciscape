@@ -3,8 +3,8 @@
 //! Port of CWTS FastLocalMovingAlgorithm.java.
 //! Hot-path: unsafe unchecked indexing where bounds are guaranteed.
 
-use crate::graph::Graph;
 use crate::clustering::Clustering;
+use crate::graph::Graph;
 use crate::workspace::Workspace;
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -28,8 +28,8 @@ pub fn improve_clustering(
     let first_nbr = graph.first_neighbor_index.as_ptr();
     let nbr_arr = graph.neighbors.as_ptr();
     let ew_arr = graph.edge_weights.as_ptr();
-    let nw_arr = graph.node_weights.as_slice();
-    let slw_arr = graph.self_loop_weights.as_slice();
+    let nw_arr = graph.node_weights.as_deref();
+    let slw_arr = graph.self_loop_weights.as_deref();
     let clusters = clustering.clusters.as_mut_ptr();
     let has_fixed = clustering.fixed.is_some();
     let fixed_arr: &[bool] = clustering.fixed.as_deref().unwrap_or(&[]);
@@ -40,22 +40,35 @@ pub fn improve_clustering(
     let npc = &mut ws.npc[..n];
     cw.fill(0.0);
     npc.fill(0);
-    for i in 0..n {
-        unsafe {
-            let cid = *clusters.add(i);
-            *cw.get_unchecked_mut(cid) += nw_arr.get_unchecked(i);
-            *npc.get_unchecked_mut(cid) += 1;
+    if let Some(nw_arr) = nw_arr {
+        for i in 0..n {
+            unsafe {
+                let cid = *clusters.add(i) as usize;
+                *cw.get_unchecked_mut(cid) += nw_arr.get_unchecked(i);
+                *npc.get_unchecked_mut(cid) += 1;
+            }
+        }
+    } else {
+        for i in 0..n {
+            unsafe {
+                let cid = *clusters.add(i) as usize;
+                *cw.get_unchecked_mut(cid) += 1.0;
+                *npc.get_unchecked_mut(cid) += 1;
+            }
         }
     }
 
-    let mut unused: Vec<u32> = Vec::with_capacity(n.min(1024));
+    let mut unused = std::mem::take(&mut ws.unused_u32);
+    unused.clear();
     for i in (0..n).rev() {
         if npc[i] == 0 {
             unused.push(i as u32);
         }
     }
 
-    let mut order: Vec<u32> = (0..n as u32).collect();
+    let mut order = std::mem::take(&mut ws.order_u32);
+    order.clear();
+    order.extend(0..n as u32);
     order.shuffle(rng);
 
     let stable = &mut ws.stable[..n];
@@ -105,13 +118,15 @@ pub fn improve_clustering(
                 }
             }
             i += 1;
-            if i >= n { i = 0; }
+            if i >= n {
+                i = 0;
+            }
             continue;
         }
         consecutive_skips = 0;
 
-        let cur_cl = unsafe { *clusters.add(j) };
-        let node_w = unsafe { *nw_arr.get_unchecked(j) };
+        let cur_cl = unsafe { *clusters.add(j) as usize };
+        let node_w = nw_arr.map_or(1.0, |nw| unsafe { *nw.get_unchecked(j) });
 
         unsafe {
             *cw_ptr.add(cur_cl) -= node_w;
@@ -133,32 +148,35 @@ pub fn improve_clustering(
         unsafe {
             for k in nbr_start..nbr_end {
                 let nbr_node = *nbr_arr.add(k) as usize;
-                let nbr_cl = *clusters.add(nbr_node);
+                let nbr_cl = *clusters.add(nbr_node) as usize;
                 if *ewpc_ptr.add(nbr_cl) == 0.0 {
                     nc_buf.push(nbr_cl as u32);
                 }
                 *ewpc_ptr.add(nbr_cl) += *ew_arr.add(k);
             }
-            *ewpc_ptr.add(cur_cl) += *slw_arr.get_unchecked(j);
+            if let Some(slw_arr) = slw_arr {
+                *ewpc_ptr.add(cur_cl) += *slw_arr.get_unchecked(j);
+            }
         }
 
         let mut best_cl = cur_cl;
-        let mut max_inc = unsafe {
-            *ewpc_ptr.add(cur_cl) - node_w * *cw_ptr.add(cur_cl) * resolution
-        };
+        let mut max_inc =
+            unsafe { *ewpc_ptr.add(cur_cl) - node_w * *cw_ptr.add(cur_cl) * resolution };
 
         for idx in 0..nc_buf.len() {
             let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
-            let inc = unsafe {
-                *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution
-            };
+            let inc = unsafe { *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution };
             if inc > max_inc {
                 best_cl = nc;
                 max_inc = inc;
             }
-            unsafe { *ewpc_ptr.add(nc) = 0.0; }
+            unsafe {
+                *ewpc_ptr.add(nc) = 0.0;
+            }
         }
-        unsafe { *ewpc_ptr.add(cur_cl) = 0.0; }
+        unsafe {
+            *ewpc_ptr.add(cur_cl) = 0.0;
+        }
 
         unsafe {
             *cw_ptr.add(best_cl) += node_w;
@@ -172,7 +190,9 @@ pub fn improve_clustering(
         n_unstable -= 1;
 
         if best_cl != cur_cl {
-            unsafe { *clusters.add(j) = best_cl; }
+            unsafe {
+                *clusters.add(j) = best_cl as u32;
+            }
             if best_cl >= clustering.n_clusters {
                 clustering.n_clusters = best_cl + 1;
             }
@@ -180,7 +200,7 @@ pub fn improve_clustering(
             unsafe {
                 for k in nbr_start..nbr_end {
                     let nbr = *nbr_arr.add(k) as usize;
-                    if *stable.get_unchecked(nbr) && *clusters.add(nbr) != best_cl {
+                    if *stable.get_unchecked(nbr) && *clusters.add(nbr) as usize != best_cl {
                         if has_fixed && *fixed_arr.get_unchecked(nbr) {
                             continue;
                         }
@@ -196,7 +216,9 @@ pub fn improve_clustering(
         }
 
         i += 1;
-        if i >= n { i = 0; }
+        if i >= n {
+            i = 0;
+        }
     }
 
     if update {
@@ -204,6 +226,8 @@ pub fn improve_clustering(
     }
 
     // Return nc_buf to workspace
+    ws.unused_u32 = unused;
+    ws.order_u32 = order;
     ws.nc_buf = nc_buf;
 
     update
@@ -212,8 +236,8 @@ pub fn improve_clustering(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     #[test]
     fn test_two_cliques() {
@@ -237,12 +261,7 @@ mod tests {
 
     #[test]
     fn test_fixed_nodes() {
-        let g = Graph::from_edge_list(
-            3,
-            &[0, 1, 2],
-            &[1, 2, 0],
-            &[1.0, 1.0, 1.0],
-        );
+        let g = Graph::from_edge_list(3, &[0, 1, 2], &[1, 2, 0], &[1.0, 1.0, 1.0]);
         let mut c = Clustering::singleton(3);
         c.set_fixed(vec![true, false, false]);
         let mut rng = StdRng::seed_from_u64(42);

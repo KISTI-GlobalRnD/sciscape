@@ -1,6 +1,6 @@
 //! Profiling binary: generates a random k-NN graph and runs Leiden.
-use sciscape_leiden::*;
 use rand::SeedableRng;
+use sciscape_leiden::*;
 use std::time::Instant;
 
 fn make_knn_graph(n: usize, k: usize) -> Graph {
@@ -25,11 +25,20 @@ fn make_knn_graph(n: usize, k: usize) -> Graph {
 }
 
 fn main() {
-    let n = std::env::args().nth(1).unwrap_or("50000".into()).parse::<usize>().unwrap();
+    let n = std::env::args()
+        .nth(1)
+        .unwrap_or("50000".into())
+        .parse::<usize>()
+        .unwrap();
     eprintln!("Building graph: {} nodes", n);
     let t0 = Instant::now();
     let graph = make_knn_graph(n, 30);
-    eprintln!("Graph: {} nodes, {} edges ({:.1}s)", graph.n_nodes, graph.n_edges, t0.elapsed().as_secs_f64());
+    eprintln!(
+        "Graph: {} nodes, {} edges ({:.1}s)",
+        graph.n_nodes,
+        graph.n_edges,
+        t0.elapsed().as_secs_f64()
+    );
 
     let config = LeidenConfig {
         resolution: 0.001,
@@ -44,5 +53,8 @@ fn main() {
     let result = leiden(&graph, &config, None, &mut rng);
     let elapsed = t1.elapsed().as_secs_f64();
 
-    eprintln!("Done: {} clusters, Q={:.2}, {:.2}s", result.clustering.n_clusters, result.quality, elapsed);
+    eprintln!(
+        "Done: {} clusters, Q={:.2}, {:.2}s",
+        result.clustering.n_clusters, result.quality, elapsed
+    );
 }

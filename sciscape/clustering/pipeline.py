@@ -19,7 +19,7 @@ from .hierarchy import build_cluster_tables
 from .hierarchy_builder import HierarchyBuilder
 from .integer_remap import integer_remap, join_back_uids
 from .leiden_java import run_leiden_java
-from .leiden_rust import RUST_AVAILABLE, run_leiden_rust, postprocess_small_clusters_rust
+from .leiden_rust import RUST_AVAILABLE
 from .postprocess import merge_small_clusters
 from .io import load_edge_table
 from .logging import (
@@ -175,11 +175,6 @@ def _run_rust_backend(
          f"({remap.n_nodes} nodes, {remap.n_edges} edges)",
          progress_log_path=progress_log_path)
 
-    # Load edges into numpy once (shared across all levels)
-    int_edges = pl.read_parquet(remap.int_edges_path)
-    edges_src = int_edges["src"].to_numpy().astype(np.uint32)
-    edges_dst = int_edges["dst"].to_numpy().astype(np.uint32)
-    edges_weight = int_edges["weight"].to_numpy().astype(np.float64)
     n_nodes = remap.n_nodes
 
     memberships_by_level = OrderedDict()
@@ -187,23 +182,26 @@ def _run_rust_backend(
     qualities_map = OrderedDict()
 
     # State for hierarchical contraction
-    cur_src, cur_dst, cur_weight = edges_src, edges_dst, edges_weight
-    cur_n_nodes = n_nodes
     prev_membership_original: np.ndarray | None = None  # map back to original nodes
     prev_membership_graph: np.ndarray | None = None  # for warm-start on contracted graph
     node_sizes: np.ndarray | None = None  # per-supernode original counts
 
     seed = config.seed or 0
     n_iter = config.leiden_iterations or 10
+    from .runner import RustLeidenRunner
+    rust_runner = RustLeidenRunner.from_edge_path(
+        str(remap.int_edges_path), n_nodes,
+        default_iterations=n_iter,
+        default_seed=seed,
+    )
 
     # Resolve resolutions: explicit or via binary search
     if config.resolutions:
         resolved_resolutions = OrderedDict(config.resolutions)
     else:
         # level_constraints binary search using Rust runner
-        from .runner import RustLeidenRunner
-        rust_runner = RustLeidenRunner(
-            edges_src, edges_dst, edges_weight, n_nodes,
+        rust_runner = RustLeidenRunner.from_edge_path(
+            str(remap.int_edges_path), n_nodes,
             default_iterations=n_iter, default_seed=seed,
         )
         t_search = time.perf_counter()
@@ -227,18 +225,12 @@ def _run_rust_backend(
 
     for level_name, gamma in resolved_resolutions.items():
         t_leiden = time.perf_counter()
-        # Pass node_weights on contracted graphs so CPM uses doc_count
-        nw = node_sizes.astype(np.float64) if node_sizes is not None else None
-        result = run_leiden_rust(
-            edges_src=cur_src,
-            edges_dst=cur_dst,
-            edges_weight=cur_weight,
-            resolution=float(gamma),
-            n_nodes=cur_n_nodes,
+        result = rust_runner.run_array(
+            float(gamma),
             seed=seed,
             n_iterations=n_iter,
             initial_membership=prev_membership_graph,
-            node_weights=nw,
+            node_sizes=node_sizes,
         )
         _log(config,
              f"level {level_name}: rust leiden in {time.perf_counter() - t_leiden:.2f}s "
@@ -249,7 +241,7 @@ def _run_rust_backend(
 
         # Postprocess
         if config.postprocess is not None:
-            has_nw = nw is not None
+            has_nw = rust_runner.has_node_weights
             min_size_val, min_weight_val = config.postprocess.resolve_thresholds(
                 has_node_weights=has_nw
             )
@@ -259,16 +251,11 @@ def _run_rust_backend(
             )
             if do_post:
                 t_post = time.perf_counter()
-                post = postprocess_small_clusters_rust(
+                post = rust_runner.postprocess(
                     resolution=float(gamma),
                     min_size=int(min_size_val or 0),
                     min_weight=float(min_weight_val or 0.0),
                     membership=membership,
-                    edges_src=cur_src,
-                    edges_dst=cur_dst,
-                    edges_weight=cur_weight,
-                    node_weights=nw,
-                    n_nodes=cur_n_nodes,
                     seed=seed,
                     n_iterations=n_iter,
                 )
@@ -286,22 +273,20 @@ def _run_rust_backend(
         else:
             original_membership = membership[prev_membership_original]
 
-        memberships_by_level[level_name] = original_membership.tolist()
+        memberships_by_level[level_name] = original_membership
         resolutions_map[level_name] = float(gamma)
         qualities_map[level_name] = float(result.quality)
-        prev_membership_original = np.asarray(
-            memberships_by_level[level_name], dtype=np.uint64
-        )
+        prev_membership_original = original_membership
 
         # Contract graph for next level
         n_clusters = int(membership.max()) + 1
         if n_clusters > 1:
             t_contract = time.perf_counter()
-            cur_src, cur_dst, cur_weight, cur_n_nodes, node_sizes = \
-                _contract_edges(cur_src, cur_dst, cur_weight, membership, node_sizes)
+            rust_runner = rust_runner.contract(membership)
+            node_sizes = None
             prev_membership_graph = None  # singleton start on contracted graph
             _log(config,
-                 f"level {level_name}: contracted to {cur_n_nodes} nodes in "
+                 f"level {level_name}: contracted to {rust_runner.n_nodes} nodes in "
                  f"{time.perf_counter() - t_contract:.2f}s",
                  progress_log_path=progress_log_path)
 
@@ -331,57 +316,6 @@ def _run_rust_backend(
     _log(config, f"rust pipeline finished in {time.perf_counter() - t0:.2f}s",
          progress_log_path=progress_log_path)
     return tables
-
-
-def _contract_edges(
-    src: np.ndarray,
-    dst: np.ndarray,
-    weight: np.ndarray,
-    membership: np.ndarray,
-    prev_node_sizes: np.ndarray | None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, np.ndarray]:
-    """Contract edges via membership, aggregate weights, remove self-loops.
-
-    Returns (new_src, new_dst, new_weight, n_clusters, node_sizes).
-    """
-    mem = membership.astype(np.int64)
-    new_src = mem[src.astype(np.int64)]
-    new_dst = mem[dst.astype(np.int64)]
-
-    # Remove self-loops
-    mask = new_src != new_dst
-    new_src = new_src[mask]
-    new_dst = new_dst[mask]
-    new_weight = weight[mask]
-
-    n_clusters = int(mem.max()) + 1
-
-    # Aggregate duplicate edges using sparse matrix
-    from scipy.sparse import coo_matrix
-    mat = coo_matrix(
-        (new_weight, (new_src, new_dst)),
-        shape=(n_clusters, n_clusters),
-    )
-    # Sum duplicates and extract upper triangle (undirected)
-    mat = mat.tocsr()
-    # Symmetrize: take upper triangle of (mat + mat.T)
-    sym = mat + mat.T
-    sym = sym.tocoo()
-    # Keep only upper triangle
-    upper = sym.row < sym.col
-    out_src = sym.row[upper].astype(np.uint32)
-    out_dst = sym.col[upper].astype(np.uint32)
-    out_weight = sym.data[upper]
-
-    # Compute node_sizes for contracted graph
-    if prev_node_sizes is not None:
-        node_sizes = np.zeros(n_clusters, dtype=np.int64)
-        for v in range(len(mem)):
-            node_sizes[mem[v]] += prev_node_sizes[v]
-    else:
-        node_sizes = np.bincount(mem, minlength=n_clusters)
-
-    return out_src, out_dst, out_weight, n_clusters, node_sizes
 
 
 def _log(config: LeidenConfig, message: str, *, progress_log_path: Path) -> None:
