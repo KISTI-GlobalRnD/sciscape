@@ -1,0 +1,90 @@
+{
+  "n_cases": 108,
+  "class_balance": {
+    "consensus_wins": 83,
+    "baseline_wins": 25
+  },
+  "cross_validated_metrics": {
+    "accuracy": 0.6111,
+    "balanced_accuracy": 0.6072,
+    "roc_auc": 0.6573,
+    "brier": 0.2319
+  },
+  "top_positive_coefficients": [
+    {
+      "feature": "cat__field_prefix_field_12",
+      "coefficient": 0.272916
+    },
+    {
+      "feature": "num__shift_score",
+      "coefficient": 0.26613
+    },
+    {
+      "feature": "num__cluster_size_ratio",
+      "coefficient": 0.250344
+    },
+    {
+      "feature": "num__mean_abs_rank_shift",
+      "coefficient": 0.193373
+    },
+    {
+      "feature": "num__log_consensus_cluster_size",
+      "coefficient": 0.125112
+    },
+    {
+      "feature": "num__overlap_size",
+      "coefficient": 0.040068
+    },
+    {
+      "feature": "cat__baseline_label_sum_minus_emb",
+      "coefficient": 0.008591
+    }
+  ],
+  "top_negative_coefficients": [
+    {
+      "feature": "num__log_baseline_cluster_size",
+      "coefficient": -0.506079
+    },
+    {
+      "feature": "num__rank_jaccard",
+      "coefficient": -0.361085
+    },
+    {
+      "feature": "cat__field_prefix_field_15",
+      "coefficient": -0.273007
+    },
+    {
+      "feature": "num__cluster_overlap_coeff",
+      "coefficient": -0.169349
+    },
+    {
+      "feature": "num__max_abs_rank_shift",
+      "coefficient": -0.079631
+    },
+    {
+      "feature": "num__top_k",
+      "coefficient": -0.01782
+    },
+    {
+      "feature": "cat__baseline_label_sum_minus_cc",
+      "coefficient": -0.008683
+    }
+  ],
+  "decision_tree": {
+    "feature_importances": [
+      {
+        "feature": "num__max_abs_rank_shift",
+        "importance": 0.513033
+      },
+      {
+        "feature": "num__log_baseline_cluster_size",
+        "importance": 0.269687
+      },
+      {
+        "feature": "num__log_consensus_cluster_size",
+        "importance": 0.21728
+      }
+    ],
+    "rules": "|--- num__max_abs_rank_shift <= 5.50\n|   |--- num__log_consensus_cluster_size <= 5.44\n|   |   |--- class: 0\n|   |--- num__log_consensus_cluster_size >  5.44\n|   |   |--- class: 0\n|--- num__max_abs_rank_shift >  5.50\n|   |--- num__log_baseline_cluster_size <= 3.93\n|   |   |--- class: 1\n|   |--- num__log_baseline_cluster_size >  3.93\n|   |   |--- num__log_consensus_cluster_size <= 7.73\n|   |   |   |--- class: 1\n|   |   |--- num__log_consensus_cluster_size >  7.73\n|   |   |   |--- class: 1\n"
+  }
+}

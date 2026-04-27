@@ -1,0 +1,1204 @@
+{
+  "field": "field_15_k30_sum_minus_cc_vs_consensus_null_control_frozen",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum_minus_cc",
+  "label_b": "consensus_all",
+  "layers_a": [
+    "bc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 30,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.85,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.45,
+  "allow_cluster_change": false,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 4681364,
+    "gamma": 0.001929709892996202,
+    "n_clusters": 371,
+    "max_pct": 2.74
+  },
+  "method_b_run": {
+    "n_edges": 4984706,
+    "gamma": 0.0008088005947128995,
+    "n_clusters": 561,
+    "max_pct": 3.15
+  },
+  "n_eligible_nodes": 38145,
+  "n_candidate_cases": 3,
+  "selected_cases": [
+    {
+      "target_uid": "W3215896762",
+      "target_title": "Nonlocal effects in the shear banding of a thixotropic yield stress fluid",
+      "target_year": null,
+      "method_a_cluster_id": 363,
+      "method_b_cluster_id": 363,
+      "method_a_cluster_size": 289,
+      "method_b_cluster_size": 182,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.5,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0625,
+      "neighbors_a": [
+        {
+          "uid": "W4400132163",
+          "rank": 1,
+          "weight": 0.665315,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3203102618",
+          "rank": 2,
+          "weight": 0.577945,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047555833",
+          "rank": 3,
+          "weight": 0.566557,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1539004828",
+          "rank": 4,
+          "weight": 0.566005,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996687298",
+          "rank": 5,
+          "weight": 0.561944,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2156481196",
+          "rank": 6,
+          "weight": 0.541173,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 7,
+          "weight": 0.478686,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033678184",
+          "rank": 8,
+          "weight": 0.445564,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4400132163",
+          "rank": 1,
+          "weight": 1.433984,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1539004828",
+          "rank": 2,
+          "weight": 1.219937,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3203102618",
+          "rank": 3,
+          "weight": 0.830447,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047555833",
+          "rank": 4,
+          "weight": 0.814084,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996687298",
+          "rank": 5,
+          "weight": 0.807455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2156481196",
+          "rank": 6,
+          "weight": 0.777609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 7,
+          "weight": 0.687823,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033678184",
+          "rank": 8,
+          "weight": 0.320115,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1539004828",
+          "rank_a": 4,
+          "rank_b": 2,
+          "delta": -2,
+          "weight_a": 0.566005,
+          "weight_b": 1.219937
+        },
+        {
+          "uid": "W2047555833",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.566557,
+          "weight_b": 0.814084
+        },
+        {
+          "uid": "W2111242220",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.478686,
+          "weight_b": 0.687823
+        },
+        {
+          "uid": "W2156481196",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.541173,
+          "weight_b": 0.777609
+        },
+        {
+          "uid": "W2996687298",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.561944,
+          "weight_b": 0.807455
+        },
+        {
+          "uid": "W3033678184",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.445564,
+          "weight_b": 0.320115
+        },
+        {
+          "uid": "W3203102618",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.577945,
+          "weight_b": 0.830447
+        },
+        {
+          "uid": "W4400132163",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.665315,
+          "weight_b": 1.433984
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W4324018350",
+      "target_title": "Arrow-shaped elasto-inertial rotating waves",
+      "target_year": null,
+      "method_a_cluster_id": 207,
+      "method_b_cluster_id": 207,
+      "method_a_cluster_size": 134,
+      "method_b_cluster_size": 95,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.5,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.1875,
+      "neighbors_a": [
+        {
+          "uid": "W4284895310",
+          "rank": 1,
+          "weight": 1.033606,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3204357227",
+          "rank": 2,
+          "weight": 0.816232,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4396698712",
+          "rank": 3,
+          "weight": 0.743084,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4302303658",
+          "rank": 4,
+          "weight": 0.729792,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125595502",
+          "rank": 5,
+          "weight": 0.725729,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2163878164",
+          "rank": 6,
+          "weight": 0.702358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066100728",
+          "rank": 7,
+          "weight": 0.666814,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4391782465",
+          "rank": 8,
+          "weight": 0.644033,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4284895310",
+          "rank": 1,
+          "weight": 2.227779,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3204357227",
+          "rank": 2,
+          "weight": 1.759261,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125595502",
+          "rank": 3,
+          "weight": 1.564196,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2163878164",
+          "rank": 4,
+          "weight": 1.513824,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066100728",
+          "rank": 5,
+          "weight": 1.437214,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4396698712",
+          "rank": 6,
+          "weight": 1.067735,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4302303658",
+          "rank": 7,
+          "weight": 1.048636,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4391782465",
+          "rank": 8,
+          "weight": 0.92541,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2066100728",
+          "rank_a": 7,
+          "rank_b": 5,
+          "delta": -2,
+          "weight_a": 0.666814,
+          "weight_b": 1.437214
+        },
+        {
+          "uid": "W2125595502",
+          "rank_a": 5,
+          "rank_b": 3,
+          "delta": -2,
+          "weight_a": 0.725729,
+          "weight_b": 1.564196
+        },
+        {
+          "uid": "W2163878164",
+          "rank_a": 6,
+          "rank_b": 4,
+          "delta": -2,
+          "weight_a": 0.702358,
+          "weight_b": 1.513824
+        },
+        {
+          "uid": "W3204357227",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.816232,
+          "weight_b": 1.759261
+        },
+        {
+          "uid": "W4284895310",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.033606,
+          "weight_b": 2.227779
+        },
+        {
+          "uid": "W4302303658",
+          "rank_a": 4,
+          "rank_b": 7,
+          "delta": 3,
+          "weight_a": 0.729792,
+          "weight_b": 1.048636
+        },
+        {
+          "uid": "W4391782465",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.644033,
+          "weight_b": 0.92541
+        },
+        {
+          "uid": "W4396698712",
+          "rank_a": 3,
+          "rank_b": 6,
+          "delta": 3,
+          "weight_a": 0.743084,
+          "weight_b": 1.067735
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W3201905678",
+      "target_title": "High-Pressure-Limit and Pressure-Dependent Rate Rules for Unimolecular Reactions Related to Hydroperoxy Alkyl Radicals in Normal Alkyl Cyclohexane Combustion. 1. Concerted HO<sub>2</sub> Elimination Reaction Class and β<i>-</i>Scission Reaction Class",
+      "target_year": null,
+      "method_a_cluster_id": 60,
+      "method_b_cluster_id": 60,
+      "method_a_cluster_size": 3160,
+      "method_b_cluster_size": 1267,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 3.0,
+      "max_abs_rank_shift": 5,
+      "cluster_changed": false,
+      "shift_score": 0.375,
+      "neighbors_a": [
+        {
+          "uid": "W3204347586",
+          "rank": 1,
+          "weight": 0.989358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4281612996",
+          "rank": 2,
+          "weight": 0.697624,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2604334111",
+          "rank": 3,
+          "weight": 0.664954,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2319255989",
+          "rank": 4,
+          "weight": 0.63005,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4380152210",
+          "rank": 5,
+          "weight": 0.623317,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2048207947",
+          "rank": 6,
+          "weight": 0.614408,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2945602465",
+          "rank": 7,
+          "weight": 0.601031,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2329134900",
+          "rank": 8,
+          "weight": 0.588383,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2319255989",
+          "rank": 1,
+          "weight": 3.192774,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2048207947",
+          "rank": 2,
+          "weight": 3.008466,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2329134900",
+          "rank": 3,
+          "weight": 2.895814,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3204347586",
+          "rank": 4,
+          "weight": 1.421605,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4281612996",
+          "rank": 5,
+          "weight": 1.002414,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2604334111",
+          "rank": 6,
+          "weight": 0.95547,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4380152210",
+          "rank": 7,
+          "weight": 0.895643,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2945602465",
+          "rank": 8,
+          "weight": 0.863619,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2048207947",
+          "rank_a": 6,
+          "rank_b": 2,
+          "delta": -4,
+          "weight_a": 0.614408,
+          "weight_b": 3.008466
+        },
+        {
+          "uid": "W2319255989",
+          "rank_a": 4,
+          "rank_b": 1,
+          "delta": -3,
+          "weight_a": 0.63005,
+          "weight_b": 3.192774
+        },
+        {
+          "uid": "W2329134900",
+          "rank_a": 8,
+          "rank_b": 3,
+          "delta": -5,
+          "weight_a": 0.588383,
+          "weight_b": 2.895814
+        },
+        {
+          "uid": "W2604334111",
+          "rank_a": 3,
+          "rank_b": 6,
+          "delta": 3,
+          "weight_a": 0.664954,
+          "weight_b": 0.95547
+        },
+        {
+          "uid": "W2945602465",
+          "rank_a": 7,
+          "rank_b": 8,
+          "delta": 1,
+          "weight_a": 0.601031,
+          "weight_b": 0.863619
+        },
+        {
+          "uid": "W3204347586",
+          "rank_a": 1,
+          "rank_b": 4,
+          "delta": 3,
+          "weight_a": 0.989358,
+          "weight_b": 1.421605
+        },
+        {
+          "uid": "W4281612996",
+          "rank_a": 2,
+          "rank_b": 5,
+          "delta": 3,
+          "weight_a": 0.697624,
+          "weight_b": 1.002414
+        },
+        {
+          "uid": "W4380152210",
+          "rank_a": 5,
+          "rank_b": 7,
+          "delta": 2,
+          "weight_a": 0.623317,
+          "weight_b": 0.895643
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W3215896762",
+      "target_title": "Nonlocal effects in the shear banding of a thixotropic yield stress fluid",
+      "target_year": null,
+      "method_a_cluster_id": 363,
+      "method_b_cluster_id": 363,
+      "method_a_cluster_size": 289,
+      "method_b_cluster_size": 182,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.5,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0625,
+      "neighbors_a": [
+        {
+          "uid": "W4400132163",
+          "rank": 1,
+          "weight": 0.665315,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3203102618",
+          "rank": 2,
+          "weight": 0.577945,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047555833",
+          "rank": 3,
+          "weight": 0.566557,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1539004828",
+          "rank": 4,
+          "weight": 0.566005,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996687298",
+          "rank": 5,
+          "weight": 0.561944,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2156481196",
+          "rank": 6,
+          "weight": 0.541173,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 7,
+          "weight": 0.478686,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033678184",
+          "rank": 8,
+          "weight": 0.445564,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4400132163",
+          "rank": 1,
+          "weight": 1.433984,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1539004828",
+          "rank": 2,
+          "weight": 1.219937,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3203102618",
+          "rank": 3,
+          "weight": 0.830447,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047555833",
+          "rank": 4,
+          "weight": 0.814084,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996687298",
+          "rank": 5,
+          "weight": 0.807455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2156481196",
+          "rank": 6,
+          "weight": 0.777609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 7,
+          "weight": 0.687823,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033678184",
+          "rank": 8,
+          "weight": 0.320115,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1539004828",
+          "rank_a": 4,
+          "rank_b": 2,
+          "delta": -2,
+          "weight_a": 0.566005,
+          "weight_b": 1.219937
+        },
+        {
+          "uid": "W2047555833",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.566557,
+          "weight_b": 0.814084
+        },
+        {
+          "uid": "W2111242220",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.478686,
+          "weight_b": 0.687823
+        },
+        {
+          "uid": "W2156481196",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.541173,
+          "weight_b": 0.777609
+        },
+        {
+          "uid": "W2996687298",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.561944,
+          "weight_b": 0.807455
+        },
+        {
+          "uid": "W3033678184",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.445564,
+          "weight_b": 0.320115
+        },
+        {
+          "uid": "W3203102618",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.577945,
+          "weight_b": 0.830447
+        },
+        {
+          "uid": "W4400132163",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.665315,
+          "weight_b": 1.433984
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 3,
+        "reasoning": "Both groups identify the same relevant papers, but Group A's ranking is superior. Group A correctly places the paper on \"Nonlocal Rheology\" at rank 3, which is a central and specific concept in the target paper. Group B, in contrast, demotes this crucial paper to rank 4 and elevates a broad review paper to rank 2, which dilutes the target's immediate research focus on the specific interplay of nonlocality and thixotropy.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 3,
+        "presented_method_a": "sum_minus_cc",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W4324018350",
+      "target_title": "Arrow-shaped elasto-inertial rotating waves",
+      "target_year": null,
+      "method_a_cluster_id": 207,
+      "method_b_cluster_id": 207,
+      "method_a_cluster_size": 134,
+      "method_b_cluster_size": 95,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.5,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.1875,
+      "neighbors_a": [
+        {
+          "uid": "W4284895310",
+          "rank": 1,
+          "weight": 1.033606,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3204357227",
+          "rank": 2,
+          "weight": 0.816232,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4396698712",
+          "rank": 3,
+          "weight": 0.743084,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4302303658",
+          "rank": 4,
+          "weight": 0.729792,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125595502",
+          "rank": 5,
+          "weight": 0.725729,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2163878164",
+          "rank": 6,
+          "weight": 0.702358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066100728",
+          "rank": 7,
+          "weight": 0.666814,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4391782465",
+          "rank": 8,
+          "weight": 0.644033,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4284895310",
+          "rank": 1,
+          "weight": 2.227779,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3204357227",
+          "rank": 2,
+          "weight": 1.759261,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125595502",
+          "rank": 3,
+          "weight": 1.564196,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2163878164",
+          "rank": 4,
+          "weight": 1.513824,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066100728",
+          "rank": 5,
+          "weight": 1.437214,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4396698712",
+          "rank": 6,
+          "weight": 1.067735,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4302303658",
+          "rank": 7,
+          "weight": 1.048636,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4391782465",
+          "rank": 8,
+          "weight": 0.92541,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2066100728",
+          "rank_a": 7,
+          "rank_b": 5,
+          "delta": -2,
+          "weight_a": 0.666814,
+          "weight_b": 1.437214
+        },
+        {
+          "uid": "W2125595502",
+          "rank_a": 5,
+          "rank_b": 3,
+          "delta": -2,
+          "weight_a": 0.725729,
+          "weight_b": 1.564196
+        },
+        {
+          "uid": "W2163878164",
+          "rank_a": 6,
+          "rank_b": 4,
+          "delta": -2,
+          "weight_a": 0.702358,
+          "weight_b": 1.513824
+        },
+        {
+          "uid": "W3204357227",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.816232,
+          "weight_b": 1.759261
+        },
+        {
+          "uid": "W4284895310",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.033606,
+          "weight_b": 2.227779
+        },
+        {
+          "uid": "W4302303658",
+          "rank_a": 4,
+          "rank_b": 7,
+          "delta": 3,
+          "weight_a": 0.729792,
+          "weight_b": 1.048636
+        },
+        {
+          "uid": "W4391782465",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.644033,
+          "weight_b": 0.92541
+        },
+        {
+          "uid": "W4396698712",
+          "rank_a": 3,
+          "rank_b": 6,
+          "delta": 3,
+          "weight_a": 0.743084,
+          "weight_b": 1.067735
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "B",
+        "score_a": 4,
+        "score_b": 5,
+        "reasoning": "Both groups identify the same excellent set of papers on elasto-inertial turbulence in Taylor-Couette flow. However, Group B's ranking is slightly better because its third-ranked paper focuses on \"pattern selection\" and explicitly mentions \"rotating standing waves (RSWs)\". This provides a more direct and immediate context for the target paper's specific topic of \"arrow-shaped elasto-inertial rotating waves\" compared to Group A's third-ranked paper on more general \"coherent structures\".",
+        "presented_winner": "B",
+        "presented_score_a": 4,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_cc",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W3201905678",
+      "target_title": "High-Pressure-Limit and Pressure-Dependent Rate Rules for Unimolecular Reactions Related to Hydroperoxy Alkyl Radicals in Normal Alkyl Cyclohexane Combustion. 1. Concerted HO<sub>2</sub> Elimination Reaction Class and β<i>-</i>Scission Reaction Class",
+      "target_year": null,
+      "method_a_cluster_id": 60,
+      "method_b_cluster_id": 60,
+      "method_a_cluster_size": 3160,
+      "method_b_cluster_size": 1267,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 3.0,
+      "max_abs_rank_shift": 5,
+      "cluster_changed": false,
+      "shift_score": 0.375,
+      "neighbors_a": [
+        {
+          "uid": "W3204347586",
+          "rank": 1,
+          "weight": 0.989358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4281612996",
+          "rank": 2,
+          "weight": 0.697624,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2604334111",
+          "rank": 3,
+          "weight": 0.664954,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2319255989",
+          "rank": 4,
+          "weight": 0.63005,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4380152210",
+          "rank": 5,
+          "weight": 0.623317,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2048207947",
+          "rank": 6,
+          "weight": 0.614408,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2945602465",
+          "rank": 7,
+          "weight": 0.601031,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2329134900",
+          "rank": 8,
+          "weight": 0.588383,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2319255989",
+          "rank": 1,
+          "weight": 3.192774,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2048207947",
+          "rank": 2,
+          "weight": 3.008466,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2329134900",
+          "rank": 3,
+          "weight": 2.895814,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3204347586",
+          "rank": 4,
+          "weight": 1.421605,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4281612996",
+          "rank": 5,
+          "weight": 1.002414,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2604334111",
+          "rank": 6,
+          "weight": 0.95547,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4380152210",
+          "rank": 7,
+          "weight": 0.895643,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2945602465",
+          "rank": 8,
+          "weight": 0.863619,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2048207947",
+          "rank_a": 6,
+          "rank_b": 2,
+          "delta": -4,
+          "weight_a": 0.614408,
+          "weight_b": 3.008466
+        },
+        {
+          "uid": "W2319255989",
+          "rank_a": 4,
+          "rank_b": 1,
+          "delta": -3,
+          "weight_a": 0.63005,
+          "weight_b": 3.192774
+        },
+        {
+          "uid": "W2329134900",
+          "rank_a": 8,
+          "rank_b": 3,
+          "delta": -5,
+          "weight_a": 0.588383,
+          "weight_b": 2.895814
+        },
+        {
+          "uid": "W2604334111",
+          "rank_a": 3,
+          "rank_b": 6,
+          "delta": 3,
+          "weight_a": 0.664954,
+          "weight_b": 0.95547
+        },
+        {
+          "uid": "W2945602465",
+          "rank_a": 7,
+          "rank_b": 8,
+          "delta": 1,
+          "weight_a": 0.601031,
+          "weight_b": 0.863619
+        },
+        {
+          "uid": "W3204347586",
+          "rank_a": 1,
+          "rank_b": 4,
+          "delta": 3,
+          "weight_a": 0.989358,
+          "weight_b": 1.421605
+        },
+        {
+          "uid": "W4281612996",
+          "rank_a": 2,
+          "rank_b": 5,
+          "delta": 3,
+          "weight_a": 0.697624,
+          "weight_b": 1.002414
+        },
+        {
+          "uid": "W4380152210",
+          "rank_a": 5,
+          "rank_b": 7,
+          "delta": 2,
+          "weight_a": 0.623317,
+          "weight_b": 0.895643
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups identify the same, excellent set of neighboring papers. Group B is marginally superior because its ranking is more logical; it correctly places the sequel to the target paper (Part 2, focusing on the same fuel system) at rank 1. Group A also presents a superb neighborhood but places this most-direct neighbor at rank 4, which is a slightly less accurate representation of the target's most immediate context.",
+        "presented_winner": "B",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_cc",
+        "swapped": true
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 3,
+    "comparison": {
+      "method_a": "sum_minus_cc",
+      "method_b": "consensus_all",
+      "method_a_wins": 2,
+      "method_b_wins": 1,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.6667,
+      "method_b_win_rate": 0.3333,
+      "score_a_mean": 4.6667,
+      "score_b_mean": 4.3333,
+      "score_gap_mean": 0.3333
+    },
+    "sample_stats": {
+      "shift_score_mean": 0.2083,
+      "rank_jaccard_mean": 1.0,
+      "mean_abs_rank_shift_mean": 1.6667,
+      "cluster_changed_rate": 0.0
+    }
+  }
+}

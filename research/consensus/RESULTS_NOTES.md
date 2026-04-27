@@ -1,0 +1,131 @@
+# Results Notes
+
+## Headline Numbers
+
+- Canonical review slices use only corrected order-balanced `gemini_v3` files.
+- Slice outcomes are reported as `baseline / consensus / tie`.
+- `field_15 k=6`: `12 / 19 / 17`
+- `field_15 k=30`: `10 / 31 / 7`
+- `field_12 k=6`: `3 / 33 / 12`
+- Overall non-tie pool: `108`
+- Overall `consensus_all` wins: `83`
+- Overall baseline wins: `25`
+- Overall non-tie consensus win rate: `0.7685`
+- Wilson 95% interval: `[0.6806, 0.8380]`
+
+## Figure Notes
+
+### Figure 1: Protocol Overview
+
+- Use this figure to introduce the evaluation logic before showing any result.
+- The claim is procedural:
+  the paper evaluates local neighborhood correctness rather than full-partition
+  agreement.
+- Caption should mention four inputs:
+  graph layers, combination rules, rank-shift case bank, and order-balanced
+  dual-pass review.
+
+### Figure 2: Local Review Outcomes By Slice
+
+- Main sentence:
+  consensus is not universally dominant, but it is favored in every slice once
+  the comparison is restricted to stable non-tie cases.
+- Sub-points:
+  - `field_15 k=6` is the ambiguity-heavy regime
+  - `field_15 k=30` shows a clear consensus advantage
+  - `field_12 k=6` shows a very strong consensus advantage
+- Report no-tie rates in the text:
+  - `19 / 31 = 0.6129`
+  - `31 / 41 = 0.7561`
+  - `33 / 36 = 0.9167`
+
+### Figure 3: Uncertainty
+
+- Use this as the main robustness figure.
+- The claim is not that every slice is equally stable.
+- The claim is that the corrected aggregate remains clearly consensus-leaning:
+  `83 / 108` with Wilson 95% interval `[0.6806, 0.8380]`.
+- Field-level note:
+  - `field_12`: `33 / 36 = 0.9167`
+  - `field_15`: `50 / 72 = 0.6944`
+
+### Figure 4: Taxonomy Summary
+
+- The mechanism claim should be framed positively:
+  consensus tends to remove broad context noise and recover coherent local
+  material or method families.
+- Key counts:
+  - `broad_context_noise`: `35`
+  - `material_family_coherence`: `29`
+  - `method_family_coherence`: `19`
+- Baseline-win interpretation:
+  baseline wins mostly cluster into `over_regularized_consensus` and
+  `single_cue_specificity`, so they should be described as legitimate failure
+  modes rather than exceptions to ignore.
+
+### Figure 5: Regime Support
+
+- Present this as descriptive support, not a predictive model contribution.
+- Main interpretation:
+  consensus advantage becomes more likely when local neighborhoods diverge more
+  strongly and overlap less.
+- Positive direction:
+  `shift_score`, `mean_abs_rank_shift`, `cluster_size_ratio`
+- Negative direction:
+  `rank_jaccard`, `cluster_overlap_coeff`, `log_baseline_cluster_size`
+
+## Table Notes
+
+### Table 1: Reviewed Slices
+
+- Include:
+  - `field_15`, `k=6`, baseline `sum_minus_emb`, reviewed `48`, non-tie `31`
+  - `field_15`, `k=30`, baseline `sum_minus_cc`, reviewed `48`, non-tie `41`
+  - `field_12`, `k=6`, baseline `sum_minus_emb`, reviewed `48`, non-tie `36`
+- Add one explanatory sentence in the table note or nearby text:
+  the baseline label is slice-specific because each slice compares
+  `consensus_all` against the strongest leave-one-out sum comparator used for
+  that field and rank-budget setting, rather than forcing one fixed baseline
+  across all regimes.
+- Keep this table factual and compact.
+
+### Table 2: Main Outcomes
+
+- Include full counts and no-tie win rates for all three slices.
+- Use the sentence:
+  ties are treated as conservative ambiguity rather than as implicit wins for
+  either method.
+
+### Table 3: Taxonomy Summary
+
+- Use the top eight labels already present in
+  `results/taxonomy_corrected/taxonomy_combined.json`.
+- Highlight that `34` of the `35` `broad_context_noise` cases favor
+  `consensus_all`.
+
+### Table 4: Representative Cases
+
+- Recommended consensus-win cases:
+  - `W2067783257`: carbon catalysts for oxidative dehydrogenation
+  - `W2021514999`: ionic-liquid thermomorphism and extraction
+  - `W3016217815`: corrective feedback preferences in L2 learning
+- Recommended baseline-win cases:
+  - `W2112002317`: zinc catalyst specificity for CO2 plus epoxide coupling
+  - `W3088126537`: diboride-specific nitrogen reduction context
+- Recommended ambiguity case:
+  - `W2064036092`: dual-pass order-sensitive tie in `field_15 k=6`
+
+## Discussion Notes
+
+- Strongest safe sentence:
+  consensus is a boundary-sensitive reranking rule for scientific paper graphs.
+- Sentence to avoid:
+  consensus is always the best clustering method.
+- Limitation sentence:
+  the current validation is based on order-balanced LLM review rather than
+  human annotation, so the paper should claim conservative support for local
+  neighborhood quality rather than absolute semantic ground truth.
+- Scope sentence:
+  the corrected evidence is concentrated in two fields and three canonical
+  reviewed slices, so cross-field generalization should be framed as promising
+  rather than exhaustive.

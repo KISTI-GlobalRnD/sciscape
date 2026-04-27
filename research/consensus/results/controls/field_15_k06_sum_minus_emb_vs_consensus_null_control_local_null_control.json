@@ -1,0 +1,4632 @@
+{
+  "field": "field_15_k06_sum_minus_emb_vs_consensus_null_control_local",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum_minus_emb",
+  "label_b": "consensus_all",
+  "layers_a": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.85,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.45,
+  "min_cluster_overlap": 0.5,
+  "allow_cluster_change": true,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 866866,
+    "gamma": 8.441308158271217e-07,
+    "n_clusters": 2978,
+    "max_pct": 1.34
+  },
+  "method_b_run": {
+    "n_edges": 1344540,
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 2531,
+    "max_pct": 2.85
+  },
+  "n_eligible_nodes": 38145,
+  "n_candidate_cases": 1020,
+  "selected_cases": [
+    {
+      "target_uid": "W1274861542",
+      "target_title": "Improvement to Air Management Practices Assessment Tool (AMPAT): Scientific Literature Database",
+      "target_year": null,
+      "method_a_cluster_id": 2334,
+      "method_b_cluster_id": 1060,
+      "method_a_cluster_size": 53,
+      "method_b_cluster_size": 124,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0189,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2341099206",
+          "rank": 1,
+          "weight": 0.642996,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061559342",
+          "rank": 2,
+          "weight": 0.067023,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116209722",
+          "rank": 3,
+          "weight": 0.041188,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1415468597",
+          "rank": 4,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1607167134",
+          "rank": 5,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993292029",
+          "rank": 6,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032906270",
+          "rank": 7,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 8,
+          "weight": 0.003455,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2341099206",
+          "rank": 1,
+          "weight": 0.736691,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061559342",
+          "rank": 2,
+          "weight": 0.153578,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116209722",
+          "rank": 3,
+          "weight": 0.04719,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1415468597",
+          "rank": 4,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1607167134",
+          "rank": 5,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993292029",
+          "rank": 6,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032906270",
+          "rank": 7,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 8,
+          "weight": 0.003958,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1415468597",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W1607167134",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W1993292029",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W2032906270",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W2034343094",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W2061559342",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.067023,
+          "weight_b": 0.153578
+        },
+        {
+          "uid": "W2116209722",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.041188,
+          "weight_b": 0.04719
+        },
+        {
+          "uid": "W2341099206",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.642996,
+          "weight_b": 0.736691
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1415468597",
+      "target_title": "Effects of anaerobic digestion and aerobic treatment on the reduction of gaseous emissions from dairy manure storages.",
+      "target_year": null,
+      "method_a_cluster_id": 1364,
+      "method_b_cluster_id": 2273,
+      "method_a_cluster_size": 47,
+      "method_b_cluster_size": 19,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0526,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1993292029",
+          "rank": 1,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 2,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2064512227",
+          "rank": 3,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2260260747",
+          "rank": 4,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275509518",
+          "rank": 5,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W639683125",
+          "rank": 6,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2581974331",
+          "rank": 7,
+          "weight": 0.097564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1968187140",
+          "rank": 8,
+          "weight": 0.065638,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1993292029",
+          "rank": 1,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 2,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2064512227",
+          "rank": 3,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2260260747",
+          "rank": 4,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275509518",
+          "rank": 5,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W639683125",
+          "rank": 6,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2581974331",
+          "rank": 7,
+          "weight": 0.111781,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1968187140",
+          "rank": 8,
+          "weight": 0.075203,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1968187140",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.065638,
+          "weight_b": 0.075203
+        },
+        {
+          "uid": "W1993292029",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2034343094",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2064512227",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2260260747",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2275509518",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2581974331",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.097564,
+          "weight_b": 0.111781
+        },
+        {
+          "uid": "W639683125",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1502158038",
+      "target_title": "Primitive chain network simulations for elongational viscosity of bidisperse polystyrene melts",
+      "target_year": null,
+      "method_a_cluster_id": 1621,
+      "method_b_cluster_id": 1803,
+      "method_a_cluster_size": 54,
+      "method_b_cluster_size": 57,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0185,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W3182301689",
+          "rank": 1,
+          "weight": 1.091911,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1634390943",
+          "rank": 2,
+          "weight": 1.046564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213354977",
+          "rank": 3,
+          "weight": 0.940243,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2888848357",
+          "rank": 4,
+          "weight": 0.790458,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3012354294",
+          "rank": 5,
+          "weight": 0.783645,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2319115444",
+          "rank": 6,
+          "weight": 0.756317,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3109820107",
+          "rank": 7,
+          "weight": 0.615596,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996604939",
+          "rank": 8,
+          "weight": 0.603158,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3182301689",
+          "rank": 1,
+          "weight": 2.502041,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1634390943",
+          "rank": 2,
+          "weight": 2.39813,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213354977",
+          "rank": 3,
+          "weight": 2.154504,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2888848357",
+          "rank": 4,
+          "weight": 1.811282,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3012354294",
+          "rank": 5,
+          "weight": 1.79567,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2319115444",
+          "rank": 6,
+          "weight": 1.73305,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3109820107",
+          "rank": 7,
+          "weight": 0.705298,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996604939",
+          "rank": 8,
+          "weight": 0.691049,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1634390943",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.046564,
+          "weight_b": 2.39813
+        },
+        {
+          "uid": "W2319115444",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.756317,
+          "weight_b": 1.73305
+        },
+        {
+          "uid": "W2888848357",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.790458,
+          "weight_b": 1.811282
+        },
+        {
+          "uid": "W2996604939",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.603158,
+          "weight_b": 0.691049
+        },
+        {
+          "uid": "W3012354294",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.783645,
+          "weight_b": 1.79567
+        },
+        {
+          "uid": "W3109820107",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.615596,
+          "weight_b": 0.705298
+        },
+        {
+          "uid": "W3182301689",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.091911,
+          "weight_b": 2.502041
+        },
+        {
+          "uid": "W4213354977",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.940243,
+          "weight_b": 2.154504
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1516725795",
+      "target_title": "HCCI in a CFR Engine: Experiments and Detailed Kinetic Modeling",
+      "target_year": null,
+      "method_a_cluster_id": 1068,
+      "method_b_cluster_id": 184,
+      "method_a_cluster_size": 28,
+      "method_b_cluster_size": 39,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0357,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1606690678",
+          "rank": 1,
+          "weight": 0.495105,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1524483975",
+          "rank": 2,
+          "weight": 0.492318,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1554640738",
+          "rank": 3,
+          "weight": 0.377086,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2138336176",
+          "rank": 4,
+          "weight": 0.309027,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032862542",
+          "rank": 5,
+          "weight": 0.260594,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1563263897",
+          "rank": 6,
+          "weight": 0.249261,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2106825895",
+          "rank": 7,
+          "weight": 0.231544,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2248661939",
+          "rank": 8,
+          "weight": 0.205684,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1606690678",
+          "rank": 1,
+          "weight": 0.567251,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1524483975",
+          "rank": 2,
+          "weight": 0.564056,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1554640738",
+          "rank": 3,
+          "weight": 0.432034,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2138336176",
+          "rank": 4,
+          "weight": 0.354057,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032862542",
+          "rank": 5,
+          "weight": 0.298567,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1563263897",
+          "rank": 6,
+          "weight": 0.285582,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2106825895",
+          "rank": 7,
+          "weight": 0.265284,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2248661939",
+          "rank": 8,
+          "weight": 0.235655,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1524483975",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.492318,
+          "weight_b": 0.564056
+        },
+        {
+          "uid": "W1554640738",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.377086,
+          "weight_b": 0.432034
+        },
+        {
+          "uid": "W1563263897",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.249261,
+          "weight_b": 0.285582
+        },
+        {
+          "uid": "W1606690678",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.495105,
+          "weight_b": 0.567251
+        },
+        {
+          "uid": "W2032862542",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.260594,
+          "weight_b": 0.298567
+        },
+        {
+          "uid": "W2106825895",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.231544,
+          "weight_b": 0.265284
+        },
+        {
+          "uid": "W2138336176",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.309027,
+          "weight_b": 0.354057
+        },
+        {
+          "uid": "W2248661939",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.205684,
+          "weight_b": 0.235655
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1517816418",
+      "target_title": "The Aggregation Behavior of Short Chain Hydrophilic Ionic Liquids in Aqueous Solutions",
+      "target_year": null,
+      "method_a_cluster_id": 828,
+      "method_b_cluster_id": 280,
+      "method_a_cluster_size": 35,
+      "method_b_cluster_size": 1653,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0286,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1992222850",
+          "rank": 1,
+          "weight": 0.200251,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2006012679",
+          "rank": 2,
+          "weight": 0.174974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1980674632",
+          "rank": 3,
+          "weight": 0.160973,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2556101443",
+          "rank": 4,
+          "weight": 0.088068,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1496986650",
+          "rank": 5,
+          "weight": 0.056329,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1977854765",
+          "rank": 6,
+          "weight": 0.036101,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032776480",
+          "rank": 7,
+          "weight": 0.036101,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2043592906",
+          "rank": 8,
+          "weight": 0.036101,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1992222850",
+          "rank": 1,
+          "weight": 0.229431,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2006012679",
+          "rank": 2,
+          "weight": 0.200471,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1980674632",
+          "rank": 3,
+          "weight": 0.184429,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2556101443",
+          "rank": 4,
+          "weight": 0.100901,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1496986650",
+          "rank": 5,
+          "weight": 0.064537,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1977854765",
+          "rank": 6,
+          "weight": 0.041361,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032776480",
+          "rank": 7,
+          "weight": 0.041361,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2043592906",
+          "rank": 8,
+          "weight": 0.041361,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1496986650",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.056329,
+          "weight_b": 0.064537
+        },
+        {
+          "uid": "W1977854765",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.036101,
+          "weight_b": 0.041361
+        },
+        {
+          "uid": "W1980674632",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.160973,
+          "weight_b": 0.184429
+        },
+        {
+          "uid": "W1992222850",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.200251,
+          "weight_b": 0.229431
+        },
+        {
+          "uid": "W2006012679",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.174974,
+          "weight_b": 0.200471
+        },
+        {
+          "uid": "W2032776480",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.036101,
+          "weight_b": 0.041361
+        },
+        {
+          "uid": "W2043592906",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.036101,
+          "weight_b": 0.041361
+        },
+        {
+          "uid": "W2556101443",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.088068,
+          "weight_b": 0.100901
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1578052198",
+      "target_title": "Fuel Anti-Knock Quality - Part I. Engine Studies",
+      "target_year": null,
+      "method_a_cluster_id": 2185,
+      "method_b_cluster_id": 1724,
+      "method_a_cluster_size": 26,
+      "method_b_cluster_size": 131,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0385,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1536313784",
+          "rank": 1,
+          "weight": 0.674816,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1545505633",
+          "rank": 2,
+          "weight": 0.610383,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2567994243",
+          "rank": 3,
+          "weight": 0.553858,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2781565181",
+          "rank": 4,
+          "weight": 0.538073,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1999651503",
+          "rank": 5,
+          "weight": 0.474771,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2257747056",
+          "rank": 6,
+          "weight": 0.293712,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2561350761",
+          "rank": 7,
+          "weight": 0.282759,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134318784",
+          "rank": 8,
+          "weight": 0.236826,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1536313784",
+          "rank": 1,
+          "weight": 2.319443,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1545505633",
+          "rank": 2,
+          "weight": 1.398651,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2567994243",
+          "rank": 3,
+          "weight": 0.634564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2781565181",
+          "rank": 4,
+          "weight": 0.61648,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1999651503",
+          "rank": 5,
+          "weight": 0.543953,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2257747056",
+          "rank": 6,
+          "weight": 0.336511,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2561350761",
+          "rank": 7,
+          "weight": 0.323962,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134318784",
+          "rank": 8,
+          "weight": 0.271335,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1536313784",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.674816,
+          "weight_b": 2.319443
+        },
+        {
+          "uid": "W1545505633",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.610383,
+          "weight_b": 1.398651
+        },
+        {
+          "uid": "W1999651503",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.474771,
+          "weight_b": 0.543953
+        },
+        {
+          "uid": "W2134318784",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.236826,
+          "weight_b": 0.271335
+        },
+        {
+          "uid": "W2257747056",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.293712,
+          "weight_b": 0.336511
+        },
+        {
+          "uid": "W2561350761",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.282759,
+          "weight_b": 0.323962
+        },
+        {
+          "uid": "W2567994243",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.553858,
+          "weight_b": 0.634564
+        },
+        {
+          "uid": "W2781565181",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.538073,
+          "weight_b": 0.61648
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1582558510",
+      "target_title": "Modeling with finite volume the combustion in direct injection natural gas engine using non-premixed combustion model",
+      "target_year": null,
+      "method_a_cluster_id": 2760,
+      "method_b_cluster_id": 1222,
+      "method_a_cluster_size": 26,
+      "method_b_cluster_size": 12,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0833,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2135443686",
+          "rank": 1,
+          "weight": 0.406771,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1510769492",
+          "rank": 2,
+          "weight": 0.339361,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2089482621",
+          "rank": 3,
+          "weight": 0.28424,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2110501664",
+          "rank": 4,
+          "weight": 0.278497,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973350704",
+          "rank": 5,
+          "weight": 0.267984,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4250548995",
+          "rank": 6,
+          "weight": 0.262569,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134900735",
+          "rank": 7,
+          "weight": 0.257838,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2095121267",
+          "rank": 8,
+          "weight": 0.254232,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2135443686",
+          "rank": 1,
+          "weight": 0.466044,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1510769492",
+          "rank": 2,
+          "weight": 0.388811,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2089482621",
+          "rank": 3,
+          "weight": 0.325658,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2110501664",
+          "rank": 4,
+          "weight": 0.319078,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973350704",
+          "rank": 5,
+          "weight": 0.307033,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4250548995",
+          "rank": 6,
+          "weight": 0.30083,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134900735",
+          "rank": 7,
+          "weight": 0.295409,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2095121267",
+          "rank": 8,
+          "weight": 0.291277,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1510769492",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.339361,
+          "weight_b": 0.388811
+        },
+        {
+          "uid": "W1973350704",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.267984,
+          "weight_b": 0.307033
+        },
+        {
+          "uid": "W2089482621",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.28424,
+          "weight_b": 0.325658
+        },
+        {
+          "uid": "W2095121267",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.254232,
+          "weight_b": 0.291277
+        },
+        {
+          "uid": "W2110501664",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.278497,
+          "weight_b": 0.319078
+        },
+        {
+          "uid": "W2134900735",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.257838,
+          "weight_b": 0.295409
+        },
+        {
+          "uid": "W2135443686",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.406771,
+          "weight_b": 0.466044
+        },
+        {
+          "uid": "W4250548995",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.262569,
+          "weight_b": 0.30083
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1588158734",
+      "target_title": "Detailed Chemical Kinetic Modeling of Diesel Combustion with Oxygenated Fuels",
+      "target_year": null,
+      "method_a_cluster_id": 785,
+      "method_b_cluster_id": 80,
+      "method_a_cluster_size": 109,
+      "method_b_cluster_size": 233,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0183,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2136839140",
+          "rank": 1,
+          "weight": 0.446117,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1572777785",
+          "rank": 2,
+          "weight": 0.211311,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973797469",
+          "rank": 3,
+          "weight": 0.177717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2396204765",
+          "rank": 4,
+          "weight": 0.167377,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 5,
+          "weight": 0.128664,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2408760635",
+          "rank": 6,
+          "weight": 0.125836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2418551018",
+          "rank": 7,
+          "weight": 0.125727,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1995316658",
+          "rank": 8,
+          "weight": 0.096784,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2136839140",
+          "rank": 1,
+          "weight": 3.129284,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1572777785",
+          "rank": 2,
+          "weight": 0.242103,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973797469",
+          "rank": 3,
+          "weight": 0.203614,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2396204765",
+          "rank": 4,
+          "weight": 0.191767,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 5,
+          "weight": 0.147412,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2408760635",
+          "rank": 6,
+          "weight": 0.144172,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2418551018",
+          "rank": 7,
+          "weight": 0.144047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1995316658",
+          "rank": 8,
+          "weight": 0.110887,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1572777785",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.211311,
+          "weight_b": 0.242103
+        },
+        {
+          "uid": "W1973797469",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.177717,
+          "weight_b": 0.203614
+        },
+        {
+          "uid": "W1995316658",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.096784,
+          "weight_b": 0.110887
+        },
+        {
+          "uid": "W2136839140",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.446117,
+          "weight_b": 3.129284
+        },
+        {
+          "uid": "W2263295448",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.128664,
+          "weight_b": 0.147412
+        },
+        {
+          "uid": "W2396204765",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.167377,
+          "weight_b": 0.191767
+        },
+        {
+          "uid": "W2408760635",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.125836,
+          "weight_b": 0.144172
+        },
+        {
+          "uid": "W2418551018",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.125727,
+          "weight_b": 0.144047
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1588335282",
+      "target_title": "A simple and inexpensive high resolution color ratiometric planar optode imaging approach: application to oxygen and pH sensing.",
+      "target_year": null,
+      "method_a_cluster_id": 695,
+      "method_b_cluster_id": 1616,
+      "method_a_cluster_size": 52,
+      "method_b_cluster_size": 372,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0385,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2312234802",
+          "rank": 1,
+          "weight": 0.545372,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912718630",
+          "rank": 2,
+          "weight": 0.541906,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041417303",
+          "rank": 3,
+          "weight": 0.524698,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2072944767",
+          "rank": 4,
+          "weight": 0.524698,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121293249",
+          "rank": 5,
+          "weight": 0.524698,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115570571",
+          "rank": 6,
+          "weight": 0.495793,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005489896",
+          "rank": 7,
+          "weight": 0.49081,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2120253538",
+          "rank": 8,
+          "weight": 0.459111,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2312234802",
+          "rank": 1,
+          "weight": 0.624842,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912718630",
+          "rank": 2,
+          "weight": 0.620871,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041417303",
+          "rank": 3,
+          "weight": 0.601155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2072944767",
+          "rank": 4,
+          "weight": 0.601155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121293249",
+          "rank": 5,
+          "weight": 0.601155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115570571",
+          "rank": 6,
+          "weight": 0.568038,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005489896",
+          "rank": 7,
+          "weight": 0.562329,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2120253538",
+          "rank": 8,
+          "weight": 0.526011,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2005489896",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.49081,
+          "weight_b": 0.562329
+        },
+        {
+          "uid": "W2041417303",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.524698,
+          "weight_b": 0.601155
+        },
+        {
+          "uid": "W2072944767",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.524698,
+          "weight_b": 0.601155
+        },
+        {
+          "uid": "W2120253538",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.459111,
+          "weight_b": 0.526011
+        },
+        {
+          "uid": "W2121293249",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.524698,
+          "weight_b": 0.601155
+        },
+        {
+          "uid": "W2312234802",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.545372,
+          "weight_b": 0.624842
+        },
+        {
+          "uid": "W2912718630",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.541906,
+          "weight_b": 0.620871
+        },
+        {
+          "uid": "W3115570571",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.495793,
+          "weight_b": 0.568038
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1594100510",
+      "target_title": "A Study on the Autoignition Characteristics of DME–LPG Dual Fuel in the HCCI Engine",
+      "target_year": null,
+      "method_a_cluster_id": 1600,
+      "method_b_cluster_id": 529,
+      "method_a_cluster_size": 29,
+      "method_b_cluster_size": 31,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0345,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2028724651",
+          "rank": 1,
+          "weight": 0.151632,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2067535227",
+          "rank": 2,
+          "weight": 0.131556,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1578832537",
+          "rank": 3,
+          "weight": 0.116612,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2763303383",
+          "rank": 4,
+          "weight": 0.101272,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912901948",
+          "rank": 5,
+          "weight": 0.059933,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2022333924",
+          "rank": 6,
+          "weight": 0.032819,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041449670",
+          "rank": 7,
+          "weight": 0.032819,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 8,
+          "weight": 0.032819,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2028724651",
+          "rank": 1,
+          "weight": 0.173727,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2067535227",
+          "rank": 2,
+          "weight": 0.150725,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1578832537",
+          "rank": 3,
+          "weight": 0.133604,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2763303383",
+          "rank": 4,
+          "weight": 0.116029,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912901948",
+          "rank": 5,
+          "weight": 0.068667,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2022333924",
+          "rank": 6,
+          "weight": 0.037601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041449670",
+          "rank": 7,
+          "weight": 0.037601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 8,
+          "weight": 0.037601,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1578832537",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.116612,
+          "weight_b": 0.133604
+        },
+        {
+          "uid": "W2022333924",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.032819,
+          "weight_b": 0.037601
+        },
+        {
+          "uid": "W2028724651",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.151632,
+          "weight_b": 0.173727
+        },
+        {
+          "uid": "W2041449670",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.032819,
+          "weight_b": 0.037601
+        },
+        {
+          "uid": "W2067535227",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.131556,
+          "weight_b": 0.150725
+        },
+        {
+          "uid": "W2263295448",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.032819,
+          "weight_b": 0.037601
+        },
+        {
+          "uid": "W2763303383",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.101272,
+          "weight_b": 0.116029
+        },
+        {
+          "uid": "W2912901948",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.059933,
+          "weight_b": 0.068667
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1629033089",
+      "target_title": "Recent Advances in Constitutive Modeling of Polymer Melts",
+      "target_year": null,
+      "method_a_cluster_id": 2302,
+      "method_b_cluster_id": 1040,
+      "method_a_cluster_size": 109,
+      "method_b_cluster_size": 85,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0118,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W3172529694",
+          "rank": 1,
+          "weight": 0.841064,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2992321141",
+          "rank": 2,
+          "weight": 0.66492,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2920546898",
+          "rank": 3,
+          "weight": 0.658237,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3133755707",
+          "rank": 4,
+          "weight": 0.641539,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2768153526",
+          "rank": 5,
+          "weight": 0.614226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3134578662",
+          "rank": 6,
+          "weight": 0.603158,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2099389437",
+          "rank": 7,
+          "weight": 0.594722,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2123010492",
+          "rank": 8,
+          "weight": 0.593807,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3172529694",
+          "rank": 1,
+          "weight": 0.963621,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2992321141",
+          "rank": 2,
+          "weight": 0.761809,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2920546898",
+          "rank": 3,
+          "weight": 0.754153,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3133755707",
+          "rank": 4,
+          "weight": 0.735021,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2768153526",
+          "rank": 5,
+          "weight": 0.703729,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3134578662",
+          "rank": 6,
+          "weight": 0.691049,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2099389437",
+          "rank": 7,
+          "weight": 0.681383,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2123010492",
+          "rank": 8,
+          "weight": 0.680334,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2099389437",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.594722,
+          "weight_b": 0.681383
+        },
+        {
+          "uid": "W2123010492",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.593807,
+          "weight_b": 0.680334
+        },
+        {
+          "uid": "W2768153526",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.614226,
+          "weight_b": 0.703729
+        },
+        {
+          "uid": "W2920546898",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.658237,
+          "weight_b": 0.754153
+        },
+        {
+          "uid": "W2992321141",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.66492,
+          "weight_b": 0.761809
+        },
+        {
+          "uid": "W3133755707",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.641539,
+          "weight_b": 0.735021
+        },
+        {
+          "uid": "W3134578662",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.603158,
+          "weight_b": 0.691049
+        },
+        {
+          "uid": "W3172529694",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.841064,
+          "weight_b": 0.963621
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1788704976",
+      "target_title": "Rheology of dry, partially saturated and wet granular materials",
+      "target_year": null,
+      "method_a_cluster_id": 999,
+      "method_b_cluster_id": 663,
+      "method_a_cluster_size": 38,
+      "method_b_cluster_size": 1352,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0263,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1993057004",
+          "rank": 1,
+          "weight": 0.115651,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2090119701",
+          "rank": 2,
+          "weight": 0.109409,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1483965047",
+          "rank": 3,
+          "weight": 0.105894,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066013975",
+          "rank": 4,
+          "weight": 0.094601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2415583226",
+          "rank": 5,
+          "weight": 0.053047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075448296",
+          "rank": 6,
+          "weight": 0.007368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2082177420",
+          "rank": 7,
+          "weight": 0.007368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 8,
+          "weight": 0.007368,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1993057004",
+          "rank": 1,
+          "weight": 0.132504,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2090119701",
+          "rank": 2,
+          "weight": 0.125352,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1483965047",
+          "rank": 3,
+          "weight": 0.121325,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066013975",
+          "rank": 4,
+          "weight": 0.108386,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2415583226",
+          "rank": 5,
+          "weight": 0.060777,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075448296",
+          "rank": 6,
+          "weight": 0.008441,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2082177420",
+          "rank": 7,
+          "weight": 0.008441,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 8,
+          "weight": 0.008441,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1483965047",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.105894,
+          "weight_b": 0.121325
+        },
+        {
+          "uid": "W1993057004",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.115651,
+          "weight_b": 0.132504
+        },
+        {
+          "uid": "W2066013975",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.094601,
+          "weight_b": 0.108386
+        },
+        {
+          "uid": "W2075448296",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.007368,
+          "weight_b": 0.008441
+        },
+        {
+          "uid": "W2082177420",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.007368,
+          "weight_b": 0.008441
+        },
+        {
+          "uid": "W2090119701",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.109409,
+          "weight_b": 0.125352
+        },
+        {
+          "uid": "W2111242220",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.007368,
+          "weight_b": 0.008441
+        },
+        {
+          "uid": "W2415583226",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.053047,
+          "weight_b": 0.060777
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W1274861542",
+      "target_title": "Improvement to Air Management Practices Assessment Tool (AMPAT): Scientific Literature Database",
+      "target_year": null,
+      "method_a_cluster_id": 2334,
+      "method_b_cluster_id": 1060,
+      "method_a_cluster_size": 53,
+      "method_b_cluster_size": 124,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0189,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2341099206",
+          "rank": 1,
+          "weight": 0.642996,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061559342",
+          "rank": 2,
+          "weight": 0.067023,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116209722",
+          "rank": 3,
+          "weight": 0.041188,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1415468597",
+          "rank": 4,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1607167134",
+          "rank": 5,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993292029",
+          "rank": 6,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032906270",
+          "rank": 7,
+          "weight": 0.003455,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 8,
+          "weight": 0.003455,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2341099206",
+          "rank": 1,
+          "weight": 0.736691,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061559342",
+          "rank": 2,
+          "weight": 0.153578,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116209722",
+          "rank": 3,
+          "weight": 0.04719,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1415468597",
+          "rank": 4,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1607167134",
+          "rank": 5,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993292029",
+          "rank": 6,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032906270",
+          "rank": 7,
+          "weight": 0.003958,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 8,
+          "weight": 0.003958,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1415468597",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W1607167134",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W1993292029",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W2032906270",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W2034343094",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.003455,
+          "weight_b": 0.003958
+        },
+        {
+          "uid": "W2061559342",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.067023,
+          "weight_b": 0.153578
+        },
+        {
+          "uid": "W2116209722",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.041188,
+          "weight_b": 0.04719
+        },
+        {
+          "uid": "W2341099206",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.642996,
+          "weight_b": 0.736691
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, perfectly coherent local neighborhood for the target paper. The top-ranked neighbor in both groups is the foundational paper for the 'AMPAT' tool that the target paper is improving, and all subsequent neighbors are highly relevant examples of the specific air quality mitigation technologies the target paper aims to review and database.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1415468597",
+      "target_title": "Effects of anaerobic digestion and aerobic treatment on the reduction of gaseous emissions from dairy manure storages.",
+      "target_year": null,
+      "method_a_cluster_id": 1364,
+      "method_b_cluster_id": 2273,
+      "method_a_cluster_size": 47,
+      "method_b_cluster_size": 19,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0526,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1993292029",
+          "rank": 1,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 2,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2064512227",
+          "rank": 3,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2260260747",
+          "rank": 4,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275509518",
+          "rank": 5,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W639683125",
+          "rank": 6,
+          "weight": 1.302971,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2581974331",
+          "rank": 7,
+          "weight": 0.097564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1968187140",
+          "rank": 8,
+          "weight": 0.065638,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1993292029",
+          "rank": 1,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034343094",
+          "rank": 2,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2064512227",
+          "rank": 3,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2260260747",
+          "rank": 4,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275509518",
+          "rank": 5,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W639683125",
+          "rank": 6,
+          "weight": 1.492836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2581974331",
+          "rank": 7,
+          "weight": 0.111781,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1968187140",
+          "rank": 8,
+          "weight": 0.075203,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1968187140",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.065638,
+          "weight_b": 0.075203
+        },
+        {
+          "uid": "W1993292029",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2034343094",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2064512227",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2260260747",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2275509518",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        },
+        {
+          "uid": "W2581974331",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.097564,
+          "weight_b": 0.111781
+        },
+        {
+          "uid": "W639683125",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 1.302971,
+          "weight_b": 1.492836
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 3,
+        "score_b": 3,
+        "reasoning": "Both groups are identical. The neighborhood correctly identifies the broad topic of gaseous emissions from animal agriculture, but it is not specific to the target paper's focus on dairy manure and the particular treatment methods of anaerobic digestion and aerobic treatment, instead including papers on poultry and swine with different abatement techniques.",
+        "presented_winner": "A",
+        "presented_score_a": 3,
+        "presented_score_b": 3,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1502158038",
+      "target_title": "Primitive chain network simulations for elongational viscosity of bidisperse polystyrene melts",
+      "target_year": null,
+      "method_a_cluster_id": 1621,
+      "method_b_cluster_id": 1803,
+      "method_a_cluster_size": 54,
+      "method_b_cluster_size": 57,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0185,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W3182301689",
+          "rank": 1,
+          "weight": 1.091911,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1634390943",
+          "rank": 2,
+          "weight": 1.046564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213354977",
+          "rank": 3,
+          "weight": 0.940243,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2888848357",
+          "rank": 4,
+          "weight": 0.790458,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3012354294",
+          "rank": 5,
+          "weight": 0.783645,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2319115444",
+          "rank": 6,
+          "weight": 0.756317,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3109820107",
+          "rank": 7,
+          "weight": 0.615596,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996604939",
+          "rank": 8,
+          "weight": 0.603158,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3182301689",
+          "rank": 1,
+          "weight": 2.502041,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1634390943",
+          "rank": 2,
+          "weight": 2.39813,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213354977",
+          "rank": 3,
+          "weight": 2.154504,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2888848357",
+          "rank": 4,
+          "weight": 1.811282,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3012354294",
+          "rank": 5,
+          "weight": 1.79567,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2319115444",
+          "rank": 6,
+          "weight": 1.73305,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3109820107",
+          "rank": 7,
+          "weight": 0.705298,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2996604939",
+          "rank": 8,
+          "weight": 0.691049,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1634390943",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.046564,
+          "weight_b": 2.39813
+        },
+        {
+          "uid": "W2319115444",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.756317,
+          "weight_b": 1.73305
+        },
+        {
+          "uid": "W2888848357",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.790458,
+          "weight_b": 1.811282
+        },
+        {
+          "uid": "W2996604939",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.603158,
+          "weight_b": 0.691049
+        },
+        {
+          "uid": "W3012354294",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.783645,
+          "weight_b": 1.79567
+        },
+        {
+          "uid": "W3109820107",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.615596,
+          "weight_b": 0.705298
+        },
+        {
+          "uid": "W3182301689",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.091911,
+          "weight_b": 2.502041
+        },
+        {
+          "uid": "W4213354977",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.940243,
+          "weight_b": 2.154504
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent neighborhood for the target paper. All neighbors share the specific 'Primitive Chain Network' simulation method and the focus on elongational viscosity and flow, making the context perfect. The choice of winner is arbitrary as the groups are equivalent.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W1516725795",
+      "target_title": "HCCI in a CFR Engine: Experiments and Detailed Kinetic Modeling",
+      "target_year": null,
+      "method_a_cluster_id": 1068,
+      "method_b_cluster_id": 184,
+      "method_a_cluster_size": 28,
+      "method_b_cluster_size": 39,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0357,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1606690678",
+          "rank": 1,
+          "weight": 0.495105,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1524483975",
+          "rank": 2,
+          "weight": 0.492318,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1554640738",
+          "rank": 3,
+          "weight": 0.377086,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2138336176",
+          "rank": 4,
+          "weight": 0.309027,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032862542",
+          "rank": 5,
+          "weight": 0.260594,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1563263897",
+          "rank": 6,
+          "weight": 0.249261,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2106825895",
+          "rank": 7,
+          "weight": 0.231544,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2248661939",
+          "rank": 8,
+          "weight": 0.205684,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1606690678",
+          "rank": 1,
+          "weight": 0.567251,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1524483975",
+          "rank": 2,
+          "weight": 0.564056,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1554640738",
+          "rank": 3,
+          "weight": 0.432034,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2138336176",
+          "rank": 4,
+          "weight": 0.354057,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032862542",
+          "rank": 5,
+          "weight": 0.298567,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1563263897",
+          "rank": 6,
+          "weight": 0.285582,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2106825895",
+          "rank": 7,
+          "weight": 0.265284,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2248661939",
+          "rank": 8,
+          "weight": 0.235655,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1524483975",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.492318,
+          "weight_b": 0.564056
+        },
+        {
+          "uid": "W1554640738",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.377086,
+          "weight_b": 0.432034
+        },
+        {
+          "uid": "W1563263897",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.249261,
+          "weight_b": 0.285582
+        },
+        {
+          "uid": "W1606690678",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.495105,
+          "weight_b": 0.567251
+        },
+        {
+          "uid": "W2032862542",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.260594,
+          "weight_b": 0.298567
+        },
+        {
+          "uid": "W2106825895",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.231544,
+          "weight_b": 0.265284
+        },
+        {
+          "uid": "W2138336176",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.309027,
+          "weight_b": 0.354057
+        },
+        {
+          "uid": "W2248661939",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.205684,
+          "weight_b": 0.235655
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent local neighborhood for the target paper. All neighbors focus on Homogeneous Charge Compression Ignition (HCCI) engines, and many, like the target, use detailed chemical kinetics modeling. Paper A-3 is a particularly strong match, as it studies propane HCCI combustion, one of the fuels investigated in the target paper.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1517816418",
+      "target_title": "The Aggregation Behavior of Short Chain Hydrophilic Ionic Liquids in Aqueous Solutions",
+      "target_year": null,
+      "method_a_cluster_id": 828,
+      "method_b_cluster_id": 280,
+      "method_a_cluster_size": 35,
+      "method_b_cluster_size": 1653,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0286,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1992222850",
+          "rank": 1,
+          "weight": 0.200251,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2006012679",
+          "rank": 2,
+          "weight": 0.174974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1980674632",
+          "rank": 3,
+          "weight": 0.160973,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2556101443",
+          "rank": 4,
+          "weight": 0.088068,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1496986650",
+          "rank": 5,
+          "weight": 0.056329,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1977854765",
+          "rank": 6,
+          "weight": 0.036101,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032776480",
+          "rank": 7,
+          "weight": 0.036101,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2043592906",
+          "rank": 8,
+          "weight": 0.036101,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1992222850",
+          "rank": 1,
+          "weight": 0.229431,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2006012679",
+          "rank": 2,
+          "weight": 0.200471,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1980674632",
+          "rank": 3,
+          "weight": 0.184429,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2556101443",
+          "rank": 4,
+          "weight": 0.100901,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1496986650",
+          "rank": 5,
+          "weight": 0.064537,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1977854765",
+          "rank": 6,
+          "weight": 0.041361,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2032776480",
+          "rank": 7,
+          "weight": 0.041361,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2043592906",
+          "rank": 8,
+          "weight": 0.041361,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1496986650",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.056329,
+          "weight_b": 0.064537
+        },
+        {
+          "uid": "W1977854765",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.036101,
+          "weight_b": 0.041361
+        },
+        {
+          "uid": "W1980674632",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.160973,
+          "weight_b": 0.184429
+        },
+        {
+          "uid": "W1992222850",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.200251,
+          "weight_b": 0.229431
+        },
+        {
+          "uid": "W2006012679",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.174974,
+          "weight_b": 0.200471
+        },
+        {
+          "uid": "W2032776480",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.036101,
+          "weight_b": 0.041361
+        },
+        {
+          "uid": "W2043592906",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.036101,
+          "weight_b": 0.041361
+        },
+        {
+          "uid": "W2556101443",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.088068,
+          "weight_b": 0.100901
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 4,
+        "score_b": 4,
+        "reasoning": "The two groups are identical, presenting the same eight papers in the same order. The neighborhood is strong, as the top-ranked papers focus on the same specific ionic liquids in aqueous solutions, investigating closely related properties like intermolecular interactions and conductivity. Paper [7], which directly addresses the target's main topic of aggregation behavior, further solidifies the relevance of this neighborhood, though one could argue it should be ranked higher.",
+        "presented_winner": "A",
+        "presented_score_a": 4,
+        "presented_score_b": 4,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1578052198",
+      "target_title": "Fuel Anti-Knock Quality - Part I. Engine Studies",
+      "target_year": null,
+      "method_a_cluster_id": 2185,
+      "method_b_cluster_id": 1724,
+      "method_a_cluster_size": 26,
+      "method_b_cluster_size": 131,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0385,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1536313784",
+          "rank": 1,
+          "weight": 0.674816,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1545505633",
+          "rank": 2,
+          "weight": 0.610383,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2567994243",
+          "rank": 3,
+          "weight": 0.553858,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2781565181",
+          "rank": 4,
+          "weight": 0.538073,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1999651503",
+          "rank": 5,
+          "weight": 0.474771,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2257747056",
+          "rank": 6,
+          "weight": 0.293712,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2561350761",
+          "rank": 7,
+          "weight": 0.282759,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134318784",
+          "rank": 8,
+          "weight": 0.236826,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1536313784",
+          "rank": 1,
+          "weight": 2.319443,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1545505633",
+          "rank": 2,
+          "weight": 1.398651,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2567994243",
+          "rank": 3,
+          "weight": 0.634564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2781565181",
+          "rank": 4,
+          "weight": 0.61648,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1999651503",
+          "rank": 5,
+          "weight": 0.543953,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2257747056",
+          "rank": 6,
+          "weight": 0.336511,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2561350761",
+          "rank": 7,
+          "weight": 0.323962,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134318784",
+          "rank": 8,
+          "weight": 0.271335,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1536313784",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.674816,
+          "weight_b": 2.319443
+        },
+        {
+          "uid": "W1545505633",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.610383,
+          "weight_b": 1.398651
+        },
+        {
+          "uid": "W1999651503",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.474771,
+          "weight_b": 0.543953
+        },
+        {
+          "uid": "W2134318784",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.236826,
+          "weight_b": 0.271335
+        },
+        {
+          "uid": "W2257747056",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.293712,
+          "weight_b": 0.336511
+        },
+        {
+          "uid": "W2561350761",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.282759,
+          "weight_b": 0.323962
+        },
+        {
+          "uid": "W2567994243",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.553858,
+          "weight_b": 0.634564
+        },
+        {
+          "uid": "W2781565181",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.538073,
+          "weight_b": 0.61648
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "The two groups are identical. Both provide an excellent and highly coherent local neighborhood, with every paper directly investigating the target's core topic of fuel anti-knock quality, octane rating (RON, MON, Sensitivity), and engine knock. Since there is no difference in content or ranking, the choice is arbitrary.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1582558510",
+      "target_title": "Modeling with finite volume the combustion in direct injection natural gas engine using non-premixed combustion model",
+      "target_year": null,
+      "method_a_cluster_id": 2760,
+      "method_b_cluster_id": 1222,
+      "method_a_cluster_size": 26,
+      "method_b_cluster_size": 12,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0833,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2135443686",
+          "rank": 1,
+          "weight": 0.406771,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1510769492",
+          "rank": 2,
+          "weight": 0.339361,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2089482621",
+          "rank": 3,
+          "weight": 0.28424,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2110501664",
+          "rank": 4,
+          "weight": 0.278497,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973350704",
+          "rank": 5,
+          "weight": 0.267984,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4250548995",
+          "rank": 6,
+          "weight": 0.262569,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134900735",
+          "rank": 7,
+          "weight": 0.257838,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2095121267",
+          "rank": 8,
+          "weight": 0.254232,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2135443686",
+          "rank": 1,
+          "weight": 0.466044,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1510769492",
+          "rank": 2,
+          "weight": 0.388811,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2089482621",
+          "rank": 3,
+          "weight": 0.325658,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2110501664",
+          "rank": 4,
+          "weight": 0.319078,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973350704",
+          "rank": 5,
+          "weight": 0.307033,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4250548995",
+          "rank": 6,
+          "weight": 0.30083,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2134900735",
+          "rank": 7,
+          "weight": 0.295409,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2095121267",
+          "rank": 8,
+          "weight": 0.291277,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1510769492",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.339361,
+          "weight_b": 0.388811
+        },
+        {
+          "uid": "W1973350704",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.267984,
+          "weight_b": 0.307033
+        },
+        {
+          "uid": "W2089482621",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.28424,
+          "weight_b": 0.325658
+        },
+        {
+          "uid": "W2095121267",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.254232,
+          "weight_b": 0.291277
+        },
+        {
+          "uid": "W2110501664",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.278497,
+          "weight_b": 0.319078
+        },
+        {
+          "uid": "W2134900735",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.257838,
+          "weight_b": 0.295409
+        },
+        {
+          "uid": "W2135443686",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.406771,
+          "weight_b": 0.466044
+        },
+        {
+          "uid": "W4250548995",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.262569,
+          "weight_b": 0.30083
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 1,
+        "score_b": 1,
+        "reasoning": "Both groups are identical and provide a poor local neighborhood for the target paper. The target focuses on modeling non-premixed combustion in a natural gas engine, whereas all the neighboring papers focus on premixed or partially-premixed combustion of gasoline or other liquid fuels. This represents a fundamental mismatch in the core combustion strategy being investigated.",
+        "presented_winner": "A",
+        "presented_score_a": 1,
+        "presented_score_b": 1,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1588158734",
+      "target_title": "Detailed Chemical Kinetic Modeling of Diesel Combustion with Oxygenated Fuels",
+      "target_year": null,
+      "method_a_cluster_id": 785,
+      "method_b_cluster_id": 80,
+      "method_a_cluster_size": 109,
+      "method_b_cluster_size": 233,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0183,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2136839140",
+          "rank": 1,
+          "weight": 0.446117,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1572777785",
+          "rank": 2,
+          "weight": 0.211311,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973797469",
+          "rank": 3,
+          "weight": 0.177717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2396204765",
+          "rank": 4,
+          "weight": 0.167377,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 5,
+          "weight": 0.128664,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2408760635",
+          "rank": 6,
+          "weight": 0.125836,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2418551018",
+          "rank": 7,
+          "weight": 0.125727,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1995316658",
+          "rank": 8,
+          "weight": 0.096784,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2136839140",
+          "rank": 1,
+          "weight": 3.129284,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1572777785",
+          "rank": 2,
+          "weight": 0.242103,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973797469",
+          "rank": 3,
+          "weight": 0.203614,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2396204765",
+          "rank": 4,
+          "weight": 0.191767,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 5,
+          "weight": 0.147412,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2408760635",
+          "rank": 6,
+          "weight": 0.144172,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2418551018",
+          "rank": 7,
+          "weight": 0.144047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1995316658",
+          "rank": 8,
+          "weight": 0.110887,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1572777785",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.211311,
+          "weight_b": 0.242103
+        },
+        {
+          "uid": "W1973797469",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.177717,
+          "weight_b": 0.203614
+        },
+        {
+          "uid": "W1995316658",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.096784,
+          "weight_b": 0.110887
+        },
+        {
+          "uid": "W2136839140",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.446117,
+          "weight_b": 3.129284
+        },
+        {
+          "uid": "W2263295448",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.128664,
+          "weight_b": 0.147412
+        },
+        {
+          "uid": "W2396204765",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.167377,
+          "weight_b": 0.191767
+        },
+        {
+          "uid": "W2408760635",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.125836,
+          "weight_b": 0.144172
+        },
+        {
+          "uid": "W2418551018",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.125727,
+          "weight_b": 0.144047
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent local neighborhood for the target paper. The top-ranked papers are perfectly aligned, focusing on the same specific topic of chemical kinetic modeling of oxygenated fuels to reduce soot in diesel combustion. The subsequent papers also remain highly relevant, exploring specific oxygenates (like DME and methyl butanoate) mentioned in the target, making this a highly coherent and well-defined research context.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1588335282",
+      "target_title": "A simple and inexpensive high resolution color ratiometric planar optode imaging approach: application to oxygen and pH sensing.",
+      "target_year": null,
+      "method_a_cluster_id": 695,
+      "method_b_cluster_id": 1616,
+      "method_a_cluster_size": 52,
+      "method_b_cluster_size": 372,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0385,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2312234802",
+          "rank": 1,
+          "weight": 0.545372,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912718630",
+          "rank": 2,
+          "weight": 0.541906,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041417303",
+          "rank": 3,
+          "weight": 0.524698,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2072944767",
+          "rank": 4,
+          "weight": 0.524698,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121293249",
+          "rank": 5,
+          "weight": 0.524698,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115570571",
+          "rank": 6,
+          "weight": 0.495793,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005489896",
+          "rank": 7,
+          "weight": 0.49081,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2120253538",
+          "rank": 8,
+          "weight": 0.459111,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2312234802",
+          "rank": 1,
+          "weight": 0.624842,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912718630",
+          "rank": 2,
+          "weight": 0.620871,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041417303",
+          "rank": 3,
+          "weight": 0.601155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2072944767",
+          "rank": 4,
+          "weight": 0.601155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121293249",
+          "rank": 5,
+          "weight": 0.601155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115570571",
+          "rank": 6,
+          "weight": 0.568038,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005489896",
+          "rank": 7,
+          "weight": 0.562329,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2120253538",
+          "rank": 8,
+          "weight": 0.526011,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2005489896",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.49081,
+          "weight_b": 0.562329
+        },
+        {
+          "uid": "W2041417303",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.524698,
+          "weight_b": 0.601155
+        },
+        {
+          "uid": "W2072944767",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.524698,
+          "weight_b": 0.601155
+        },
+        {
+          "uid": "W2120253538",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.459111,
+          "weight_b": 0.526011
+        },
+        {
+          "uid": "W2121293249",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.524698,
+          "weight_b": 0.601155
+        },
+        {
+          "uid": "W2312234802",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.545372,
+          "weight_b": 0.624842
+        },
+        {
+          "uid": "W2912718630",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.541906,
+          "weight_b": 0.620871
+        },
+        {
+          "uid": "W3115570571",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.495793,
+          "weight_b": 0.568038
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 4,
+        "score_b": 4,
+        "reasoning": "The two groups are identical. They both provide a strong local neighborhood, correctly identifying the target's focus on low-cost, multi-analyte (O2, pH) optical sensor imaging using commercial color cameras, with ranks 1 and 7 being excellent matches. The overall quality is good but not perfect, as the neighborhood is slightly diluted by papers on different imaging modalities (e.g., luminescence lifetime, hyperspectral) or sensor chemistry rather than the specific ratiometric imaging technique.",
+        "presented_winner": "A",
+        "presented_score_a": 4,
+        "presented_score_b": 4,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1594100510",
+      "target_title": "A Study on the Autoignition Characteristics of DME–LPG Dual Fuel in the HCCI Engine",
+      "target_year": null,
+      "method_a_cluster_id": 1600,
+      "method_b_cluster_id": 529,
+      "method_a_cluster_size": 29,
+      "method_b_cluster_size": 31,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0345,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2028724651",
+          "rank": 1,
+          "weight": 0.151632,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2067535227",
+          "rank": 2,
+          "weight": 0.131556,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1578832537",
+          "rank": 3,
+          "weight": 0.116612,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2763303383",
+          "rank": 4,
+          "weight": 0.101272,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912901948",
+          "rank": 5,
+          "weight": 0.059933,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2022333924",
+          "rank": 6,
+          "weight": 0.032819,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041449670",
+          "rank": 7,
+          "weight": 0.032819,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 8,
+          "weight": 0.032819,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2028724651",
+          "rank": 1,
+          "weight": 0.173727,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2067535227",
+          "rank": 2,
+          "weight": 0.150725,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1578832537",
+          "rank": 3,
+          "weight": 0.133604,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2763303383",
+          "rank": 4,
+          "weight": 0.116029,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2912901948",
+          "rank": 5,
+          "weight": 0.068667,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2022333924",
+          "rank": 6,
+          "weight": 0.037601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2041449670",
+          "rank": 7,
+          "weight": 0.037601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2263295448",
+          "rank": 8,
+          "weight": 0.037601,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1578832537",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.116612,
+          "weight_b": 0.133604
+        },
+        {
+          "uid": "W2022333924",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.032819,
+          "weight_b": 0.037601
+        },
+        {
+          "uid": "W2028724651",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.151632,
+          "weight_b": 0.173727
+        },
+        {
+          "uid": "W2041449670",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.032819,
+          "weight_b": 0.037601
+        },
+        {
+          "uid": "W2067535227",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.131556,
+          "weight_b": 0.150725
+        },
+        {
+          "uid": "W2263295448",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.032819,
+          "weight_b": 0.037601
+        },
+        {
+          "uid": "W2763303383",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.101272,
+          "weight_b": 0.116029
+        },
+        {
+          "uid": "W2912901948",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.059933,
+          "weight_b": 0.068667
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 4,
+        "score_b": 4,
+        "reasoning": "Both groups are identical and present a strong, coherent neighborhood focused on the chemical kinetics and combustion of dimethyl ether (DME) in HCCI or compression ignition engines. This aligns very well with a major component of the target paper. However, both groups completely miss the dual-fuel aspect (DME-LPG), which prevents either from being a perfect representation of the target's specific research context.",
+        "presented_winner": "A",
+        "presented_score_a": 4,
+        "presented_score_b": 4,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W1629033089",
+      "target_title": "Recent Advances in Constitutive Modeling of Polymer Melts",
+      "target_year": null,
+      "method_a_cluster_id": 2302,
+      "method_b_cluster_id": 1040,
+      "method_a_cluster_size": 109,
+      "method_b_cluster_size": 85,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0118,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W3172529694",
+          "rank": 1,
+          "weight": 0.841064,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2992321141",
+          "rank": 2,
+          "weight": 0.66492,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2920546898",
+          "rank": 3,
+          "weight": 0.658237,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3133755707",
+          "rank": 4,
+          "weight": 0.641539,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2768153526",
+          "rank": 5,
+          "weight": 0.614226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3134578662",
+          "rank": 6,
+          "weight": 0.603158,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2099389437",
+          "rank": 7,
+          "weight": 0.594722,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2123010492",
+          "rank": 8,
+          "weight": 0.593807,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3172529694",
+          "rank": 1,
+          "weight": 0.963621,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2992321141",
+          "rank": 2,
+          "weight": 0.761809,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2920546898",
+          "rank": 3,
+          "weight": 0.754153,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3133755707",
+          "rank": 4,
+          "weight": 0.735021,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2768153526",
+          "rank": 5,
+          "weight": 0.703729,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3134578662",
+          "rank": 6,
+          "weight": 0.691049,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2099389437",
+          "rank": 7,
+          "weight": 0.681383,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2123010492",
+          "rank": 8,
+          "weight": 0.680334,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2099389437",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.594722,
+          "weight_b": 0.681383
+        },
+        {
+          "uid": "W2123010492",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.593807,
+          "weight_b": 0.680334
+        },
+        {
+          "uid": "W2768153526",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.614226,
+          "weight_b": 0.703729
+        },
+        {
+          "uid": "W2920546898",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.658237,
+          "weight_b": 0.754153
+        },
+        {
+          "uid": "W2992321141",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.66492,
+          "weight_b": 0.761809
+        },
+        {
+          "uid": "W3133755707",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.641539,
+          "weight_b": 0.735021
+        },
+        {
+          "uid": "W3134578662",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.603158,
+          "weight_b": 0.691049
+        },
+        {
+          "uid": "W3172529694",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.841064,
+          "weight_b": 0.963621
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "The two groups are identical and both provide an excellent, highly coherent neighborhood for the target paper. The neighbors are all tightly focused on constitutive modeling of polymer melts, specifically discussing tube models, the interchain pressure effect, and the elongational rheology of polystyrene, which directly reflects the target's specific topic. Since a choice is required, A is selected, but B is equally perfect.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W1788704976",
+      "target_title": "Rheology of dry, partially saturated and wet granular materials",
+      "target_year": null,
+      "method_a_cluster_id": 999,
+      "method_b_cluster_id": 663,
+      "method_a_cluster_size": 38,
+      "method_b_cluster_size": 1352,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0263,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1993057004",
+          "rank": 1,
+          "weight": 0.115651,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2090119701",
+          "rank": 2,
+          "weight": 0.109409,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1483965047",
+          "rank": 3,
+          "weight": 0.105894,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066013975",
+          "rank": 4,
+          "weight": 0.094601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2415583226",
+          "rank": 5,
+          "weight": 0.053047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075448296",
+          "rank": 6,
+          "weight": 0.007368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2082177420",
+          "rank": 7,
+          "weight": 0.007368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 8,
+          "weight": 0.007368,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1993057004",
+          "rank": 1,
+          "weight": 0.132504,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2090119701",
+          "rank": 2,
+          "weight": 0.125352,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1483965047",
+          "rank": 3,
+          "weight": 0.121325,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066013975",
+          "rank": 4,
+          "weight": 0.108386,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2415583226",
+          "rank": 5,
+          "weight": 0.060777,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075448296",
+          "rank": 6,
+          "weight": 0.008441,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2082177420",
+          "rank": 7,
+          "weight": 0.008441,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2111242220",
+          "rank": 8,
+          "weight": 0.008441,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1483965047",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.105894,
+          "weight_b": 0.121325
+        },
+        {
+          "uid": "W1993057004",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.115651,
+          "weight_b": 0.132504
+        },
+        {
+          "uid": "W2066013975",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.094601,
+          "weight_b": 0.108386
+        },
+        {
+          "uid": "W2075448296",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.007368,
+          "weight_b": 0.008441
+        },
+        {
+          "uid": "W2082177420",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.007368,
+          "weight_b": 0.008441
+        },
+        {
+          "uid": "W2090119701",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.109409,
+          "weight_b": 0.125352
+        },
+        {
+          "uid": "W2111242220",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.007368,
+          "weight_b": 0.008441
+        },
+        {
+          "uid": "W2415583226",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.053047,
+          "weight_b": 0.060777
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 4,
+        "score_b": 4,
+        "reasoning": "Both groups present the exact same list of papers. The neighborhood is highly coherent and relevant, focusing on the rheology of dense suspensions, which directly addresses the 'wet' and 'partially saturated' aspects of the target thesis. However, the neighborhood is incomplete as it entirely omits the 'dry' granular materials aspect, which is explicitly mentioned first in the target's title.",
+        "presented_winner": "A",
+        "presented_score_a": 4,
+        "presented_score_b": 4,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 12,
+    "comparison": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 0,
+      "method_b_wins": 0,
+      "ties_or_invalid": 12,
+      "method_a_win_rate": 0.0,
+      "method_b_win_rate": 0.0,
+      "score_a_mean": 4.1667,
+      "score_b_mean": 4.1667,
+      "score_gap_mean": 0.0
+    },
+    "sample_stats": {
+      "shift_score_mean": 0.25,
+      "rank_jaccard_mean": 1.0,
+      "mean_abs_rank_shift_mean": 0.0,
+      "cluster_overlap_coeff_mean": 0.0338,
+      "cluster_changed_rate": 1.0
+    }
+  }
+}

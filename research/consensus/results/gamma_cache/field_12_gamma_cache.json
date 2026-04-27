@@ -1,0 +1,30 @@
+{
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_12\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 2.5e-05,
+    "n_clusters": 12274,
+    "max_pct": 2.5,
+    "top5": [
+      18857,
+      16750,
+      16417,
+      14914,
+      11314
+    ],
+    "field": "field_12_k06_sum_minus_emb_vs_consensus_null_control_local",
+    "label": "consensus_all"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_12\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 2.63268e-07,
+    "n_clusters": 18658,
+    "max_pct": 1.27,
+    "top5": [
+      9558,
+      5609,
+      3404,
+      3006,
+      2444
+    ],
+    "field": "field_12_k06_sum_minus_emb_vs_consensus_null_control_local",
+    "label": "sum_minus_emb"
+  }
+}

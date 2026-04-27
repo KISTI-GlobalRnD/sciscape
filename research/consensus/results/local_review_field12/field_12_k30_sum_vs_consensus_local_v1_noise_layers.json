@@ -1,0 +1,162 @@
+{
+  "review_json": "research/consensus/results/local_review_field12/field_12_k30_sum_vs_consensus_local_v1_rank_shift_review.json",
+  "field": "field_12_k30_sum_vs_consensus_local_v1",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "winner_filter": "B",
+  "noisy_side": "a",
+  "top_k": 30,
+  "n_selected_cases": 14,
+  "n_suspect_rows": 66,
+  "n_unique_pairs": 66,
+  "layer_weights": {
+    "bc_cosine": 0.413948,
+    "cc_cosine": 2.68313,
+    "dc_fractional": 0.818908,
+    "emb_knn": 0.084014
+  },
+  "dominant_layer_counts": {
+    "cc_cosine": 56,
+    "emb_knn": 10
+  },
+  "single_layer_counts": {
+    "cc_cosine": 43,
+    "emb_knn": 5
+  },
+  "present_any_counts": {
+    "cc_cosine": 56,
+    "bc_cosine": 16,
+    "emb_knn": 10,
+    "dc_fractional": 3
+  },
+  "top_examples": [
+    {
+      "target_uid": "W3027687005",
+      "target_title": "The Visual made Audible – Co-constructing Sound Effects as Devices of Comic Book Literacy in Primary School",
+      "neighbor_uid": "W2910014423",
+      "neighbor_title": "Classics in Their Own “Words”: Analytical Remixes in a Land of Essays",
+      "kind": "shared",
+      "delta": 4,
+      "rank": null,
+      "rank_a": 2,
+      "rank_b": 6,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 2.190766
+      }
+    },
+    {
+      "target_uid": "W3027687005",
+      "target_title": "The Visual made Audible – Co-constructing Sound Effects as Devices of Comic Book Literacy in Primary School",
+      "neighbor_uid": "W2928445390",
+      "neighbor_title": "Recognizing Young People’s Civic Engagement Practices: Rethinking Literacy Ontologies through Co-Production",
+      "kind": "shared",
+      "delta": 4,
+      "rank": null,
+      "rank_a": 3,
+      "rank_b": 7,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 2.190766
+      }
+    },
+    {
+      "target_uid": "W3027687005",
+      "target_title": "The Visual made Audible – Co-constructing Sound Effects as Devices of Comic Book Literacy in Primary School",
+      "neighbor_uid": "W3025736778",
+      "neighbor_title": "“Oh boy, I ain’t playin’ no games!”: making sense with youth in the aural imaginary",
+      "kind": "shared",
+      "delta": 4,
+      "rank": null,
+      "rank_a": 4,
+      "rank_b": 8,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 2.190766
+      }
+    },
+    {
+      "target_uid": "W3027687005",
+      "target_title": "The Visual made Audible – Co-constructing Sound Effects as Devices of Comic Book Literacy in Primary School",
+      "neighbor_uid": "W2592338265",
+      "neighbor_title": "Creative Criticism: Dialogue and Aesthetics in the English Language Arts Classroom",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 6,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.788753
+      }
+    },
+    {
+      "target_uid": "W3027687005",
+      "target_title": "The Visual made Audible – Co-constructing Sound Effects as Devices of Comic Book Literacy in Primary School",
+      "neighbor_uid": "W2804230964",
+      "neighbor_title": "Walking Dead Literacies: Zombies, Boys, and (Re)Animated Storytelling",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 7,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.788753
+      }
+    },
+    {
+      "target_uid": "W3027687005",
+      "target_title": "The Visual made Audible – Co-constructing Sound Effects as Devices of Comic Book Literacy in Primary School",
+      "neighbor_uid": "W3122302988",
+      "neighbor_title": "The liberatory potentials of multimodality: Collaborative Reggaeton music video production in Habana, Cuba",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 8,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.788753
+      }
+    },
+    {
+      "target_uid": "W3029601944",
+      "target_title": "Teaching natural selection in early elementary classrooms: can a storybook intervention reduce teleological misunderstandings?",
+      "neighbor_uid": "W4200428049",
+      "neighbor_title": "European first-year university students accept evolution but lack substantial knowledge about it: a standardized European cross-country assessment",
+      "kind": "shared",
+      "delta": 2,
+      "rank": null,
+      "rank_a": 4,
+      "rank_b": 6,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.039172
+      }
+    },
+    {
+      "target_uid": "W3081801914",
+      "target_title": "Music across the waves: an international comparative examination of the Irish generalist and the American specialist models of music education from the teacher’s perspective",
+      "neighbor_uid": "W2156380134",
+      "neighbor_title": "Pluralism, the right, and the good in choirs, orchestras, and bands",
+      "kind": "shared",
+      "delta": 2,
+      "rank": null,
+      "rank_a": 2,
+      "rank_b": 4,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.774553
+      }
+    }
+  ]
+}

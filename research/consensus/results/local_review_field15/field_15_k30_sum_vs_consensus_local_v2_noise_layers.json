@@ -1,0 +1,163 @@
+{
+  "review_json": "research/consensus/results/local_review_field15/field_15_k30_sum_vs_consensus_local_v2_rank_shift_review.json",
+  "field": "field_15_k30_sum_vs_consensus_local_v2",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "winner_filter": "B",
+  "noisy_side": "a",
+  "top_k": 30,
+  "n_selected_cases": 14,
+  "n_suspect_rows": 58,
+  "n_unique_pairs": 58,
+  "layer_weights": {
+    "bc_cosine": 0.617835,
+    "cc_cosine": 1.844654,
+    "dc_fractional": 1.195912,
+    "emb_knn": 0.341599
+  },
+  "dominant_layer_counts": {
+    "cc_cosine": 33,
+    "emb_knn": 23,
+    "bc_cosine": 2
+  },
+  "single_layer_counts": {
+    "cc_cosine": 13,
+    "emb_knn": 13
+  },
+  "present_any_counts": {
+    "cc_cosine": 40,
+    "emb_knn": 31,
+    "bc_cosine": 22,
+    "dc_fractional": 4
+  },
+  "top_examples": [
+    {
+      "target_uid": "W2906701517",
+      "target_title": "Investigation of near-wall turbulence in relation to polymer rheology",
+      "neighbor_uid": "W2772131049",
+      "neighbor_title": "Analytical Upper Limit of Drag Reduction With Polymer Additives in Turbulent Pipe Flow",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 4,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.652184
+      }
+    },
+    {
+      "target_uid": "W4383535677",
+      "target_title": "Impacts of Interaction between Active Components on Catalyst Deactivation over KFe/ZSM-5 Bifunctional Catalyst",
+      "neighbor_uid": "W3157834960",
+      "neighbor_title": "Boosting the synthesis of value-added aromatics directly from syngas <i>via</i> a Cr<sub>2</sub>O<sub>3</sub> and Ga doped zeolite capsule catalyst",
+      "kind": "shared",
+      "delta": 2,
+      "rank": null,
+      "rank_a": 2,
+      "rank_b": 4,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.614885
+      }
+    },
+    {
+      "target_uid": "W2906701517",
+      "target_title": "Investigation of near-wall turbulence in relation to polymer rheology",
+      "neighbor_uid": "W2423584040",
+      "neighbor_title": "Simple framework for understanding the universality of the maximum drag reduction asymptote in turbulent flow of polymer solutions",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 6,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.583331
+      }
+    },
+    {
+      "target_uid": "W3196072406",
+      "target_title": "Rhodium‐Catalyzed <i>meta</i>‐Selective C−H Carboxylation Reaction of 1,1‐Diarylethylenes via Hydrorhodation‐Rhodium Migration",
+      "neighbor_uid": "W3003421415",
+      "neighbor_title": "Formal C−H Carboxylation of Unactivated Arenes",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 3,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.583331
+      }
+    },
+    {
+      "target_uid": "W2906701517",
+      "target_title": "Investigation of near-wall turbulence in relation to polymer rheology",
+      "neighbor_uid": "W2335837810",
+      "neighbor_title": "Marginal turbulent state of viscoelastic fluids: A polymer drag reduction perspective",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 7,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.54997
+      }
+    },
+    {
+      "target_uid": "W2170955296",
+      "target_title": "Controlled thermoreversible transfer of poly(oxazoline) micelles between an ionic liquid and water",
+      "neighbor_uid": "W1977572346",
+      "neighbor_title": "A thermoreversible ion gel by triblock copolymer self-assembly in an ionic liquid",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 8,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.504687
+      }
+    },
+    {
+      "target_uid": "W2188362642",
+      "target_title": "Novel Ionic Liquid Thermal Storage for Solar Thermal Electric Power Systems",
+      "neighbor_uid": "W2018445430",
+      "neighbor_title": "High temperature and high pressure volumetric properties of (methanol + [BMIM<sup>+</sup>][OcSO<sup>−</sup><sub>4</sub>]) mixtures",
+      "kind": "shared",
+      "delta": 1,
+      "rank": null,
+      "rank_a": 2,
+      "rank_b": 3,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.49522
+      }
+    },
+    {
+      "target_uid": "W4285158978",
+      "target_title": "Density functional theory study of a two-atom active site transition-metal/iridium electrocatalyst for ammonia synthesis",
+      "neighbor_uid": "W4281746096",
+      "neighbor_title": "Computational Insight into Metallated Graphynes as Single Atom Electrocatalysts for Nitrogen Fixation",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 5,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.485361
+      }
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "field": "field_15_pilot",
+  "method": "cut_ablation",
+  "edge_path": "research/pilot_data/field_15_subset/edges/dc_fractional.parquet",
+  "target_pct": 3.0,
+  "nano_min_size": 30,
+  "cut_min_size": 825,
+  "seed": 42,
+  "dendrogram_mode": "cpm",
+  "n_thresholds": 24,
+  "elapsed": 221.3,
+  "n_nodes": 16515,
+  "n_edges": 58876,
+  "n_contracted_nodes": 2505,
+  "nano": {
+    "gamma": 9.162203582803827e-05,
+    "n_clusters": 2505,
+    "max_pct": 2.31,
+    "singleton_pct": 3.0
+  },
+  "optimal_cut": {
+    "feasible": true,
+    "contracted_clusters": 1,
+    "n_clusters": 1,
+    "max_pct": 100.0,
+    "singleton_pct": 0.0,
+    "top5": [
+      16515
+    ],
+    "total_stability": 5.992988908627078e-06
+  },
+  "threshold_candidates": [
+    {
+      "threshold": 0.25,
+      "feasible": false,
+      "contracted_clusters": 2504,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.2488095238028715
+    },
+    {
+      "threshold": 0.007575757801532745,
+      "feasible": false,
+      "contracted_clusters": 2346,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.0569832147523655
+    },
+    {
+      "threshold": 0.0043750000186264515,
+      "feasible": false,
+      "contracted_clusters": 2143,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.584397566153083
+    },
+    {
+      "threshold": 0.0029761905648878644,
+      "feasible": false,
+      "contracted_clusters": 1921,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.7777169799319257
+    },
+    {
+      "threshold": 0.0022727272007614374,
+      "feasible": false,
+      "contracted_clusters": 1765,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.795584556747737
+    },
+    {
+      "threshold": 0.001805555559694767,
+      "feasible": false,
+      "contracted_clusters": 1621,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.6643580609086994
+    },
+    {
+      "threshold": 0.0014814815173546474,
+      "feasible": false,
+      "contracted_clusters": 1497,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.4567918567628433
+    },
+    {
+      "threshold": 0.001201923076923077,
+      "feasible": false,
+      "contracted_clusters": 1358,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 2.136844349147927
+    },
+    {
+      "threshold": 0.000992063521629288,
+      "feasible": false,
+      "contracted_clusters": 1251,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 1.5634966110735882
+    },
+    {
+      "threshold": 0.0008445946150459349,
+      "feasible": false,
+      "contracted_clusters": 1148,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 1.4193805445022845
+    },
+    {
+      "threshold": 0.0007002801146535646,
+      "feasible": false,
+      "contracted_clusters": 1048,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 1.213787818794467
+    },
+    {
+      "threshold": 0.0005636724579909986,
+      "feasible": false,
+      "contracted_clusters": 955,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.9869553565623832
+    },
+    {
+      "threshold": 0.00047892720128099125,
+      "feasible": false,
+      "contracted_clusters": 863,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.7420795928411977
+    },
+    {
+      "threshold": 0.00038829151659257826,
+      "feasible": false,
+      "contracted_clusters": 776,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.5353996982925008
+    },
+    {
+      "threshold": 0.0003132832138554046,
+      "feasible": false,
+      "contracted_clusters": 696,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.4172775192504847
+    },
+    {
+      "threshold": 0.0002446500610281556,
+      "feasible": false,
+      "contracted_clusters": 613,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.32187723886158354
+    },
+    {
+      "threshold": 0.00019841269952141575,
+      "feasible": false,
+      "contracted_clusters": 534,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.24615108221546794
+    },
+    {
+      "threshold": 0.00015898251577335244,
+      "feasible": false,
+      "contracted_clusters": 456,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.12886206439466183
+    },
+    {
+      "threshold": 0.00011478420911413251,
+      "feasible": false,
+      "contracted_clusters": 381,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.0786202149026482
+    },
+    {
+      "threshold": 7.71604961267224e-05,
+      "feasible": false,
+      "contracted_clusters": 303,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.03961906910690079
+    },
+    {
+      "threshold": 5.081301026393199e-05,
+      "feasible": false,
+      "contracted_clusters": 228,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.019366494071793697
+    },
+    {
+      "threshold": 3.059936277111012e-05,
+      "feasible": false,
+      "contracted_clusters": 152,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.008053859362790738
+    },
+    {
+      "threshold": 1.6080318204383702e-05,
+      "feasible": false,
+      "contracted_clusters": 77,
+      "n_clusters": null,
+      "max_pct": null,
+      "singleton_pct": null,
+      "top5": null,
+      "total_stability": 0.0012328512036787346
+    },
+    {
+      "threshold": 5.992988908627078e-06,
+      "feasible": true,
+      "contracted_clusters": 1,
+      "n_clusters": 1,
+      "max_pct": 100.0,
+      "singleton_pct": 0.0,
+      "top5": [
+        16515
+      ],
+      "total_stability": 5.992988908627078e-06
+    }
+  ],
+  "best_threshold_cut": {
+    "threshold": 5.992988908627078e-06,
+    "feasible": true,
+    "contracted_clusters": 1,
+    "n_clusters": 1,
+    "max_pct": 100.0,
+    "singleton_pct": 0.0,
+    "top5": [
+      16515
+    ],
+    "total_stability": 5.992988908627078e-06
+  }
+}

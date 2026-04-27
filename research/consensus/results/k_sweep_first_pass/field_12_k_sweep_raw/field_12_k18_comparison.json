@@ -1,0 +1,232 @@
+{
+  "field": "field_12_k18",
+  "edge_dir": "data/linktype_edges_gcc/field_12",
+  "target_pct": 3.0,
+  "budget_mode": "effective_k",
+  "effective_k": 18,
+  "top_k": null,
+  "min_size": 10,
+  "n_seeds": 2,
+  "results": [
+    {
+      "method": "bc_cosine_only",
+      "label": "bc_cosine",
+      "layers": [
+        "bc_cosine"
+      ],
+      "n_layers": 1,
+      "strategy": "rank",
+      "top_k": 18,
+      "layer_top_k": {
+        "bc_cosine": 18
+      },
+      "min_size": 10,
+      "n_edges": 2732353,
+      "gamma": 1e-08,
+      "n_clusters": 52403,
+      "max_pct": 0.3,
+      "top5": [
+        1062,
+        986,
+        825,
+        801,
+        799
+      ],
+      "ami_mean": 0.8520237608396932,
+      "ami_std": 0.0,
+      "ari_mean": 0.7327710445618891,
+      "ari_std": 0.0,
+      "singleton_pct": 12.5,
+      "consensus_edges": {},
+      "kind": "single_layer"
+    },
+    {
+      "method": "cc_cosine_only",
+      "label": "cc_cosine",
+      "layers": [
+        "cc_cosine"
+      ],
+      "n_layers": 1,
+      "strategy": "rank",
+      "top_k": 18,
+      "layer_top_k": {
+        "cc_cosine": 18
+      },
+      "min_size": 10,
+      "n_edges": 475406,
+      "gamma": 1e-08,
+      "n_clusters": 16601,
+      "max_pct": 0.49,
+      "top5": [
+        537,
+        501,
+        388,
+        324,
+        311
+      ],
+      "ami_mean": 0.9059191664772386,
+      "ami_std": 0.0,
+      "ari_mean": 0.7176241930091133,
+      "ari_std": 0.0,
+      "singleton_pct": 2.3,
+      "consensus_edges": {},
+      "kind": "single_layer"
+    },
+    {
+      "method": "dc_fractional_only",
+      "label": "dc_fractional",
+      "layers": [
+        "dc_fractional"
+      ],
+      "n_layers": 1,
+      "strategy": "rank",
+      "top_k": 18,
+      "layer_top_k": {
+        "dc_fractional": 18
+      },
+      "min_size": 10,
+      "n_edges": 1861241,
+      "gamma": 1e-08,
+      "n_clusters": 167728,
+      "max_pct": 0.05,
+      "top5": [
+        408,
+        373,
+        349,
+        327,
+        283
+      ],
+      "ami_mean": 0.8397780625211008,
+      "ami_std": 0.0,
+      "ari_mean": 0.6860137294381599,
+      "ari_std": 0.0,
+      "singleton_pct": 1.1,
+      "consensus_edges": {},
+      "kind": "single_layer"
+    },
+    {
+      "method": "emb_knn_only",
+      "label": "emb_knn",
+      "layers": [
+        "emb_knn"
+      ],
+      "n_layers": 1,
+      "strategy": "rank",
+      "top_k": 18,
+      "layer_top_k": {
+        "emb_knn": 18
+      },
+      "min_size": 10,
+      "n_edges": 11262485,
+      "gamma": 1e-08,
+      "n_clusters": 70501,
+      "max_pct": 0.2,
+      "top5": [
+        1503,
+        1493,
+        1207,
+        1049,
+        794
+      ],
+      "ami_mean": 0.7353438799413131,
+      "ami_std": 0.0,
+      "ari_mean": 0.6196459001590163,
+      "ari_std": 0.0,
+      "singleton_pct": 1.5,
+      "consensus_edges": {},
+      "kind": "single_layer"
+    },
+    {
+      "method": "citation_consensus",
+      "label": "bc_cosine+cc_cosine+dc_fractional",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional"
+      ],
+      "n_layers": 3,
+      "strategy": "consensus",
+      "top_k": {
+        "bc_cosine": 6,
+        "cc_cosine": 6,
+        "dc_fractional": 6
+      },
+      "layer_top_k": {
+        "bc_cosine": 6,
+        "cc_cosine": 6,
+        "dc_fractional": 6
+      },
+      "min_size": 10,
+      "n_edges": 2934994,
+      "gamma": 6.98657623556553e-08,
+      "n_clusters": 119700,
+      "max_pct": 0.81,
+      "top5": [
+        6071,
+        5669,
+        2102,
+        1923,
+        1874
+      ],
+      "ami_mean": 0.8605975530999003,
+      "ami_std": 0.0,
+      "ari_mean": 0.4080284078191969,
+      "ari_std": 0.0,
+      "singleton_pct": 0.0,
+      "consensus_edges": {
+        "1": 95.1,
+        "2": 4.6,
+        "3": 0.3
+      },
+      "kind": "multi_layer"
+    },
+    {
+      "method": "all_consensus",
+      "label": "bc_cosine+cc_cosine+dc_fractional+emb_knn",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "n_layers": 4,
+      "strategy": "consensus",
+      "top_k": {
+        "bc_cosine": 5,
+        "cc_cosine": 5,
+        "dc_fractional": 4,
+        "emb_knn": 4
+      },
+      "layer_top_k": {
+        "bc_cosine": 5,
+        "cc_cosine": 5,
+        "dc_fractional": 4,
+        "emb_knn": 4
+      },
+      "min_size": 10,
+      "n_edges": 4947326,
+      "gamma": 1.1061483402384744e-05,
+      "n_clusters": 84039,
+      "max_pct": 1.15,
+      "top5": [
+        8694,
+        8504,
+        6547,
+        5491,
+        3282
+      ],
+      "ami_mean": 0.7299587881901599,
+      "ami_std": 0.0,
+      "ari_mean": 0.28886084828246594,
+      "ari_std": 0.0,
+      "singleton_pct": 0.0,
+      "consensus_edges": {
+        "2": 4.5,
+        "3": 0.6,
+        "1": 94.8,
+        "4": 0.0
+      },
+      "kind": "multi_layer"
+    }
+  ]
+}

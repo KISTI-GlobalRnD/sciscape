@@ -1,0 +1,59 @@
+{
+  "field": "field_12",
+  "top_k": 6,
+  "status": "partial_probe_notes",
+  "notes": "Observed fixed-gamma shortlist results from prepare_gamma_cache.py exploratory run; process intentionally stopped after enough coverage to bracket useful gamma ranges.",
+  "results": [
+    {
+      "label": "consensus_probe_low",
+      "strategy": "consensus",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "gamma": 2.63268e-07,
+      "n_clusters": 2981,
+      "max_pct": 34.84
+    },
+    {
+      "label": "consensus_probe_mid",
+      "strategy": "consensus",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "gamma": 1.46393e-05,
+      "n_clusters": 10162,
+      "max_pct": 3.95
+    },
+    {
+      "label": "consensus_probe_high",
+      "strategy": "consensus",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "gamma": 8.14032e-04,
+      "n_clusters": 20362,
+      "max_pct": 0.14
+    },
+    {
+      "label": "sum_minus_emb_low",
+      "strategy": "sum",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional"
+      ],
+      "gamma": 2.63268e-07,
+      "n_clusters": 18616,
+      "max_pct": 1.24
+    }
+  ]
+}

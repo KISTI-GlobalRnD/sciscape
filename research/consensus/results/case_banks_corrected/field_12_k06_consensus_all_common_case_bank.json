@@ -1,0 +1,3004 @@
+{
+  "field": "field_12",
+  "edge_dir": "data/linktype_edges_gcc/field_12",
+  "abstract_path": "data/openalex_metadata/field_12/works_text.parquet",
+  "reference": "consensus_all",
+  "compare_labels": [
+    "sum_minus_emb"
+  ],
+  "policy": "intersection",
+  "top_k": 6,
+  "target_pct": 3.0,
+  "min_size": 10,
+  "n_neighbors": 8,
+  "max_rank_jaccard": 0.85,
+  "min_cluster_overlap": 0.5,
+  "n_target_uids": 128,
+  "target_uids": [
+    "W1510246799",
+    "W1816905911",
+    "W1882767916",
+    "W1909707327",
+    "W2141008042",
+    "W2141510173",
+    "W2184554656",
+    "W2187524184",
+    "W2189406290",
+    "W2198590518",
+    "W2218607418",
+    "W2254152513",
+    "W2317906726",
+    "W2321481968",
+    "W2327516229",
+    "W2503430913",
+    "W2505965475",
+    "W2512365776",
+    "W2583009469",
+    "W2586776299",
+    "W2741923108",
+    "W2747960663",
+    "W2763698437",
+    "W2784999814",
+    "W2802339044",
+    "W2803185945",
+    "W2804896562",
+    "W2886494865",
+    "W2889013846",
+    "W2899278474",
+    "W2900411888",
+    "W2904528491",
+    "W2920957240",
+    "W2945352130",
+    "W2951699531",
+    "W2953409530",
+    "W2954470663",
+    "W2958376204",
+    "W2974965964",
+    "W2979482601",
+    "W2998818428",
+    "W2999851485",
+    "W3007905591",
+    "W3013581550",
+    "W3016217815",
+    "W3022226786",
+    "W3037514453",
+    "W3046212981",
+    "W3046315294",
+    "W3047153431",
+    "W3047821867",
+    "W3081959292",
+    "W3082085829",
+    "W3084654892",
+    "W3092155529",
+    "W3096628807",
+    "W3106748381",
+    "W3107647542",
+    "W3110286269",
+    "W3123542269",
+    "W3138928006",
+    "W3139233425",
+    "W3144774633",
+    "W3152711662",
+    "W3154620979",
+    "W3156494133",
+    "W3161391769",
+    "W3162216757",
+    "W3168100367",
+    "W3170169543",
+    "W3172850051",
+    "W3173729269",
+    "W3175449395",
+    "W3179025124",
+    "W3179853991",
+    "W3181653988",
+    "W3188910587",
+    "W3193810763",
+    "W3200917593",
+    "W3202380936",
+    "W3202911953",
+    "W3213693451",
+    "W3216236733",
+    "W3217575905",
+    "W4200214088",
+    "W4200236565",
+    "W4200398620",
+    "W4205809065",
+    "W4205909761",
+    "W4205962928",
+    "W4220704532",
+    "W4223588402",
+    "W4223975988",
+    "W4225417029",
+    "W4226081102",
+    "W4229379002",
+    "W4281756411",
+    "W4283711011",
+    "W4283802795",
+    "W4284895180",
+    "W4285388895",
+    "W4286685193",
+    "W4286727982",
+    "W4293221006",
+    "W4293654036",
+    "W4293833964",
+    "W4294676053",
+    "W4294943826",
+    "W4295180279",
+    "W4296785457",
+    "W4297256274",
+    "W4304195736",
+    "W4307732851",
+    "W4307737391",
+    "W4308336328",
+    "W4309865608",
+    "W4310117514",
+    "W4310711551",
+    "W4311232338",
+    "W4311597397",
+    "W4312951898",
+    "W4312953820",
+    "W4313050858",
+    "W4313314394",
+    "W4313351008",
+    "W4316362917",
+    "W4319601062",
+    "W4319790890"
+  ],
+  "target_summaries": [
+    {
+      "target_uid": "W1510246799",
+      "target_title": "Estimation of Age Using Alveolar Bone Loss: Forensic and Anthropological Applications",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0714,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0714,
+          "cluster_changed": true,
+          "reference_cluster_size": 14,
+          "comparison_cluster_size": 26
+        }
+      }
+    },
+    {
+      "target_uid": "W1816905911",
+      "target_title": "Forensic Dental Age Estimation: An Overview",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.03,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.03,
+          "cluster_changed": true,
+          "reference_cluster_size": 8813,
+          "comparison_cluster_size": 100
+        }
+      }
+    },
+    {
+      "target_uid": "W1882767916",
+      "target_title": "Aspirations and Expectations: Comparing Scientist and Teacher Views as a Source of Ideas for Teaching Evolution",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0154,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0154,
+          "cluster_changed": true,
+          "reference_cluster_size": 447,
+          "comparison_cluster_size": 65
+        }
+      }
+    },
+    {
+      "target_uid": "W1909707327",
+      "target_title": "Investigating the Effects and Persuasive Mechanisms of Expository and Narrative HPV Vaccine Messages",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0476,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0476,
+          "cluster_changed": true,
+          "reference_cluster_size": 442,
+          "comparison_cluster_size": 21
+        }
+      }
+    },
+    {
+      "target_uid": "W2141008042",
+      "target_title": "THE RELEVANCE OF ATTENTION TO L2 FORM IN COMMUNICATIVE CLASSROOM CONTEXTS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0488,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0488,
+          "cluster_changed": true,
+          "reference_cluster_size": 6421,
+          "comparison_cluster_size": 41
+        }
+      }
+    },
+    {
+      "target_uid": "W2141510173",
+      "target_title": "Deliberate Practice of High School Instrumentalists: A Theoretical Model",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0345,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0345,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 58
+        }
+      }
+    },
+    {
+      "target_uid": "W2184554656",
+      "target_title": "THE EFFECT OF INCREASE IN TASK COGNITIVE COMPLEXITY ON IRANIAN EFL LEARNERS’ ACCURACY AND LINGUISTIC COMPLEXITY: A TEST OF ROBINSON’S COGNITION HYPOTHESIS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0065,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0065,
+          "cluster_changed": true,
+          "reference_cluster_size": 8268,
+          "comparison_cluster_size": 155
+        }
+      }
+    },
+    {
+      "target_uid": "W2187524184",
+      "target_title": "Content and Language Integrated Learning in Practice: Comparison of three Cases",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0667,
+          "cluster_changed": true,
+          "reference_cluster_size": 160,
+          "comparison_cluster_size": 15
+        }
+      }
+    },
+    {
+      "target_uid": "W2189406290",
+      "target_title": "UNDERSTANDING EVOLUTION: INFLUENCES ON THE TEACHING AND STUDENT UNDERSTANDING OF EVOLUTIONARY CONCEPTS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0017,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0017,
+          "cluster_changed": true,
+          "reference_cluster_size": 1329,
+          "comparison_cluster_size": 1198
+        }
+      }
+    },
+    {
+      "target_uid": "W2198590518",
+      "target_title": "When Learner Inquiries Arise: Marking Teacher Cognition as It Unfolds “In-The-Moment”",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.04,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.04,
+          "cluster_changed": true,
+          "reference_cluster_size": 17890,
+          "comparison_cluster_size": 25
+        }
+      }
+    },
+    {
+      "target_uid": "W2218607418",
+      "target_title": "The predictors of parasocial interaction and their effects on perceived persuasiveness",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0058,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0058,
+          "cluster_changed": true,
+          "reference_cluster_size": 945,
+          "comparison_cluster_size": 173
+        }
+      }
+    },
+    {
+      "target_uid": "W2254152513",
+      "target_title": "Researching Vocabulary Development: A Conversation Analytic Approach",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0769,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0769,
+          "cluster_changed": true,
+          "reference_cluster_size": 3367,
+          "comparison_cluster_size": 26
+        }
+      }
+    },
+    {
+      "target_uid": "W2317906726",
+      "target_title": "Using Situated Learning to Examine the Language of Teaching and Learning",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0833,
+          "cluster_changed": true,
+          "reference_cluster_size": 17890,
+          "comparison_cluster_size": 12
+        }
+      }
+    },
+    {
+      "target_uid": "W2321481968",
+      "target_title": "Explicating the Development of Interactional Competence: The Method and Value of Longitudinal Conversation Analysis",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0114,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0114,
+          "cluster_changed": true,
+          "reference_cluster_size": 1172,
+          "comparison_cluster_size": 88
+        }
+      }
+    },
+    {
+      "target_uid": "W2327516229",
+      "target_title": "Research involving L2 listening instruction and instructors",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0526,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0526,
+          "cluster_changed": true,
+          "reference_cluster_size": 2698,
+          "comparison_cluster_size": 19
+        }
+      }
+    },
+    {
+      "target_uid": "W2503430913",
+      "target_title": "A Vygotskian sociocultural perspective on immersion education",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0303,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0303,
+          "cluster_changed": true,
+          "reference_cluster_size": 3480,
+          "comparison_cluster_size": 33
+        }
+      }
+    },
+    {
+      "target_uid": "W2505965475",
+      "target_title": "The Influence of Affective Variables on the Complexity, Accuracy, and Fluency in L2 Oral Production: The Contribution of Task Repetition",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0179,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0179,
+          "cluster_changed": true,
+          "reference_cluster_size": 56,
+          "comparison_cluster_size": 67
+        }
+      }
+    },
+    {
+      "target_uid": "W2512365776",
+      "target_title": "ENGAGING UNMOTIVATED EFL LEARNERS IN CLASSROOM TALK",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0286,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0286,
+          "cluster_changed": true,
+          "reference_cluster_size": 10797,
+          "comparison_cluster_size": 35
+        }
+      }
+    },
+    {
+      "target_uid": "W2583009469",
+      "target_title": "The Benefits of Study Abroad on the Fluency of Learners of French as a Second Language",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0222,
+          "cluster_changed": true,
+          "reference_cluster_size": 45,
+          "comparison_cluster_size": 695
+        }
+      }
+    },
+    {
+      "target_uid": "W2586776299",
+      "target_title": "Modeling Evolution in the Classroom: An Interactive LEGO Simulation",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0244,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0244,
+          "cluster_changed": true,
+          "reference_cluster_size": 215,
+          "comparison_cluster_size": 41
+        }
+      }
+    },
+    {
+      "target_uid": "W2741923108",
+      "target_title": "The Effectiveness of Listening Support on L2 Learners' Listening Comprehension Ability: A Meta-Analysis",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0175,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0175,
+          "cluster_changed": true,
+          "reference_cluster_size": 57,
+          "comparison_cluster_size": 381
+        }
+      }
+    },
+    {
+      "target_uid": "W2747960663",
+      "target_title": "The phenomenology of performance: exploring musicians' perceptions and experiences",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.012,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.012,
+          "cluster_changed": true,
+          "reference_cluster_size": 83,
+          "comparison_cluster_size": 118
+        }
+      }
+    },
+    {
+      "target_uid": "W2763698437",
+      "target_title": "Evolutionary thinking among biology students in a third world country",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0161,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0161,
+          "cluster_changed": true,
+          "reference_cluster_size": 121,
+          "comparison_cluster_size": 62
+        }
+      }
+    },
+    {
+      "target_uid": "W2784999814",
+      "target_title": "Multilingualism in Action: A Conversation Analytic View on How Children are Re-Voicing a Story in a French Second Language Learning Lesson",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0022,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0022,
+          "cluster_changed": true,
+          "reference_cluster_size": 1830,
+          "comparison_cluster_size": 1816
+        }
+      }
+    },
+    {
+      "target_uid": "W2802339044",
+      "target_title": "Target versus Native Language Use in Foreign Language Classes: Perspectives of Students and Instructors",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0135,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0135,
+          "cluster_changed": true,
+          "reference_cluster_size": 9747,
+          "comparison_cluster_size": 223
+        }
+      }
+    },
+    {
+      "target_uid": "W2803185945",
+      "target_title": "THE CONTRIBUTION OF DENTISTRY IN AGE ESTIMATION OF YOUNG ADULTS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0303,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0303,
+          "cluster_changed": true,
+          "reference_cluster_size": 17890,
+          "comparison_cluster_size": 66
+        }
+      }
+    },
+    {
+      "target_uid": "W2804896562",
+      "target_title": "“These Are Just Stories, Mulder”: Exposure to Conspiracist Fiction Does Not Produce Narrative Persuasion",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0225,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0225,
+          "cluster_changed": true,
+          "reference_cluster_size": 10797,
+          "comparison_cluster_size": 89
+        }
+      }
+    },
+    {
+      "target_uid": "W2886494865",
+      "target_title": "TEACHERS’ CORRECTIVE FEEDBACK ON STUDENTS’ L2 WRITING: STATE OF THE ART",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0128,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0128,
+          "cluster_changed": true,
+          "reference_cluster_size": 562,
+          "comparison_cluster_size": 78
+        }
+      }
+    },
+    {
+      "target_uid": "W2889013846",
+      "target_title": "The impact of implicit/explicit instruction on the learning process of L2 knowledge in Spanish",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0008,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0008,
+          "cluster_changed": true,
+          "reference_cluster_size": 1250,
+          "comparison_cluster_size": 1198
+        }
+      }
+    },
+    {
+      "target_uid": "W2899278474",
+      "target_title": "An Investigation of the Impact of Task Complexity on ESL Learners’ Spoken Language Performance",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0033,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0033,
+          "cluster_changed": true,
+          "reference_cluster_size": 305,
+          "comparison_cluster_size": 332
+        }
+      }
+    },
+    {
+      "target_uid": "W2900411888",
+      "target_title": "Exploring the Use of Oral Corrective Feedback in Turkish EFL Classrooms: A Case Study at a State University",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0186,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0186,
+          "cluster_changed": true,
+          "reference_cluster_size": 8938,
+          "comparison_cluster_size": 269
+        }
+      }
+    },
+    {
+      "target_uid": "W2904528491",
+      "target_title": "The effect of input enhancement and elaboration techniques on learning discourse markers: A gender role study",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0588,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0588,
+          "cluster_changed": true,
+          "reference_cluster_size": 17,
+          "comparison_cluster_size": 85
+        }
+      }
+    },
+    {
+      "target_uid": "W2920957240",
+      "target_title": "Fictional Narratives and Identity Change: Three pathways through which Stories influence the Dialogical Self",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0244,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0244,
+          "cluster_changed": true,
+          "reference_cluster_size": 1722,
+          "comparison_cluster_size": 41
+        }
+      }
+    },
+    {
+      "target_uid": "W2945352130",
+      "target_title": "The role of motivation in learning foreign languages: towards a global self-identity – a literature analysis",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0435,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0435,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 161
+        }
+      }
+    },
+    {
+      "target_uid": "W2951699531",
+      "target_title": "Talking about TV: Mother-Daughter Viewing and Discussion of an Entertainment Narrative about Teen Pregnancy",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0036,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0036,
+          "cluster_changed": true,
+          "reference_cluster_size": 2348,
+          "comparison_cluster_size": 563
+        }
+      }
+    },
+    {
+      "target_uid": "W2953409530",
+      "target_title": "L2 Pragmatic Competence in Chinese Secondary Schools - Teaching Approaches, Teaching Materials, and Classroom-Based Assessment",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0147,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0147,
+          "cluster_changed": true,
+          "reference_cluster_size": 447,
+          "comparison_cluster_size": 68
+        }
+      }
+    },
+    {
+      "target_uid": "W2954470663",
+      "target_title": "THE VALIDITY AND RELIABILITY OF THE MUSICAL PERFORMANCE ANXIETY SCALE",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0125,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0125,
+          "cluster_changed": true,
+          "reference_cluster_size": 8455,
+          "comparison_cluster_size": 240
+        }
+      }
+    },
+    {
+      "target_uid": "W2958376204",
+      "target_title": "“This language still motivates me!” Advanced language students and their L2 motivation",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0145,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0145,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 69
+        }
+      }
+    },
+    {
+      "target_uid": "W2974965964",
+      "target_title": "Pre-service language teachers’ online written corrective feedback preferences and timing of feedback in computer-supported L2 grammar instruction",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0143,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0143,
+          "cluster_changed": true,
+          "reference_cluster_size": 10204,
+          "comparison_cluster_size": 70
+        }
+      }
+    },
+    {
+      "target_uid": "W2979482601",
+      "target_title": "The interaction between timing of explicit grammar explanation and individual differences in second language acquisition",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0137,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0137,
+          "cluster_changed": true,
+          "reference_cluster_size": 10756,
+          "comparison_cluster_size": 438
+        }
+      }
+    },
+    {
+      "target_uid": "W2998818428",
+      "target_title": "Exploring the Relationship between Interactional Competence and Group Oral Communication",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0833,
+          "cluster_changed": true,
+          "reference_cluster_size": 12,
+          "comparison_cluster_size": 40
+        }
+      }
+    },
+    {
+      "target_uid": "W2999851485",
+      "target_title": "CRITERIA SELECTION FOR ADAPTIVE REUSE OF CULTURAL HERITAGE BUILDINGS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0417,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0417,
+          "cluster_changed": true,
+          "reference_cluster_size": 45,
+          "comparison_cluster_size": 24
+        }
+      }
+    },
+    {
+      "target_uid": "W3007905591",
+      "target_title": "Examination of Preservice Teachers’ Perceptions about Evolution Course",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0278,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0278,
+          "cluster_changed": true,
+          "reference_cluster_size": 6413,
+          "comparison_cluster_size": 36
+        }
+      }
+    },
+    {
+      "target_uid": "W3013581550",
+      "target_title": "Perceptions of Willingness to Communicate Orally in English among Iranian PhD Students",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0049,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0049,
+          "cluster_changed": true,
+          "reference_cluster_size": 3239,
+          "comparison_cluster_size": 4825
+        }
+      }
+    },
+    {
+      "target_uid": "W3016217815",
+      "target_title": "Corrective feedback preferences of primary school and university students",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0097,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0097,
+          "cluster_changed": true,
+          "reference_cluster_size": 194,
+          "comparison_cluster_size": 103
+        }
+      }
+    },
+    {
+      "target_uid": "W3022226786",
+      "target_title": "PARASOCIAL MEDIA EFFECTS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0588,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0588,
+          "cluster_changed": true,
+          "reference_cluster_size": 2227,
+          "comparison_cluster_size": 17
+        }
+      }
+    },
+    {
+      "target_uid": "W3037514453",
+      "target_title": "Efficacy of Different Types of Written Corrective Feedback on EFL University Students’ Writing Quality",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0167,
+          "cluster_changed": true,
+          "reference_cluster_size": 60,
+          "comparison_cluster_size": 117
+        }
+      }
+    },
+    {
+      "target_uid": "W3046212981",
+      "target_title": "“Is He Talking to Me?”",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.037,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.037,
+          "cluster_changed": true,
+          "reference_cluster_size": 27,
+          "comparison_cluster_size": 1969
+        }
+      }
+    },
+    {
+      "target_uid": "W3046315294",
+      "target_title": "A Longitudinal Study of Sequential Organization of L2 Repair in Classroom Contexts",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.05,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.05,
+          "cluster_changed": true,
+          "reference_cluster_size": 20,
+          "comparison_cluster_size": 60
+        }
+      }
+    },
+    {
+      "target_uid": "W3047153431",
+      "target_title": "The role of viewers’ performance of a narrative on their beliefs about transgender persons",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0278,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0278,
+          "cluster_changed": true,
+          "reference_cluster_size": 36,
+          "comparison_cluster_size": 1605
+        }
+      }
+    },
+    {
+      "target_uid": "W3047821867",
+      "target_title": "Language Issue in German Higher Education Internationalization: Ideologies, Management and Practices for English-Medium Instruction",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0333,
+          "cluster_changed": true,
+          "reference_cluster_size": 117,
+          "comparison_cluster_size": 30
+        }
+      }
+    },
+    {
+      "target_uid": "W3081959292",
+      "target_title": "Context is everything: reflections on CLIL in the UK",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0294,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0294,
+          "cluster_changed": true,
+          "reference_cluster_size": 197,
+          "comparison_cluster_size": 34
+        }
+      }
+    },
+    {
+      "target_uid": "W3082085829",
+      "target_title": "“Don’t You Reckon That Being a Multilingual Person Is Cool?”—Investigating the L3 Learning Motivation of Chinese University Learners",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0667,
+          "cluster_changed": true,
+          "reference_cluster_size": 15,
+          "comparison_cluster_size": 244
+        }
+      }
+    },
+    {
+      "target_uid": "W3084654892",
+      "target_title": "A content analysis of pre-college lesson plans on human evolution",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0093,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0093,
+          "cluster_changed": true,
+          "reference_cluster_size": 317,
+          "comparison_cluster_size": 107
+        }
+      }
+    },
+    {
+      "target_uid": "W3092155529",
+      "target_title": "Fiction as a Means to Understanding the Dynamics of Empathy",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0015,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0015,
+          "cluster_changed": true,
+          "reference_cluster_size": 1329,
+          "comparison_cluster_size": 672
+        }
+      }
+    },
+    {
+      "target_uid": "W3096628807",
+      "target_title": "Metatalk in Advanced Spanish L2 and Heritage Learners When Solving Lexical Problems: A Multiple-case Study",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0294,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0294,
+          "cluster_changed": true,
+          "reference_cluster_size": 1010,
+          "comparison_cluster_size": 34
+        }
+      }
+    },
+    {
+      "target_uid": "W3106748381",
+      "target_title": "Design for Breathtaking Experiences: An Exploration of Design Strategies to Evoke Awe in Human–Product Interactions",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.025,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.025,
+          "cluster_changed": true,
+          "reference_cluster_size": 513,
+          "comparison_cluster_size": 40
+        }
+      }
+    },
+    {
+      "target_uid": "W3107647542",
+      "target_title": "Material characterisation of a painted beehive panel by advanced spectroscopic and chromatographic techniques in combination with hyperspectral imaging",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.005,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.005,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 202
+        }
+      }
+    },
+    {
+      "target_uid": "W3110286269",
+      "target_title": "Teaching Perspectives On Clil In Different Educational Contexts: Italy, Spain And Turkey",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0625,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0625,
+          "cluster_changed": true,
+          "reference_cluster_size": 3367,
+          "comparison_cluster_size": 16
+        }
+      }
+    },
+    {
+      "target_uid": "W3123542269",
+      "target_title": "Examining the level of enjoyment and anxiety among Turkish EFL students",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0769,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0769,
+          "cluster_changed": true,
+          "reference_cluster_size": 13,
+          "comparison_cluster_size": 214
+        }
+      }
+    },
+    {
+      "target_uid": "W3138928006",
+      "target_title": "Spontaneous classroom engagement facilitating development of L2 pragmatic competence",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.2,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 10797,
+          "comparison_cluster_size": 10
+        }
+      }
+    },
+    {
+      "target_uid": "W3139233425",
+      "target_title": "Factors of Students’ Willingness and Unwillingness to Speak English in the Classroom",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0273,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0273,
+          "cluster_changed": true,
+          "reference_cluster_size": 6413,
+          "comparison_cluster_size": 110
+        }
+      }
+    },
+    {
+      "target_uid": "W3144774633",
+      "target_title": "Research agenda: Researching grammar teaching and learning in the second language classroom",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0968,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0968,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 31
+        }
+      }
+    },
+    {
+      "target_uid": "W3152711662",
+      "target_title": "A cross-national analysis of cultural representations in English textbooks used in China and Germany",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0286,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0286,
+          "cluster_changed": true,
+          "reference_cluster_size": 35,
+          "comparison_cluster_size": 233
+        }
+      }
+    },
+    {
+      "target_uid": "W3154620979",
+      "target_title": "Does What We Know About Actors’ Real Lives",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0435,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0435,
+          "cluster_changed": true,
+          "reference_cluster_size": 23,
+          "comparison_cluster_size": 37
+        }
+      }
+    },
+    {
+      "target_uid": "W3156494133",
+      "target_title": "MOVE ANALYSIS OF UNDERGRADUATE THESES AND UNDERGRADUATE STUDENTS’ PUBLISHED RESEARCH ARTICLES ABSTRACTS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0455,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0455,
+          "cluster_changed": true,
+          "reference_cluster_size": 25,
+          "comparison_cluster_size": 22
+        }
+      }
+    },
+    {
+      "target_uid": "W3161391769",
+      "target_title": "Listening for Young-adult EFL Learners: Metacognitive Intervention through L1",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0526,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0526,
+          "cluster_changed": true,
+          "reference_cluster_size": 7811,
+          "comparison_cluster_size": 57
+        }
+      }
+    },
+    {
+      "target_uid": "W3162216757",
+      "target_title": "FROM EFL TO ELF: THE NEW KID ON THE BLOCK",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0476,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0476,
+          "cluster_changed": true,
+          "reference_cluster_size": 3367,
+          "comparison_cluster_size": 42
+        }
+      }
+    },
+    {
+      "target_uid": "W3168100367",
+      "target_title": "Dental markers of biocultural sex differences in an early modern population from Gothenburg, Sweden: caries and other oral pathologies",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0312,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0312,
+          "cluster_changed": true,
+          "reference_cluster_size": 32,
+          "comparison_cluster_size": 62
+        }
+      }
+    },
+    {
+      "target_uid": "W3170169543",
+      "target_title": "A Survey on the Relationship between Willingness to Communicate and Learner Autonomy of Turkish EFL Students",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.1,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.1,
+          "cluster_changed": true,
+          "reference_cluster_size": 10,
+          "comparison_cluster_size": 46
+        }
+      }
+    },
+    {
+      "target_uid": "W3172850051",
+      "target_title": "THE DYNAMICS OF FOREIGN LANGUAGE ANXIETY EXPERIENCED BY INDONESIAN EFL LEARNERS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.006,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.006,
+          "cluster_changed": true,
+          "reference_cluster_size": 258,
+          "comparison_cluster_size": 166
+        }
+      }
+    },
+    {
+      "target_uid": "W3173729269",
+      "target_title": "Peer Interaction in the L2 Classroom: A Study among Malaysian ESL Learners",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0174,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0174,
+          "cluster_changed": true,
+          "reference_cluster_size": 9747,
+          "comparison_cluster_size": 115
+        }
+      }
+    },
+    {
+      "target_uid": "W3175449395",
+      "target_title": "Towards Integrating Lingua Franca in Thai EFL: Insights from Thai Tertiary Learners",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0541,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0541,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 37
+        }
+      }
+    },
+    {
+      "target_uid": "W3179025124",
+      "target_title": "Models, structures, and the explanatory role of mathematics in empirical science",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.08,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.08,
+          "cluster_changed": true,
+          "reference_cluster_size": 25,
+          "comparison_cluster_size": 2411
+        }
+      }
+    },
+    {
+      "target_uid": "W3179853991",
+      "target_title": "The Evolution Usefulness Scale: Development, Reliability, and Validity",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0265,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0265,
+          "cluster_changed": true,
+          "reference_cluster_size": 8268,
+          "comparison_cluster_size": 189
+        }
+      }
+    },
+    {
+      "target_uid": "W3181653988",
+      "target_title": "Conversation and Culture",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0098,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0098,
+          "cluster_changed": true,
+          "reference_cluster_size": 996,
+          "comparison_cluster_size": 102
+        }
+      }
+    },
+    {
+      "target_uid": "W3188910587",
+      "target_title": "The locus of written corrective feedback in various SLA theories",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0588,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0588,
+          "cluster_changed": true,
+          "reference_cluster_size": 26,
+          "comparison_cluster_size": 17
+        }
+      }
+    },
+    {
+      "target_uid": "W3193810763",
+      "target_title": "English Language Teaching Practice (ELTP) at Primary and Secondary School Levels in some Asian Countries: A Comparison of Afghanistan, Malaysia and Saudi Arabia",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0127,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0127,
+          "cluster_changed": true,
+          "reference_cluster_size": 237,
+          "comparison_cluster_size": 79
+        }
+      }
+    },
+    {
+      "target_uid": "W3200917593",
+      "target_title": "The Impact of Collaborative Writing on EFL Learners’ Writing Development: A Longitudinal Classroom-Based Study in Saudi Arabia",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0274,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0274,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 2411
+        }
+      }
+    },
+    {
+      "target_uid": "W3202380936",
+      "target_title": "Teacher Educators’ Professional Identity in English-Medium Instruction at a Finnish University",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0179,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0179,
+          "cluster_changed": true,
+          "reference_cluster_size": 301,
+          "comparison_cluster_size": 56
+        }
+      }
+    },
+    {
+      "target_uid": "W3202911953",
+      "target_title": "Managing Readers' Impression of Research Article Abstracts Through Metadiscourse",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0588,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0588,
+          "cluster_changed": true,
+          "reference_cluster_size": 17,
+          "comparison_cluster_size": 124
+        }
+      }
+    },
+    {
+      "target_uid": "W3213693451",
+      "target_title": "Reducing the split-attention effect of subtitles during video learning: might the use of occasional keywords be an effective solution?",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0037,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0037,
+          "cluster_changed": true,
+          "reference_cluster_size": 2140,
+          "comparison_cluster_size": 1081
+        }
+      }
+    },
+    {
+      "target_uid": "W3216236733",
+      "target_title": "Students’ View on CLIL: Perceived Benefits and Limitations",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0455,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0455,
+          "cluster_changed": true,
+          "reference_cluster_size": 176,
+          "comparison_cluster_size": 22
+        }
+      }
+    },
+    {
+      "target_uid": "W3217575905",
+      "target_title": "Review of Research on Content and Language Integrated Learning Classes from the Perspective of the First Principles of Instruction",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0769,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0769,
+          "cluster_changed": true,
+          "reference_cluster_size": 13,
+          "comparison_cluster_size": 27
+        }
+      }
+    },
+    {
+      "target_uid": "W4200214088",
+      "target_title": "Evaluating Non-STEM Students’ understanding of Evolution: Basis for designing Pedagogical Intervention",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0357,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0357,
+          "cluster_changed": true,
+          "reference_cluster_size": 409,
+          "comparison_cluster_size": 28
+        }
+      }
+    },
+    {
+      "target_uid": "W4200236565",
+      "target_title": "The wow effect and behavioral intentions of tourists to astrotourism experiences: Mediating effects of satisfaction",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0167,
+          "cluster_changed": true,
+          "reference_cluster_size": 487,
+          "comparison_cluster_size": 60
+        }
+      }
+    },
+    {
+      "target_uid": "W4200398620",
+      "target_title": "Musical backgrounds and musical identity development in pre-service music education and primary education students: a narrative study",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0215,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0215,
+          "cluster_changed": true,
+          "reference_cluster_size": 14780,
+          "comparison_cluster_size": 2423
+        }
+      }
+    },
+    {
+      "target_uid": "W4205809065",
+      "target_title": "Music Notation Software as a Visual-aural Model in Self-regulated Practice",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0526,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0526,
+          "cluster_changed": true,
+          "reference_cluster_size": 7811,
+          "comparison_cluster_size": 38
+        }
+      }
+    },
+    {
+      "target_uid": "W4205909761",
+      "target_title": "MOTIVATION IN FOREIGN LANGUAGE LEARNING: THE DYNAMIC INTERACTIONS OF MANY FACTORS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0227,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0227,
+          "cluster_changed": true,
+          "reference_cluster_size": 45,
+          "comparison_cluster_size": 44
+        }
+      }
+    },
+    {
+      "target_uid": "W4205962928",
+      "target_title": "Contrasting Views of English-Medium Instruction by Korean Professors and Students : Towards a Negotiated Language Policy",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.037,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.037,
+          "cluster_changed": true,
+          "reference_cluster_size": 834,
+          "comparison_cluster_size": 27
+        }
+      }
+    },
+    {
+      "target_uid": "W4220704532",
+      "target_title": "INDONESIAN ENGLISH LECTURERS’ VIEWS ON WORLD ENGLISHES IN ENGLISH LANGUAGE TEACHING: A QUALITATIVE INQUIRY",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0741,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0741,
+          "cluster_changed": true,
+          "reference_cluster_size": 10204,
+          "comparison_cluster_size": 27
+        }
+      }
+    },
+    {
+      "target_uid": "W4223588402",
+      "target_title": "A DESCRIPTIVE STUDY ON FOREIGN LANGUAGE ENJOYMENT OF LEARNERS IN FOREIGN LANGUAGE CLASSROOMS",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0345,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0345,
+          "cluster_changed": true,
+          "reference_cluster_size": 131,
+          "comparison_cluster_size": 29
+        }
+      }
+    },
+    {
+      "target_uid": "W4223975988",
+      "target_title": "Exploring the Potentials of Intralingual Subtitling in Second Language Learning: An Experimental Study with EFL University Students",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0131,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0131,
+          "cluster_changed": true,
+          "reference_cluster_size": 8455,
+          "comparison_cluster_size": 2753
+        }
+      }
+    },
+    {
+      "target_uid": "W4225417029",
+      "target_title": "An Examination of the Use of Subtitles in Learning L2 Collocations",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.037,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.037,
+          "cluster_changed": true,
+          "reference_cluster_size": 27,
+          "comparison_cluster_size": 49
+        }
+      }
+    },
+    {
+      "target_uid": "W4226081102",
+      "target_title": "The pragmatics of English as a lingua franca",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0029,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0029,
+          "cluster_changed": true,
+          "reference_cluster_size": 339,
+          "comparison_cluster_size": 512
+        }
+      }
+    },
+    {
+      "target_uid": "W4229379002",
+      "target_title": "Probing into Non-native Learners’ Written Accuracy: Does Feedback Type Matter?",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.025,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.025,
+          "cluster_changed": true,
+          "reference_cluster_size": 50,
+          "comparison_cluster_size": 40
+        }
+      }
+    },
+    {
+      "target_uid": "W4281756411",
+      "target_title": "A cross-cultural, cross-contextual study of interactional metadiscourse in academic research articles: An interpersonal approach",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0233,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0233,
+          "cluster_changed": true,
+          "reference_cluster_size": 43,
+          "comparison_cluster_size": 1081
+        }
+      }
+    },
+    {
+      "target_uid": "W4283711011",
+      "target_title": "Chinese English as a Foreign Language Learners’ Individual Differences and Their Willingness to Communicate",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0385,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0385,
+          "cluster_changed": true,
+          "reference_cluster_size": 26,
+          "comparison_cluster_size": 301
+        }
+      }
+    },
+    {
+      "target_uid": "W4283802795",
+      "target_title": "The effects of proficiency and study-abroad on Chinese EFL learners’ refusals",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0137,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0137,
+          "cluster_changed": true,
+          "reference_cluster_size": 131,
+          "comparison_cluster_size": 73
+        }
+      }
+    },
+    {
+      "target_uid": "W4284895180",
+      "target_title": "Corrective Feedback in K-12 English: Characteristics, Purposes, and Examples",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0063,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0063,
+          "cluster_changed": true,
+          "reference_cluster_size": 3565,
+          "comparison_cluster_size": 476
+        }
+      }
+    },
+    {
+      "target_uid": "W4285388895",
+      "target_title": "Examining the Effects of Celebrity (Vs. Noncelebrity) Narratives on Opioid Addiction Prevention: Identification, Transportation, and the Moderating Role of Personal Relevance",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0476,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0476,
+          "cluster_changed": true,
+          "reference_cluster_size": 30,
+          "comparison_cluster_size": 21
+        }
+      }
+    },
+    {
+      "target_uid": "W4286685193",
+      "target_title": "English medium instruction for whom and for what? Rethinking the language-content relationship in higher education",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0127,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0127,
+          "cluster_changed": true,
+          "reference_cluster_size": 6421,
+          "comparison_cluster_size": 157
+        }
+      }
+    },
+    {
+      "target_uid": "W4286727982",
+      "target_title": "Beyond Content",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0133,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0133,
+          "cluster_changed": true,
+          "reference_cluster_size": 7979,
+          "comparison_cluster_size": 75
+        }
+      }
+    },
+    {
+      "target_uid": "W4293221006",
+      "target_title": "Teletandem vs. Face-to-Face in the L2 Classroom: The Effect of Type of Media on Complexity and Accuracy",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0769,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0769,
+          "cluster_changed": true,
+          "reference_cluster_size": 17890,
+          "comparison_cluster_size": 39
+        }
+      }
+    },
+    {
+      "target_uid": "W4293654036",
+      "target_title": "Covid-19 Pandemisinde Uzaktan Eğitim: Okul Öncesi Öğretmenlerinin Sürece İlişkin Görüşleri",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0233,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0233,
+          "cluster_changed": true,
+          "reference_cluster_size": 244,
+          "comparison_cluster_size": 43
+        }
+      }
+    },
+    {
+      "target_uid": "W4293833964",
+      "target_title": "Can We Learn about Culture by EFL Textbook Images? A Semiotic Approach Perspective",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0051,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0051,
+          "cluster_changed": true,
+          "reference_cluster_size": 197,
+          "comparison_cluster_size": 467
+        }
+      }
+    },
+    {
+      "target_uid": "W4294676053",
+      "target_title": "Establishing understanding during student-initiated between-desk instructions in project work",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0714,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0714,
+          "cluster_changed": true,
+          "reference_cluster_size": 14,
+          "comparison_cluster_size": 63
+        }
+      }
+    },
+    {
+      "target_uid": "W4294943826",
+      "target_title": "Where have I been all these years? A narrative case study on the impact of western (mis)conceptions of musicality on a generalist classroom teacher’s music teacher identity construction",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0222,
+          "cluster_changed": true,
+          "reference_cluster_size": 87,
+          "comparison_cluster_size": 45
+        }
+      }
+    },
+    {
+      "target_uid": "W4295180279",
+      "target_title": "Case and agreement as contextually manipulable properties of functional heads",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.1143,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.1143,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 35
+        }
+      }
+    },
+    {
+      "target_uid": "W4296785457",
+      "target_title": "Practice and learning the piano: Motivation and self-regulation",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0082,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0082,
+          "cluster_changed": true,
+          "reference_cluster_size": 122,
+          "comparison_cluster_size": 257
+        }
+      }
+    },
+    {
+      "target_uid": "W4297256274",
+      "target_title": "Drama, Intrigue, and Discussion: The Role of Telenovelas in Facilitating Conversations about Reproductive Health in Mexican Households",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0272,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0272,
+          "cluster_changed": true,
+          "reference_cluster_size": 9747,
+          "comparison_cluster_size": 184
+        }
+      }
+    },
+    {
+      "target_uid": "W4304195736",
+      "target_title": "Improving the Fluency of the Iranian EFL Learners’ Oral Performance through Task Variation",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0036,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0036,
+          "cluster_changed": true,
+          "reference_cluster_size": 1126,
+          "comparison_cluster_size": 3166
+        }
+      }
+    },
+    {
+      "target_uid": "W4307732851",
+      "target_title": "Understanding University Teachers’ Perspectives of English Medium Instruction in Indonesia",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.025,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.025,
+          "cluster_changed": true,
+          "reference_cluster_size": 756,
+          "comparison_cluster_size": 40
+        }
+      }
+    },
+    {
+      "target_uid": "W4307737391",
+      "target_title": "An Overview on Speaking Anxiety in Foreign Language Classroom: Level of Speaking Anxiety, Gender, and Factors",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0667,
+          "cluster_changed": true,
+          "reference_cluster_size": 15,
+          "comparison_cluster_size": 16
+        }
+      }
+    },
+    {
+      "target_uid": "W4308336328",
+      "target_title": "Beyond influence: Contextualization and optimization for new narrative techniques and story-formats. Perspective paper",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.009,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.009,
+          "cluster_changed": true,
+          "reference_cluster_size": 111,
+          "comparison_cluster_size": 468
+        }
+      }
+    },
+    {
+      "target_uid": "W4309865608",
+      "target_title": "Do weak readers in rural India automatically read same language subtitles on Bollywood films? An eye gaze analysis",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0385,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0385,
+          "cluster_changed": true,
+          "reference_cluster_size": 19686,
+          "comparison_cluster_size": 104
+        }
+      }
+    },
+    {
+      "target_uid": "W4310117514",
+      "target_title": "The effects of instruction type on the pragmatic development of compliments and compliment responses in L2 English learners",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0192,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0192,
+          "cluster_changed": true,
+          "reference_cluster_size": 10797,
+          "comparison_cluster_size": 52
+        }
+      }
+    },
+    {
+      "target_uid": "W4310711551",
+      "target_title": "COVID-19 Pandemisinde Yeni Deneyimler: Uzaktan Eğitime İlişkin Öğrenci Görüşleri",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0204,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0204,
+          "cluster_changed": true,
+          "reference_cluster_size": 49,
+          "comparison_cluster_size": 433
+        }
+      }
+    },
+    {
+      "target_uid": "W4311232338",
+      "target_title": "Attitudes of Secondary Level Teachers towards EMI in English Medium Schools of Mahendranagar",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.05,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.05,
+          "cluster_changed": true,
+          "reference_cluster_size": 1796,
+          "comparison_cluster_size": 20
+        }
+      }
+    },
+    {
+      "target_uid": "W4311597397",
+      "target_title": "Corrective feedback, individual differences in working memory, and L2 development",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0141,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0141,
+          "cluster_changed": true,
+          "reference_cluster_size": 73,
+          "comparison_cluster_size": 71
+        }
+      }
+    },
+    {
+      "target_uid": "W4312951898",
+      "target_title": "Revealing the relationship between acceptance and understanding of evolution through NOS (Nature of Science)-based learning",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0263,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0263,
+          "cluster_changed": true,
+          "reference_cluster_size": 42,
+          "comparison_cluster_size": 38
+        }
+      }
+    },
+    {
+      "target_uid": "W4312953820",
+      "target_title": "Enjoyment in the Foreign Language Teaching Environment: Saudi Teachers’ Perspectives",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0267,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0267,
+          "cluster_changed": true,
+          "reference_cluster_size": 17890,
+          "comparison_cluster_size": 75
+        }
+      }
+    },
+    {
+      "target_uid": "W4313050858",
+      "target_title": "Making the Schoolhouse Rock: A Content Analysis of Two Popular Music Pedagogies",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0455,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0455,
+          "cluster_changed": true,
+          "reference_cluster_size": 207,
+          "comparison_cluster_size": 22
+        }
+      }
+    },
+    {
+      "target_uid": "W4313314394",
+      "target_title": "Pandemi Süreci ve Uygulanan Uzaktan Eğitimin Meslek Liselerine Yansımalarının İncelenmesi",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0074,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0074,
+          "cluster_changed": true,
+          "reference_cluster_size": 270,
+          "comparison_cluster_size": 276
+        }
+      }
+    },
+    {
+      "target_uid": "W4313351008",
+      "target_title": "THE EFFECT OF CORRECTIVE FEEDBACK VIA A COMPUTERIZED COURSE ON OMANI EFL LEARNERS` WRITING PERFORMANCE",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0435,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0435,
+          "cluster_changed": true,
+          "reference_cluster_size": 349,
+          "comparison_cluster_size": 23
+        }
+      }
+    },
+    {
+      "target_uid": "W4316362917",
+      "target_title": "THE IMPORTANCE AND FACTORS OF ENJOYMENT IN MALAYSIAN ESL CLASSROOM: A MULTISITE CASE STUDY",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0417,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0417,
+          "cluster_changed": true,
+          "reference_cluster_size": 8268,
+          "comparison_cluster_size": 24
+        }
+      }
+    },
+    {
+      "target_uid": "W4319601062",
+      "target_title": "Written Corrective Feedback: How can it influence adult ELLs writing performance?",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0044,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0044,
+          "cluster_changed": true,
+          "reference_cluster_size": 226,
+          "comparison_cluster_size": 552
+        }
+      }
+    },
+    {
+      "target_uid": "W4319790890",
+      "target_title": "Facilitating Students' Learning of a Target Construction Through Teacher Interactional Resources in <scp>EFL</scp> Kindergarten Classrooms",
+      "target_year": null,
+      "n_comparisons": 1,
+      "avg_shift_score": 2.25,
+      "avg_rank_jaccard": 0.0,
+      "avg_mean_abs_rank_shift": 8.0,
+      "avg_cluster_overlap_coeff": 0.0213,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_overlap_coeff": 0.0213,
+          "cluster_changed": true,
+          "reference_cluster_size": 47,
+          "comparison_cluster_size": 71
+        }
+      }
+    }
+  ],
+  "comparison_stats": [
+    {
+      "label": "sum_minus_emb",
+      "n_eligible": 28886,
+      "n_candidates": 19217,
+      "reference_clusters": 12020,
+      "comparison_clusters": 18774
+    }
+  ],
+  "configs": [
+    {
+      "label": "consensus_all",
+      "strategy": "consensus",
+      "include": null,
+      "exclude": null,
+      "gamma_override": 2.5e-05,
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ]
+    },
+    {
+      "label": "sum_minus_emb",
+      "strategy": "sum",
+      "include": null,
+      "exclude": [
+        "emb_knn"
+      ],
+      "gamma_override": 2.63268e-07,
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional"
+      ]
+    }
+  ],
+  "gamma_cache": null
+}

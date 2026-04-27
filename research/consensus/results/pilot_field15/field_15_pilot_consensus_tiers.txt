@@ -1,0 +1,26 @@
+============================================================
+Multi-layer Consensus Report
+============================================================
+
+Layers: 4
+Total edges (union): 384,414
+Backbone (all-layer): 3,078 (0.8%)
+
+--- Consensus distribution ---
+  1-layer:    323,324 ( 84.1%) ██████████████████████████████████████████
+  2-layer:     45,410 ( 11.8%) █████
+  3-layer:     12,602 (  3.3%) █
+  4-layer:      3,078 (  0.8%) 
+
+--- Per-layer coverage ---
+             bc_cosine:   17,619 nodes,    226,851 edges
+             cc_cosine:   10,481 nodes,     72,609 edges
+         dc_fractional:   17,618 nodes,     59,228 edges
+               emb_knn:   19,845 nodes,    105,574 edges
+
+--- Consensus vs cluster structure ---
+  N_layers      Edges   Intra%   Cross%
+         1    323,324     0.6%    99.4%
+         2     45,410     0.5%    99.5%
+         3     12,602     0.5%    99.5%
+         4      3,078     0.3%    99.7%

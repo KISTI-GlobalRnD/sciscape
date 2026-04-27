@@ -1,0 +1,114 @@
+{
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": 30}": {
+    "gamma": 0.0008088005947128995,
+    "n_clusters": 583,
+    "max_pct": 3.02,
+    "top5": [
+      3482,
+      3074,
+      2364,
+      2312,
+      2227
+    ],
+    "field": "field_15",
+    "label": "consensus_all"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 30}": {
+    "gamma": 0.0011834844033785765,
+    "n_clusters": 364,
+    "max_pct": 2.25,
+    "top5": [
+      2598,
+      2488,
+      2201,
+      2187,
+      1968
+    ],
+    "field": "field_15",
+    "label": "sum_all"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 30}": {
+    "gamma": 0.001929709892996202,
+    "n_clusters": 373,
+    "max_pct": 2.35,
+    "top5": [
+      2712,
+      2521,
+      2254,
+      1960,
+      1854
+    ],
+    "field": "field_15",
+    "label": "sum_minus_cc"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 30}": {
+    "gamma": 5.759134507111635e-07,
+    "n_clusters": 972,
+    "max_pct": 12.93,
+    "top5": [
+      14904,
+      2534,
+      2293,
+      2156,
+      1991
+    ],
+    "field": "field_15",
+    "label": "sum_minus_emb"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 2528,
+    "max_pct": 2.53,
+    "top5": [
+      2919,
+      2419,
+      2311,
+      2079,
+      1989
+    ],
+    "field": "field_15",
+    "label": "consensus_all"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 0.000285494207576822,
+    "n_clusters": 1948,
+    "max_pct": 2.22,
+    "top5": [
+      2555,
+      2414,
+      2252,
+      1961,
+      1587
+    ],
+    "field": "field_15",
+    "label": "sum_all"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 0.000321036882690266,
+    "n_clusters": 1838,
+    "max_pct": 2.6,
+    "top5": [
+      2995,
+      2412,
+      2298,
+      2194,
+      1736
+    ],
+    "field": "field_15",
+    "label": "sum_minus_cc"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 8.441308158271217e-07,
+    "n_clusters": 2890,
+    "max_pct": 1.35,
+    "top5": [
+      1551,
+      1373,
+      1357,
+      1268,
+      1177
+    ],
+    "field": "field_15",
+    "label": "sum_minus_emb"
+  }
+}

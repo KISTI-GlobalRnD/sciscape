@@ -1,0 +1,234 @@
+{
+  "field": "field_15_pilot",
+  "edge_dir": "research/pilot_data/field_15_subset/edges",
+  "target_pct": 3.0,
+  "top_k": 30,
+  "min_size": 10,
+  "n_seeds": 5,
+  "layers": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "consensus_stats": {
+    "n_layers_distribution": {
+      "1": 323324,
+      "2": 45410,
+      "3": 12602,
+      "4": 3078
+    },
+    "per_layer_coverage": {
+      "bc_cosine": 17619,
+      "cc_cosine": 10481,
+      "dc_fractional": 17618,
+      "emb_knn": 19845
+    },
+    "per_layer_edges": {
+      "bc_cosine": 226851,
+      "cc_cosine": 72609,
+      "dc_fractional": 59228,
+      "emb_knn": 105574
+    },
+    "overlap_matrix": {
+      "bc_cosine_bc_cosine": 226851,
+      "bc_cosine_cc_cosine": 22662,
+      "cc_cosine_bc_cosine": 22662,
+      "bc_cosine_dc_fractional": 22546,
+      "dc_fractional_bc_cosine": 22546,
+      "bc_cosine_emb_knn": 22204,
+      "emb_knn_bc_cosine": 22204,
+      "cc_cosine_cc_cosine": 72609,
+      "cc_cosine_dc_fractional": 15241,
+      "dc_fractional_cc_cosine": 15241,
+      "cc_cosine_emb_knn": 8543,
+      "emb_knn_cc_cosine": 8543,
+      "dc_fractional_dc_fractional": 59228,
+      "dc_fractional_emb_knn": 10488,
+      "emb_knn_dc_fractional": 10488,
+      "emb_knn_emb_knn": 105574
+    },
+    "overlap_layer_names": [
+      "bc_cosine",
+      "cc_cosine",
+      "dc_fractional",
+      "emb_knn"
+    ],
+    "backbone_size": 3078,
+    "total_edges": 384414,
+    "n_layers": 4
+  },
+  "cluster_stats": {
+    "1": {
+      "n_edges": 323324,
+      "intra": 1984,
+      "cross": 321340,
+      "intra_pct": 0.6,
+      "cross_pct": 99.4
+    },
+    "2": {
+      "n_edges": 45410,
+      "intra": 243,
+      "cross": 45167,
+      "intra_pct": 0.5,
+      "cross_pct": 99.5
+    },
+    "3": {
+      "n_edges": 12602,
+      "intra": 62,
+      "cross": 12540,
+      "intra_pct": 0.5,
+      "cross_pct": 99.5
+    },
+    "4": {
+      "n_edges": 3078,
+      "intra": 8,
+      "cross": 3070,
+      "intra_pct": 0.3,
+      "cross_pct": 99.7
+    }
+  },
+  "plotly": {
+    "distribution": {
+      "data": [
+        {
+          "x": [
+            "1-layer",
+            "2-layer",
+            "3-layer",
+            "4-layer"
+          ],
+          "y": [
+            323324,
+            45410,
+            12602,
+            3078
+          ],
+          "type": "bar",
+          "marker": {
+            "color": [
+              "#94a3b8",
+              "#60a5fa",
+              "#f59e0b",
+              "#10b981"
+            ]
+          }
+        }
+      ],
+      "layout": {
+        "title": "Edge Consensus Distribution",
+        "xaxis": {
+          "title": "Number of agreeing layers"
+        },
+        "yaxis": {
+          "title": "Edge count"
+        },
+        "height": 350
+      }
+    },
+    "intra_cross": {
+      "data": [
+        {
+          "x": [
+            "1L",
+            "2L",
+            "3L",
+            "4L"
+          ],
+          "y": [
+            0.6,
+            0.5,
+            0.5,
+            0.3
+          ],
+          "name": "Intra-cluster",
+          "type": "bar",
+          "marker": {
+            "color": "#10b981"
+          }
+        },
+        {
+          "x": [
+            "1L",
+            "2L",
+            "3L",
+            "4L"
+          ],
+          "y": [
+            99.4,
+            99.5,
+            99.5,
+            99.7
+          ],
+          "name": "Cross-cluster",
+          "type": "bar",
+          "marker": {
+            "color": "#ef4444"
+          }
+        }
+      ],
+      "layout": {
+        "title": "Intra vs Cross-cluster by Consensus Level",
+        "barmode": "stack",
+        "yaxis": {
+          "title": "%",
+          "range": [
+            0,
+            100
+          ]
+        },
+        "height": 350
+      }
+    },
+    "overlap_heatmap": {
+      "data": [
+        {
+          "z": [
+            [
+              226851,
+              22662,
+              22546,
+              22204
+            ],
+            [
+              22662,
+              72609,
+              15241,
+              8543
+            ],
+            [
+              22546,
+              15241,
+              59228,
+              10488
+            ],
+            [
+              22204,
+              8543,
+              10488,
+              105574
+            ]
+          ],
+          "x": [
+            "bc_cosine",
+            "cc_cosine",
+            "dc_fractional",
+            "emb_knn"
+          ],
+          "y": [
+            "bc_cosine",
+            "cc_cosine",
+            "dc_fractional",
+            "emb_knn"
+          ],
+          "type": "heatmap",
+          "colorscale": "Blues"
+        }
+      ],
+      "layout": {
+        "title": "Layer Pairwise Edge Overlap",
+        "height": 400
+      }
+    }
+  }
+}

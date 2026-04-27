@@ -1,0 +1,79 @@
+{
+  "field": "field_15_pilot_cut200",
+  "method": "hybrid_optimal_cut",
+  "edge_path": "research/pilot_data/field_15_subset/edges/dc_fractional.parquet",
+  "membership_path": "research/dendrogram/results/pilot_field15/field_15_pilot_cut200_hybrid_cut_membership.parquet",
+  "target_pct": 3.0,
+  "nano_min_size": 30,
+  "cut_min_size": 200,
+  "seed": 42,
+  "dendrogram_mode": "cpm",
+  "n_nodes": 16515,
+  "n_edges": 58876,
+  "n_contracted_nodes": 2499,
+  "elapsed": 165.8,
+  "nano": {
+    "gamma": 9.162203582803827e-05,
+    "n_clusters": 2499,
+    "max_pct": 2.71,
+    "top5": [
+      448,
+      303,
+      280,
+      276,
+      251
+    ],
+    "singleton_pct": 2.5
+  },
+  "cut": {
+    "feasible": true,
+    "n_clusters": 29,
+    "max_pct": 39.0,
+    "top5": [
+      6434,
+      1065,
+      572,
+      511,
+      433
+    ],
+    "singleton_pct": 0.0,
+    "total_stability": 0.00014103105861803944,
+    "cut_nodes": [
+      4975,
+      4940,
+      4916,
+      4922,
+      4891,
+      4928,
+      4947,
+      4936,
+      4973,
+      4920,
+      4869,
+      4907,
+      4895,
+      4944,
+      4938,
+      4953,
+      4935,
+      4896,
+      4925,
+      4956,
+      4933,
+      4976,
+      4961,
+      4963,
+      4955,
+      4950,
+      4962,
+      4946,
+      4965
+    ],
+    "contracted_cut_clusters": 29
+  },
+  "dendrogram": {
+    "n_merges": 2498,
+    "height_min": 6.470839410812862e-06,
+    "height_max": 0.08333333333333333
+  }
+}

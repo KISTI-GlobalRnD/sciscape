@@ -1,0 +1,26 @@
+{
+  "field": "field_15_k06_flip_shortlist",
+  "source_audit": "research/consensus/results/taxonomy_corrected/review_reproducibility_audit_v2.json",
+  "target_uids": [
+    "W2064036092",
+    "W2166319170",
+    "W4200136216",
+    "W2341391009",
+    "W2019752210",
+    "W4360616186",
+    "W1965930538",
+    "W4391466701",
+    "W4283658647",
+    "W2894988700"
+  ],
+  "order_bias_suspect_uids": [
+    "W2064036092",
+    "W2166319170",
+    "W2341391009",
+    "W2019752210",
+    "W4360616186",
+    "W4391466701",
+    "W4283658647"
+  ],
+  "n_target_uids": 10
+}

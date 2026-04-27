@@ -1,0 +1,14 @@
+{
+  "field": "field_15_pilot_q75",
+  "edge_dir": "research/pilot_data/field_15_subset/edges",
+  "abstract_path": "research/pilot_data/field_15_subset/metadata/works_text.parquet",
+  "target_pct": 3.0,
+  "top_k": 30,
+  "min_size": 10,
+  "n_seeds": 2,
+  "samples_per_level": 4,
+  "n_neighbors": 8,
+  "boundary_quantile": 0.75,
+  "sample_only": true,
+  "selected_cases": []
+}

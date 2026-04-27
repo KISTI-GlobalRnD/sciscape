@@ -1,0 +1,449 @@
+{
+  "field": "field_15_k06_sum_vs_consensus_v2",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 2,
+  "n_cases": 24,
+  "n_neighbors": 8,
+  "boundary_quantile": 0.9,
+  "used_boundary_quantile": 0.9,
+  "max_group_jaccard": 0.5,
+  "used_max_group_jaccard": 0.5,
+  "sample_only": false,
+  "secondary_checks": false,
+  "method_a_run": {
+    "n_edges": 1344540,
+    "gamma": 0.000426178797639668,
+    "n_clusters": 3887,
+    "max_pct": 1.72
+  },
+  "method_b_run": {
+    "n_edges": 1344540,
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 8202,
+    "max_pct": 2.63
+  },
+  "n_candidate_cases": 8181,
+  "n_reviewable_cases": 5,
+  "selected_cases": [
+    {
+      "target_uid": "W1591667992",
+      "target_title": "Spectroscopic characterization of a multiband complex oxide: Insulating and conducting cement 12CaO<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" display=\"inline\"><mml:mo>·</mml:mo></mml:math>7Al<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" display=\"inline\"><mml:msub><mml:mrow/><mml:mn>2</mml:mn></mml:msub></mml:math>O<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" display=\"inline\"><mml:msub><mml:mrow/><mml:mn>3</mml:mn></mml:msub></mml:math>",
+      "target_year": null,
+      "method_a_cluster_id": 739,
+      "method_b_cluster_id": 3622,
+      "method_a_cluster_size": 862,
+      "method_b_cluster_size": 576,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2317274741",
+        "W2000130548",
+        "W2084993698",
+        "W2332630964",
+        "W1973958071",
+        "W2072816136",
+        "W2332813825",
+        "W2923733089"
+      ],
+      "group_b_uids": [
+        "W4200520590",
+        "W4283168879",
+        "W2896125039",
+        "W2017822132",
+        "W2005460963",
+        "W4321033156",
+        "W2800268408",
+        "W2601046884"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1965737562",
+      "target_title": "Nonlinear rheology of colloidal glasses of soft thermosensitive microgel particles",
+      "target_year": null,
+      "method_a_cluster_id": 2359,
+      "method_b_cluster_id": 5833,
+      "method_a_cluster_size": 507,
+      "method_b_cluster_size": 15,
+      "method_a_cross_cluster_ratio": 0.9474,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2018813307",
+        "W2325713783",
+        "W2956052272",
+        "W2032053739",
+        "W2153102323",
+        "W2010440891",
+        "W2772954352",
+        "W2995531664"
+      ],
+      "group_b_uids": [
+        "W2000817761",
+        "W2012735819",
+        "W2026824591",
+        "W2037794393",
+        "W2314097999",
+        "W2789267102",
+        "W2901833673",
+        "W2965602606"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1966792861",
+      "target_title": "Effects of Ionic Liquid [bmim][PF<sub>6</sub>] on Absorption Spectra and Reaction Kinetics of the Duroquinone Triplet State in Acetonitrile",
+      "target_year": null,
+      "method_a_cluster_id": 1648,
+      "method_b_cluster_id": 3622,
+      "method_a_cluster_size": 249,
+      "method_b_cluster_size": 576,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3152475398",
+        "W4293568737",
+        "W2624429008",
+        "W4285317304",
+        "W4403940197",
+        "W2933631045",
+        "W2983000192",
+        "W3014300121"
+      ],
+      "group_b_uids": [
+        "W4200520590",
+        "W4283168879",
+        "W2896125039",
+        "W2017822132",
+        "W2005460963",
+        "W4321033156",
+        "W2800268408",
+        "W2601046884"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1995876931",
+      "target_title": "Characterization of PVdF(HFP) Gel Electrolytes Based on 1-(2-Hydroxyethyl)-3-methyl Imidazolium Ionic Liquids",
+      "target_year": null,
+      "method_a_cluster_id": 720,
+      "method_b_cluster_id": 46,
+      "method_a_cluster_size": 139,
+      "method_b_cluster_size": 19,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2771700323",
+        "W3045993011",
+        "W2049681334",
+        "W2056404894",
+        "W1944973953",
+        "W1965888148",
+        "W1975551639",
+        "W1991220385"
+      ],
+      "group_b_uids": [
+        "W1565099119",
+        "W1984291136",
+        "W2056625671",
+        "W2097734235",
+        "W2157383858",
+        "W2164664192",
+        "W2170659351",
+        "W2185851502"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1983421393",
+      "target_title": "Towards an Efficient Microsystem for the Real‐Time Detection and Quantification of Mercury in Water Based on a Specifically Designed Fluorogenic Binary Task‐Specific Ionic Liquid",
+      "target_year": null,
+      "method_a_cluster_id": 2978,
+      "method_b_cluster_id": 4140,
+      "method_a_cluster_size": 34,
+      "method_b_cluster_size": 2459,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2097177939",
+        "W2800012892",
+        "W1988970920",
+        "W2026523326",
+        "W2043116009",
+        "W2050443402",
+        "W2065292225",
+        "W2074438720"
+      ],
+      "group_b_uids": [
+        "W4206484968",
+        "W2949959185",
+        "W3093312119",
+        "W2056118656",
+        "W3111038315",
+        "W4220739227",
+        "W3161398688",
+        "W4362722060"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W1591667992",
+      "target_title": "Spectroscopic characterization of a multiband complex oxide: Insulating and conducting cement 12CaO<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" display=\"inline\"><mml:mo>·</mml:mo></mml:math>7Al<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" display=\"inline\"><mml:msub><mml:mrow/><mml:mn>2</mml:mn></mml:msub></mml:math>O<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" display=\"inline\"><mml:msub><mml:mrow/><mml:mn>3</mml:mn></mml:msub></mml:math>",
+      "target_year": null,
+      "method_a_cluster_id": 739,
+      "method_b_cluster_id": 3622,
+      "method_a_cluster_size": 862,
+      "method_b_cluster_size": 576,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2317274741",
+        "W2000130548",
+        "W2084993698",
+        "W2332630964",
+        "W1973958071",
+        "W2072816136",
+        "W2332813825",
+        "W2923733089"
+      ],
+      "group_b_uids": [
+        "W4200520590",
+        "W4283168879",
+        "W2896125039",
+        "W2017822132",
+        "W2005460963",
+        "W4321033156",
+        "W2800268408",
+        "W2601046884"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 2,
+        "reasoning": "Group A is a poor fit, containing a mix of polymer physics and a single catalysis paper, none of which are related to the target's focus on the electronic properties of a complex oxide. Group B is thematically more consistent, focusing on materials science, synthesis, and catalysis, with several papers explicitly involving oxide materials. While the application focus differs from the target's fundamental characterization work, the shared topic of oxide materials makes Group B a much better, albeit still weak, cluster."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 3,
+        "reasoning": "While neither group is a perfect match, Group A is a better fit because it contains multiple papers on the synthesis and characterization of inorganic oxide materials (In2O3, Mn-Al oxide, ZrO2). The target paper, which investigates the electronic properties of a complex oxide (12CaO·7Al2O3), aligns with Group A's focus on inorganic oxides, even though Group A's application is catalysis rather than fundamental electronic properties. Group B is thematically centered on polymer physics, which is entirely unrelated to the target paper."
+      }
+    },
+    {
+      "target_uid": "W1965737562",
+      "target_title": "Nonlinear rheology of colloidal glasses of soft thermosensitive microgel particles",
+      "target_year": null,
+      "method_a_cluster_id": 2359,
+      "method_b_cluster_id": 5833,
+      "method_a_cluster_size": 507,
+      "method_b_cluster_size": 15,
+      "method_a_cross_cluster_ratio": 0.9474,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2018813307",
+        "W2325713783",
+        "W2956052272",
+        "W2032053739",
+        "W2153102323",
+        "W2010440891",
+        "W2772954352",
+        "W2995531664"
+      ],
+      "group_b_uids": [
+        "W2000817761",
+        "W2012735819",
+        "W2026824591",
+        "W2037794393",
+        "W2314097999",
+        "W2789267102",
+        "W2901833673",
+        "W2965602606"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 1,
+        "reasoning": "Neither group provides a relevant cluster for the target paper, which concerns the rheology of colloidal glasses. Both proposed groups focus on the chemistry of ionic liquids, a completely unrelated topic. Group A is chosen as marginally better because it is more thematically cohesive, with all papers focused squarely on ionic liquids, whereas Group B is a less consistent mix of papers on ionic liquids and ion-transfer electrochemistry."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 2,
+        "reasoning": "The target paper studies the physical properties of soft, thermosensitive microgel particles, which are a type of polymer network. While neither group is a strong match, Group B contains a paper [4] that uses a poly(vinyl chloride) based membrane for an ion-selective electrode. This shared, albeit distant, focus on functional polymer materials provides a weak thematic link to Group B that is completely absent in Group A, which is exclusively focused on ionic liquids."
+      }
+    },
+    {
+      "target_uid": "W1966792861",
+      "target_title": "Effects of Ionic Liquid [bmim][PF<sub>6</sub>] on Absorption Spectra and Reaction Kinetics of the Duroquinone Triplet State in Acetonitrile",
+      "target_year": null,
+      "method_a_cluster_id": 1648,
+      "method_b_cluster_id": 3622,
+      "method_a_cluster_size": 249,
+      "method_b_cluster_size": 576,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3152475398",
+        "W4293568737",
+        "W2624429008",
+        "W4285317304",
+        "W4403940197",
+        "W2933631045",
+        "W2983000192",
+        "W3014300121"
+      ],
+      "group_b_uids": [
+        "W4200520590",
+        "W4283168879",
+        "W2896125039",
+        "W2017822132",
+        "W2005460963",
+        "W4321033156",
+        "W2800268408",
+        "W2601046884"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 2,
+        "reasoning": "Both groups are very noisy and poorly themed. However, Group B contains one paper ([3]) that is directly relevant to the target's core theme of using ionic liquids as a medium for a chemical process (nanoparticle synthesis vs. photochemistry). Group A has no papers that mention ionic liquids, and its themes of salting-out and nitrogen fixation are only tangentially related at best."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 3,
+        "reasoning": "While neither group is a perfect match, Group B is a slightly better fit due to the explicit presence of a paper on ionic liquids. The target paper studies the effect of an ionic liquid on reaction kinetics, and paper B[3] uses an ionic liquid as a medium for nanoparticle synthesis. This shared focus on the application or study of ionic liquids provides a more specific thematic link than the general 'electrolyte' theme in Group A, which is otherwise focused on disparate topics like phase equilibria and nitrogen fixation catalysis."
+      }
+    },
+    {
+      "target_uid": "W1995876931",
+      "target_title": "Characterization of PVdF(HFP) Gel Electrolytes Based on 1-(2-Hydroxyethyl)-3-methyl Imidazolium Ionic Liquids",
+      "target_year": null,
+      "method_a_cluster_id": 720,
+      "method_b_cluster_id": 46,
+      "method_a_cluster_size": 139,
+      "method_b_cluster_size": 19,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2771700323",
+        "W3045993011",
+        "W2049681334",
+        "W2056404894",
+        "W1944973953",
+        "W1965888148",
+        "W1975551639",
+        "W1991220385"
+      ],
+      "group_b_uids": [
+        "W1565099119",
+        "W1984291136",
+        "W2056625671",
+        "W2097734235",
+        "W2157383858",
+        "W2164664192",
+        "W2170659351",
+        "W2185851502"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 2,
+        "score_b": 3,
+        "reasoning": "Group B is more thematically coherent, with nearly all papers focusing on the synthesis, properties, or various applications of ionic liquids, which is a central component of the target paper. Group A is a noisy and mixed cluster, containing two unrelated papers on Fischer-Tropsch catalysis that have no connection to the target, making its overall fit much weaker."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper focuses on preparing and characterizing a polymer-ionic liquid gel electrolyte. Group A is strongly centered on the synthesis, properties, and diverse applications of ionic liquids, including creating novel materials, which aligns perfectly with the target's theme. In contrast, Group B is primarily focused on catalysis, with some papers using ionic liquids as a medium for catalytic reactions, a theme not present in the target paper."
+      }
+    },
+    {
+      "target_uid": "W1983421393",
+      "target_title": "Towards an Efficient Microsystem for the Real‐Time Detection and Quantification of Mercury in Water Based on a Specifically Designed Fluorogenic Binary Task‐Specific Ionic Liquid",
+      "target_year": null,
+      "method_a_cluster_id": 2978,
+      "method_b_cluster_id": 4140,
+      "method_a_cluster_size": 34,
+      "method_b_cluster_size": 2459,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2097177939",
+        "W2800012892",
+        "W1988970920",
+        "W2026523326",
+        "W2043116009",
+        "W2050443402",
+        "W2065292225",
+        "W2074438720"
+      ],
+      "group_b_uids": [
+        "W4206484968",
+        "W2949959185",
+        "W3093312119",
+        "W2056118656",
+        "W3111038315",
+        "W4220739227",
+        "W3161398688",
+        "W4362722060"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 2,
+        "score_b": 3,
+        "reasoning": "Group A contains a paper on \"task-specific ionic liquids (TSILs)\", which is the exact key technology used in the target paper. This creates a very strong and specific thematic link, even though the rest of the group is thematically diverse. Group B has a weaker link through a paper on the general properties of ionic liquids and a tangential link on environmental sensing, but lacks the specific technological focus found in Group A."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper's core methodology revolves around a \"Task-Specific Ionic Liquid\" (TSIL). Group A contains a paper, [A3], that explicitly synthesizes and studies \"Brønsted-acidic task-specific ionic liquids\". This specific terminology overlap is a very strong indicator of a shared research focus on designing functional ionic liquids for specific applications, even if the applications themselves differ (sensing vs. catalysis). Group B's connection through general ionic liquids or unrelated environmental sensing is much weaker."
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 5,
+    "comparison": {
+      "method_a": "sum",
+      "method_b": "consensus",
+      "method_a_wins": 0,
+      "method_b_wins": 5,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.0,
+      "method_b_win_rate": 1.0,
+      "method_a_win_rate_no_ties": 0.0,
+      "method_b_win_rate_no_ties": 1.0,
+      "score_a_mean": 1.4,
+      "score_b_mean": 2.2,
+      "score_gap_mean": -0.8
+    },
+    "belonging": {
+      "method_a_prefers": 1,
+      "method_b_prefers": 4,
+      "ties_or_invalid": 0,
+      "method_a_preference_rate": 0.2,
+      "method_b_preference_rate": 0.8,
+      "method_a_preference_rate_no_ties": 0.2,
+      "method_b_preference_rate_no_ties": 0.8,
+      "confidence_mean": 3.4
+    }
+  }
+}

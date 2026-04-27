@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">Protocol overview for local neighborhood evaluation</title>
+  <desc id="desc">Graph layers feed sum and consensus runs, which produce rank-shift case banks that are judged with an order-balanced dual-pass review protocol.</desc>
+  <style>
+    .title { font: 700 38px Arial, sans-serif; fill: #17324d; }
+    .subtitle { font: 400 22px Arial, sans-serif; fill: #395066; }
+    .label { font: 700 24px Arial, sans-serif; fill: #17324d; }
+    .text { font: 400 20px Arial, sans-serif; fill: #17324d; }
+    .small { font: 400 18px Arial, sans-serif; fill: #17324d; }
+    .micro { font: 400 16px Arial, sans-serif; fill: #395066; }
+    .layer { fill: #edf4fb; stroke: #7aa6cc; stroke-width: 2; }
+    .sum { fill: #e7f0ff; stroke: #4a84c4; stroke-width: 2.5; }
+    .consensus { fill: #e9f7ea; stroke: #4f9b64; stroke-width: 2.5; }
+    .casebank { fill: #f5f0ff; stroke: #8a67bf; stroke-width: 2.5; }
+    .judge { fill: #fff3e8; stroke: #c9863d; stroke-width: 2.5; }
+    .output { fill: #f2f4f7; stroke: #7b8794; stroke-width: 2.5; }
+    .metric { fill: #f8fbfd; stroke: #a7b8c9; stroke-width: 2; }
+    .badge { fill: #17324d; }
+    .badgeText { font: 700 20px Arial, sans-serif; fill: white; }
+    .arrow { stroke: #4c647a; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#4c647a" />
+    </marker>
+  </defs>
+
+  <text x="70" y="70" class="title">Local Neighborhood Evaluation Protocol</text>
+  <text x="70" y="108" class="subtitle">The manuscript evaluates target-centered neighborhood correctness, not only whole-partition agreement.</text>
+
+  <circle cx="92" cy="162" r="20" class="badge" />
+  <text x="85" y="169" class="badgeText">1</text>
+  <rect x="70" y="140" width="280" height="590" rx="22" class="layer" />
+  <text x="114" y="190" class="label">Input Graph Layers</text>
+  <rect x="110" y="235" width="200" height="64" rx="14" class="layer" />
+  <text x="140" y="275" class="text">BC cosine</text>
+  <rect x="110" y="320" width="200" height="64" rx="14" class="layer" />
+  <text x="140" y="360" class="text">CC cosine</text>
+  <rect x="110" y="405" width="200" height="64" rx="14" class="layer" />
+  <text x="140" y="445" class="text">DC fractional</text>
+  <rect x="110" y="490" width="200" height="64" rx="14" class="layer" />
+  <text x="140" y="530" class="text">Embedding KNN</text>
+  <text x="110" y="600" class="small">Shared node set and matched rank budget</text>
+  <text x="110" y="632" class="micro">Same field, same top-k setting, same metadata pool</text>
+
+  <circle cx="412" cy="162" r="20" class="badge" />
+  <text x="405" y="169" class="badgeText">2</text>
+  <rect x="390" y="160" width="290" height="210" rx="22" class="sum" />
+  <text x="448" y="212" class="label">Slice-Specific Sum Baseline</text>
+  <text x="425" y="258" class="text">Most competitive leave-one-out sum run</text>
+  <text x="425" y="298" class="text">Examples: sum_minus_emb, sum_minus_cc</text>
+  <text x="425" y="334" class="small">Baseline can differ by field and top-k regime</text>
+
+  <rect x="390" y="430" width="290" height="210" rx="22" class="consensus" />
+  <text x="460" y="482" class="label">Consensus Run</text>
+  <text x="425" y="528" class="text">consensus_all</text>
+  <text x="425" y="566" class="text">All-layer agreement signal</text>
+  <text x="425" y="602" class="small">Compared under the same budget as baseline</text>
+
+  <circle cx="742" cy="162" r="20" class="badge" />
+  <text x="735" y="169" class="badgeText">3</text>
+  <rect x="720" y="180" width="350" height="360" rx="22" class="casebank" />
+  <text x="790" y="232" class="label">Rank-Shift Case Bank</text>
+  <text x="755" y="282" class="text">Select targets whose local neighbors change</text>
+  <text x="755" y="320" class="text">Keep a fixed reviewed bank across pairings</text>
+  <text x="755" y="358" class="text">Compare top local neighbors, not full clusters</text>
+  <rect x="755" y="392" width="280" height="110" rx="16" class="metric" />
+  <text x="780" y="428" class="small">Sampling cues</text>
+  <text x="780" y="458" class="micro">shift_score, rank_jaccard, mean_abs_rank_shift</text>
+  <text x="780" y="485" class="micro">cluster_overlap_coeff, cluster_changed_rate</text>
+
+  <circle cx="1112" cy="162" r="20" class="badge" />
+  <text x="1105" y="169" class="badgeText">4</text>
+  <rect x="1090" y="180" width="330" height="360" rx="22" class="judge" />
+  <text x="1150" y="232" class="label">Order-Balanced Dual Pass</text>
+  <text x="1125" y="286" class="text">Pass 1: A then B</text>
+  <text x="1125" y="324" class="text">Pass 2: B then A</text>
+  <text x="1125" y="378" class="text">Preserve explicit A / B / TIE</text>
+  <text x="1125" y="416" class="text">Order-sensitive disagreements become ties</text>
+  <text x="1125" y="470" class="small">Target question:</text>
+  <text x="1125" y="500" class="micro">Which ranked local neighborhood better captures</text>
+  <text x="1125" y="524" class="micro">the target paper's immediate research context?</text>
+
+  <rect x="220" y="800" width="1180" height="120" rx="22" class="output" />
+  <text x="265" y="848" class="label">Manuscript Outputs</text>
+  <text x="265" y="890" class="text">Slice outcomes, uncertainty intervals, descriptive taxonomy, regime summary</text>
+
+  <path d="M350 330 C380 330, 388 265, 390 265" class="arrow" />
+  <path d="M350 515 C380 515, 388 535, 390 535" class="arrow" />
+  <path d="M680 265 C700 265, 706 300, 720 300" class="arrow" />
+  <path d="M680 535 C700 535, 706 420, 720 420" class="arrow" />
+  <path d="M1070 360 C1080 360, 1085 360, 1090 360" class="arrow" />
+  <path d="M1255 540 C1255 600, 1220 720, 1040 800" class="arrow" />
+  <path d="M895 540 C895 640, 860 720, 760 800" class="arrow" />
+</svg>

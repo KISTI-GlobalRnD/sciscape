@@ -19,12 +19,15 @@ DEFAULT_MODEL = "gpt-oss:20b"
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_API_KEY = "ollama"
 DEFAULT_MAX_DOCUMENTS = 8
+GEMINI_DEFAULT_MODEL = "gemini-2.5-pro"
+GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 # Unified env vars (preferred) with legacy fallbacks
 ENV_BASE_URL = "SCISCAPE_LLM_BASE_URL"
 ENV_API_KEY = "SCISCAPE_LLM_API_KEY"
 ENV_MODEL = "SCISCAPE_LLM_MODEL"
 ENV_CONFIG_PATH = "OLLAMA_CONFIG"
+ENV_GEMINI_API_KEY = "GEMINI_API_KEY"
 
 _LEGACY_ENV_BASE_URL = "OLLAMA_BASE_URL"
 _LEGACY_ENV_API_KEY = "OLLAMA_API_KEY"
@@ -83,6 +86,32 @@ def _load_env_file(env_path: Path) -> Dict[str, str]:
     return data
 
 
+def _discover_env_overlay() -> Dict[str, str]:
+    from os import environ
+
+    env_path = environ.get(ENV_CONFIG_PATH)
+    env_file_path: Optional[Path] = None
+    if env_path:
+        candidate = Path(env_path)
+        if candidate.exists():
+            env_file_path = candidate
+    else:
+        repo_root = Path(__file__).resolve().parents[2]
+        workspace_root = repo_root.parent
+        candidates = [
+            Path.cwd() / ".env",
+            repo_root / ".env",
+            workspace_root / ".env",
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                env_file_path = candidate
+                break
+    if env_file_path is None:
+        return {}
+    return _load_env_file(env_file_path)
+
+
 def _determine_settings(
     *,
     base_url: Optional[str],
@@ -91,21 +120,35 @@ def _determine_settings(
 ) -> Dict[str, str]:
     from os import environ
 
+    overlay = _discover_env_overlay()
     config: Dict[str, str] = {}
 
-    env_path = environ.get(ENV_CONFIG_PATH)
-    if env_path:
-        path = Path(env_path)
-        if path.exists():
-            config.update(_load_env_file(path))
+    def get_value(*keys: str) -> Optional[str]:
+        for key in keys:
+            if key in overlay:
+                return overlay[key]
+        for key in keys:
+            value = environ.get(key)
+            if value:
+                return value
+        return None
 
-    # Prefer SCISCAPE_LLM_* → fall back to OLLAMA_*
-    config.setdefault("base_url", environ.get(
-        ENV_BASE_URL, environ.get(_LEGACY_ENV_BASE_URL, DEFAULT_BASE_URL)))
-    config.setdefault("api_key", environ.get(
-        ENV_API_KEY, environ.get(_LEGACY_ENV_API_KEY, DEFAULT_API_KEY)))
-    config.setdefault("model", environ.get(
-        ENV_MODEL, environ.get(_LEGACY_ENV_MODEL, DEFAULT_MODEL)))
+    # Prefer SCISCAPE_LLM_* → fall back to OLLAMA_*.
+    explicit_base_url = get_value(ENV_BASE_URL, _LEGACY_ENV_BASE_URL)
+    explicit_api_key = get_value(ENV_API_KEY, _LEGACY_ENV_API_KEY)
+    explicit_model = get_value(ENV_MODEL, _LEGACY_ENV_MODEL)
+
+    config["base_url"] = explicit_base_url or DEFAULT_BASE_URL
+    config["api_key"] = explicit_api_key or DEFAULT_API_KEY
+    config["model"] = explicit_model or DEFAULT_MODEL
+
+    gemini_api_key = get_value(ENV_GEMINI_API_KEY)
+    if gemini_api_key and not any(
+        value is not None for value in (explicit_base_url, explicit_api_key, explicit_model)
+    ):
+        config["base_url"] = GEMINI_OPENAI_BASE_URL
+        config["api_key"] = gemini_api_key
+        config["model"] = GEMINI_DEFAULT_MODEL
 
     if base_url:
         config["base_url"] = base_url
@@ -259,7 +302,7 @@ def summarise_cluster(
     cluster_label: str,
     documents: Sequence[ClusterDocument],
     *,
-    model: str = DEFAULT_MODEL,
+    model: Optional[str] = None,
     max_documents: int = DEFAULT_MAX_DOCUMENTS,
 ) -> ClusterSummary:
     """Generate a cluster summary using the local LLM."""
@@ -267,16 +310,17 @@ def summarise_cluster(
     if not documents:
         raise ValueError("documents must contain at least one entry")
 
+    effective_model = model or getattr(client, "_leiden_module_model", DEFAULT_MODEL)
     selected = list(documents)[:max_documents]
     translated_docs = [
-        _prepare_document_text(client, doc, model=model)
+        _prepare_document_text(client, doc, model=effective_model)
         for doc in selected
     ]
 
     user_prompt = _build_cluster_user_prompt(cluster_label, translated_docs)
     raw = _call_chat_completion(
         client,
-        model=model or getattr(client, "_leiden_module_model", DEFAULT_MODEL),
+        model=effective_model,
         system_prompt=SUMMARISER_SYSTEM_PROMPT,
         user_content=user_prompt,
     )

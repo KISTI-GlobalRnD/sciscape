@@ -11,13 +11,18 @@ from __future__ import annotations
 
 import logging
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Set
+from dataclasses import dataclass
+from typing import Any, Dict, List
 
 import numpy as np
 import polars as pl
 
 log = logging.getLogger(__name__)
+
+
+def _min_group_size(n_neighbors: int) -> int:
+    """Minimum same-cluster group size required for review."""
+    return max(2, (n_neighbors + 1) // 2)
 
 
 @dataclass
@@ -45,6 +50,121 @@ class SampleSet:
     method: str  # e.g. "rank_bc_cc_dc"
     n_clusters: int
     n_nodes: int
+
+
+@dataclass
+class DisagreementCase:
+    """One A/B disagreement case for blind comparison."""
+    target_uid: str
+    method_a_cluster_id: int
+    method_b_cluster_id: int
+    method_a_cluster_size: int
+    method_b_cluster_size: int
+    method_a_cross_cluster_ratio: float
+    method_b_cross_cluster_ratio: float
+    group_a_uids: List[str]
+    group_b_uids: List[str]
+    overlap_size: int
+    jaccard: float
+    target_title: str = ""
+    target_year: int | None = None
+
+
+@dataclass
+class DisagreementSampleSet:
+    """Collection of disagreement cases for A/B review."""
+    cases: List[DisagreementCase]
+    method_a: str
+    method_b: str
+    n_nodes: int
+    n_candidates: int
+
+
+@dataclass
+class RankShiftCase:
+    """One target whose local neighbor ranking changed strongly across methods."""
+    target_uid: str
+    method_a_cluster_id: int
+    method_b_cluster_id: int
+    method_a_cluster_size: int
+    method_b_cluster_size: int
+    rank_jaccard: float
+    overlap_size: int
+    mean_abs_rank_shift: float
+    max_abs_rank_shift: int
+    cluster_overlap_coeff: float
+    cluster_changed: bool
+    shift_score: float
+    neighbors_a: List[dict[str, Any]]
+    neighbors_b: List[dict[str, Any]]
+    shared_neighbors: List[dict[str, Any]]
+    neighbors_only_a: List[dict[str, Any]]
+    neighbors_only_b: List[dict[str, Any]]
+    target_title: str = ""
+    target_year: int | None = None
+
+
+@dataclass
+class RankShiftSampleSet:
+    """Collection of rank-shift cases for local neighborhood review."""
+    cases: List[RankShiftCase]
+    method_a: str
+    method_b: str
+    n_nodes: int
+    n_candidates: int
+
+
+@dataclass
+class _MethodStats:
+    """Per-method neighborhood statistics used for disagreement sampling."""
+    cross_ratios: Dict[str, float]
+    cluster_sizes: Counter
+    cluster_members: Dict[int, List[str]]
+    cluster_member_sets: Dict[int, set[str]]
+    node_neighbors: Dict[str, Dict[str, float]]
+    node_intra: Dict[str, float]
+
+
+def _compute_all_neighbors(edges: pl.DataFrame) -> Dict[str, Dict[str, float]]:
+    """Build symmetric per-node neighbor weights from an edge table."""
+    all_neighbors: Dict[str, Dict[str, float]] = defaultdict(dict)
+    for row in edges.iter_rows(named=True):
+        u1, u2 = row["uid1"], row["uid2"]
+        w = float(row.get("rel_sum2", 1.0))
+        all_neighbors[u1][u2] = all_neighbors[u1].get(u2, 0.0) + w
+        all_neighbors[u2][u1] = all_neighbors[u2].get(u1, 0.0) + w
+    return all_neighbors
+
+
+def _top_neighbors(
+    uid: str,
+    neighbor_map: Dict[str, Dict[str, float]],
+    membership: Dict[str, int],
+    *,
+    n_neighbors: int,
+    allowed_uids: set[str] | None = None,
+) -> List[dict[str, Any]]:
+    """Return ranked local neighbors for one node."""
+    ordered = sorted(
+        neighbor_map.get(uid, {}).items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    results: List[dict[str, Any]] = []
+    target_cluster = membership.get(uid)
+    for nbr, weight in ordered:
+        if allowed_uids is not None and nbr not in allowed_uids:
+            continue
+        results.append(
+            {
+                "uid": nbr,
+                "rank": len(results) + 1,
+                "weight": round(weight, 6),
+                "same_cluster": membership.get(nbr) == target_cluster,
+            }
+        )
+        if len(results) >= n_neighbors:
+            break
+    return results
 
 
 def sample_worst_case(
@@ -83,6 +203,7 @@ def sample_worst_case(
     # Build per-node edge stats
     node_intra: Dict[str, float] = defaultdict(float)   # intra-cluster weight
     node_cross: Dict[str, float] = defaultdict(float)   # cross-cluster weight
+    node_cross_counts: Dict[str, int] = defaultdict(int)  # cross-cluster edge count
     node_neighbors: Dict[str, Dict[str, float]] = defaultdict(dict)  # same-cluster neighbors
 
     for row in edges.iter_rows(named=True):
@@ -100,6 +221,8 @@ def sample_worst_case(
         else:
             node_cross[u1] += w
             node_cross[u2] += w
+            node_cross_counts[u1] += 1
+            node_cross_counts[u2] += 1
 
     # Compute cross-cluster ratio per node
     cross_ratios: Dict[str, float] = {}
@@ -188,7 +311,7 @@ def sample_worst_case(
             easy_neighbors=easy,
             hard_neighbors=hard,
             cross_cluster_ratio=round(cross_ratios[uid], 4),
-            n_cross_edges=int(node_cross.get(uid, 0)),
+            n_cross_edges=int(node_cross_counts.get(uid, 0)),
             target_title=meta.get("title", ""),
             target_year=meta.get("pubyear"),
         ))
@@ -205,4 +328,504 @@ def sample_worst_case(
     )
 
 
-__all__ = ["sample_worst_case", "SampleSet", "SampleCase"]
+def _compute_method_stats(edges: pl.DataFrame, membership: Dict[str, int]) -> _MethodStats:
+    """Build per-node stats for one clustering result."""
+    node_intra: Dict[str, float] = defaultdict(float)
+    node_cross: Dict[str, float] = defaultdict(float)
+    node_neighbors: Dict[str, Dict[str, float]] = defaultdict(dict)
+
+    for row in edges.iter_rows(named=True):
+        u1, u2 = row["uid1"], row["uid2"]
+        w = float(row.get("rel_sum2", 1.0))
+        c1 = membership.get(u1)
+        c2 = membership.get(u2)
+        if c1 is None or c2 is None:
+            continue
+        if c1 == c2:
+            node_intra[u1] += w
+            node_intra[u2] += w
+            node_neighbors[u1][u2] = node_neighbors[u1].get(u2, 0.0) + w
+            node_neighbors[u2][u1] = node_neighbors[u2].get(u1, 0.0) + w
+        else:
+            node_cross[u1] += w
+            node_cross[u2] += w
+
+    cross_ratios: Dict[str, float] = {}
+    for uid in membership:
+        total = node_intra.get(uid, 0.0) + node_cross.get(uid, 0.0)
+        cross_ratios[uid] = (node_cross.get(uid, 0.0) / total) if total > 0 else 0.0
+
+    cluster_sizes = Counter(membership.values())
+    cluster_members: Dict[int, List[str]] = defaultdict(list)
+    for uid, cid in membership.items():
+        cluster_members[cid].append(uid)
+    cluster_member_sets = {cid: set(uids) for cid, uids in cluster_members.items()}
+
+    return _MethodStats(
+        cross_ratios=cross_ratios,
+        cluster_sizes=cluster_sizes,
+        cluster_members=cluster_members,
+        cluster_member_sets=cluster_member_sets,
+        node_neighbors=node_neighbors,
+        node_intra=node_intra,
+    )
+
+
+def _cluster_overlap_coefficient(
+    uid: str,
+    membership_a: Dict[str, int],
+    stats_a: _MethodStats,
+    membership_b: Dict[str, int],
+    stats_b: _MethodStats,
+) -> float:
+    """Return overlap coefficient for the target's assigned clusters across two partitions."""
+    cid_a = membership_a.get(uid)
+    cid_b = membership_b.get(uid)
+    if cid_a is None or cid_b is None:
+        return 0.0
+    members_a = stats_a.cluster_member_sets.get(cid_a, set())
+    members_b = stats_b.cluster_member_sets.get(cid_b, set())
+    denom = min(len(members_a), len(members_b))
+    if denom == 0:
+        return 0.0
+    return len(members_a & members_b) / denom
+
+
+def _select_group(
+    uid: str,
+    membership: Dict[str, int],
+    stats: _MethodStats,
+    *,
+    n_neighbors: int,
+    min_group_size: int,
+    allowed_uids: set[str] | None = None,
+) -> List[str]:
+    """Return same-cluster neighbors for one method, with postprocess fallback."""
+    cid = membership.get(uid)
+    if cid is None:
+        return []
+
+    neighbors = stats.node_neighbors.get(uid, {})
+    if neighbors:
+        ordered = sorted(neighbors.items(), key=lambda item: (-item[1], item[0]))
+        if allowed_uids is not None:
+            ordered = [(nbr, weight) for nbr, weight in ordered if nbr in allowed_uids]
+        group = [nbr for nbr, _weight in ordered[:n_neighbors]]
+        if len(group) >= min_group_size:
+            return group
+
+    # Postprocess may merge nodes into clusters without direct same-cluster edges.
+    candidates = [v for v in stats.cluster_members[cid] if v != uid]
+    if allowed_uids is not None:
+        candidates = [v for v in candidates if v in allowed_uids]
+    candidates.sort(key=lambda v: (-stats.node_intra.get(v, 0.0), v))
+    return candidates[:n_neighbors]
+
+
+def sample_disagreement_cases(
+    edges_a: pl.DataFrame,
+    membership_a: Dict[str, int],
+    edges_b: pl.DataFrame,
+    membership_b: Dict[str, int],
+    *,
+    method_a: str = "sum",
+    method_b: str = "consensus",
+    abstracts: pl.DataFrame | None = None,
+    n_targets: int = 50,
+    n_neighbors: int = 8,
+    min_cluster_size: int = 10,
+    boundary_quantile: float = 0.9,
+    max_group_jaccard: float = 0.5,
+    allowed_uids: set[str] | None = None,
+    seed: int = 42,
+) -> DisagreementSampleSet:
+    """Sample boundary-node cases where method A and B disagree meaningfully."""
+    rng = np.random.RandomState(seed)
+    stats_a = _compute_method_stats(edges_a, membership_a)
+    stats_b = _compute_method_stats(edges_b, membership_b)
+    min_group_size = _min_group_size(n_neighbors)
+
+    uid_meta: Dict[str, dict] = {}
+    if abstracts is not None:
+        for row in abstracts.iter_rows(named=True):
+            uid_meta[row["uid"]] = row
+
+    eligible = [
+        uid
+        for uid in set(membership_a) & set(membership_b)
+        if allowed_uids is None or uid in allowed_uids
+        if stats_a.cluster_sizes[membership_a[uid]] >= min_cluster_size
+        and stats_b.cluster_sizes[membership_b[uid]] >= min_cluster_size
+    ]
+    if not eligible:
+        log.warning("No eligible disagreement targets")
+        return DisagreementSampleSet([], method_a=method_a, method_b=method_b, n_nodes=0, n_candidates=0)
+
+    eligible.sort(
+        key=lambda uid: (
+            -max(
+                stats_a.cross_ratios.get(uid, 0.0),
+                stats_b.cross_ratios.get(uid, 0.0),
+            ),
+            uid,
+        )
+    )
+    cutoff = max(1, int(len(eligible) * (1 - boundary_quantile)))
+    boundary_pool = eligible[:cutoff]
+
+    candidate_rows: list[DisagreementCase] = []
+    for uid in boundary_pool:
+        group_a = _select_group(
+            uid,
+            membership_a,
+            stats_a,
+            n_neighbors=n_neighbors,
+            min_group_size=min_group_size,
+            allowed_uids=allowed_uids,
+        )
+        group_b = _select_group(
+            uid,
+            membership_b,
+            stats_b,
+            n_neighbors=n_neighbors,
+            min_group_size=min_group_size,
+            allowed_uids=allowed_uids,
+        )
+        if len(group_a) < min_group_size or len(group_b) < min_group_size:
+            continue
+
+        set_a = set(group_a)
+        set_b = set(group_b)
+        union = set_a | set_b
+        overlap = set_a & set_b
+        jaccard = len(overlap) / len(union) if union else 1.0
+        if jaccard > max_group_jaccard:
+            continue
+        if set_a == set_b:
+            continue
+
+        meta = uid_meta.get(uid, {})
+        candidate_rows.append(
+            DisagreementCase(
+                target_uid=uid,
+                method_a_cluster_id=membership_a[uid],
+                method_b_cluster_id=membership_b[uid],
+                method_a_cluster_size=stats_a.cluster_sizes[membership_a[uid]],
+                method_b_cluster_size=stats_b.cluster_sizes[membership_b[uid]],
+                method_a_cross_cluster_ratio=round(stats_a.cross_ratios.get(uid, 0.0), 4),
+                method_b_cross_cluster_ratio=round(stats_b.cross_ratios.get(uid, 0.0), 4),
+                group_a_uids=group_a,
+                group_b_uids=group_b,
+                overlap_size=len(overlap),
+                jaccard=round(jaccard, 4),
+                target_title=meta.get("title", ""),
+                target_year=meta.get("pubyear"),
+            )
+        )
+
+    if not candidate_rows:
+        log.warning("No disagreement cases after group-difference filtering")
+        return DisagreementSampleSet([], method_a=method_a, method_b=method_b, n_nodes=len(eligible), n_candidates=0)
+
+    bucketed: Dict[tuple[int, int], List[DisagreementCase]] = defaultdict(list)
+    for case in candidate_rows:
+        bucketed[(case.method_a_cluster_id, case.method_b_cluster_id)].append(case)
+
+    keys = list(bucketed)
+    rng.shuffle(keys)
+    selected: List[DisagreementCase] = []
+    per_bucket = max(1, n_targets // max(1, len(keys)))
+    for key in keys:
+        bucket = bucketed[key]
+        rng.shuffle(bucket)
+        selected.extend(bucket[:per_bucket])
+        if len(selected) >= n_targets:
+            break
+
+    if len(selected) < min(n_targets, len(candidate_rows)):
+        seen = {case.target_uid for case in selected}
+        remaining = [case for case in candidate_rows if case.target_uid not in seen]
+        rng.shuffle(remaining)
+        selected.extend(remaining[: max(0, n_targets - len(selected))])
+
+    selected = selected[:n_targets]
+    log.info(
+        "Sampled %d disagreement targets from %d candidates (boundary q=%.2f, max_jaccard=%.2f)",
+        len(selected),
+        len(candidate_rows),
+        boundary_quantile,
+        max_group_jaccard,
+    )
+
+    return DisagreementSampleSet(
+        cases=selected,
+        method_a=method_a,
+        method_b=method_b,
+        n_nodes=len(eligible),
+        n_candidates=len(candidate_rows),
+    )
+
+
+def sample_rank_shift_cases(
+    edges_a: pl.DataFrame,
+    membership_a: Dict[str, int],
+    edges_b: pl.DataFrame,
+    membership_b: Dict[str, int],
+    *,
+    method_a: str = "sum",
+    method_b: str = "consensus",
+    abstracts: pl.DataFrame | None = None,
+    n_targets: int = 50,
+    n_neighbors: int = 8,
+    min_cluster_size: int = 10,
+    max_rank_jaccard: float = 0.85,
+    min_cluster_overlap: float = 0.5,
+    allowed_uids: set[str] | None = None,
+    target_uids: List[str] | None = None,
+    strict_target_uids: bool = False,
+    seed: int = 42,
+) -> RankShiftSampleSet:
+    """Sample targets whose local neighbor ranking changes strongly."""
+    rng = np.random.RandomState(seed)
+    candidate_rows, n_eligible = collect_rank_shift_cases(
+        edges_a,
+        membership_a,
+        edges_b,
+        membership_b,
+        method_a=method_a,
+        method_b=method_b,
+        abstracts=abstracts,
+        n_neighbors=n_neighbors,
+        min_cluster_size=min_cluster_size,
+        max_rank_jaccard=max_rank_jaccard,
+        min_cluster_overlap=min_cluster_overlap,
+        allowed_uids=allowed_uids,
+        target_uids=target_uids,
+    )
+    if not candidate_rows:
+        log.warning("No rank-shift cases after filtering")
+        return RankShiftSampleSet([], method_a=method_a, method_b=method_b, n_nodes=n_eligible, n_candidates=0)
+
+    if target_uids is not None:
+        preferred_set = set(target_uids)
+        selected = [case for case in candidate_rows if case.target_uid in preferred_set][:n_targets]
+        if not strict_target_uids and len(selected) < n_targets:
+            seen = {case.target_uid for case in selected}
+            remaining = [case for case in candidate_rows if case.target_uid not in seen]
+            selected.extend(remaining[: max(0, n_targets - len(selected))])
+        selected = selected[:n_targets]
+    else:
+        bucketed: Dict[tuple[int, int], List[RankShiftCase]] = defaultdict(list)
+        for case in candidate_rows:
+            bucketed[(case.method_a_cluster_id, case.method_b_cluster_id)].append(case)
+
+        keys = list(bucketed)
+        rng.shuffle(keys)
+        selected = []
+        per_bucket = max(1, n_targets // max(1, len(keys)))
+        for key in keys:
+            bucket = bucketed[key]
+            bucket.sort(key=lambda case: (-case.shift_score, case.target_uid))
+            selected.extend(bucket[:per_bucket])
+            if len(selected) >= n_targets:
+                break
+
+        if len(selected) < min(n_targets, len(candidate_rows)):
+            seen = {case.target_uid for case in selected}
+            remaining = [case for case in candidate_rows if case.target_uid not in seen]
+            selected.extend(remaining[: max(0, n_targets - len(selected))])
+
+        selected = selected[:n_targets]
+    log.info(
+        "Sampled %d rank-shift targets from %d candidates (max_jaccard=%.2f)",
+        len(selected),
+        len(candidate_rows),
+        max_rank_jaccard,
+    )
+
+    return RankShiftSampleSet(
+        cases=selected,
+        method_a=method_a,
+        method_b=method_b,
+        n_nodes=n_eligible,
+        n_candidates=len(candidate_rows),
+    )
+
+
+def collect_rank_shift_cases(
+    edges_a: pl.DataFrame,
+    membership_a: Dict[str, int],
+    edges_b: pl.DataFrame,
+    membership_b: Dict[str, int],
+    *,
+    method_a: str = "sum",
+    method_b: str = "consensus",
+    abstracts: pl.DataFrame | None = None,
+    n_neighbors: int = 8,
+    min_cluster_size: int = 10,
+    max_rank_jaccard: float = 0.85,
+    min_cluster_overlap: float = 0.5,
+    allowed_uids: set[str] | None = None,
+    target_uids: List[str] | None = None,
+) -> tuple[List[RankShiftCase], int]:
+    """Collect every rank-shift case before bucket sampling."""
+    stats_a = _compute_method_stats(edges_a, membership_a)
+    stats_b = _compute_method_stats(edges_b, membership_b)
+    all_neighbors_a = _compute_all_neighbors(edges_a)
+    all_neighbors_b = _compute_all_neighbors(edges_b)
+
+    uid_meta: Dict[str, dict] = {}
+    if abstracts is not None:
+        for row in abstracts.iter_rows(named=True):
+            uid_meta[row["uid"]] = row
+
+    if target_uids is not None:
+        preferred = list(dict.fromkeys(target_uids))
+        remaining = sorted((set(membership_a) & set(membership_b)) - set(preferred))
+        ordered_candidates = preferred + remaining
+    else:
+        ordered_candidates = sorted(set(membership_a) & set(membership_b))
+
+    eligible = [
+        uid
+        for uid in ordered_candidates
+        if uid in membership_a and uid in membership_b
+        if allowed_uids is None or uid in allowed_uids
+        if stats_a.cluster_sizes[membership_a[uid]] >= min_cluster_size
+        and stats_b.cluster_sizes[membership_b[uid]] >= min_cluster_size
+    ]
+    if not eligible:
+        log.warning("No eligible rank-shift targets")
+        return [], 0
+
+    candidate_rows: list[RankShiftCase] = []
+    for uid in eligible:
+        neighbors_a = _top_neighbors(
+            uid,
+            all_neighbors_a,
+            membership_a,
+            n_neighbors=n_neighbors,
+            allowed_uids=allowed_uids,
+        )
+        neighbors_b = _top_neighbors(
+            uid,
+            all_neighbors_b,
+            membership_b,
+            n_neighbors=n_neighbors,
+            allowed_uids=allowed_uids,
+        )
+        if len(neighbors_a) < n_neighbors or len(neighbors_b) < n_neighbors:
+            continue
+
+        order_a = [row["uid"] for row in neighbors_a]
+        order_b = [row["uid"] for row in neighbors_b]
+        cluster_overlap_coeff = round(
+            _cluster_overlap_coefficient(uid, membership_a, stats_a, membership_b, stats_b), 4
+        )
+        cluster_changed = cluster_overlap_coeff < min_cluster_overlap
+        if order_a == order_b and not cluster_changed:
+            continue
+
+        ranks_a = {row["uid"]: row["rank"] for row in neighbors_a}
+        ranks_b = {row["uid"]: row["rank"] for row in neighbors_b}
+        set_a = set(ranks_a)
+        set_b = set(ranks_b)
+        union = set_a | set_b
+        overlap = set_a & set_b
+        rank_jaccard = len(overlap) / len(union) if union else 1.0
+        if rank_jaccard > max_rank_jaccard:
+            continue
+
+        shared_neighbors: list[dict[str, Any]] = []
+        abs_rank_shifts: list[int] = []
+        for nbr in sorted(overlap):
+            delta = int(ranks_b[nbr] - ranks_a[nbr])
+            abs_rank_shifts.append(abs(delta))
+            row_a = next(row for row in neighbors_a if row["uid"] == nbr)
+            row_b = next(row for row in neighbors_b if row["uid"] == nbr)
+            shared_neighbors.append(
+                {
+                    "uid": nbr,
+                    "rank_a": row_a["rank"],
+                    "rank_b": row_b["rank"],
+                    "delta": delta,
+                    "weight_a": row_a["weight"],
+                    "weight_b": row_b["weight"],
+                }
+            )
+        shared_neighbors.sort(key=lambda row: (-abs(row["delta"]), row["uid"]))
+
+        neighbors_only_a = [row for row in neighbors_a if row["uid"] not in set_b]
+        neighbors_only_b = [row for row in neighbors_b if row["uid"] not in set_a]
+        mean_abs_rank_shift = (
+            round(float(np.mean(abs_rank_shifts)), 4) if abs_rank_shifts else float(n_neighbors)
+        )
+        max_abs_rank_shift = max(abs_rank_shifts) if abs_rank_shifts else n_neighbors
+        shift_score = round(
+            (1.0 - rank_jaccard)
+            + (mean_abs_rank_shift / max(1, n_neighbors))
+            + (0.25 if cluster_changed else 0.0),
+            4,
+        )
+
+        meta = uid_meta.get(uid, {})
+        candidate_rows.append(
+            RankShiftCase(
+                target_uid=uid,
+                method_a_cluster_id=membership_a[uid],
+                method_b_cluster_id=membership_b[uid],
+                method_a_cluster_size=stats_a.cluster_sizes[membership_a[uid]],
+                method_b_cluster_size=stats_b.cluster_sizes[membership_b[uid]],
+                rank_jaccard=round(rank_jaccard, 4),
+                overlap_size=len(overlap),
+                mean_abs_rank_shift=mean_abs_rank_shift,
+                max_abs_rank_shift=max_abs_rank_shift,
+                cluster_overlap_coeff=cluster_overlap_coeff,
+                cluster_changed=cluster_changed,
+                shift_score=shift_score,
+                neighbors_a=neighbors_a,
+                neighbors_b=neighbors_b,
+                shared_neighbors=shared_neighbors,
+                neighbors_only_a=neighbors_only_a,
+                neighbors_only_b=neighbors_only_b,
+                target_title=meta.get("title", ""),
+                target_year=meta.get("pubyear"),
+            )
+        )
+
+    if not candidate_rows:
+        return [], len(eligible)
+
+    if target_uids is not None:
+        target_order = {uid: idx for idx, uid in enumerate(target_uids)}
+        candidate_rows.sort(
+            key=lambda case: (
+                target_order.get(case.target_uid, len(target_order)),
+                case.target_uid,
+            )
+        )
+    else:
+        candidate_rows.sort(
+            key=lambda case: (
+                -case.shift_score,
+                case.rank_jaccard,
+                -case.mean_abs_rank_shift,
+                case.target_uid,
+            )
+        )
+
+    return candidate_rows, len(eligible)
+
+
+__all__ = [
+    "sample_worst_case",
+    "sample_disagreement_cases",
+    "collect_rank_shift_cases",
+    "sample_rank_shift_cases",
+    "SampleSet",
+    "SampleCase",
+    "DisagreementSampleSet",
+    "DisagreementCase",
+    "RankShiftSampleSet",
+    "RankShiftCase",
+]

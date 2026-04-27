@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _common import save_json
+from _common import save_json, select_best_single_result
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
@@ -19,13 +19,6 @@ FIELDS = ["field_15", "field_12", "field_18", "field_26", "field_29", "field_30"
 
 def _select_result(results: list[dict], method: str) -> dict | None:
     return next((item for item in results if item.get("method") == method), None)
-
-
-def _best_single_layer(results: list[dict]) -> dict | None:
-    singles = [item for item in results if item.get("kind") == "single_layer"]
-    if not singles:
-        return None
-    return max(singles, key=lambda item: item.get("ami_mean", float("-inf")))
 
 
 def main() -> None:
@@ -81,7 +74,7 @@ def main() -> None:
         payload = json.loads(result_path.read_text(encoding="utf-8"))
         aggregate[field] = payload
         results = payload.get("results", [])
-        best_single = _best_single_layer(results)
+        best_single = select_best_single_result(results)
         bc = _select_result(results, "bc_cosine_only")
         all_cons = _select_result(results, "all_consensus")
         citation_cons = _select_result(results, "citation_consensus")

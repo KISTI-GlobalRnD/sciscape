@@ -1,0 +1,1163 @@
+{
+  "field": "field_15_k06_sum_vs_consensus",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 1,
+  "n_cases": 24,
+  "n_neighbors": 8,
+  "boundary_quantile": 0.9,
+  "used_boundary_quantile": 0.9,
+  "max_group_jaccard": 0.5,
+  "used_max_group_jaccard": 0.5,
+  "sample_only": false,
+  "secondary_checks": false,
+  "method_a_run": {
+    "n_edges": 1344540,
+    "gamma": 0.000285494207576822,
+    "n_clusters": 3419,
+    "max_pct": 1.82
+  },
+  "method_b_run": {
+    "n_edges": 1344540,
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 8257,
+    "max_pct": 2.14
+  },
+  "n_candidate_cases": 8281,
+  "selected_cases": [
+    {
+      "target_uid": "W1995331792",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 1667,
+      "method_b_cluster_id": 4578,
+      "method_a_cluster_size": 207,
+      "method_b_cluster_size": 20,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2050056398",
+        "W2060013419",
+        "W107455402",
+        "W1136400319",
+        "W1605079448",
+        "W1611166520",
+        "W1633755771",
+        "W1778012245"
+      ],
+      "group_b_uids": [
+        "W1969974985",
+        "W1984775547",
+        "W1997111966",
+        "W2015246334",
+        "W2030834036",
+        "W2032294166",
+        "W2063917761",
+        "W2070755332"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1923163234",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 642,
+      "method_b_cluster_id": 7554,
+      "method_a_cluster_size": 122,
+      "method_b_cluster_size": 32,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2069492698",
+        "W2336044862",
+        "W2466952729",
+        "W4291815283",
+        "W1012366331",
+        "W1484701777",
+        "W1572979791",
+        "W1952682908"
+      ],
+      "group_b_uids": [
+        "W1969773242",
+        "W1975390684",
+        "W1980751582",
+        "W1993182744",
+        "W2035001369",
+        "W2043755376",
+        "W2058271961",
+        "W2063525219"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1985592644",
+      "target_title": "Room temperature ionic liquids based on small aliphatic ammonium cations and asymmetric amide anions",
+      "target_year": null,
+      "method_a_cluster_id": 269,
+      "method_b_cluster_id": 2610,
+      "method_a_cluster_size": 804,
+      "method_b_cluster_size": 10,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2043413918",
+        "W2627346732",
+        "W3194931551",
+        "W2001762815",
+        "W2096797631",
+        "W2136628730",
+        "W4289950768",
+        "W2044684694"
+      ],
+      "group_b_uids": [
+        "W173549790",
+        "W1973468870",
+        "W1989692430",
+        "W2091632752",
+        "W2136499176",
+        "W2771080895",
+        "W2979939722",
+        "W3087843823"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1990743224",
+      "target_title": "Computational and Experimental Investigation of Li-Doped Ionic Liquid Electrolytes: [pyr14][TFSI], [pyr13][FSI], and [EMIM][BF<sub>4</sub>]",
+      "target_year": null,
+      "method_a_cluster_id": 887,
+      "method_b_cluster_id": 1746,
+      "method_a_cluster_size": 372,
+      "method_b_cluster_size": 2435,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2037301399",
+        "W2151259348",
+        "W2039864249",
+        "W3113863280",
+        "W4323569183",
+        "W4213278420",
+        "W4392587795",
+        "W2417702312"
+      ],
+      "group_b_uids": [
+        "W2892419876",
+        "W2916408555",
+        "W2936026972",
+        "W2065115992",
+        "W1594400100",
+        "W2063507192",
+        "W4239343370",
+        "W1995495169"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1604803352",
+      "target_title": "A One‐Pot Synthesis of Symmetrical and Unsymmetrical Dipeptide Ureas",
+      "target_year": null,
+      "method_a_cluster_id": 69,
+      "method_b_cluster_id": 3130,
+      "method_a_cluster_size": 433,
+      "method_b_cluster_size": 487,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W4376505860",
+        "W1971658857",
+        "W2107934930",
+        "W3024817252",
+        "W3214539699",
+        "W4403778515",
+        "W4312214789",
+        "W3159310088"
+      ],
+      "group_b_uids": [
+        "W4309865895",
+        "W4394616893",
+        "W4200352860",
+        "W4280640512",
+        "W4388998314",
+        "W4234031025",
+        "W2344608581",
+        "W2811211297"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1967261937",
+      "target_title": "Palladium nanowires stabilized by thiol-functionalized ionic liquid: seed-mediated synthesis and heterogeneous catalyst for Sonogashira coupling reaction",
+      "target_year": null,
+      "method_a_cluster_id": 1199,
+      "method_b_cluster_id": 1453,
+      "method_a_cluster_size": 1169,
+      "method_b_cluster_size": 50,
+      "method_a_cross_cluster_ratio": 0.9447,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2327408506",
+        "W2320533066",
+        "W1994077032",
+        "W3115927256",
+        "W4310558252",
+        "W2929038398",
+        "W4390778238",
+        "W2069948224"
+      ],
+      "group_b_uids": [
+        "W1965280949",
+        "W2003752951",
+        "W2004798259",
+        "W2008596136",
+        "W2012987362",
+        "W2019272748",
+        "W2033647873",
+        "W2038839867"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1996879003",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 650,
+      "method_b_cluster_id": 573,
+      "method_a_cluster_size": 27,
+      "method_b_cluster_size": 1785,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9901,
+      "group_a_uids": [
+        "W1581264690",
+        "W1990956269",
+        "W1998409872",
+        "W2022519320",
+        "W2047741655",
+        "W2054591590",
+        "W2057971753",
+        "W2070593297"
+      ],
+      "group_b_uids": [
+        "W2599612837",
+        "W2295219946",
+        "W2885898903",
+        "W2511050124",
+        "W1999329986",
+        "W2056057306",
+        "W2037856896",
+        "W2284968626"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1984040405",
+      "target_title": "The Madelung Constant of Organic Salts",
+      "target_year": null,
+      "method_a_cluster_id": 50,
+      "method_b_cluster_id": 1838,
+      "method_a_cluster_size": 2093,
+      "method_b_cluster_size": 47,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2120769639",
+        "W2160548064",
+        "W2549230104",
+        "W2133990726",
+        "W1544115493",
+        "W2114699456",
+        "W1979270276",
+        "W2072558537"
+      ],
+      "group_b_uids": [
+        "W1168623863",
+        "W2032620034",
+        "W2802251232",
+        "W1547510033",
+        "W1966838909",
+        "W1968846849",
+        "W1993795861",
+        "W1998889077"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1978654191",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 1607,
+      "method_b_cluster_id": 4786,
+      "method_a_cluster_size": 48,
+      "method_b_cluster_size": 13,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1918539607",
+        "W1972784243",
+        "W1975322326",
+        "W1976540674",
+        "W1984598996",
+        "W1993401323",
+        "W1998742123",
+        "W1998930215"
+      ],
+      "group_b_uids": [
+        "W1964711208",
+        "W1983461235",
+        "W2001641940",
+        "W2071427668",
+        "W2090253306",
+        "W2134884673",
+        "W2235282496",
+        "W2465554051"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1998461500",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 1216,
+      "method_b_cluster_id": 1684,
+      "method_a_cluster_size": 17,
+      "method_b_cluster_size": 85,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1499125139",
+        "W1558846067",
+        "W2003805700",
+        "W2040374087",
+        "W2051493204",
+        "W2320731959",
+        "W2471691499",
+        "W2560271142"
+      ],
+      "group_b_uids": [
+        "W1601607024",
+        "W1878850222",
+        "W1962857930",
+        "W1973884495",
+        "W1983843718",
+        "W1991359447",
+        "W1996300292",
+        "W1999471498"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1987576679",
+      "target_title": "Branched Polymers under Shear",
+      "target_year": null,
+      "method_a_cluster_id": 269,
+      "method_b_cluster_id": 2958,
+      "method_a_cluster_size": 804,
+      "method_b_cluster_size": 35,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2043413918",
+        "W2627346732",
+        "W3194931551",
+        "W2001762815",
+        "W2096797631",
+        "W2136628730",
+        "W4289950768",
+        "W2044684694"
+      ],
+      "group_b_uids": [
+        "W2091266748",
+        "W2332911441",
+        "W2042304359",
+        "W1771959753",
+        "W1988946740",
+        "W1994315449",
+        "W1997167145",
+        "W1997318335"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1981650342",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 1466,
+      "method_b_cluster_id": 6616,
+      "method_a_cluster_size": 382,
+      "method_b_cluster_size": 11,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2609426016",
+        "W3048809334",
+        "W2422300365",
+        "W2086077877",
+        "W4388672142",
+        "W4390033179",
+        "W3042260753",
+        "W4385874651"
+      ],
+      "group_b_uids": [
+        "W2010903476",
+        "W2028264269",
+        "W2053237850",
+        "W2054506742",
+        "W2155842571",
+        "W2748352629",
+        "W2949361585",
+        "W4312647295"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1986366211",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 2100,
+      "method_b_cluster_id": 497,
+      "method_a_cluster_size": 1695,
+      "method_b_cluster_size": 22,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3117502436",
+        "W2915480560",
+        "W2894883309",
+        "W1978623384",
+        "W2070211873",
+        "W2087928920",
+        "W2199959614",
+        "W4302303658"
+      ],
+      "group_b_uids": [
+        "W1983303690",
+        "W1986017736",
+        "W1991099208",
+        "W2036741233",
+        "W2056912740",
+        "W2076011670",
+        "W2109205370",
+        "W2117440405"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1994945589",
+      "target_title": "External Photoelectron Emission Spectra of Ionic Liquids in the Presence and Absence of Iodide",
+      "target_year": null,
+      "method_a_cluster_id": 410,
+      "method_b_cluster_id": 573,
+      "method_a_cluster_size": 227,
+      "method_b_cluster_size": 1785,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9422,
+      "group_a_uids": [
+        "W3159680812",
+        "W4390607741",
+        "W3036932935",
+        "W3136982639",
+        "W4388125696",
+        "W4402032534",
+        "W1994306703",
+        "W2099201706"
+      ],
+      "group_b_uids": [
+        "W2599612837",
+        "W2295219946",
+        "W2885898903",
+        "W2511050124",
+        "W1999329986",
+        "W2056057306",
+        "W2037856896",
+        "W2284968626"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2000083622",
+      "target_title": "Ruthenium nanoparticles in ionic liquids: structural and stability effects of polar solutes",
+      "target_year": null,
+      "method_a_cluster_id": 2324,
+      "method_b_cluster_id": 3080,
+      "method_a_cluster_size": 29,
+      "method_b_cluster_size": 2464,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.8586,
+      "group_a_uids": [
+        "W1963514630",
+        "W1975441564",
+        "W2053216015",
+        "W2090749185",
+        "W2124515425",
+        "W2131979140",
+        "W2151490528",
+        "W2304255266"
+      ],
+      "group_b_uids": [
+        "W2793370515",
+        "W4243355511",
+        "W4324018742",
+        "W4324055048",
+        "W1609527638",
+        "W2101900852",
+        "W2026895562",
+        "W2087129173"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1185189846",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 548,
+      "method_b_cluster_id": 47,
+      "method_a_cluster_size": 835,
+      "method_b_cluster_size": 1710,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2883902613",
+        "W2891799680",
+        "W2357850257",
+        "W2946813387",
+        "W4391403494",
+        "W4387188942",
+        "W2052035361",
+        "W4254894111"
+      ],
+      "group_b_uids": [
+        "W2074047103",
+        "W2075768016",
+        "W2802791899",
+        "W2016233743",
+        "W2116059542",
+        "W4387267042",
+        "W3187073487",
+        "W2735671573"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1964437769",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 2405,
+      "method_b_cluster_id": 2558,
+      "method_a_cluster_size": 74,
+      "method_b_cluster_size": 2190,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2607148961",
+        "W2921131181",
+        "W1793459264",
+        "W1945783631",
+        "W1963841169",
+        "W1966723066",
+        "W1967275188",
+        "W1980729286"
+      ],
+      "group_b_uids": [
+        "W1963877058",
+        "W2067453149",
+        "W2032096790",
+        "W3196128495",
+        "W4292169563",
+        "W4292169587",
+        "W1973514249",
+        "W4289518778"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1994011654",
+      "target_title": "Synthesis of Polymers from Carbon Dioxide and Carbon Disulfide",
+      "target_year": null,
+      "method_a_cluster_id": 2769,
+      "method_b_cluster_id": 3011,
+      "method_a_cluster_size": 68,
+      "method_b_cluster_size": 1451,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9644,
+      "group_a_uids": [
+        "W3161861500",
+        "W4394916534",
+        "W1842875237",
+        "W1965153709",
+        "W1971206597",
+        "W1971368665",
+        "W1981824084",
+        "W1987724777"
+      ],
+      "group_b_uids": [
+        "W2006848980",
+        "W1975897623",
+        "W1978984879",
+        "W2046172201",
+        "W2763357710",
+        "W2001550025",
+        "W2023809101",
+        "W2001915737"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1984790816",
+      "target_title": "Shear-induced fractures and three-dimensional motions in an organogel",
+      "target_year": null,
+      "method_a_cluster_id": 709,
+      "method_b_cluster_id": 3787,
+      "method_a_cluster_size": 60,
+      "method_b_cluster_size": 44,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1530453901",
+        "W1563240005",
+        "W1691250986",
+        "W1976850083",
+        "W1988702061",
+        "W1992244018",
+        "W1993485693",
+        "W2007223686"
+      ],
+      "group_b_uids": [
+        "W1466744237",
+        "W1561531260",
+        "W1965797294",
+        "W1981638312",
+        "W2021860507",
+        "W2026592665",
+        "W2047681963",
+        "W2055995845"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1928333506",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 496,
+      "method_b_cluster_id": 175,
+      "method_a_cluster_size": 1322,
+      "method_b_cluster_size": 666,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3045419555",
+        "W4386817568",
+        "W4386831071",
+        "W3217254379",
+        "W3092321928",
+        "W2918749342",
+        "W2007296015",
+        "W2913011407"
+      ],
+      "group_b_uids": [
+        "W1984050483",
+        "W2160471882",
+        "W2586542777",
+        "W3038417998",
+        "W2000678243",
+        "W2058692069",
+        "W4200210801",
+        "W4401064570"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1972330830",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 3137,
+      "method_b_cluster_id": 2520,
+      "method_a_cluster_size": 10,
+      "method_b_cluster_size": 15,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2029427674",
+        "W2182759403",
+        "W2755696269",
+        "W2762153094",
+        "W2788453714",
+        "W3011500890",
+        "W4210899584",
+        "W4285734012"
+      ],
+      "group_b_uids": [
+        "W1596804291",
+        "W2014692335",
+        "W2045289929",
+        "W2055771751",
+        "W2070190060",
+        "W2089445247",
+        "W2153175054",
+        "W2754816270"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1971544324",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 496,
+      "method_b_cluster_id": 5219,
+      "method_a_cluster_size": 1322,
+      "method_b_cluster_size": 28,
+      "method_a_cross_cluster_ratio": 0.9796,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3045419555",
+        "W4386817568",
+        "W4386831071",
+        "W3217254379",
+        "W3092321928",
+        "W2918749342",
+        "W2007296015",
+        "W2913011407"
+      ],
+      "group_b_uids": [
+        "W1968521298",
+        "W1970146820",
+        "W1978381470",
+        "W1978862176",
+        "W2017019839",
+        "W2022604355",
+        "W2040552581",
+        "W2062855164"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1577701096",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 1469,
+      "method_b_cluster_id": 3011,
+      "method_a_cluster_size": 134,
+      "method_b_cluster_size": 1451,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9499,
+      "group_a_uids": [
+        "W2090387465",
+        "W2964688816",
+        "W4284974385",
+        "W1480149975",
+        "W1561254880",
+        "W1842888963",
+        "W1963854178",
+        "W1966232084"
+      ],
+      "group_b_uids": [
+        "W2006848980",
+        "W1975897623",
+        "W1978984879",
+        "W2046172201",
+        "W2763357710",
+        "W2001550025",
+        "W2023809101",
+        "W2001915737"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1989185624",
+      "target_title": "",
+      "target_year": null,
+      "method_a_cluster_id": 1637,
+      "method_b_cluster_id": 3591,
+      "method_a_cluster_size": 567,
+      "method_b_cluster_size": 82,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W4306660754",
+        "W4379618571",
+        "W2120139757",
+        "W2479823234",
+        "W2012382492",
+        "W2027099812",
+        "W2091469694",
+        "W1850514827"
+      ],
+      "group_b_uids": [
+        "W1977922824",
+        "W1994161194",
+        "W4313305211",
+        "W1488688222",
+        "W1968355750",
+        "W1971795416",
+        "W1979231359",
+        "W1985120208"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W1985592644",
+      "target_title": "Room temperature ionic liquids based on small aliphatic ammonium cations and asymmetric amide anions",
+      "target_year": null,
+      "method_a_cluster_id": 269,
+      "method_b_cluster_id": 2610,
+      "method_a_cluster_size": 804,
+      "method_b_cluster_size": 10,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2043413918",
+        "W2627346732",
+        "W3194931551",
+        "W2001762815",
+        "W2096797631",
+        "W2136628730",
+        "W4289950768",
+        "W2044684694"
+      ],
+      "group_b_uids": [
+        "W173549790",
+        "W1973468870",
+        "W1989692430",
+        "W2091632752",
+        "W2136499176",
+        "W2771080895",
+        "W2979939722",
+        "W3087843823"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 3,
+        "score_b": 2,
+        "reasoning": "Group A is a better cluster because its papers focus on the fundamental thermodynamic properties and modeling of ionic liquids, which is closely related to the target's goal of designing new ionic liquids with specific physical properties (low melting point, low viscosity). Although the approach is different (modeling vs. synthesis), the core subject is the same. Group B is less coherent and focuses on disparate applications of ionic liquids (in biochemistry, in organic synthesis) rather than the study of the ionic liquids themselves."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 3,
+        "reasoning": "The target paper focuses on synthesizing and characterizing room temperature ionic liquids (RTILs) based on small aliphatic ammonium cations. Group A, paper [0], specifically studies the effect of alkylammonium formate ionic liquids on a protein, sharing the key cation class (alkylammonium) with the target paper. While Group B discusses thermodynamic properties of ionic liquids, their focus is on imidazolium cations, and the overall theme of Group A (using and studying specific ionic liquids) is a slightly better, though imperfect, match than the modeling focus of Group B."
+      }
+    },
+    {
+      "target_uid": "W1604803352",
+      "target_title": "A One‐Pot Synthesis of Symmetrical and Unsymmetrical Dipeptide Ureas",
+      "target_year": null,
+      "method_a_cluster_id": 69,
+      "method_b_cluster_id": 3130,
+      "method_a_cluster_size": 433,
+      "method_b_cluster_size": 487,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W4376505860",
+        "W1971658857",
+        "W2107934930",
+        "W3024817252",
+        "W3214539699",
+        "W4403778515",
+        "W4312214789",
+        "W3159310088"
+      ],
+      "group_b_uids": [
+        "W4309865895",
+        "W4394616893",
+        "W4200352860",
+        "W4280640512",
+        "W4388998314",
+        "W4234031025",
+        "W2344608581",
+        "W2811211297"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 3,
+        "reasoning": "Group A is the better cluster because it contains a paper on synthesizing value-added chemicals from carbon dioxide, which directly aligns with the core topic of the target paper. Group B, while internally cohesive, focuses on a different area of chemistry, namely catalysis for ammonia synthesis or hydrocarbon production, which is only tangentially related to the target's specific organic synthesis of dipeptide ureas."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper describes the synthesis of organic molecules (dipeptide ureas) using carbon dioxide as a C1 building block. Group A contains a paper on a very similar theme: the synthesis of value-added chemicals (cyclic carbonates) from carbon dioxide. In contrast, Group B is almost entirely focused on heterogeneous catalysis and electrocatalysis for producing ammonia or bulk hydrocarbons, which is a different research domain."
+      }
+    },
+    {
+      "target_uid": "W1984040405",
+      "target_title": "The Madelung Constant of Organic Salts",
+      "target_year": null,
+      "method_a_cluster_id": 50,
+      "method_b_cluster_id": 1838,
+      "method_a_cluster_size": 2093,
+      "method_b_cluster_size": 47,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2120769639",
+        "W2160548064",
+        "W2549230104",
+        "W2133990726",
+        "W1544115493",
+        "W2114699456",
+        "W1979270276",
+        "W2072558537"
+      ],
+      "group_b_uids": [
+        "W1168623863",
+        "W2032620034",
+        "W2802251232",
+        "W1547510033",
+        "W1966838909",
+        "W1968846849",
+        "W1993795861",
+        "W1998889077"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 2,
+        "score_b": 1,
+        "reasoning": "Group A is the better choice, although it is not a strong match. The papers in Group A share the broad domain of computational chemistry with the target paper, even though they focus on reactivity and reaction mechanisms rather than crystal lattice properties. Group B is completely incoherent, containing one paper on engine control and another on catalysis, neither of which has any thematic connection to the target paper's topic of calculating Madelung constants."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 2,
+        "reasoning": "This is a very weak fit for both groups. However, the target paper's focus on the crystal structure and stability of organic salts and ionic liquids has a slightly stronger, albeit tenuous, thematic link to Group B's paper on structure-induced catalytic activity of metal-cyanide complexes. Both deal with structure-property relationships in complex ionic or coordination compounds, whereas Group A is narrowly focused on the reaction chemistry of vanadium oxides, a completely different topic."
+      }
+    },
+    {
+      "target_uid": "W1987576679",
+      "target_title": "Branched Polymers under Shear",
+      "target_year": null,
+      "method_a_cluster_id": 269,
+      "method_b_cluster_id": 2958,
+      "method_a_cluster_size": 804,
+      "method_b_cluster_size": 35,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2043413918",
+        "W2627346732",
+        "W3194931551",
+        "W2001762815",
+        "W2096797631",
+        "W2136628730",
+        "W4289950768",
+        "W2044684694"
+      ],
+      "group_b_uids": [
+        "W2091266748",
+        "W2332911441",
+        "W2042304359",
+        "W1771959753",
+        "W1988946740",
+        "W1994315449",
+        "W1997167145",
+        "W1997318335"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 2,
+        "reasoning": "Group A is entirely unrelated to the target's topic of polymer dynamics under shear, instead focusing on the thermodynamics of ionic liquids and electrodeposition. While Group B is thematically inconsistent, it contains one paper that is highly relevant to the target, as it discusses the flow of viscoelastic fluids under shear, the core physical phenomenon being investigated. This single, strong match makes Group B a better, though still noisy, cluster."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper studies the behavior of polymers under shear using simulations, focusing on hydrodynamics. Group A contains a paper on transient growth in viscoelastic fluids under shear flows (Couette and Poiseuille), analyzing polymer stress fluctuations. This shares the core themes of polymer physics, shear flow, and fluid dynamics, making it a strong thematic fit. Group B, in contrast, focuses on the thermodynamics and phase equilibria of ionic liquids and supercritical fluids, which is a completely different research area."
+      }
+    },
+    {
+      "target_uid": "W1994945589",
+      "target_title": "External Photoelectron Emission Spectra of Ionic Liquids in the Presence and Absence of Iodide",
+      "target_year": null,
+      "method_a_cluster_id": 410,
+      "method_b_cluster_id": 573,
+      "method_a_cluster_size": 227,
+      "method_b_cluster_size": 1785,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9422,
+      "group_a_uids": [
+        "W3159680812",
+        "W4390607741",
+        "W3036932935",
+        "W3136982639",
+        "W4388125696",
+        "W4402032534",
+        "W1994306703",
+        "W2099201706"
+      ],
+      "group_b_uids": [
+        "W2599612837",
+        "W2295219946",
+        "W2885898903",
+        "W2511050124",
+        "W1999329986",
+        "W2056057306",
+        "W2037856896",
+        "W2284968626"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 3,
+        "reasoning": "Group A is a better fit because it contains multiple papers on the properties and applications of ionic liquids or related organic liquids, which is the central material studied in the target paper. Although Group A is not perfectly cohesive, its connection through the topic of ionic liquids is direct and relevant. Group B, while internally consistent around the theme of CO2 and formic acid catalysis, has no topical connection to the target's focus on photoelectron spectroscopy of ionic liquids."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper is a fundamental physical chemistry study of 'ionic liquids'. Group A includes papers on the application of 'CO2-binding organic liquids' and 'switchable ionic liquids' [2, 3], making a direct thematic connection based on the class of materials studied. Group B, in contrast, is focused on the catalytic transformations of CO2 and formic acid, which is a completely different research area with no overlap in materials or methods."
+      }
+    },
+    {
+      "target_uid": "W2000083622",
+      "target_title": "Ruthenium nanoparticles in ionic liquids: structural and stability effects of polar solutes",
+      "target_year": null,
+      "method_a_cluster_id": 2324,
+      "method_b_cluster_id": 3080,
+      "method_a_cluster_size": 29,
+      "method_b_cluster_size": 2464,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.8586,
+      "group_a_uids": [
+        "W1963514630",
+        "W1975441564",
+        "W2053216015",
+        "W2090749185",
+        "W2124515425",
+        "W2131979140",
+        "W2151490528",
+        "W2304255266"
+      ],
+      "group_b_uids": [
+        "W2793370515",
+        "W4243355511",
+        "W4324018742",
+        "W4324055048",
+        "W1609527638",
+        "W2101900852",
+        "W2026895562",
+        "W2087129173"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 2,
+        "reasoning": "Group B is the clear winner because it contains a paper on the synthesis of platinum nanoparticles in an ionic liquid, which is an extremely close and specific match to the target paper's topic of synthesizing ruthenium nanoparticles in an ionic liquid. While both groups contain some thematic noise, Group A is much broader, focusing on various applications and properties of ionic liquids without ever touching upon the core topic of nanoparticle synthesis. Group B's highly relevant paper makes it a much more specific and useful research cluster for the target."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper's focus on synthesizing ruthenium nanoparticles in ionic liquids is an extremely strong match for Group A, specifically paper A[1] which details the synthesis of platinum nanoparticles in ionic liquids. Both papers investigate the formation and characterization of metal nanoparticles within an ionic liquid medium using an organometallic precursor. While Group B also features papers on ionic liquids, none of them address the core topic of nanoparticle synthesis, instead focusing on electrochemistry, reaction kinetics, or other applications."
+      }
+    },
+    {
+      "target_uid": "W1984790816",
+      "target_title": "Shear-induced fractures and three-dimensional motions in an organogel",
+      "target_year": null,
+      "method_a_cluster_id": 709,
+      "method_b_cluster_id": 3787,
+      "method_a_cluster_size": 60,
+      "method_b_cluster_size": 44,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1530453901",
+        "W1563240005",
+        "W1691250986",
+        "W1976850083",
+        "W1988702061",
+        "W1992244018",
+        "W1993485693",
+        "W2007223686"
+      ],
+      "group_b_uids": [
+        "W1466744237",
+        "W1561531260",
+        "W1965797294",
+        "W1981638312",
+        "W2021860507",
+        "W2026592665",
+        "W2047681963",
+        "W2055995845"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 2,
+        "score_b": 3,
+        "reasoning": "Both groups contain one paper that is highly relevant to the target's focus on shear rheology of complex fluids. However, Group A is the better choice because it is significantly less noisy, with only one completely unrelated paper compared to Group B's three. Group A therefore presents a more thematically coherent, though still imperfect, cluster."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 3,
+        "reasoning": "The target paper investigates the rheology and flow behavior of an organogel under shear. Group A contains a paper studying the response of a polymeric fluid to shearing flow, which is thematically very similar, focusing on the link between microscopic and macroscopic response. While Group B also has one relevant paper on shear rheology, Group A is more focused, with half its papers on this topic, making it a more natural fit than the more diverse Group B."
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 7,
+    "comparison": {
+      "method_a": "sum",
+      "method_b": "consensus",
+      "method_a_wins": 3,
+      "method_b_wins": 4,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.4286,
+      "method_b_win_rate": 0.5714,
+      "method_a_win_rate_no_ties": 0.4286,
+      "method_b_win_rate_no_ties": 0.5714,
+      "score_a_mean": 2.0,
+      "score_b_mean": 2.2857,
+      "score_gap_mean": -0.2857
+    },
+    "belonging": {
+      "method_a_prefers": 1,
+      "method_b_prefers": 6,
+      "ties_or_invalid": 0,
+      "method_a_preference_rate": 0.1429,
+      "method_b_preference_rate": 0.8571,
+      "method_a_preference_rate_no_ties": 0.1429,
+      "method_b_preference_rate_no_ties": 0.8571,
+      "confidence_mean": 3.5714
+    }
+  }
+}

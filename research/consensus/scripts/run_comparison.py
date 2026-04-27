@@ -6,12 +6,17 @@ import argparse
 import logging
 from pathlib import Path
 
+import polars as pl
+
 from _common import (
     allocate_effective_k,
-    load_layer_tables,
+    layer_provenance,
+    load_layer_paths,
     run_combination,
     save_json,
+    select_best_single_result,
     serialize_run,
+    validate_field_embedding_contract,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -93,7 +98,9 @@ def main() -> None:
     args = parser.parse_args()
 
     args.output.mkdir(parents=True, exist_ok=True)
-    layers = load_layer_tables(args.edge_dir)
+    layer_paths = load_layer_paths(args.edge_dir)
+    validate_field_embedding_contract(args.field, layer_paths)
+    layers = {name: pl.read_parquet(path) for name, path in layer_paths.items()}
     if not layers:
         raise FileNotFoundError(f"No standard edge parquet files found in {args.edge_dir}")
 
@@ -194,6 +201,7 @@ def main() -> None:
     payload = {
         "field": args.field,
         "edge_dir": str(args.edge_dir),
+        "protocol": "candidate_budget_matched" if args.top_k is None else "practical_top_k",
         "target_pct": args.target_pct,
         "budget_mode": budget_mode,
         "effective_k": args.effective_k,
@@ -202,6 +210,10 @@ def main() -> None:
         "n_seeds": args.n_seeds,
         "results": results,
     }
+    payload.update(layer_provenance(layer_paths))
+    best_single = select_best_single_result(results)
+    if best_single is not None:
+        payload["best_single_method"] = best_single["method"]
     out_path = args.output / f"{args.field}_comparison.json"
     save_json(payload, out_path)
     log.info("\nSaved → %s", out_path)
