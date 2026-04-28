@@ -3,6 +3,8 @@
 import pytest
 
 from sciscape.evaluation.reviewer import (
+    BOUNDARY_GOLD_SYSTEM_PROMPT,
+    BOUNDARY_PLAUSIBILITY_SYSTEM_PROMPT,
     BELONGING_SYSTEM_PROMPT,
     CASE_TAXONOMY_SYSTEM_PROMPT,
     COMPARISON_SYSTEM_PROMPT,
@@ -10,8 +12,11 @@ from sciscape.evaluation.reviewer import (
     RERANK_SYSTEM_PROMPT,
     _chat_completion_with_retry,
     _prompt_for_model,
+    _resolve_plausibility_decision,
     _safe_json,
     _unswap_binary_winner,
+    review_boundary_gold,
+    review_boundary_plausibility,
     review_neighbor_rerank,
     review_neighbor_rerank_order_balanced,
 )
@@ -37,6 +42,16 @@ class TestPromptForModel:
     def test_belonging_prompt_mentions_right_granularity(self):
         assert "narrowest coherent level" in BELONGING_SYSTEM_PROMPT
         assert "immediate research context" in BELONGING_SYSTEM_PROMPT
+
+    def test_boundary_gold_prompt_requests_independent_judgments(self):
+        assert "judge independently whether the target naturally belongs with Group A" in BOUNDARY_GOLD_SYSTEM_PROMPT
+        assert "A_ONLY" in BOUNDARY_GOLD_SYSTEM_PROMPT
+        assert "UNCLEAR" in BOUNDARY_GOLD_SYSTEM_PROMPT
+
+    def test_boundary_plausibility_prompt_requests_unary_decision(self):
+        assert "one candidate group" in BOUNDARY_PLAUSIBILITY_SYSTEM_PROMPT
+        assert "PLAUSIBLE" in BOUNDARY_PLAUSIBILITY_SYSTEM_PROMPT
+        assert "NOT_PLAUSIBLE" in BOUNDARY_PLAUSIBILITY_SYSTEM_PROMPT
 
     def test_rerank_prompt_mentions_local_neighborhood(self):
         assert "immediate research context" in RERANK_SYSTEM_PROMPT
@@ -268,6 +283,48 @@ class TestTieHandling:
         assert result.order_sensitive is False
         assert result.score_a == 5.0
         assert result.score_b == 4.0
+
+    def test_review_boundary_gold_unswaps_presented_membership(self, monkeypatch):
+        monkeypatch.setattr("random.random", lambda: 0.0)
+        client = _FakeClient(
+            '{"belongs_with_a":"YES","belongs_with_b":"NO","decision":"A_ONLY","confidence":4,"reasoning":"Presented A fits."}'
+        )
+        result = review_boundary_gold(
+            client,
+            {"uid": "T", "title": "Target", "abstract": "Target abstract"},
+            [{"uid": "A1", "title": "Neighbor 1", "abstract": "Abstract 1"}],
+            [{"uid": "B1", "title": "Neighbor 2", "abstract": "Abstract 2"}],
+            method_a="sum_minus_emb",
+            method_b="consensus_all",
+            model="gemini-2.5-pro",
+            randomize=True,
+        )
+        assert result.swapped is True
+        assert result.presented_method_a == "consensus_all"
+        assert result.presented_method_b == "sum_minus_emb"
+        assert result.belongs_with_a is False
+        assert result.belongs_with_b is True
+        assert result.decision == "B_ONLY"
+
+    def test_review_boundary_plausibility_parses_decision(self):
+        client = _FakeClient(
+            '{"decision":"PLAUSIBLE","confidence":4,"reasoning":"The group fits the target."}'
+        )
+        result = review_boundary_plausibility(
+            client,
+            {"uid": "T", "title": "Target", "abstract": "Target abstract"},
+            [{"uid": "A1", "title": "Neighbor 1", "abstract": "Abstract 1"}],
+            method="cc_only",
+            model="gemini-2.5-pro",
+        )
+        assert result.decision == "PLAUSIBLE"
+        assert result.confidence == 4
+        assert result.method == "cc_only"
+
+    def test_resolve_plausibility_decision_accepts_boolish_values(self):
+        assert _resolve_plausibility_decision("yes") == "PLAUSIBLE"
+        assert _resolve_plausibility_decision("no") == "NOT_PLAUSIBLE"
+        assert _resolve_plausibility_decision("other") == "UNCLEAR"
 
 
 class TestRetryHandling:

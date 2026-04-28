@@ -13,6 +13,18 @@
 - Overall non-tie consensus win rate: `0.7685`
 - Wilson 95% interval: `[0.6806, 0.8380]`
 
+## Protocol D v1 Boundary-Accuracy Note
+
+- `Protocol D v1` is a direct boundary-adjudication check, but it is not an
+  overall boundary-accuracy estimate.
+- Its sampler is intersection-heavy and disagreement-focused: cases enter only
+  after both methods form reviewable groups and those groups differ enough to
+  compare.
+- High `NEITHER` rates mean the summary mixes true head-to-head boundary
+  decisions with pathological cases where neither local neighborhood is good.
+- Use `Protocol D v1` as a baseline diagnostic only; coverage-aware `Protocol D
+  v2` is required before claiming overall boundary accuracy.
+
 ## Figure Notes
 
 ### Figure 1: Protocol Overview

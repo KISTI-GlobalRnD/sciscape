@@ -25,7 +25,8 @@ pub fn filter_top_k(
     }
 
     // Build per-node neighbor list with (weight, edge_index, neighbor)
-    let n_nodes = (src.iter().chain(dst.iter()).copied().max().unwrap_or(0) as usize).saturating_add(1);
+    let n_nodes =
+        (src.iter().chain(dst.iter()).copied().max().unwrap_or(0) as usize).saturating_add(1);
 
     // Collect edges per node (bidirectional)
     let mut node_edges: Vec<Vec<(f64, usize)>> = vec![Vec::new(); n_nodes];
@@ -70,7 +71,6 @@ pub fn filter_top_k(
         .collect()
 }
 
-
 /// Union-Find (Disjoint Set Union) for connected components.
 struct UnionFind {
     parent: Vec<u32>,
@@ -114,7 +114,6 @@ impl UnionFind {
     }
 }
 
-
 /// Find the giant connected component (GCC).
 ///
 /// Returns a boolean mask: true for nodes in the GCC.
@@ -144,7 +143,6 @@ pub fn find_gcc(src: &[u32], dst: &[u32], n_nodes: usize) -> Vec<bool> {
     mask
 }
 
-
 /// Filter edges to keep only those within the GCC.
 ///
 /// Returns indices of edges where both endpoints are in the GCC.
@@ -154,7 +152,6 @@ pub fn filter_gcc_edges(src: &[u32], dst: &[u32], n_nodes: usize) -> Vec<usize> 
         .filter(|&i| mask[src[i] as usize] && mask[dst[i] as usize])
         .collect()
 }
-
 
 /// Contract edges by cluster membership.
 ///
@@ -225,7 +222,6 @@ pub fn contract_edges(
     (out_src, out_dst, out_w, n_clusters, node_sizes)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,7 +258,7 @@ mod tests {
         let weight = vec![1.0, 2.0, 3.0, 1.0];
         let membership = vec![0u64, 0, 1, 1];
 
-        let (out_src, out_dst, out_w, n_cl, sizes) =
+        let (out_src, _out_dst, out_w, n_cl, sizes) =
             contract_edges(&src, &dst, &weight, &membership, None);
 
         assert_eq!(n_cl, 2);

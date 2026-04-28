@@ -81,6 +81,22 @@ class TestPrepareEdgeTsv:
         parts = lines[0].split("\t")
         assert len(parts) == 2  # src, dst only
 
+    def test_coalesces_duplicate_undirected_edges(self, tmp_path):
+        edges = pl.DataFrame({
+            "src": [0, 1, 0, 2],
+            "dst": [1, 0, 1, 3],
+            "weight": [0.5, 1.0, 2.0, 4.0],
+        })
+        path = tmp_path / "int_edges.parquet"
+        edges.write_parquet(path)
+        tsv = tmp_path / "edges.tsv"
+
+        n = _prepare_edge_tsv(path, tsv, weighted=True)
+
+        assert n == 2
+        rows = sorted(line.split("\t") for line in tsv.read_text().strip().split("\n"))
+        assert rows == [["0", "1", "3.5"], ["2", "3", "4.0"]]
+
 
 # ── _parse_membership_tsv ──────────────────────────────────
 
@@ -180,6 +196,47 @@ class TestRunLeidenJava:
                     n_nodes=4,
                     jar_path=jar,
                 )
+
+    def test_iterations_must_be_positive(self, setup):
+        edge_path, jar, _ = setup
+
+        with pytest.raises(ValueError, match="positive integer"):
+            run_leiden_java(
+                edge_path,
+                resolution=0.001,
+                n_nodes=4,
+                jar_path=jar,
+                iterations=0,
+            )
+
+    def test_passes_randomness(self, setup, tmp_path):
+        edge_path, jar, _ = setup
+        seen_cmd = None
+
+        def fake_run(cmd, **kwargs):
+            nonlocal seen_cmd
+            seen_cmd = cmd
+            output_idx = cmd.index("-o") + 1
+            Path(cmd[output_idx]).write_text("0\n0\n1\n1\n")
+
+            class FakeResult:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+            return FakeResult()
+
+        with patch("sciscape.clustering.leiden_java.subprocess.run", side_effect=fake_run):
+            run_leiden_java(
+                edge_path,
+                resolution=0.001,
+                n_nodes=4,
+                jar_path=jar,
+                output_path=tmp_path / "out.tsv",
+                randomness=0.0,
+            )
+
+        assert seen_cmd is not None
+        assert seen_cmd[seen_cmd.index("--randomness") + 1] == "0.0"
 
     def test_no_jar_raises(self, setup, monkeypatch):
         edge_path, _, _ = setup

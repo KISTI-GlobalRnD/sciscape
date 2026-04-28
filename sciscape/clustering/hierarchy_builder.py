@@ -7,6 +7,7 @@ from collections import Counter
 from typing import Dict, List
 
 import igraph as ig
+import numpy as np
 
 from .config import HierarchyConfig, HierarchyLevelConfig, PostprocessConfig
 from .postprocess import PostprocessResult, merge_small_clusters
@@ -143,7 +144,6 @@ class HierarchyBuilder:
         if post_cfg is not None and isinstance(runner, RustLeidenRunner):
             # Rust path: use Rust postprocess with weighted thresholds
             from .leiden_rust import postprocess_small_clusters_rust
-            import numpy as np
             has_nw = runner._node_weights is not None
             min_size, min_weight = post_cfg.resolve_thresholds(
                 has_node_weights=has_nw
@@ -154,18 +154,28 @@ class HierarchyBuilder:
             )
             if do_post:
                 mem = np.asarray(best_run.membership, dtype=np.uint64)
-                rust_post = postprocess_small_clusters_rust(
-                    resolution=level_cfg.resolution,
-                    min_size=int(min_size or 0),
-                    min_weight=float(min_weight or 0.0),
-                    membership=mem,
-                    edges_src=runner._src,
-                    edges_dst=runner._dst,
-                    edges_weight=runner._weight,
-                    node_weights=runner._node_weights,
-                    n_nodes=runner.n_nodes,
-                    seed=best_seed or 0,
-                )
+                graph = getattr(runner, "_graph", None)
+                if graph is not None:
+                    rust_post = graph.postprocess_small_clusters(
+                        resolution=level_cfg.resolution,
+                        min_size=int(min_size or 0),
+                        min_weight=float(min_weight or 0.0),
+                        membership=mem,
+                        seed=best_seed or 0,
+                    )
+                else:
+                    rust_post = postprocess_small_clusters_rust(
+                        resolution=level_cfg.resolution,
+                        min_size=int(min_size or 0),
+                        min_weight=float(min_weight or 0.0),
+                        membership=mem,
+                        edges_src=runner._src,
+                        edges_dst=runner._dst,
+                        edges_weight=runner._weight,
+                        node_weights=runner._node_weights,
+                        n_nodes=runner.n_nodes,
+                        seed=best_seed or 0,
+                    )
                 final_membership = rust_post.membership.tolist()
             else:
                 final_membership = best_run.membership
@@ -206,10 +216,18 @@ class HierarchyBuilder:
         if self._prev_original_membership is None:
             self._memberships_original[level_cfg.name] = list(final_membership)
         else:
-            mapped = [
-                final_membership[parent]
-                for parent in self._prev_original_membership
-            ]
+            if isinstance(runner, RustLeidenRunner):
+                from .leiden_rust import project_membership_rust
+
+                mapped = project_membership_rust(
+                    np.asarray(final_membership, dtype=np.uint64),
+                    np.asarray(self._prev_original_membership),
+                ).tolist()
+            else:
+                mapped = [
+                    final_membership[parent]
+                    for parent in self._prev_original_membership
+                ]
             self._memberships_original[level_cfg.name] = mapped
 
         self._prev_original_membership = self._memberships_original[level_cfg.name]

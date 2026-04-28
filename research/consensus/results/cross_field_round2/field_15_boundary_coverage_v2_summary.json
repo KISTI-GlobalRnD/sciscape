@@ -1,0 +1,318 @@
+{
+  "rows": [
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_15_ek30_cc_vs_citation_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_15_ek30_cc_vs_citation_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "citation_consensus",
+      "n_target_universe": 38011,
+      "coverage_state_counts": {
+        "A_only_reviewable": 1414,
+        "B_only_reviewable": 9177,
+        "both_reviewable": 26910,
+        "neither_reviewable": 510
+      },
+      "review_progress": {
+        "population_complete": 30,
+        "population_total": 30,
+        "diagnostic_complete": 84,
+        "diagnostic_total": 84,
+        "reviewed_unique_cases": 114
+      },
+      "population": {
+        "n_cases": 30,
+        "coverage_state_counts": {
+          "A_only_reviewable": 2,
+          "B_only_reviewable": 6,
+          "both_reviewable": 22,
+          "neither_reviewable": 0
+        },
+        "coverage_rate": {
+          "cc_only": 0.8,
+          "citation_consensus": 0.9333
+        },
+        "reviewable_rate": {
+          "any_reviewable": 1.0,
+          "both_reviewable": 0.7333
+        },
+        "plausible_coverage_rate": {
+          "including_unclear_as_zero": {
+            "cc_only": 0.2667,
+            "citation_consensus": 0.2333
+          },
+          "excluding_unclear": {
+            "cc_only": 0.2667,
+            "citation_consensus": 0.2333
+          }
+        },
+        "overall_boundary_utility": {
+          "including_unclear_as_zero": {
+            "cc_only": 0.2667,
+            "citation_consensus": 0.2333
+          },
+          "excluding_unclear": {
+            "cc_only": 0.2667,
+            "citation_consensus": 0.2333
+          }
+        },
+        "conditional_boundary_accuracy": {
+          "full": {
+            "n_reviewed_cases": 22,
+            "n_scored_cases": 22,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 7,
+              "B_ONLY": 6,
+              "BOTH": 1,
+              "NEITHER": 8,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.3636,
+              "method_b_accuracy": 0.3182,
+              "method_a_correct": 8,
+              "method_b_correct": 7,
+              "method_a_advantage_cases": 7,
+              "method_b_advantage_cases": 6,
+              "both_correct_cases": 1,
+              "both_wrong_cases": 8,
+              "net_accuracy_gap": 0.0455
+            }
+          },
+          "excluding_neither": {
+            "n_reviewed_cases": 14,
+            "n_scored_cases": 14,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 7,
+              "B_ONLY": 6,
+              "BOTH": 1,
+              "NEITHER": 0,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.5714,
+              "method_b_accuracy": 0.5,
+              "method_a_correct": 8,
+              "method_b_correct": 7,
+              "method_a_advantage_cases": 7,
+              "method_b_advantage_cases": 6,
+              "both_correct_cases": 1,
+              "both_wrong_cases": 0,
+              "net_accuracy_gap": 0.0714
+            }
+          },
+          "excluding_neither_unclear": {
+            "n_reviewed_cases": 14,
+            "n_scored_cases": 14,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 7,
+              "B_ONLY": 6,
+              "BOTH": 1,
+              "NEITHER": 0,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.5714,
+              "method_b_accuracy": 0.5,
+              "method_a_correct": 8,
+              "method_b_correct": 7,
+              "method_a_advantage_cases": 7,
+              "method_b_advantage_cases": 6,
+              "both_correct_cases": 1,
+              "both_wrong_cases": 0,
+              "net_accuracy_gap": 0.0714
+            }
+          },
+          "discriminative_A_ONLY_B_ONLY": {
+            "n_reviewed_cases": 13,
+            "n_scored_cases": 13,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 7,
+              "B_ONLY": 6,
+              "BOTH": 0,
+              "NEITHER": 0,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.5385,
+              "method_b_accuracy": 0.4615,
+              "method_a_correct": 7,
+              "method_b_correct": 6,
+              "method_a_advantage_cases": 7,
+              "method_b_advantage_cases": 6,
+              "both_correct_cases": 0,
+              "both_wrong_cases": 0,
+              "net_accuracy_gap": 0.0769
+            }
+          }
+        },
+        "neither_rate": 0.3636,
+        "unclear_rate": 0.0,
+        "unary_decision_counts": {
+          "B_NOT_PLAUSIBLE": 6,
+          "A_NOT_PLAUSIBLE": 2
+        }
+      },
+      "diagnostic": {
+        "n_cases": 84,
+        "coverage_state_counts": {
+          "A_only_reviewable": 17,
+          "B_only_reviewable": 20,
+          "both_reviewable": 35,
+          "neither_reviewable": 12
+        },
+        "coverage_rate": {
+          "cc_only": 0.619,
+          "citation_consensus": 0.6548
+        },
+        "reviewable_rate": {
+          "any_reviewable": 0.8571,
+          "both_reviewable": 0.4167
+        },
+        "plausible_coverage_rate": {
+          "including_unclear_as_zero": {
+            "cc_only": 0.1667,
+            "citation_consensus": 0.1071
+          },
+          "excluding_unclear": {
+            "cc_only": 0.1667,
+            "citation_consensus": 0.1071
+          }
+        },
+        "overall_boundary_utility": {
+          "including_unclear_as_zero": {
+            "cc_only": 0.1667,
+            "citation_consensus": 0.1071
+          },
+          "excluding_unclear": {
+            "cc_only": 0.1667,
+            "citation_consensus": 0.1071
+          }
+        },
+        "conditional_boundary_accuracy": {
+          "full": {
+            "n_reviewed_cases": 35,
+            "n_scored_cases": 35,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 12,
+              "B_ONLY": 7,
+              "BOTH": 2,
+              "NEITHER": 14,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.4,
+              "method_b_accuracy": 0.2571,
+              "method_a_correct": 14,
+              "method_b_correct": 9,
+              "method_a_advantage_cases": 12,
+              "method_b_advantage_cases": 7,
+              "both_correct_cases": 2,
+              "both_wrong_cases": 14,
+              "net_accuracy_gap": 0.1429
+            }
+          },
+          "excluding_neither": {
+            "n_reviewed_cases": 21,
+            "n_scored_cases": 21,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 12,
+              "B_ONLY": 7,
+              "BOTH": 2,
+              "NEITHER": 0,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.6667,
+              "method_b_accuracy": 0.4286,
+              "method_a_correct": 14,
+              "method_b_correct": 9,
+              "method_a_advantage_cases": 12,
+              "method_b_advantage_cases": 7,
+              "both_correct_cases": 2,
+              "both_wrong_cases": 0,
+              "net_accuracy_gap": 0.2381
+            }
+          },
+          "excluding_neither_unclear": {
+            "n_reviewed_cases": 21,
+            "n_scored_cases": 21,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 12,
+              "B_ONLY": 7,
+              "BOTH": 2,
+              "NEITHER": 0,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.6667,
+              "method_b_accuracy": 0.4286,
+              "method_a_correct": 14,
+              "method_b_correct": 9,
+              "method_a_advantage_cases": 12,
+              "method_b_advantage_cases": 7,
+              "both_correct_cases": 2,
+              "both_wrong_cases": 0,
+              "net_accuracy_gap": 0.2381
+            }
+          },
+          "discriminative_A_ONLY_B_ONLY": {
+            "n_reviewed_cases": 19,
+            "n_scored_cases": 19,
+            "n_unclear_cases": 0,
+            "decision_counts": {
+              "A_ONLY": 12,
+              "B_ONLY": 7,
+              "BOTH": 0,
+              "NEITHER": 0,
+              "UNCLEAR": 0
+            },
+            "accuracy": {
+              "method_a": "cc_only",
+              "method_b": "citation_consensus",
+              "method_a_accuracy": 0.6316,
+              "method_b_accuracy": 0.3684,
+              "method_a_correct": 12,
+              "method_b_correct": 7,
+              "method_a_advantage_cases": 12,
+              "method_b_advantage_cases": 7,
+              "both_correct_cases": 0,
+              "both_wrong_cases": 0,
+              "net_accuracy_gap": 0.2632
+            }
+          }
+        },
+        "neither_rate": 0.4,
+        "unclear_rate": 0.0,
+        "unary_decision_counts": {
+          "A_NOT_PLAUSIBLE": 17,
+          "B_NOT_PLAUSIBLE": 20
+        }
+      }
+    }
+  ]
+}

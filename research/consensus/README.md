@@ -221,6 +221,9 @@ they should not be treated as the current reference results.
 | `scripts/run_cross_field.py` | E4 multi-field sweep | `cross_field_summary.json` |
 | `scripts/run_boundary_review.py` | E5 A/B disagreement review for one field/k | `*_boundary_review.json` |
 | `scripts/run_boundary_review_grid.py` | E5 grid across fields and k values | `boundary_review_summary.json` |
+| `scripts/run_boundary_accuracy_review.py` | Protocol D v1 binary boundary adjudication on disagreement cases | `*_boundary_accuracy_review.json` |
+| `scripts/run_boundary_coverage_review.py` | Protocol D v2 coverage-aware population/diagnostic boundary review | `*_boundary_coverage_v2_review.json` |
+| `scripts/score_boundary_coverage.py` | Aggregate Protocol D v2 coverage-aware review outputs | `boundary_coverage_v2_summary.json` |
 | `scripts/run_effective_k_sweep.py` | E6 one-field effective-k sweep | `*_k_sweep.json` |
 | `scripts/run_cross_field_k_sweep.py` | E6 multi-field effective-k sweep | `cross_field_k_sweep_summary.json` |
 | `scripts/run_density_matched_comparison.py` | Protocol C density-matched clustering comparison | `*_density_matched_comparison.json` |

@@ -103,7 +103,12 @@ def evaluate_stability(
     except ImportError:
         raise ImportError("scikit-learn required for stability evaluation: pip install scikit-learn")
     from ..clustering.integer_remap import integer_remap_memory
-    from ..clustering.leiden_rust import run_leiden_rust, postprocess_small_clusters_rust, RUST_AVAILABLE
+    from ..clustering.leiden_rust import (
+        RUST_AVAILABLE,
+        build_leiden_graph,
+        postprocess_small_clusters_rust,
+        run_leiden_rust,
+    )
 
     if not RUST_AVAILABLE:
         raise ImportError("Rust backend required for stability evaluation")
@@ -119,26 +124,49 @@ def evaluate_stability(
 
     t0 = time.perf_counter()
     src, dst, w, n_nodes, _uids = integer_remap_memory(edges)
+    try:
+        graph = build_leiden_graph(
+            edges_src=src,
+            edges_dst=dst,
+            edges_weight=w,
+            n_nodes=n_nodes,
+        )
+    except AttributeError:
+        graph = None
 
     memberships = []
     n_clusters_list = []
     max_pct_list = []
 
     for seed in range(n_seeds):
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=gamma, n_nodes=n_nodes, seed=seed, n_iterations=10,
-        )
+        if graph is not None:
+            r = graph.run_leiden(
+                resolution=gamma, seed=seed, n_iterations=10,
+            )
+        else:
+            r = run_leiden_rust(
+                edges_src=src, edges_dst=dst, edges_weight=w,
+                resolution=gamma, n_nodes=n_nodes, seed=seed, n_iterations=10,
+            )
         mem = r.membership
         if postprocess:
-            p = postprocess_small_clusters_rust(
-                resolution=gamma, min_size=min_size,
-                membership=mem,
-                edges_src=src, edges_dst=dst, edges_weight=w,
-                n_nodes=n_nodes, seed=seed,
-                gamma_decay=0.5, max_rounds=3,
-                use_greedy=True, use_component_merge=True,
-            )
+            if graph is not None:
+                p = graph.postprocess_small_clusters(
+                    resolution=gamma, min_size=min_size,
+                    membership=mem,
+                    seed=seed,
+                    gamma_decay=0.5, max_rounds=3,
+                    use_greedy=True, use_component_merge=True,
+                )
+            else:
+                p = postprocess_small_clusters_rust(
+                    resolution=gamma, min_size=min_size,
+                    membership=mem,
+                    edges_src=src, edges_dst=dst, edges_weight=w,
+                    n_nodes=n_nodes, seed=seed,
+                    gamma_decay=0.5, max_rounds=3,
+                    use_greedy=True, use_component_merge=True,
+                )
             mem = p.membership
 
         memberships.append(mem)

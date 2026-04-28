@@ -22,7 +22,13 @@ import numpy as np
 import polars as pl
 
 from .auto_gamma import find_gamma
-from .leiden_rust import run_leiden_rust, postprocess_small_clusters_rust, RUST_AVAILABLE
+from .leiden_rust import (
+    build_leiden_graph,
+    project_membership_rust,
+    run_leiden_rust,
+    postprocess_small_clusters_rust,
+    RUST_AVAILABLE,
+)
 from ..linkage.combine import combine_edge_layers
 
 log = logging.getLogger(__name__)
@@ -299,40 +305,69 @@ def build_hierarchy(
                 _log=_log,
             )
 
-        r = run_leiden_rust(
-            edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
-            resolution=gamma, n_nodes=cur_n, seed=seed, n_iterations=10,
-            node_weights=nw,
-        )
+        try:
+            graph = build_leiden_graph(
+                edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
+                n_nodes=cur_n, node_weights=nw,
+            )
+            r = graph.run_leiden(
+                resolution=gamma, seed=seed, n_iterations=10,
+            )
+        except AttributeError:
+            graph = None
+            r = run_leiden_rust(
+                edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
+                resolution=gamma, n_nodes=cur_n, seed=seed, n_iterations=10,
+                node_weights=nw,
+            )
         # Postprocess: use node_weights for min_size on contracted graphs
         # On contracted graphs, "size" means original paper count (via node_weights)
         if node_sizes is not None:
             # Contracted: use min_weight (doc count sum) instead of min_size (super-node count)
-            p = postprocess_small_clusters_rust(
-                resolution=gamma, min_size=0,
-                min_weight=float(min_size),
-                membership=r.membership,
-                edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
-                node_weights=nw, n_nodes=cur_n, seed=seed,
-                gamma_decay=0.5, max_rounds=3,
-                use_greedy=True, use_component_merge=True,
-            )
+            if graph is not None:
+                p = graph.postprocess_small_clusters(
+                    resolution=gamma, min_size=0,
+                    min_weight=float(min_size),
+                    membership=r.membership,
+                    seed=seed,
+                    gamma_decay=0.5, max_rounds=3,
+                    use_greedy=True, use_component_merge=True,
+                )
+            else:
+                p = postprocess_small_clusters_rust(
+                    resolution=gamma, min_size=0,
+                    min_weight=float(min_size),
+                    membership=r.membership,
+                    edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
+                    node_weights=nw, n_nodes=cur_n, seed=seed,
+                    gamma_decay=0.5, max_rounds=3,
+                    use_greedy=True, use_component_merge=True,
+                )
         else:
-            p = postprocess_small_clusters_rust(
-                resolution=gamma, min_size=min_size,
-                membership=r.membership,
-                edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
-                n_nodes=cur_n, seed=seed,
-                gamma_decay=0.5, max_rounds=5,
-                use_greedy=True, use_component_merge=True,
-            )
+            if graph is not None:
+                p = graph.postprocess_small_clusters(
+                    resolution=gamma, min_size=min_size,
+                    membership=r.membership,
+                    seed=seed,
+                    gamma_decay=0.5, max_rounds=5,
+                    use_greedy=True, use_component_merge=True,
+                )
+            else:
+                p = postprocess_small_clusters_rust(
+                    resolution=gamma, min_size=min_size,
+                    membership=r.membership,
+                    edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
+                    n_nodes=cur_n, seed=seed,
+                    gamma_decay=0.5, max_rounds=5,
+                    use_greedy=True, use_component_merge=True,
+                )
         mem = p.membership
 
         # Map back to original nodes
         if prev_membership_original is None:
-            original_mem = mem.copy()
+            original_mem = mem
         else:
-            original_mem = mem[prev_membership_original]
+            original_mem = project_membership_rust(mem, prev_membership_original)
 
         size_arr = np.bincount(original_mem.astype(np.int32))
         size_arr = size_arr[size_arr > 0]
@@ -424,14 +459,24 @@ def _sweep_gamma_direct(
     n_probes = 12
     gammas = [10 ** (math.log10(lo) + i * (math.log10(hi) - math.log10(lo)) / max(n_probes - 1, 1))
               for i in range(n_probes)]
+    try:
+        graph = build_leiden_graph(
+            edges_src=src, edges_dst=dst, edges_weight=w,
+            n_nodes=n_nodes, node_weights=node_weights,
+        )
+    except AttributeError:
+        graph = None
 
     cache = {}
     for gamma in gammas:
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=gamma, n_nodes=n_nodes, seed=seed,
-            node_weights=node_weights,
-        )
+        if graph is not None:
+            r = graph.run_leiden(resolution=gamma, seed=seed)
+        else:
+            r = run_leiden_rust(
+                edges_src=src, edges_dst=dst, edges_weight=w,
+                resolution=gamma, n_nodes=n_nodes, seed=seed,
+                node_weights=node_weights,
+            )
         mem = np.asarray(r.membership, dtype=np.int64)
         n_cl = len(set(mem.tolist()))
         if n_cl == 0:
@@ -468,11 +513,14 @@ def _sweep_gamma_direct(
             break  # close enough
 
         mid_g = 10 ** ((math.log10(hi_g) + math.log10(lo_g)) / 2)
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=mid_g, n_nodes=n_nodes, seed=seed,
-            node_weights=node_weights,
-        )
+        if graph is not None:
+            r = graph.run_leiden(resolution=mid_g, seed=seed)
+        else:
+            r = run_leiden_rust(
+                edges_src=src, edges_dst=dst, edges_weight=w,
+                resolution=mid_g, n_nodes=n_nodes, seed=seed,
+                node_weights=node_weights,
+            )
         mem = np.asarray(r.membership, dtype=np.int64)
         n_cl = len(set(mem.tolist()))
         if n_cl == 0:

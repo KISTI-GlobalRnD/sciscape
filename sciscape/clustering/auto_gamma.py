@@ -19,7 +19,11 @@ from typing import Dict, List, Tuple
 import numpy as np
 import polars as pl
 
-from .leiden_rust import run_leiden_rust, postprocess_small_clusters_rust
+from .leiden_rust import (
+    build_leiden_graph,
+    run_leiden_rust,
+    postprocess_small_clusters_rust,
+)
 
 log = logging.getLogger(__name__)
 
@@ -149,6 +153,15 @@ def find_gamma(
     # Prepare edges once (in-memory, no disk I/O)
     from .integer_remap import integer_remap_memory
     src, dst, w, n_nodes, _uids = integer_remap_memory(edges)
+    try:
+        graph = build_leiden_graph(
+            edges_src=src,
+            edges_dst=dst,
+            edges_weight=w,
+            n_nodes=n_nodes,
+        )
+    except AttributeError:
+        graph = None
 
     n_total = n_nodes
     probes: List[GammaProbe] = []
@@ -161,21 +174,37 @@ def find_gamma(
             if gamma in cache:
                 return cache[gamma]
         t0 = time.perf_counter()
-        r = run_leiden_rust(
-            edges_src=src, edges_dst=dst, edges_weight=w,
-            resolution=gamma, n_nodes=n_nodes, seed=seed,
-            n_iterations=n_iterations,
-        )
+        if graph is not None:
+            r = graph.run_leiden(
+                resolution=gamma,
+                seed=seed,
+                n_iterations=n_iterations,
+            )
+        else:
+            r = run_leiden_rust(
+                edges_src=src, edges_dst=dst, edges_weight=w,
+                resolution=gamma, n_nodes=n_nodes, seed=seed,
+                n_iterations=n_iterations,
+            )
         mem = r.membership
         if postprocess and do_postprocess:
-            p = postprocess_small_clusters_rust(
-                resolution=gamma, min_size=min_size,
-                membership=mem,
-                edges_src=src, edges_dst=dst, edges_weight=w,
-                n_nodes=n_nodes, seed=seed,
-                gamma_decay=0.5, max_rounds=5,
-                use_greedy=True, use_component_merge=True,
-            )
+            if graph is not None:
+                p = graph.postprocess_small_clusters(
+                    resolution=gamma, min_size=min_size,
+                    membership=mem,
+                    seed=seed,
+                    gamma_decay=0.5, max_rounds=5,
+                    use_greedy=True, use_component_merge=True,
+                )
+            else:
+                p = postprocess_small_clusters_rust(
+                    resolution=gamma, min_size=min_size,
+                    membership=mem,
+                    edges_src=src, edges_dst=dst, edges_weight=w,
+                    n_nodes=n_nodes, seed=seed,
+                    gamma_decay=0.5, max_rounds=5,
+                    use_greedy=True, use_component_merge=True,
+                )
             mem = p.membership
             n_cl = p.n_clusters
         else:

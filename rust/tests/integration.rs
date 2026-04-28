@@ -1,7 +1,7 @@
 //! Integration tests — verify Leiden end-to-end on non-trivial graphs.
 
-use sciscape_leiden::*;
 use rand::SeedableRng;
+use sciscape_leiden::*;
 
 /// Build a "barbell" graph: two cliques connected by a bridge.
 fn barbell(clique_size: usize, bridge_weight: f64) -> Graph {
@@ -43,21 +43,33 @@ fn test_barbell_finds_two_clusters() {
         resolution: 0.3,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let result = leiden(&g, &config, None, &mut rng);
 
-    assert_eq!(result.clustering.n_clusters, 2, "barbell should split into 2 clusters");
+    assert_eq!(
+        result.clustering.n_clusters, 2,
+        "barbell should split into 2 clusters"
+    );
     // Clique A: nodes 0..10 in same cluster
     let c0 = result.clustering.clusters[0];
     for i in 0..10 {
-        assert_eq!(result.clustering.clusters[i], c0, "clique A node {} wrong", i);
+        assert_eq!(
+            result.clustering.clusters[i], c0,
+            "clique A node {} wrong",
+            i
+        );
     }
     // Clique B: nodes 10..20 in same cluster
     let c1 = result.clustering.clusters[10];
     for i in 10..20 {
-        assert_eq!(result.clustering.clusters[i], c1, "clique B node {} wrong", i);
+        assert_eq!(
+            result.clustering.clusters[i], c1,
+            "clique B node {} wrong",
+            i
+        );
     }
     assert_ne!(c0, c1, "two cliques should be in different clusters");
 }
@@ -69,6 +81,7 @@ fn test_quality_is_consistent() {
         resolution: 0.5,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 0,
     };
     let mut rng = rand::rngs::StdRng::seed_from_u64(0);
@@ -93,12 +106,17 @@ fn test_quality_positive() {
         resolution: 0.3,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let result = leiden(&g, &config, None, &mut rng);
 
-    assert!(result.quality > 0.0, "quality should be positive, got {}", result.quality);
+    assert!(
+        result.quality > 0.0,
+        "quality should be positive, got {}",
+        result.quality
+    );
 }
 
 #[test]
@@ -108,6 +126,7 @@ fn test_quality_better_than_singleton() {
         resolution: 0.3,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -136,6 +155,7 @@ fn test_disconnected_graph() {
         resolution: 0.3,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -143,8 +163,7 @@ fn test_disconnected_graph() {
 
     // Nodes in different components should be in different clusters
     assert_ne!(
-        result.clustering.clusters[0],
-        result.clustering.clusters[3],
+        result.clustering.clusters[0], result.clustering.clusters[3],
         "disconnected components should be in different clusters"
     );
 }
@@ -156,6 +175,7 @@ fn test_multi_start_finds_best() {
         resolution: 0.3,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 0,
     };
 
@@ -177,13 +197,13 @@ fn test_fixed_nodes_preserved_in_postprocess() {
         resolution: 0.1, // low resolution → wants to merge everything
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
 
     // Initial: two clusters
-    let mut init = Clustering::from_assignments(
-        (0..20).map(|i| if i < 10 { 0 } else { 1 }).collect()
-    );
+    let mut init =
+        Clustering::from_assignments((0..20).map(|i| if i < 10 { 0 } else { 1 }).collect());
     // Fix all nodes in cluster 0
     let mut fixed = vec![false; 20];
     for i in 0..10 {
@@ -199,7 +219,8 @@ fn test_fixed_nodes_preserved_in_postprocess() {
     for i in 0..10 {
         assert_eq!(
             result.clustering.clusters[i], c0,
-            "fixed node {} should stay in same cluster", i
+            "fixed node {} should stay in same cluster",
+            i
         );
     }
 }
@@ -237,16 +258,23 @@ fn test_postprocess_small_clusters() {
         resolution: 0.1,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-    let pp = postprocess_small_clusters(&g, &init, &config, 3, 0.0, 5, 0.1, true, false, false, 0.0, true, 0.0, &mut rng);
+    let pp = postprocess_small_clusters(
+        &g, &init, &config, 3, 0.0, 5, 0.1, true, false, false, 0.0, true, 0.0, &mut rng,
+    );
 
     // Big cluster {0,1,2,3} should remain intact
     let c0 = pp.clustering.clusters[0];
     for i in 0..4 {
-        assert_eq!(pp.clustering.clusters[i], c0, "big cluster node {} changed", i);
+        assert_eq!(
+            pp.clustering.clusters[i], c0,
+            "big cluster node {} changed",
+            i
+        );
     }
 }
 
@@ -258,13 +286,15 @@ fn test_contraction_preserves_total_weight() {
         resolution: 0.5,
         n_iterations: 10,
         randomness: 0.01,
+        randomness_schedule: Vec::new(),
         seed: 42,
     };
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let result = leiden(&g, &config, None, &mut rng);
 
     let mut ws = sciscape_leiden::workspace::Workspace::new(g.n_nodes);
-    let reduced = sciscape_leiden::contraction::create_reduced_network(&g, &result.clustering, true, &mut ws);
+    let reduced =
+        sciscape_leiden::contraction::create_reduced_network(&g, &result.clustering, true, &mut ws);
 
     let original_total = g.total_edge_weight();
     let reduced_total = reduced.total_edge_weight() + reduced.self_loop_weights.iter().sum::<f64>();

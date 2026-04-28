@@ -11,6 +11,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import igraph as ig
 import leidenalg as la
+import numpy as np
 
 from .partitioning import partition_class
 from .config import PostprocessConfig
@@ -23,7 +24,7 @@ from .runner import LeidenRunner, RustLeidenRunner
 class ResolutionResult:
     name: str
     resolution: float
-    partition: la.VertexPartition
+    partition: la.VertexPartition | None
     cluster_count: int
     quality: float
 
@@ -162,12 +163,22 @@ def _evaluate_partition(
     return result
 
 
-def _get_cached_membership(result: ResolutionResult) -> Optional[List[int]]:
+def _get_cached_membership(result: ResolutionResult) -> Optional[Sequence[int] | np.ndarray]:
     """Extract membership from a cached ResolutionResult (igraph or Rust)."""
     if result.partition is not None:
         return list(result.partition.membership)
     # Rust path: stored as _membership attribute
     return getattr(result, "_membership", None)
+
+
+def _prune_rust_membership_cache(
+    cache: Dict[float, ResolutionResult],
+    keep_gamma: float,
+) -> None:
+    """Keep at most one Rust membership array in a gamma-search cache."""
+    for gamma, cached in cache.items():
+        if gamma != keep_gamma and hasattr(cached, "_membership"):
+            delattr(cached, "_membership")
 
 
 def _evaluate_partition_rust(
@@ -184,8 +195,13 @@ def _evaluate_partition_rust(
         return cache[gamma]
 
     if initial_membership is None and cache:
-        nearest_gamma = min(cache, key=lambda g: abs(g - gamma))
-        initial_membership = _get_cached_membership(cache[nearest_gamma])
+        warm_gammas = [
+            g for g, cached in cache.items()
+            if _get_cached_membership(cached) is not None
+        ]
+        if warm_gammas:
+            nearest_gamma = min(warm_gammas, key=lambda g: abs(g - gamma))
+            initial_membership = _get_cached_membership(cache[nearest_gamma])
 
     result = runner.run(
         gamma,
@@ -202,6 +218,7 @@ def _evaluate_partition_rust(
     )
     res._membership = result.membership  # type: ignore[attr-defined]
     cache[gamma] = res
+    _prune_rust_membership_cache(cache, gamma)
     return res
 
 
@@ -395,6 +412,37 @@ def _search_resolution_rust(
         raise ValueError("resolution bounds must be positive")
     if lower_bound >= upper_bound:
         raise ValueError("resolution lower bound must be less than upper bound")
+
+    try:
+        native_search = runner.search_resolution(
+            min_clusters=min_clusters,
+            max_clusters=max_clusters,
+            bounds=bounds,
+            max_iterations=max_iterations,
+            seed=seed,
+            n_iterations=n_iterations,
+        )
+    except (AttributeError, RuntimeError):
+        native_search = None
+    if native_search is not None:
+        result = ResolutionResult(
+            name=name,
+            resolution=native_search.resolution,
+            partition=None,
+            cluster_count=native_search.cluster_count,
+            quality=native_search.quality,
+        )
+        result._membership = native_search.membership  # type: ignore[attr-defined]
+        if cache is not None:
+            cache[native_search.resolution] = result
+        if progress:
+            progress(
+                f"{name}: rust native search evaluated {native_search.eval_count} probes; "
+                f"gamma={native_search.resolution:.6g} -> "
+                f"{native_search.cluster_count} clusters "
+                f"(quality={native_search.quality:.6f})"
+            )
+        return result
 
     if cache is None:
         cache = {}

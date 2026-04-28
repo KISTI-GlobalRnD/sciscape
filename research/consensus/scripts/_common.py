@@ -14,7 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from sciscape.clustering.auto_gamma import AutoGammaResult, find_gamma
 from sciscape.clustering.integer_remap import integer_remap_memory
-from sciscape.clustering.leiden_rust import postprocess_small_clusters_rust, run_leiden_rust
+from sciscape.clustering.leiden_rust import (
+    build_leiden_graph,
+    postprocess_small_clusters_rust,
+    run_leiden_rust,
+)
 from sciscape.evaluation.stability import compute_quality_report, evaluate_stability
 from sciscape.linkage.combine import combine_edge_layers
 from sciscape.linkage.filters import filter_top_k
@@ -386,21 +390,24 @@ def run_combination(
         )
     else:
         src, dst, weight, n_nodes, _uids = integer_remap_memory(combined)
-        leiden = run_leiden_rust(
-            resolution=float(gamma),
-            n_nodes=n_nodes,
-            edges_src=src,
-            edges_dst=dst,
-            edges_weight=weight,
-            seed=42,
-            n_iterations=10,
-        )
-        membership = leiden.membership
-        if min_size > 0:
-            post = postprocess_small_clusters_rust(
+        try:
+            graph = build_leiden_graph(
+                n_nodes=n_nodes,
+                edges_src=src,
+                edges_dst=dst,
+                edges_weight=weight,
+            )
+        except AttributeError:
+            graph = None
+        if graph is not None:
+            leiden = graph.run_leiden(
                 resolution=float(gamma),
-                min_size=min_size,
-                membership=membership,
+                seed=42,
+                n_iterations=10,
+            )
+        else:
+            leiden = run_leiden_rust(
+                resolution=float(gamma),
                 n_nodes=n_nodes,
                 edges_src=src,
                 edges_dst=dst,
@@ -408,6 +415,28 @@ def run_combination(
                 seed=42,
                 n_iterations=10,
             )
+        membership = leiden.membership
+        if min_size > 0:
+            if graph is not None:
+                post = graph.postprocess_small_clusters(
+                    resolution=float(gamma),
+                    min_size=min_size,
+                    membership=membership,
+                    seed=42,
+                    n_iterations=10,
+                )
+            else:
+                post = postprocess_small_clusters_rust(
+                    resolution=float(gamma),
+                    min_size=min_size,
+                    membership=membership,
+                    n_nodes=n_nodes,
+                    edges_src=src,
+                    edges_dst=dst,
+                    edges_weight=weight,
+                    seed=42,
+                    n_iterations=10,
+                )
             membership = post.membership
             n_clusters = post.n_clusters
         else:

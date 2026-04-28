@@ -679,7 +679,12 @@ async def what_if_gamma(job_id: str, gamma: float, min_size: int = 10):
         return {"error": "edges not found"}
 
     import polars as pl
-    from sciscape.clustering.leiden_rust import run_leiden_rust, postprocess_small_clusters_rust, RUST_AVAILABLE
+    from sciscape.clustering.leiden_rust import (
+        RUST_AVAILABLE,
+        build_leiden_graph,
+        postprocess_small_clusters_rust,
+        run_leiden_rust,
+    )
     from sciscape.clustering.integer_remap import integer_remap_memory
     import numpy as np
 
@@ -688,13 +693,29 @@ async def what_if_gamma(job_id: str, gamma: float, min_size: int = 10):
 
     edges = pl.read_parquet(edges_path)
     src, dst, w, n_nodes, uids = integer_remap_memory(edges)
-    r = run_leiden_rust(edges_src=src, edges_dst=dst, edges_weight=w,
-                        resolution=gamma, n_nodes=n_nodes, seed=42, n_iterations=10)
-    p = postprocess_small_clusters_rust(
-        resolution=gamma, min_size=min_size, membership=r.membership,
-        edges_src=src, edges_dst=dst, edges_weight=w, n_nodes=n_nodes, seed=42,
-        gamma_decay=0.5, max_rounds=3, use_greedy=True, use_component_merge=True,
-    )
+    try:
+        graph = build_leiden_graph(
+            edges_src=src, edges_dst=dst, edges_weight=w, n_nodes=n_nodes,
+        )
+    except AttributeError:
+        graph = None
+    if graph is not None:
+        r = graph.run_leiden(
+            resolution=gamma, seed=42, n_iterations=10,
+        )
+        p = graph.postprocess_small_clusters(
+            resolution=gamma, min_size=min_size, membership=r.membership,
+            seed=42, gamma_decay=0.5, max_rounds=3,
+            use_greedy=True, use_component_merge=True,
+        )
+    else:
+        r = run_leiden_rust(edges_src=src, edges_dst=dst, edges_weight=w,
+                            resolution=gamma, n_nodes=n_nodes, seed=42, n_iterations=10)
+        p = postprocess_small_clusters_rust(
+            resolution=gamma, min_size=min_size, membership=r.membership,
+            edges_src=src, edges_dst=dst, edges_weight=w, n_nodes=n_nodes, seed=42,
+            gamma_decay=0.5, max_rounds=3, use_greedy=True, use_component_merge=True,
+        )
     mem = np.asarray(p.membership, dtype=np.int32)
     size_arr = np.bincount(mem)
     size_arr_nz = size_arr[size_arr > 0]

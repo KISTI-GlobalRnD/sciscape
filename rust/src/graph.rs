@@ -23,11 +23,72 @@ pub struct Graph {
     pub self_loop_weights: Vec<f64>,
 }
 
+/// Reusable owned buffers for repeated induced-subgraph extraction.
+pub struct SubgraphWorkspace {
+    degree: Vec<u64>,
+    first_neighbor_index: Vec<u64>,
+    neighbors: Vec<u32>,
+    edge_weights: Vec<f64>,
+    node_weights: Vec<f64>,
+    self_loop_weights: Vec<f64>,
+}
+
+impl SubgraphWorkspace {
+    pub fn new() -> Self {
+        Self {
+            degree: Vec::new(),
+            first_neighbor_index: Vec::new(),
+            neighbors: Vec::new(),
+            edge_weights: Vec::new(),
+            node_weights: Vec::new(),
+            self_loop_weights: Vec::new(),
+        }
+    }
+
+    pub fn recycle(&mut self, graph: Graph) {
+        self.first_neighbor_index = graph.first_neighbor_index;
+        self.neighbors = graph.neighbors;
+        self.edge_weights = graph.edge_weights;
+        self.node_weights = graph.node_weights;
+        self.self_loop_weights = graph.self_loop_weights;
+    }
+}
+
 impl Graph {
     /// Build from edge list (src, dst, weight). Automatically symmetrizes.
     ///
     /// `n_nodes` must be >= max node index + 1.
-    pub fn from_edge_list(
+    pub fn from_edge_list(n_nodes: usize, src: &[u32], dst: &[u32], weights: &[f64]) -> Self {
+        assert_eq!(src.len(), dst.len());
+        assert_eq!(src.len(), weights.len());
+
+        // Validate node indices
+        for i in 0..src.len() {
+            assert!(
+                (src[i] as usize) < n_nodes,
+                "src[{}] = {} >= n_nodes = {}",
+                i,
+                src[i],
+                n_nodes
+            );
+            assert!(
+                (dst[i] as usize) < n_nodes,
+                "dst[{}] = {} >= n_nodes = {}",
+                i,
+                dst[i],
+                n_nodes
+            );
+        }
+
+        Self::from_edge_list_trusted(n_nodes, src, dst, weights)
+    }
+
+    /// Build from edge list without validating endpoint bounds.
+    ///
+    /// Use only when upstream remapping already guarantees
+    /// `src[i], dst[i] < n_nodes`. This saves one full edge pass for Python
+    /// callers that construct many large graphs from validated int edges.
+    pub fn from_edge_list_trusted(
         n_nodes: usize,
         src: &[u32],
         dst: &[u32],
@@ -36,18 +97,6 @@ impl Graph {
         assert_eq!(src.len(), dst.len());
         assert_eq!(src.len(), weights.len());
 
-        // Validate node indices
-        for i in 0..src.len() {
-            assert!(
-                (src[i] as usize) < n_nodes,
-                "src[{}] = {} >= n_nodes = {}", i, src[i], n_nodes
-            );
-            assert!(
-                (dst[i] as usize) < n_nodes,
-                "dst[{}] = {} >= n_nodes = {}", i, dst[i], n_nodes
-            );
-        }
-
         // Count degree per node (both directions)
         let mut degree = vec![0u64; n_nodes];
         for (&s, &d) in src.iter().zip(dst.iter()) {
@@ -55,17 +104,42 @@ impl Graph {
             degree[d as usize] += 1;
         }
 
+        Self::from_edge_list_with_degrees_trusted(n_nodes, src, dst, weights, degree)
+    }
+
+    /// Build from edge list using precomputed symmetric degrees.
+    ///
+    /// `degree[i]` must count both directions exactly as
+    /// `from_edge_list_trusted` would. This lets callers that already scan
+    /// edges for remapping avoid a second full degree pass during CSR build.
+    pub fn from_edge_list_with_degrees_trusted(
+        n_nodes: usize,
+        src: &[u32],
+        dst: &[u32],
+        weights: &[f64],
+        mut degree: Vec<u64>,
+    ) -> Self {
+        assert_eq!(src.len(), dst.len());
+        assert_eq!(src.len(), weights.len());
+        assert_eq!(degree.len(), n_nodes);
+
         // Build CSR row pointers
         let mut first_neighbor_index = vec![0u64; n_nodes + 1];
+        let mut running = 0u64;
         for i in 0..n_nodes {
-            first_neighbor_index[i + 1] = first_neighbor_index[i] + degree[i];
+            first_neighbor_index[i] = running;
+            let d = degree[i];
+            degree[i] = running;
+            running += d;
         }
-        let n_edges = first_neighbor_index[n_nodes] as usize;
+        first_neighbor_index[n_nodes] = running;
+        assert_eq!(running as usize, src.len() * 2);
+        let n_edges = running as usize;
 
         // Fill CSR arrays
         let mut neighbors = vec![0u32; n_edges];
         let mut edge_weights = vec![0.0f64; n_edges];
-        let mut offset = first_neighbor_index[..n_nodes].to_vec();
+        let mut offset = degree;
 
         for i in 0..src.len() {
             let s = src[i] as usize;
@@ -109,6 +183,21 @@ impl Graph {
     ) -> Self {
         assert_eq!(node_weights.len(), n_nodes);
         let mut g = Self::from_edge_list(n_nodes, src, dst, weights);
+        g.node_weights = node_weights.to_vec();
+        g
+    }
+
+    /// Build from edge list with explicit node weights, skipping endpoint
+    /// validation. See `from_edge_list_trusted`.
+    pub fn from_edge_list_weighted_trusted(
+        n_nodes: usize,
+        src: &[u32],
+        dst: &[u32],
+        weights: &[f64],
+        node_weights: &[f64],
+    ) -> Self {
+        assert_eq!(node_weights.len(), n_nodes);
+        let mut g = Self::from_edge_list_trusted(n_nodes, src, dst, weights);
         g.node_weights = node_weights.to_vec();
         g
     }
@@ -225,7 +314,7 @@ impl Graph {
             }
         }
 
-        let mut sub_graph = Graph::from_edge_list(n_sub, &sub_src, &sub_dst, &sub_w);
+        let mut sub_graph = Graph::from_edge_list_trusted(n_sub, &sub_src, &sub_dst, &sub_w);
         sub_graph.node_weights = nodes.iter().map(|&n| self.node_weights[n]).collect();
         sub_graph.self_loop_weights = nodes.iter().map(|&n| self.self_loop_weights[n]).collect();
 
@@ -238,15 +327,249 @@ impl Graph {
         (sub_graph, map_vec)
     }
 
+    /// Extract a subgraph using a reusable node → local-index marker array.
+    ///
+    /// `local_index` must have length `self.n_nodes` and be initialized with
+    /// `u32::MAX`. This method marks only the requested nodes, emits the
+    /// induced edges, and unmarks the nodes before returning. It avoids both
+    /// per-cluster hash maps and the all-cluster temporary edge vectors used by
+    /// `create_subnetworks()`.
+    pub fn subgraph_with_marker(&self, nodes: &[usize], local_index: &mut [u32]) -> Graph {
+        assert_eq!(local_index.len(), self.n_nodes);
+
+        for (new_idx, &old_idx) in nodes.iter().enumerate() {
+            local_index[old_idx] = new_idx as u32;
+        }
+
+        let mut sub_src = Vec::new();
+        let mut sub_dst = Vec::new();
+        let mut sub_w = Vec::new();
+
+        for (local_node, &old_node) in nodes.iter().enumerate() {
+            for (nbr, w) in self.neighbors_of(old_node) {
+                let nbr = nbr as usize;
+                let local_nbr = local_index[nbr];
+                if local_nbr != u32::MAX && nbr > old_node {
+                    sub_src.push(local_node as u32);
+                    sub_dst.push(local_nbr);
+                    sub_w.push(w);
+                }
+            }
+        }
+
+        let mut sub_graph = Graph::from_edge_list_trusted(nodes.len(), &sub_src, &sub_dst, &sub_w);
+        sub_graph.node_weights = nodes.iter().map(|&n| self.node_weights[n]).collect();
+        sub_graph.self_loop_weights = nodes.iter().map(|&n| self.self_loop_weights[n]).collect();
+
+        for &old_idx in nodes {
+            local_index[old_idx] = u32::MAX;
+        }
+
+        sub_graph
+    }
+
+    /// Extract a subgraph from a flat u32 node slice.
+    ///
+    /// This is the large-graph path used by Leiden refinement. It avoids
+    /// converting flat workspace storage back into per-cluster `Vec<usize>`.
+    pub fn subgraph_with_marker_u32(&self, nodes: &[u32], local_index: &mut [u32]) -> Graph {
+        assert_eq!(local_index.len(), self.n_nodes);
+
+        for (new_idx, &old_idx) in nodes.iter().enumerate() {
+            local_index[old_idx as usize] = new_idx as u32;
+        }
+
+        let n_sub = nodes.len();
+        let mut degree = vec![0u64; n_sub];
+
+        for (local_node, &old_node_u32) in nodes.iter().enumerate() {
+            let old_node = old_node_u32 as usize;
+            let start = self.first_neighbor_index[old_node] as usize;
+            let end = self.first_neighbor_index[old_node + 1] as usize;
+            for k in start..end {
+                let nbr_usize = self.neighbors[k] as usize;
+                let local_nbr = local_index[nbr_usize];
+                if local_nbr != u32::MAX && nbr_usize > old_node {
+                    degree[local_node] += 1;
+                    degree[local_nbr as usize] += 1;
+                }
+            }
+        }
+
+        let mut first_neighbor_index = vec![0u64; n_sub + 1];
+        let mut running = 0u64;
+        for i in 0..n_sub {
+            first_neighbor_index[i] = running;
+            let d = degree[i];
+            degree[i] = running;
+            running += d;
+        }
+        first_neighbor_index[n_sub] = running;
+
+        let n_edges = running as usize;
+        let mut neighbors = vec![0u32; n_edges];
+        let mut edge_weights = vec![0.0f64; n_edges];
+        let mut offset = degree;
+
+        for (local_node, &old_node_u32) in nodes.iter().enumerate() {
+            let old_node = old_node_u32 as usize;
+            let start = self.first_neighbor_index[old_node] as usize;
+            let end = self.first_neighbor_index[old_node + 1] as usize;
+            for k in start..end {
+                let nbr_usize = self.neighbors[k] as usize;
+                let local_nbr = local_index[nbr_usize];
+                if local_nbr != u32::MAX && nbr_usize > old_node {
+                    let local_nbr_usize = local_nbr as usize;
+                    let w = self.edge_weights[k];
+
+                    let pos_s = offset[local_node] as usize;
+                    neighbors[pos_s] = local_nbr;
+                    edge_weights[pos_s] = w;
+                    offset[local_node] += 1;
+
+                    let pos_d = offset[local_nbr_usize] as usize;
+                    neighbors[pos_d] = local_node as u32;
+                    edge_weights[pos_d] = w;
+                    offset[local_nbr_usize] += 1;
+                }
+            }
+        }
+
+        let node_weights = nodes
+            .iter()
+            .map(|&n| self.node_weights[n as usize])
+            .collect();
+        let self_loop_weights = nodes
+            .iter()
+            .map(|&n| self.self_loop_weights[n as usize])
+            .collect();
+
+        for &old_idx in nodes {
+            local_index[old_idx as usize] = u32::MAX;
+        }
+
+        Graph {
+            n_nodes: n_sub,
+            n_edges,
+            first_neighbor_index,
+            neighbors,
+            edge_weights,
+            node_weights,
+            self_loop_weights,
+        }
+    }
+
+    /// Extract a subgraph from a flat u32 node slice using caller-owned buffers.
+    ///
+    /// The returned `Graph` owns the buffers until callers recycle it back into
+    /// the workspace after use.
+    pub fn subgraph_with_marker_u32_reuse(
+        &self,
+        nodes: &[u32],
+        local_index: &mut [u32],
+        ws: &mut SubgraphWorkspace,
+    ) -> Graph {
+        assert_eq!(local_index.len(), self.n_nodes);
+
+        for (new_idx, &old_idx) in nodes.iter().enumerate() {
+            local_index[old_idx as usize] = new_idx as u32;
+        }
+
+        let n_sub = nodes.len();
+        ws.degree.clear();
+        ws.degree.resize(n_sub, 0);
+
+        for (local_node, &old_node_u32) in nodes.iter().enumerate() {
+            let old_node = old_node_u32 as usize;
+            let start = self.first_neighbor_index[old_node] as usize;
+            let end = self.first_neighbor_index[old_node + 1] as usize;
+            for k in start..end {
+                let nbr_usize = self.neighbors[k] as usize;
+                let local_nbr = local_index[nbr_usize];
+                if local_nbr != u32::MAX && nbr_usize > old_node {
+                    ws.degree[local_node] += 1;
+                    ws.degree[local_nbr as usize] += 1;
+                }
+            }
+        }
+
+        ws.first_neighbor_index.clear();
+        ws.first_neighbor_index.reserve(n_sub + 1);
+        let mut running = 0u64;
+        for i in 0..n_sub {
+            ws.first_neighbor_index.push(running);
+            let d = ws.degree[i];
+            ws.degree[i] = running;
+            running += d;
+        }
+        ws.first_neighbor_index.push(running);
+
+        let n_edges = running as usize;
+        let mut neighbors = std::mem::take(&mut ws.neighbors);
+        neighbors.clear();
+        neighbors.resize(n_edges, 0);
+        let mut edge_weights = std::mem::take(&mut ws.edge_weights);
+        edge_weights.clear();
+        edge_weights.resize(n_edges, 0.0);
+        let offset = &mut ws.degree;
+
+        for (local_node, &old_node_u32) in nodes.iter().enumerate() {
+            let old_node = old_node_u32 as usize;
+            let start = self.first_neighbor_index[old_node] as usize;
+            let end = self.first_neighbor_index[old_node + 1] as usize;
+            for k in start..end {
+                let nbr_usize = self.neighbors[k] as usize;
+                let local_nbr = local_index[nbr_usize];
+                if local_nbr != u32::MAX && nbr_usize > old_node {
+                    let local_nbr_usize = local_nbr as usize;
+                    let w = self.edge_weights[k];
+
+                    let pos_s = offset[local_node] as usize;
+                    neighbors[pos_s] = local_nbr;
+                    edge_weights[pos_s] = w;
+                    offset[local_node] += 1;
+
+                    let pos_d = offset[local_nbr_usize] as usize;
+                    neighbors[pos_d] = local_node as u32;
+                    edge_weights[pos_d] = w;
+                    offset[local_nbr_usize] += 1;
+                }
+            }
+        }
+
+        let mut node_weights = std::mem::take(&mut ws.node_weights);
+        node_weights.clear();
+        node_weights.reserve(n_sub);
+        let mut self_loop_weights = std::mem::take(&mut ws.self_loop_weights);
+        self_loop_weights.clear();
+        self_loop_weights.reserve(n_sub);
+        for &node in nodes {
+            let node = node as usize;
+            node_weights.push(self.node_weights[node]);
+            self_loop_weights.push(self.self_loop_weights[node]);
+        }
+
+        for &old_idx in nodes {
+            local_index[old_idx as usize] = u32::MAX;
+        }
+
+        Graph {
+            n_nodes: n_sub,
+            n_edges,
+            first_neighbor_index: std::mem::take(&mut ws.first_neighbor_index),
+            neighbors,
+            edge_weights,
+            node_weights,
+            self_loop_weights,
+        }
+    }
+
     /// Extract ALL cluster subgraphs in a single O(n+m) pass.
     ///
     /// Returns Vec<(Graph, Vec<usize>)> indexed by cluster ID,
     /// where Vec<usize> is the list of original node IDs in that cluster.
     /// Much more efficient than calling `subgraph()` per cluster.
-    pub fn create_subnetworks(
-        &self,
-        nodes_per_cluster: &[Vec<usize>],
-    ) -> Vec<(Graph, Vec<usize>)> {
+    pub fn create_subnetworks(&self, nodes_per_cluster: &[Vec<usize>]) -> Vec<(Graph, Vec<usize>)> {
         let n_clusters = nodes_per_cluster.len();
 
         // Build node → (cluster, intra-cluster-index) mapping
@@ -289,7 +612,7 @@ impl Graph {
             .map(|cid| {
                 let nodes = &nodes_per_cluster[cid];
                 let n_sub = nodes.len();
-                let mut g = Graph::from_edge_list(
+                let mut g = Graph::from_edge_list_trusted(
                     n_sub,
                     &cluster_src[cid],
                     &cluster_dst[cid],
@@ -342,12 +665,7 @@ mod tests {
     #[test]
     fn test_triangle() {
         // Triangle: 0-1, 1-2, 2-0
-        let g = Graph::from_edge_list(
-            3,
-            &[0, 1, 2],
-            &[1, 2, 0],
-            &[1.0, 1.0, 1.0],
-        );
+        let g = Graph::from_edge_list(3, &[0, 1, 2], &[1, 2, 0], &[1.0, 1.0, 1.0]);
         assert_eq!(g.n_nodes, 3);
         assert_eq!(g.n_edges, 6); // 3 undirected = 6 directed
         assert_eq!(g.degree(0), 2);
@@ -359,17 +677,44 @@ mod tests {
     #[test]
     fn test_subgraph() {
         // 4 nodes: 0-1, 1-2, 2-3
-        let g = Graph::from_edge_list(
-            4,
-            &[0, 1, 2],
-            &[1, 2, 3],
-            &[1.0, 2.0, 3.0],
-        );
+        let g = Graph::from_edge_list(4, &[0, 1, 2], &[1, 2, 3], &[1.0, 2.0, 3.0]);
         let (sub, map) = g.subgraph(&[1, 2]);
         assert_eq!(sub.n_nodes, 2);
         assert_eq!(sub.n_edges, 2); // 1 undirected = 2 directed
         assert_eq!(map[1], 0); // node 1 → local 0
         assert_eq!(map[2], 1); // node 2 → local 1
+    }
+
+    #[test]
+    fn test_subgraph_with_marker_u32() {
+        let g = Graph::from_edge_list(4, &[0, 1, 2], &[1, 2, 3], &[1.0, 2.0, 3.0]);
+        let mut marker = vec![u32::MAX; g.n_nodes];
+        let sub = g.subgraph_with_marker_u32(&[1, 2], &mut marker);
+
+        assert_eq!(sub.n_nodes, 2);
+        assert_eq!(sub.n_edges, 2);
+        assert!((sub.total_edge_weight() - 2.0).abs() < 1e-10);
+        assert!(marker.iter().all(|&idx| idx == u32::MAX));
+    }
+
+    #[test]
+    fn test_subgraph_with_marker_u32_reuses_workspace() {
+        let g = Graph::from_edge_list(5, &[0, 1, 2, 3], &[1, 2, 3, 4], &[1.0, 2.0, 3.0, 4.0]);
+        let mut marker = vec![u32::MAX; g.n_nodes];
+        let mut ws = SubgraphWorkspace::new();
+
+        let first = g.subgraph_with_marker_u32_reuse(&[1, 2, 3], &mut marker, &mut ws);
+        assert_eq!(first.n_nodes, 3);
+        assert_eq!(first.n_edges, 4);
+        assert!((first.total_edge_weight() - 5.0).abs() < 1e-10);
+        assert!(marker.iter().all(|&idx| idx == u32::MAX));
+        ws.recycle(first);
+
+        let second = g.subgraph_with_marker_u32_reuse(&[0, 1], &mut marker, &mut ws);
+        assert_eq!(second.n_nodes, 2);
+        assert_eq!(second.n_edges, 2);
+        assert!((second.total_edge_weight() - 1.0).abs() < 1e-10);
+        assert!(marker.iter().all(|&idx| idx == u32::MAX));
     }
 
     #[test]

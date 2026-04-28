@@ -3,7 +3,9 @@
 import polars as pl
 
 from sciscape.evaluation.sampler import (
+    collect_boundary_coverage_cases,
     collect_rank_shift_cases,
+    sample_boundary_coverage_cases,
     sample_disagreement_cases,
     sample_rank_shift_cases,
     sample_worst_case,
@@ -18,6 +20,109 @@ def _make_edges(rows):
             "rel_sum2": [row[2] for row in rows],
         }
     )
+
+
+def _make_abstracts(uids):
+    return pl.DataFrame(
+        {
+            "uid": list(uids),
+            "title": [f"Title {uid}" for uid in uids],
+            "abstract": [f"Abstract for {uid}" for uid in uids],
+            "pubyear": [2020 for _uid in uids],
+        }
+    )
+
+
+class TestBoundaryCoverageCases:
+
+    def test_collects_all_coverage_states_from_target_universe(self):
+        edges_a = _make_edges(
+            [
+                ("T_both", "A1", 3.0),
+                ("T_both", "A2", 2.0),
+                ("T_a", "A3", 3.0),
+                ("T_a", "A4", 2.0),
+                ("T_b", "X1", 1.0),
+            ]
+        )
+        edges_b = _make_edges(
+            [
+                ("T_both", "B1", 3.0),
+                ("T_both", "B2", 2.0),
+                ("T_b", "B3", 3.0),
+                ("T_b", "B4", 2.0),
+                ("T_a", "Y1", 1.0),
+            ]
+        )
+        membership_a = {
+            "T_both": 1, "A1": 1, "A2": 1,
+            "T_a": 2, "A3": 2, "A4": 2,
+            "T_b": 3, "X1": 3,
+            "T_neither": 4,
+        }
+        membership_b = {
+            "T_both": 5, "B1": 5, "B2": 5,
+            "T_b": 6, "B3": 6, "B4": 6,
+            "T_a": 7, "Y1": 7,
+            "T_neither": 8,
+        }
+        abstracts = _make_abstracts(
+            [
+                "T_both", "T_a", "T_b", "T_neither",
+                "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "X1", "Y1",
+            ]
+        )
+
+        cases, n_universe = collect_boundary_coverage_cases(
+            edges_a,
+            membership_a,
+            edges_b,
+            membership_b,
+            abstracts=abstracts,
+            n_neighbors=2,
+            min_cluster_size=3,
+            target_uids=["T_both", "T_a", "T_b", "T_neither"],
+        )
+
+        by_uid = {case.target_uid: case for case in cases}
+        assert n_universe == 4
+        assert by_uid["T_both"].coverage_state == "both_reviewable"
+        assert by_uid["T_a"].coverage_state == "A_only_reviewable"
+        assert by_uid["T_b"].coverage_state == "B_only_reviewable"
+        assert by_uid["T_neither"].coverage_state == "neither_reviewable"
+        assert by_uid["T_both"].jaccard == 0.0
+        assert "high_disagreement_both_dense" in by_uid["T_both"].diagnostic_strata
+
+    def test_population_and_diagnostic_samples_are_split(self):
+        edges = _make_edges(
+            [
+                ("T1", "A1", 3.0),
+                ("T1", "A2", 2.0),
+                ("T2", "A3", 3.0),
+                ("T2", "A4", 2.0),
+            ]
+        )
+        membership = {"T1": 1, "A1": 1, "A2": 1, "T2": 2, "A3": 2, "A4": 2}
+        abstracts = _make_abstracts(["T1", "T2", "A1", "A2", "A3", "A4"])
+
+        result = sample_boundary_coverage_cases(
+            edges,
+            membership,
+            edges,
+            membership,
+            abstracts=abstracts,
+            n_neighbors=2,
+            min_cluster_size=3,
+            n_population_cases=1,
+            n_diagnostic_per_stratum=2,
+            sample_mode="both",
+            target_uids=["T1", "T2"],
+            seed=3,
+        )
+
+        assert len(result.population_cases) == 1
+        assert len(result.diagnostic_cases) == 2
+        assert result.coverage_state_counts["both_reviewable"] == 2
 
 
 class TestSampleDisagreementCases:

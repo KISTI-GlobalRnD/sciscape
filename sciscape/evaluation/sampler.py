@@ -115,6 +115,52 @@ class RankShiftSampleSet:
 
 
 @dataclass
+class BoundaryCoverageCase:
+    """One coverage-aware boundary case for Protocol D v2."""
+    target_uid: str
+    coverage_state: str
+    method_a_reviewable: bool
+    method_b_reviewable: bool
+    method_a_cluster_id: int | None
+    method_b_cluster_id: int | None
+    method_a_cluster_size: int
+    method_b_cluster_size: int
+    method_a_cross_cluster_ratio: float
+    method_b_cross_cluster_ratio: float
+    group_a_uids: List[str]
+    group_b_uids: List[str]
+    group_a_doc_count: int
+    group_b_doc_count: int
+    overlap_size: int
+    jaccard: float
+    cluster_size_ratio: float | None
+    method_a_total_degree: int
+    method_b_total_degree: int
+    method_a_intra_degree: int
+    method_b_intra_degree: int
+    method_a_cross_degree: int
+    method_b_cross_degree: int
+    method_a_group_fill_rate: float
+    method_b_group_fill_rate: float
+    diagnostic_strata: List[str]
+    target_title: str = ""
+    target_year: int | None = None
+
+
+@dataclass
+class BoundaryCoverageSampleSet:
+    """Population and diagnostic samples for coverage-aware boundary review."""
+    population_cases: List[BoundaryCoverageCase]
+    diagnostic_cases: List[BoundaryCoverageCase]
+    method_a: str
+    method_b: str
+    n_nodes: int
+    n_target_universe: int
+    coverage_state_counts: Dict[str, int]
+    sample_mode: str
+
+
+@dataclass
 class _MethodStats:
     """Per-method neighborhood statistics used for disagreement sampling."""
     cross_ratios: Dict[str, float]
@@ -123,6 +169,9 @@ class _MethodStats:
     cluster_member_sets: Dict[int, set[str]]
     node_neighbors: Dict[str, Dict[str, float]]
     node_intra: Dict[str, float]
+    node_total_degree: Dict[str, int]
+    node_intra_degree: Dict[str, int]
+    node_cross_degree: Dict[str, int]
 
 
 def _compute_all_neighbors(edges: pl.DataFrame) -> Dict[str, Dict[str, float]]:
@@ -333,6 +382,9 @@ def _compute_method_stats(edges: pl.DataFrame, membership: Dict[str, int]) -> _M
     node_intra: Dict[str, float] = defaultdict(float)
     node_cross: Dict[str, float] = defaultdict(float)
     node_neighbors: Dict[str, Dict[str, float]] = defaultdict(dict)
+    node_total_degree: Dict[str, int] = defaultdict(int)
+    node_intra_degree: Dict[str, int] = defaultdict(int)
+    node_cross_degree: Dict[str, int] = defaultdict(int)
 
     for row in edges.iter_rows(named=True):
         u1, u2 = row["uid1"], row["uid2"]
@@ -341,14 +393,20 @@ def _compute_method_stats(edges: pl.DataFrame, membership: Dict[str, int]) -> _M
         c2 = membership.get(u2)
         if c1 is None or c2 is None:
             continue
+        node_total_degree[u1] += 1
+        node_total_degree[u2] += 1
         if c1 == c2:
             node_intra[u1] += w
             node_intra[u2] += w
+            node_intra_degree[u1] += 1
+            node_intra_degree[u2] += 1
             node_neighbors[u1][u2] = node_neighbors[u1].get(u2, 0.0) + w
             node_neighbors[u2][u1] = node_neighbors[u2].get(u1, 0.0) + w
         else:
             node_cross[u1] += w
             node_cross[u2] += w
+            node_cross_degree[u1] += 1
+            node_cross_degree[u2] += 1
 
     cross_ratios: Dict[str, float] = {}
     for uid in membership:
@@ -368,6 +426,9 @@ def _compute_method_stats(edges: pl.DataFrame, membership: Dict[str, int]) -> _M
         cluster_member_sets=cluster_member_sets,
         node_neighbors=node_neighbors,
         node_intra=node_intra,
+        node_total_degree=node_total_degree,
+        node_intra_degree=node_intra_degree,
+        node_cross_degree=node_cross_degree,
     )
 
 
@@ -817,15 +878,322 @@ def collect_rank_shift_cases(
     return candidate_rows, len(eligible)
 
 
+def _is_usable_metadata(record: dict[str, Any] | None) -> bool:
+    """Return whether a metadata record is useful for semantic review."""
+    if not record:
+        return False
+    title = str(record.get("title", "") or "").strip()
+    abstract = str(record.get("abstract", "") or "").strip()
+    return bool(title and abstract)
+
+
+def _usable_metadata_lookup(abstracts: pl.DataFrame | None) -> Dict[str, dict[str, Any]]:
+    """Build a UID -> metadata map restricted to review-usable records."""
+    if abstracts is None:
+        return {}
+    uid_meta: Dict[str, dict[str, Any]] = {}
+    for row in abstracts.iter_rows(named=True):
+        uid = row.get("uid")
+        if uid is None:
+            continue
+        record = dict(row)
+        if _is_usable_metadata(record):
+            uid_meta[str(uid)] = record
+    return uid_meta
+
+
+def _coverage_state(method_a_reviewable: bool, method_b_reviewable: bool) -> str:
+    if method_a_reviewable and method_b_reviewable:
+        return "both_reviewable"
+    if method_a_reviewable:
+        return "A_only_reviewable"
+    if method_b_reviewable:
+        return "B_only_reviewable"
+    return "neither_reviewable"
+
+
+def _ratio_or_none(numerator: int, denominator: int) -> float | None:
+    if denominator <= 0:
+        return None
+    return round(float(numerator) / float(denominator), 4)
+
+
+def _reviewable_group(
+    uid: str,
+    membership: Dict[str, int],
+    stats: _MethodStats,
+    *,
+    n_neighbors: int,
+    min_group_size: int,
+    min_cluster_size: int,
+    metadata_uids: set[str],
+) -> tuple[list[str], bool, int]:
+    """Return metadata-covered group UIDs and whether the group is reviewable."""
+    if uid not in membership:
+        return [], False, 0
+    cid = membership[uid]
+    if stats.cluster_sizes[cid] < min_cluster_size:
+        return [], False, 0
+    group = _select_group(
+        uid,
+        membership,
+        stats,
+        n_neighbors=n_neighbors,
+        min_group_size=min_group_size,
+        allowed_uids=metadata_uids,
+    )
+    doc_count = len([group_uid for group_uid in group if group_uid in metadata_uids])
+    return group, doc_count >= min_group_size, doc_count
+
+
+def _diagnostic_strata(case: BoundaryCoverageCase, *, n_neighbors: int, max_group_jaccard: float) -> List[str]:
+    """Assign diagnostic strata for mechanism-focused sampling."""
+    strata = [case.coverage_state]
+    a_sparse = case.method_a_group_fill_rate < 1.0 or case.method_a_total_degree < n_neighbors
+    b_sparse = case.method_b_group_fill_rate < 1.0 or case.method_b_total_degree < n_neighbors
+    a_dense = case.method_a_group_fill_rate >= 1.0 and case.method_a_total_degree >= n_neighbors
+    b_dense = case.method_b_group_fill_rate >= 1.0 and case.method_b_total_degree >= n_neighbors
+    if a_sparse and b_dense:
+        strata.append("A_sparse_B_dense")
+    if b_sparse and a_dense:
+        strata.append("B_sparse_A_dense")
+    if (
+        case.coverage_state == "both_reviewable"
+        and case.jaccard <= max_group_jaccard
+        and a_dense
+        and b_dense
+    ):
+        strata.append("high_disagreement_both_dense")
+    return strata
+
+
+def collect_boundary_coverage_cases(
+    edges_a: pl.DataFrame,
+    membership_a: Dict[str, int],
+    edges_b: pl.DataFrame,
+    membership_b: Dict[str, int],
+    *,
+    method_a: str = "A",
+    method_b: str = "B",
+    abstracts: pl.DataFrame | None = None,
+    n_neighbors: int = 8,
+    min_cluster_size: int = 10,
+    target_uids: List[str] | None = None,
+    max_group_jaccard: float = 0.5,
+) -> tuple[List[BoundaryCoverageCase], int]:
+    """Collect full-universe coverage-aware boundary candidates.
+
+    Unlike disagreement sampling, this collector keeps targets where only one
+    method forms a reviewable local group, and targets where neither does.
+    """
+    stats_a = _compute_method_stats(edges_a, membership_a)
+    stats_b = _compute_method_stats(edges_b, membership_b)
+    uid_meta = _usable_metadata_lookup(abstracts)
+    if not uid_meta:
+        log.warning("No usable metadata for boundary coverage sampling")
+        return [], 0
+
+    metadata_uids = set(uid_meta)
+    if target_uids is None:
+        ordered_targets = sorted((set(membership_a) | set(membership_b)) & metadata_uids)
+    else:
+        ordered_targets = [uid for uid in dict.fromkeys(target_uids) if uid in metadata_uids]
+
+    min_group_size = _min_group_size(n_neighbors)
+    cases: list[BoundaryCoverageCase] = []
+    for uid in ordered_targets:
+        group_a, a_reviewable, group_a_docs = _reviewable_group(
+            uid,
+            membership_a,
+            stats_a,
+            n_neighbors=n_neighbors,
+            min_group_size=min_group_size,
+            min_cluster_size=min_cluster_size,
+            metadata_uids=metadata_uids,
+        )
+        group_b, b_reviewable, group_b_docs = _reviewable_group(
+            uid,
+            membership_b,
+            stats_b,
+            n_neighbors=n_neighbors,
+            min_group_size=min_group_size,
+            min_cluster_size=min_cluster_size,
+            metadata_uids=metadata_uids,
+        )
+        set_a = set(group_a)
+        set_b = set(group_b)
+        union = set_a | set_b
+        overlap = set_a & set_b
+        jaccard = len(overlap) / len(union) if union else 0.0
+        cid_a = membership_a.get(uid)
+        cid_b = membership_b.get(uid)
+        size_a = int(stats_a.cluster_sizes[cid_a]) if cid_a is not None else 0
+        size_b = int(stats_b.cluster_sizes[cid_b]) if cid_b is not None else 0
+        min_size = min(size for size in (size_a, size_b) if size > 0) if size_a and size_b else 0
+        max_size = max(size_a, size_b)
+        case = BoundaryCoverageCase(
+            target_uid=uid,
+            coverage_state=_coverage_state(a_reviewable, b_reviewable),
+            method_a_reviewable=a_reviewable,
+            method_b_reviewable=b_reviewable,
+            method_a_cluster_id=cid_a,
+            method_b_cluster_id=cid_b,
+            method_a_cluster_size=size_a,
+            method_b_cluster_size=size_b,
+            method_a_cross_cluster_ratio=round(stats_a.cross_ratios.get(uid, 0.0), 4),
+            method_b_cross_cluster_ratio=round(stats_b.cross_ratios.get(uid, 0.0), 4),
+            group_a_uids=group_a,
+            group_b_uids=group_b,
+            group_a_doc_count=group_a_docs,
+            group_b_doc_count=group_b_docs,
+            overlap_size=len(overlap),
+            jaccard=round(jaccard, 4),
+            cluster_size_ratio=_ratio_or_none(max_size, min_size),
+            method_a_total_degree=int(stats_a.node_total_degree.get(uid, 0)),
+            method_b_total_degree=int(stats_b.node_total_degree.get(uid, 0)),
+            method_a_intra_degree=int(stats_a.node_intra_degree.get(uid, 0)),
+            method_b_intra_degree=int(stats_b.node_intra_degree.get(uid, 0)),
+            method_a_cross_degree=int(stats_a.node_cross_degree.get(uid, 0)),
+            method_b_cross_degree=int(stats_b.node_cross_degree.get(uid, 0)),
+            method_a_group_fill_rate=round(len(group_a) / max(1, n_neighbors), 4),
+            method_b_group_fill_rate=round(len(group_b) / max(1, n_neighbors), 4),
+            diagnostic_strata=[],
+            target_title=str(uid_meta[uid].get("title", "") or ""),
+            target_year=uid_meta[uid].get("pubyear"),
+        )
+        case.diagnostic_strata = _diagnostic_strata(
+            case,
+            n_neighbors=n_neighbors,
+            max_group_jaccard=max_group_jaccard,
+        )
+        cases.append(case)
+
+    return cases, len(ordered_targets)
+
+
+def _sample_cases(cases: list[BoundaryCoverageCase], n_cases: int, rng: np.random.RandomState) -> list[BoundaryCoverageCase]:
+    ordered = list(cases)
+    rng.shuffle(ordered)
+    return ordered[: min(n_cases, len(ordered))]
+
+
+def _sample_diagnostic_cases(
+    cases: list[BoundaryCoverageCase],
+    *,
+    n_per_stratum: int,
+    rng: np.random.RandomState,
+) -> list[BoundaryCoverageCase]:
+    stratum_order = [
+        "A_only_reviewable",
+        "B_only_reviewable",
+        "both_reviewable",
+        "neither_reviewable",
+        "A_sparse_B_dense",
+        "B_sparse_A_dense",
+        "high_disagreement_both_dense",
+    ]
+    by_stratum: Dict[str, list[BoundaryCoverageCase]] = defaultdict(list)
+    for case in cases:
+        for stratum in case.diagnostic_strata:
+            by_stratum[stratum].append(case)
+
+    selected: list[BoundaryCoverageCase] = []
+    seen: set[str] = set()
+    for stratum in stratum_order:
+        bucket = [case for case in by_stratum.get(stratum, []) if case.target_uid not in seen]
+        rng.shuffle(bucket)
+        chosen = bucket[: min(n_per_stratum, len(bucket))]
+        selected.extend(chosen)
+        seen.update(case.target_uid for case in chosen)
+    return selected
+
+
+def sample_boundary_coverage_cases(
+    edges_a: pl.DataFrame,
+    membership_a: Dict[str, int],
+    edges_b: pl.DataFrame,
+    membership_b: Dict[str, int],
+    *,
+    method_a: str = "A",
+    method_b: str = "B",
+    abstracts: pl.DataFrame | None = None,
+    n_neighbors: int = 8,
+    min_cluster_size: int = 10,
+    n_population_cases: int = 30,
+    n_diagnostic_per_stratum: int = 12,
+    sample_mode: str = "both",
+    target_uids: List[str] | None = None,
+    max_group_jaccard: float = 0.5,
+    seed: int = 42,
+) -> BoundaryCoverageSampleSet:
+    """Sample Protocol D v2 population and diagnostic boundary cases."""
+    if sample_mode not in {"population", "diagnostic", "both"}:
+        raise ValueError(f"unknown sample_mode: {sample_mode}")
+    rng = np.random.RandomState(seed)
+    cases, n_target_universe = collect_boundary_coverage_cases(
+        edges_a,
+        membership_a,
+        edges_b,
+        membership_b,
+        method_a=method_a,
+        method_b=method_b,
+        abstracts=abstracts,
+        n_neighbors=n_neighbors,
+        min_cluster_size=min_cluster_size,
+        target_uids=target_uids,
+        max_group_jaccard=max_group_jaccard,
+    )
+    counts = Counter(case.coverage_state for case in cases)
+    population_cases: list[BoundaryCoverageCase] = []
+    diagnostic_cases: list[BoundaryCoverageCase] = []
+    if sample_mode in {"population", "both"}:
+        population_cases = _sample_cases(cases, n_population_cases, rng)
+    if sample_mode in {"diagnostic", "both"}:
+        diagnostic_cases = _sample_diagnostic_cases(
+            cases,
+            n_per_stratum=n_diagnostic_per_stratum,
+            rng=rng,
+        )
+
+    log.info(
+        "Sampled Protocol D v2 cases: population=%d diagnostic=%d universe=%d",
+        len(population_cases),
+        len(diagnostic_cases),
+        n_target_universe,
+    )
+    return BoundaryCoverageSampleSet(
+        population_cases=population_cases,
+        diagnostic_cases=diagnostic_cases,
+        method_a=method_a,
+        method_b=method_b,
+        n_nodes=len(set(membership_a) | set(membership_b)),
+        n_target_universe=n_target_universe,
+        coverage_state_counts={
+            label: int(counts.get(label, 0))
+            for label in (
+                "A_only_reviewable",
+                "B_only_reviewable",
+                "both_reviewable",
+                "neither_reviewable",
+            )
+        },
+        sample_mode=sample_mode,
+    )
+
+
 __all__ = [
     "sample_worst_case",
     "sample_disagreement_cases",
     "collect_rank_shift_cases",
     "sample_rank_shift_cases",
+    "collect_boundary_coverage_cases",
+    "sample_boundary_coverage_cases",
     "SampleSet",
     "SampleCase",
     "DisagreementSampleSet",
     "DisagreementCase",
     "RankShiftSampleSet",
     "RankShiftCase",
+    "BoundaryCoverageCase",
+    "BoundaryCoverageSampleSet",
 ]

@@ -10,6 +10,10 @@ name = "sciscape_leiden"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
+arrow-array = "57"
+arrow-schema = "57"
+ahash = "0.8"
+parquet = { version = "57", features = ["arrow", "zstd"] }
 rand = "0.8"
 rayon = "1.10"
 pyo3 = { version = "0.23", features = ["extension-module"], optional = true }

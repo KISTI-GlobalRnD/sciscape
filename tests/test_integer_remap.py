@@ -8,10 +8,13 @@ import pytest
 
 from sciscape.clustering.integer_remap import (
     RemapResult,
+    ensure_int_edge_sidecars,
+    int_edge_sidecar_paths,
     integer_remap,
     join_back_uids,
     load_manifest,
 )
+from sciscape.clustering.leiden_rust import RUST_AVAILABLE
 
 
 @pytest.fixture
@@ -49,6 +52,31 @@ class TestIntegerRemap:
         edges = pl.read_parquet(result.int_edges_path)
         assert set(edges.columns) == {"src", "dst", "weight"}
         assert edges.height == 4
+        assert edges["src"].dtype == pl.UInt32
+        assert edges["dst"].dtype == pl.UInt32
+        assert edges["weight"].dtype == pl.Float64
+
+    def test_int_edge_sidecars_written(self, sample_edges, tmp_path):
+        result = integer_remap(sample_edges, tmp_path)
+        src_path, dst_path, weight_path = int_edge_sidecar_paths(result.int_edges_path)
+
+        assert src_path.exists()
+        assert dst_path.exists()
+        assert weight_path.exists()
+        assert src_path.stat().st_size == result.n_edges * np.dtype(np.uint32).itemsize
+        assert dst_path.stat().st_size == result.n_edges * np.dtype(np.uint32).itemsize
+        assert weight_path.stat().st_size == result.n_edges * np.dtype(np.float64).itemsize
+
+    def test_invalid_int_edge_sidecar_is_regenerated(self, sample_edges, tmp_path):
+        result = integer_remap(sample_edges, tmp_path)
+        src_path, dst_path, weight_path = int_edge_sidecar_paths(result.int_edges_path)
+        src_path.write_bytes(b"bad")
+
+        ensure_int_edge_sidecars(result.int_edges_path)
+
+        assert src_path.stat().st_size == result.n_edges * np.dtype(np.uint32).itemsize
+        assert dst_path.stat().st_size == result.n_edges * np.dtype(np.uint32).itemsize
+        assert weight_path.stat().st_size == result.n_edges * np.dtype(np.float64).itemsize
 
     def test_integer_indices_are_contiguous(self, sample_edges, tmp_path):
         integer_remap(sample_edges, tmp_path)
@@ -80,6 +108,52 @@ class TestIntegerRemap:
         sample_edges.write_parquet(parquet_path)
         result = integer_remap(parquet_path, tmp_path / "out")
         assert result.n_nodes == 4
+
+    @pytest.mark.skipif(not RUST_AVAILABLE, reason="Rust backend required")
+    def test_from_parquet_path_writes_valid_rust_remap(self, sample_edges, tmp_path):
+        parquet_path = tmp_path / "edges.parquet"
+        sample_edges.write_parquet(parquet_path)
+
+        result = integer_remap(parquet_path, tmp_path / "out")
+        manifest = pl.read_parquet(result.node_manifest_path)
+        int_edges = pl.read_parquet(result.int_edges_path)
+        src_path, dst_path, weight_path = int_edge_sidecar_paths(result.int_edges_path)
+
+        assert manifest["node_idx"].dtype == pl.UInt32
+        assert int_edges["src"].dtype == pl.UInt32
+        assert int_edges["dst"].dtype == pl.UInt32
+        assert int_edges["weight"].dtype == pl.Float64
+        assert src_path.stat().st_size == result.n_edges * np.dtype(np.uint32).itemsize
+        assert dst_path.stat().st_size == result.n_edges * np.dtype(np.uint32).itemsize
+        assert weight_path.stat().st_size == result.n_edges * np.dtype(np.float64).itemsize
+
+    @pytest.mark.skipif(not RUST_AVAILABLE, reason="Rust backend required")
+    def test_dataframe_input_uses_rust_remap_without_leaving_temp_input(self, sample_edges, tmp_path):
+        result = integer_remap(sample_edges, tmp_path)
+
+        assert result.n_nodes == 4
+        assert result.n_edges == 4
+        assert not list(tmp_path.glob("_rust_remap_input_*.parquet"))
+
+    @pytest.mark.skipif(not RUST_AVAILABLE, reason="Rust backend required")
+    def test_rust_sidecar_only_remap_skips_int_edges_parquet(self, sample_edges, tmp_path):
+        parquet_path = tmp_path / "edges.parquet"
+        sample_edges.write_parquet(parquet_path)
+
+        result = integer_remap(parquet_path, tmp_path / "out", write_int_edges=False)
+        src_path, dst_path, weight_path = result.sidecar_paths
+
+        assert result.n_nodes == 4
+        assert result.n_edges == 4
+        assert result.node_manifest_path.exists()
+        assert not result.int_edges_path.exists()
+        assert src_path.exists()
+        assert dst_path.exists()
+        assert weight_path.exists()
+
+        cached = integer_remap(parquet_path, tmp_path / "out", write_int_edges=False)
+        assert cached.n_edges == result.n_edges
+        assert ensure_int_edge_sidecars(result.int_edges_path) == result.sidecar_paths
 
     def test_custom_column_names(self, tmp_path):
         edges = pl.DataFrame({

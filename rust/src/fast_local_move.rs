@@ -3,10 +3,10 @@
 //! Port of CWTS FastLocalMovingAlgorithm.java.
 //! Hot-path: unsafe unchecked indexing where bounds are guaranteed.
 
-use crate::graph::Graph;
 use crate::clustering::Clustering;
+use crate::graph::Graph;
+use crate::random_utils::{fill_identity_u32, permute_cwts_style};
 use crate::workspace::Workspace;
-use rand::seq::SliceRandom;
 use rand::Rng;
 
 /// Run one iteration of fast local moving.
@@ -29,50 +29,56 @@ pub fn improve_clustering(
     let nbr_arr = graph.neighbors.as_ptr();
     let ew_arr = graph.edge_weights.as_ptr();
     let nw_arr = graph.node_weights.as_slice();
-    let slw_arr = graph.self_loop_weights.as_slice();
     let clusters = clustering.clusters.as_mut_ptr();
     let has_fixed = clustering.fixed.is_some();
     let fixed_arr: &[bool] = clustering.fixed.as_deref().unwrap_or(&[]);
 
     // Reuse workspace arrays (already zeroed by caller or reset)
     ws.ensure_capacity(n);
+    let stable_epoch = ws.next_stable_epoch(n);
     let cw = &mut ws.cw[..n];
     let npc = &mut ws.npc[..n];
-    cw.fill(0.0);
-    npc.fill(0);
+    let initial_n_clusters = clustering.n_clusters.min(n);
+    cw[..initial_n_clusters].fill(0.0);
+    npc[..initial_n_clusters].fill(0);
     for i in 0..n {
         unsafe {
-            let cid = *clusters.add(i);
+            let cid = *clusters.add(i) as usize;
             *cw.get_unchecked_mut(cid) += nw_arr.get_unchecked(i);
             *npc.get_unchecked_mut(cid) += 1;
         }
     }
 
-    let mut unused: Vec<u32> = Vec::with_capacity(n.min(1024));
-    for i in (0..n).rev() {
+    let mut unused = std::mem::take(&mut ws.unused);
+    unused.clear();
+    for i in (0..initial_n_clusters).rev() {
         if npc[i] == 0 {
             unused.push(i as u32);
         }
     }
+    // Cluster ids above the current cluster count are all empty. Keep that
+    // range lazy instead of pushing up to O(n) ids into `unused` each call.
+    let mut next_tail_empty = initial_n_clusters;
 
-    let mut order: Vec<u32> = (0..n as u32).collect();
-    order.shuffle(rng);
+    let mut order = std::mem::take(&mut ws.order);
+    fill_identity_u32(&mut order, n);
+    permute_cwts_style(&mut order, rng);
 
     let stable = &mut ws.stable[..n];
-    stable.fill(false);
     let mut n_unstable: usize = n;
 
     if has_fixed {
         for i in 0..n {
             if fixed_arr[i] {
-                stable[i] = true;
+                stable[i] = stable_epoch;
                 n_unstable -= 1;
             }
         }
     }
 
+    // `ewpc` is kept zeroed by clearing every touched cluster after each node.
+    // Avoid a full f64 memset on every local-move call.
     let ewpc = &mut ws.ewpc[..n];
-    ewpc.fill(0.0);
     // Take nc_buf out of workspace to avoid borrow issues
     let mut nc_buf = std::mem::take(&mut ws.nc_buf);
     nc_buf.clear();
@@ -85,14 +91,14 @@ pub fn improve_clustering(
     while n_unstable > 0 {
         let j = unsafe { *order.get_unchecked(i) } as usize;
 
-        if unsafe { *stable.get_unchecked(j) } {
+        if unsafe { *stable.get_unchecked(j) == stable_epoch } {
             consecutive_skips += 1;
             if consecutive_skips >= n {
                 // Unstable nodes lost from circular buffer (n_unstable overflowed n).
                 // Recovery: scan all nodes to find the missing unstable ones.
                 let mut recovered = 0;
                 for node in 0..n {
-                    if !stable[node] {
+                    if stable[node] != stable_epoch {
                         let slot = (i + 1 + recovered) % n;
                         order[slot] = node as u32;
                         recovered += 1;
@@ -105,12 +111,14 @@ pub fn improve_clustering(
                 }
             }
             i += 1;
-            if i >= n { i = 0; }
+            if i >= n {
+                i = 0;
+            }
             continue;
         }
         consecutive_skips = 0;
 
-        let cur_cl = unsafe { *clusters.add(j) };
+        let cur_cl = unsafe { *clusters.add(j) } as usize;
         let node_w = unsafe { *nw_arr.get_unchecked(j) };
 
         unsafe {
@@ -124,6 +132,16 @@ pub fn improve_clustering(
         nc_buf.clear();
         if let Some(&empty) = unused.last() {
             nc_buf.push(empty);
+        } else if next_tail_empty < n {
+            // Cluster IDs above the current cluster count are treated lazily.
+            // Zero the next tail candidate immediately before it can influence
+            // the quality calculation; this avoids clearing cw/npc for all
+            // graph.n_nodes on every local-move pass.
+            unsafe {
+                *cw_ptr.add(next_tail_empty) = 0.0;
+                *npc.get_unchecked_mut(next_tail_empty) = 0;
+            }
+            nc_buf.push(next_tail_empty as u32);
         }
 
         let nbr_start = unsafe { *first_nbr.add(j) } as usize;
@@ -133,32 +151,32 @@ pub fn improve_clustering(
         unsafe {
             for k in nbr_start..nbr_end {
                 let nbr_node = *nbr_arr.add(k) as usize;
-                let nbr_cl = *clusters.add(nbr_node);
+                let nbr_cl = *clusters.add(nbr_node) as usize;
                 if *ewpc_ptr.add(nbr_cl) == 0.0 {
                     nc_buf.push(nbr_cl as u32);
                 }
                 *ewpc_ptr.add(nbr_cl) += *ew_arr.add(k);
             }
-            *ewpc_ptr.add(cur_cl) += *slw_arr.get_unchecked(j);
         }
 
         let mut best_cl = cur_cl;
-        let mut max_inc = unsafe {
-            *ewpc_ptr.add(cur_cl) - node_w * *cw_ptr.add(cur_cl) * resolution
-        };
+        let mut max_inc =
+            unsafe { *ewpc_ptr.add(cur_cl) - node_w * *cw_ptr.add(cur_cl) * resolution };
 
         for idx in 0..nc_buf.len() {
             let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
-            let inc = unsafe {
-                *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution
-            };
+            let inc = unsafe { *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution };
             if inc > max_inc {
                 best_cl = nc;
                 max_inc = inc;
             }
-            unsafe { *ewpc_ptr.add(nc) = 0.0; }
+            unsafe {
+                *ewpc_ptr.add(nc) = 0.0;
+            }
         }
-        unsafe { *ewpc_ptr.add(cur_cl) = 0.0; }
+        unsafe {
+            *ewpc_ptr.add(cur_cl) = 0.0;
+        }
 
         unsafe {
             *cw_ptr.add(best_cl) += node_w;
@@ -166,28 +184,48 @@ pub fn improve_clustering(
         }
         if best_cl as u32 == unused.last().copied().unwrap_or(u32::MAX) {
             unused.pop();
+        } else if best_cl == next_tail_empty {
+            next_tail_empty += 1;
         }
 
-        stable[j] = true;
+        stable[j] = stable_epoch;
         n_unstable -= 1;
 
         if best_cl != cur_cl {
-            unsafe { *clusters.add(j) = best_cl; }
+            unsafe {
+                *clusters.add(j) = best_cl as u32;
+            }
             if best_cl >= clustering.n_clusters {
                 clustering.n_clusters = best_cl + 1;
             }
 
-            unsafe {
-                for k in nbr_start..nbr_end {
-                    let nbr = *nbr_arr.add(k) as usize;
-                    if *stable.get_unchecked(nbr) && *clusters.add(nbr) != best_cl {
-                        if has_fixed && *fixed_arr.get_unchecked(nbr) {
-                            continue;
+            if has_fixed {
+                unsafe {
+                    for k in nbr_start..nbr_end {
+                        let nbr = *nbr_arr.add(k) as usize;
+                        if *stable.get_unchecked(nbr) == stable_epoch
+                            && *clusters.add(nbr) as usize != best_cl
+                            && !*fixed_arr.get_unchecked(nbr)
+                        {
+                            *stable.get_unchecked_mut(nbr) = 0;
+                            n_unstable += 1;
+                            let slot = (i + n_unstable) % n;
+                            *order.get_unchecked_mut(slot) = nbr as u32;
                         }
-                        *stable.get_unchecked_mut(nbr) = false;
-                        n_unstable += 1;
-                        let slot = (i + n_unstable) % n;
-                        *order.get_unchecked_mut(slot) = nbr as u32;
+                    }
+                }
+            } else {
+                unsafe {
+                    for k in nbr_start..nbr_end {
+                        let nbr = *nbr_arr.add(k) as usize;
+                        if *stable.get_unchecked(nbr) == stable_epoch
+                            && *clusters.add(nbr) as usize != best_cl
+                        {
+                            *stable.get_unchecked_mut(nbr) = 0;
+                            n_unstable += 1;
+                            let slot = (i + n_unstable) % n;
+                            *order.get_unchecked_mut(slot) = nbr as u32;
+                        }
                     }
                 }
             }
@@ -196,24 +234,43 @@ pub fn improve_clustering(
         }
 
         i += 1;
-        if i >= n { i = 0; }
+        if i >= n {
+            i = 0;
+        }
     }
 
     if update {
-        clustering.remove_empty_clusters();
+        compact_clusters_from_counts(clustering, npc);
     }
 
     // Return nc_buf to workspace
     ws.nc_buf = nc_buf;
+    ws.order = order;
+    ws.unused = unused;
 
     update
+}
+
+fn compact_clusters_from_counts(clustering: &mut Clustering, counts: &mut [u32]) {
+    let mut new_id = 0u32;
+    for count_or_remap in counts.iter_mut().take(clustering.n_clusters) {
+        if *count_or_remap > 0 {
+            *count_or_remap = new_id;
+            new_id += 1;
+        }
+    }
+
+    for cid in &mut clustering.clusters {
+        *cid = counts[*cid as usize];
+    }
+    clustering.n_clusters = new_id as usize;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     #[test]
     fn test_two_cliques() {
@@ -237,17 +294,62 @@ mod tests {
 
     #[test]
     fn test_fixed_nodes() {
-        let g = Graph::from_edge_list(
-            3,
-            &[0, 1, 2],
-            &[1, 2, 0],
-            &[1.0, 1.0, 1.0],
-        );
+        let g = Graph::from_edge_list(3, &[0, 1, 2], &[1, 2, 0], &[1.0, 1.0, 1.0]);
         let mut c = Clustering::singleton(3);
         c.set_fixed(vec![true, false, false]);
         let mut rng = StdRng::seed_from_u64(42);
         let mut ws = Workspace::new(3);
         improve_clustering(&g, &mut c, 0.1, &mut rng, &mut ws);
-        assert_ne!(c.clusters[0], c.clusters[1]);
+        assert_eq!(c.clusters[0], 0);
+    }
+
+    #[test]
+    fn test_lazy_tail_empty_clusters_can_split() {
+        let g = Graph::from_edge_list(4, &[], &[], &[]);
+        let mut c = Clustering::from_assignments(vec![0, 0, 0, 0]);
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut ws = Workspace::new(4);
+
+        let improved = improve_clustering(&g, &mut c, 1.0, &mut rng, &mut ws);
+
+        assert!(improved);
+        assert!(c.n_clusters > 1);
+    }
+
+    #[test]
+    fn test_self_loops_do_not_block_moves() {
+        let g = Graph {
+            n_nodes: 2,
+            n_edges: 2,
+            first_neighbor_index: vec![0, 1, 2],
+            neighbors: vec![1, 0],
+            edge_weights: vec![10.0, 10.0],
+            node_weights: vec![1.0, 1.0],
+            self_loop_weights: vec![1_000.0, 1_000.0],
+        };
+        let mut c = Clustering::singleton(2);
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut ws = Workspace::new(2);
+
+        let improved = improve_clustering(&g, &mut c, 0.1, &mut rng, &mut ws);
+
+        assert!(improved);
+        assert_eq!(c.n_clusters, 1);
+    }
+
+    #[test]
+    fn test_stable_epoch_wrap_preserves_behavior() {
+        let g = Graph::from_edge_list(3, &[0, 1, 2], &[1, 2, 0], &[1.0, 1.0, 1.0]);
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut ws = Workspace::new(3);
+        ws.stable_epoch = u8::MAX;
+
+        let mut c = Clustering::singleton(3);
+        c.set_fixed(vec![true, false, false]);
+
+        improve_clustering(&g, &mut c, 0.1, &mut rng, &mut ws);
+
+        assert_eq!(c.clusters[0], 0);
+        assert_eq!(ws.stable_epoch, 1);
     }
 }

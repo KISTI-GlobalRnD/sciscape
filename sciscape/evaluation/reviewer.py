@@ -154,6 +154,88 @@ Confidence:
 {PROMPT_JSON_RULES}
 """
 
+BOUNDARY_GOLD_SYSTEM_PROMPT = f"""You are a scientific research evaluator labeling a boundary case.
+
+You will be given:
+- one target paper
+- Group A: papers that one clustering method places around the target
+- Group B: papers that another clustering method places around the target
+
+Task:
+- judge independently whether the target naturally belongs with Group A
+- judge independently whether the target naturally belongs with Group B
+- convert those two yes/no judgments into one boundary decision label
+
+Decision labels:
+- A_ONLY = target belongs with Group A but not Group B
+- B_ONLY = target belongs with Group B but not Group A
+- BOTH = both groups are valid local neighborhoods for the target
+- NEITHER = neither group is a good local neighborhood for the target
+- UNCLEAR = evidence is too ambiguous to decide confidently
+
+Important:
+- Ignore A/B ordering bias.
+- Judge Group A and Group B independently before deciding.
+- A broad umbrella group should not receive credit if it loses the target's narrow coherent context.
+- A narrow group should not receive credit if it omits obvious close neighbors needed for the target's immediate context.
+- Return UNCLEAR only when the evidence is genuinely ambiguous after independent judging.
+
+Return ONLY valid JSON:
+{{
+  "belongs_with_a": "<YES or NO or UNCLEAR>",
+  "belongs_with_b": "<YES or NO or UNCLEAR>",
+  "decision": "<A_ONLY or B_ONLY or BOTH or NEITHER or UNCLEAR>",
+  "confidence": <1-5>,
+  "reasoning": "<2-3 sentences explaining the boundary judgment>"
+}}
+
+Confidence:
+5 = boundary decision is clear
+4 = clearly preferred with limited ambiguity
+3 = meaningful ambiguity remains but one interpretation is still better
+2 = very ambiguous
+1 = almost no confidence
+
+{PROMPT_JSON_RULES}
+"""
+
+BOUNDARY_PLAUSIBILITY_SYSTEM_PROMPT = f"""You are a scientific research evaluator judging one local neighborhood.
+
+You will be given:
+- one target paper
+- one candidate group of papers that a clustering method places around the target
+
+Task:
+- decide whether this group plausibly represents the target paper's immediate research neighborhood
+- judge topical fit, internal coherence, semantic granularity, and whether the group is too broad or too narrow
+
+Decision labels:
+- PLAUSIBLE = the group is a valid local neighborhood for the target
+- NOT_PLAUSIBLE = the group is too broad, too narrow, incoherent, or off-topic
+- UNCLEAR = the evidence is too ambiguous to decide confidently
+
+Important:
+- A broad umbrella group should not receive credit if it loses the target's narrow coherent context.
+- A narrow group should not receive credit if it omits obvious close neighbors needed for the target's immediate context.
+- Return UNCLEAR only when the evidence is genuinely ambiguous.
+
+Return ONLY valid JSON:
+{{
+  "decision": "<PLAUSIBLE or NOT_PLAUSIBLE or UNCLEAR>",
+  "confidence": <1-5>,
+  "reasoning": "<2-3 sentences explaining the plausibility judgment>"
+}}
+
+Confidence:
+5 = plausibility decision is clear
+4 = clear decision with limited ambiguity
+3 = meaningful ambiguity remains but one interpretation is still better
+2 = very ambiguous
+1 = almost no confidence
+
+{PROMPT_JSON_RULES}
+"""
+
 RERANK_SYSTEM_PROMPT = f"""You are a scientific research evaluator performing a blind A/B comparison of local graph neighborhoods.
 
 You will be given:
@@ -326,6 +408,37 @@ class BelongingResult:
 
 
 @dataclass
+class BoundaryGoldResult:
+    """Gold-label adjudication for a local boundary case."""
+    target_uid: str
+    decision: str
+    belongs_with_a: bool | None
+    belongs_with_b: bool | None
+    confidence: int
+    reasoning: str
+    method_a: str
+    method_b: str
+    raw_response: str
+    presented_decision: str = ""
+    presented_belongs_with_a: bool | None = None
+    presented_belongs_with_b: bool | None = None
+    presented_method_a: str = ""
+    presented_method_b: str = ""
+    swapped: bool = False
+
+
+@dataclass
+class BoundaryPlausibilityResult:
+    """Unary plausibility judgment for one local boundary neighborhood."""
+    target_uid: str
+    decision: str
+    confidence: int
+    reasoning: str
+    method: str
+    raw_response: str
+
+
+@dataclass
 class GroupCohesionResult:
     """Result of group-only cohesion evaluation (no target)."""
     cohesion_score: int
@@ -445,6 +558,50 @@ def _resolve_comparison_winner(winner: str, *, score_a: int, score_b: int) -> st
     if score_b > score_a:
         return "B"
     return "TIE"
+
+
+def _parse_boolish(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    raw = str(value).strip().upper()
+    if raw in {"YES", "Y", "TRUE", "T", "1"}:
+        return True
+    if raw in {"NO", "N", "FALSE", "F", "0"}:
+        return False
+    return None
+
+
+def _resolve_boundary_decision(
+    decision: str,
+    *,
+    belongs_with_a: bool | None,
+    belongs_with_b: bool | None,
+) -> str:
+    raw = str(decision).strip().upper()
+    if raw in {"A_ONLY", "B_ONLY", "BOTH", "NEITHER", "UNCLEAR"}:
+        return raw
+    if belongs_with_a is True and belongs_with_b is False:
+        return "A_ONLY"
+    if belongs_with_a is False and belongs_with_b is True:
+        return "B_ONLY"
+    if belongs_with_a is True and belongs_with_b is True:
+        return "BOTH"
+    if belongs_with_a is False and belongs_with_b is False:
+        return "NEITHER"
+    return "UNCLEAR"
+
+
+def _resolve_plausibility_decision(decision: Any) -> str:
+    raw = str(decision).strip().upper() if decision is not None else ""
+    if raw in {"PLAUSIBLE", "NOT_PLAUSIBLE", "UNCLEAR"}:
+        return raw
+    if raw in {"YES", "Y", "TRUE", "T", "1"}:
+        return "PLAUSIBLE"
+    if raw in {"NO", "N", "FALSE", "F", "0"}:
+        return "NOT_PLAUSIBLE"
+    return "UNCLEAR"
 
 
 def _is_retryable_llm_exception(exc: Exception) -> bool:
@@ -923,6 +1080,130 @@ def review_belonging(
     )
 
 
+def review_boundary_gold(
+    client,
+    target: dict,
+    group_a: Sequence[dict],
+    group_b: Sequence[dict],
+    *,
+    method_a: str = "A",
+    method_b: str = "B",
+    model: str | None = None,
+    randomize: bool = True,
+) -> BoundaryGoldResult:
+    """Blind gold-label adjudication for a disagreement boundary case."""
+    import random
+
+    model = model or getattr(client, "_sciscape_model", "gpt-oss:20b")
+    original_method_a = method_a
+    original_method_b = method_b
+    swapped = False
+    if randomize and random.random() < 0.5:
+        group_a, group_b = group_b, group_a
+        method_a, method_b = method_b, method_a
+        swapped = True
+    presented_method_a = method_a
+    presented_method_b = method_b
+
+    user_parts = [
+        "TARGET PAPER:",
+        _format_paper(target["uid"], target.get("title", ""), target.get("abstract", ""), -1),
+        "\nGROUP A:",
+    ]
+    for i, n in enumerate(group_a):
+        user_parts.append(_format_paper(n["uid"], n.get("title", ""), n.get("abstract", ""), i))
+    user_parts.append("\nGROUP B:")
+    for i, n in enumerate(group_b):
+        user_parts.append(_format_paper(n["uid"], n.get("title", ""), n.get("abstract", ""), i))
+
+    response = _chat_completion_with_retry(
+        client,
+        model=model,
+        messages=[
+            {"role": "system", "content": _prompt_for_model(BOUNDARY_GOLD_SYSTEM_PROMPT, model)},
+            {"role": "user", "content": "\n".join(user_parts)},
+        ],
+    )
+    raw = response.choices[0].message.content.strip()
+    parsed = _safe_json(raw)
+
+    presented_a = _parse_boolish(parsed.get("belongs_with_a"))
+    presented_b = _parse_boolish(parsed.get("belongs_with_b"))
+    presented_decision = _resolve_boundary_decision(
+        parsed.get("decision", ""),
+        belongs_with_a=presented_a,
+        belongs_with_b=presented_b,
+    )
+
+    belongs_with_a = presented_a
+    belongs_with_b = presented_b
+    if swapped:
+        belongs_with_a, belongs_with_b = presented_b, presented_a
+        method_a, method_b = original_method_a, original_method_b
+
+    decision = _resolve_boundary_decision(
+        "" if swapped else presented_decision,
+        belongs_with_a=belongs_with_a,
+        belongs_with_b=belongs_with_b,
+    )
+
+    return BoundaryGoldResult(
+        target_uid=target["uid"],
+        decision=decision,
+        belongs_with_a=belongs_with_a,
+        belongs_with_b=belongs_with_b,
+        confidence=int(parsed.get("confidence", 0)),
+        reasoning=str(parsed.get("reasoning", "")),
+        method_a=method_a,
+        method_b=method_b,
+        raw_response=raw,
+        presented_decision=presented_decision,
+        presented_belongs_with_a=presented_a,
+        presented_belongs_with_b=presented_b,
+        presented_method_a=presented_method_a,
+        presented_method_b=presented_method_b,
+        swapped=swapped,
+    )
+
+
+def review_boundary_plausibility(
+    client,
+    target: dict,
+    group: Sequence[dict],
+    *,
+    method: str = "",
+    model: str | None = None,
+) -> BoundaryPlausibilityResult:
+    """Unary plausibility review for a single target-centered group."""
+    model = model or getattr(client, "_sciscape_model", "gpt-oss:20b")
+    user_parts = [
+        "TARGET PAPER:",
+        _format_paper(target["uid"], target.get("title", ""), target.get("abstract", ""), -1),
+        "\nCANDIDATE LOCAL NEIGHBORHOOD:",
+    ]
+    for i, n in enumerate(group):
+        user_parts.append(_format_paper(n["uid"], n.get("title", ""), n.get("abstract", ""), i))
+
+    response = _chat_completion_with_retry(
+        client,
+        model=model,
+        messages=[
+            {"role": "system", "content": _prompt_for_model(BOUNDARY_PLAUSIBILITY_SYSTEM_PROMPT, model)},
+            {"role": "user", "content": "\n".join(user_parts)},
+        ],
+    )
+    raw = response.choices[0].message.content.strip()
+    parsed = _safe_json(raw)
+    return BoundaryPlausibilityResult(
+        target_uid=target["uid"],
+        decision=_resolve_plausibility_decision(parsed.get("decision", parsed.get("plausibility", ""))),
+        confidence=int(parsed.get("confidence", 0)),
+        reasoning=str(parsed.get("reasoning", "")),
+        method=method,
+        raw_response=raw,
+    )
+
+
 def review_group_cohesion(
     client,
     papers: Sequence[dict],
@@ -1067,8 +1348,10 @@ def _safe_json(text: str) -> dict:
 
 
 __all__ = [
-    "review_cluster", "review_comparison", "review_belonging",
+    "review_cluster", "review_comparison", "review_belonging", "review_boundary_gold",
+    "review_boundary_plausibility",
     "review_group_cohesion", "review_outliers", "classify_case_taxonomy",
-    "ReviewResult", "ComparisonResult", "BelongingResult",
+    "ReviewResult", "ComparisonResult", "BelongingResult", "BoundaryGoldResult",
+    "BoundaryPlausibilityResult",
     "GroupCohesionResult", "OutlierResult", "TaxonomyResult",
 ]

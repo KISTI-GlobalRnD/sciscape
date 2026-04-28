@@ -88,23 +88,48 @@ def _prepare_edge_tsv(
     tsv_path: Path,
     *,
     weighted: bool = True,
+    coalesce_undirected: bool = True,
 ) -> int:
     """Convert int_edges.parquet → TSV edge list for the Java CLI.
 
     Format: ``src<TAB>dst<TAB>weight`` (or ``src<TAB>dst`` if unweighted).
     Uses streaming scan to avoid loading the full edge table into memory.
     Returns the number of edges written.
+
+    CWTS networkanalysis only supports undirected networks and rejects
+    duplicate neighbors. When ``coalesce_undirected`` is true, parallel
+    edges and reversed duplicate pairs are collapsed by summing weights.
     """
     lf = pl.scan_parquet(edge_path)
 
-    if weighted:
-        lf = lf.select("src", "dst", "weight")
+    if coalesce_undirected:
+        lf = lf.select(
+            pl.min_horizontal("src", "dst").alias("src"),
+            pl.max_horizontal("src", "dst").alias("dst"),
+            pl.col("weight").cast(pl.Float64).alias("weight"),
+        ).filter(pl.col("src") != pl.col("dst"))
+
+        if weighted:
+            lf = lf.group_by("src", "dst").agg(pl.col("weight").sum())
+        else:
+            lf = lf.group_by("src", "dst").agg().select("src", "dst")
     else:
-        lf = lf.select("src", "dst")
+        if weighted:
+            lf = lf.select("src", "dst", "weight")
+        else:
+            lf = lf.select("src", "dst")
 
     lf.sink_csv(tsv_path, separator="\t", include_header=False)
-    n_edges = pl.scan_parquet(edge_path).select(pl.len()).collect().item()
-    return n_edges
+    return _count_lines(tsv_path)
+
+
+def _count_lines(path: Path) -> int:
+    """Count lines in a text file without loading it into memory."""
+    n = 0
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            n += chunk.count(b"\n")
+    return n
 
 
 def _parse_membership_tsv(path: Path, n_nodes: int) -> np.ndarray:
@@ -149,7 +174,9 @@ def run_leiden_java(
     edge_tsv_path: Path | None = None,
     seed: int = 0,
     iterations: int = 10,
+    randomness: float = 0.01,
     weighted: bool = True,
+    coalesce_undirected_edges: bool = True,
     java_cmd: str = "java",
     java_heap: str = "8g",
 ) -> JavaLeidenResult:
@@ -175,8 +202,14 @@ def run_leiden_java(
         Random seed for the Leiden algorithm.
     iterations : int
         Number of Leiden iterations.
+    randomness : float
+        Randomness parameter of the Leiden refinement phase.
     weighted : bool
         Whether to pass edge weights to the algorithm.
+    coalesce_undirected_edges : bool
+        Collapse duplicate undirected pairs before invoking Java. The CWTS
+        backend rejects duplicate neighbors, while the Rust backend treats
+        parallel edges as additive weights.
     java_cmd : str
         Java executable (default ``"java"``).
     java_heap : str
@@ -187,6 +220,11 @@ def run_leiden_java(
     JavaLeidenResult
     """
     jar = _resolve_jar(jar_path)
+    if iterations <= 0:
+        raise ValueError(
+            "Java Leiden CLI requires iterations to be a positive integer; "
+            "iterations=0 convergence mode is only supported by the Rust backend."
+        )
     edge_path = Path(edge_path)
 
     use_temp_output = output_path is None
@@ -199,16 +237,33 @@ def run_leiden_java(
                 suffix=".tsv", prefix="leiden_edges_", delete=False
             ) as f:
                 tsv_path = Path(f.name)
-            n_edges = _prepare_edge_tsv(edge_path, tsv_path, weighted=weighted)
+            n_edges = _prepare_edge_tsv(
+                edge_path,
+                tsv_path,
+                weighted=weighted,
+                coalesce_undirected=coalesce_undirected_edges,
+            )
             log.info(
                 "leiden_java: prepared %d edges → %s", n_edges, tsv_path
             )
         else:
             tsv_path = Path(edge_tsv_path)
-            n_edges = int(pl.scan_parquet(edge_path).select(pl.len()).collect().item())
-            log.info(
-                "leiden_java: reusing %d-edge TSV %s", n_edges, tsv_path
-            )
+            if tsv_path.exists():
+                n_edges = _count_lines(tsv_path)
+                log.info(
+                    "leiden_java: reusing %d-edge TSV %s", n_edges, tsv_path
+                )
+            else:
+                tsv_path.parent.mkdir(parents=True, exist_ok=True)
+                n_edges = _prepare_edge_tsv(
+                    edge_path,
+                    tsv_path,
+                    weighted=weighted,
+                    coalesce_undirected=coalesce_undirected_edges,
+                )
+                log.info(
+                    "leiden_java: prepared %d edges → %s", n_edges, tsv_path
+                )
 
         # Prepare output path
         if use_temp_output:
@@ -237,6 +292,7 @@ def run_leiden_java(
             "-s", "1",
             "--seed", str(seed),
             "-i", str(iterations),
+            "--randomness", str(randomness),
         ]
         if weighted:
             cmd.append("-w")
