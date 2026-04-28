@@ -1,0 +1,338 @@
+[
+  {
+    "label": "f12_boosted",
+    "gamma": 1e-06,
+    "n_clusters": 940,
+    "max_size": 28495,
+    "max_pct": 3.8,
+    "top5": [
+      28495,
+      17006,
+      13903,
+      11760,
+      10949
+    ]
+  },
+  {
+    "label": "f12_boosted",
+    "gamma": 5e-06,
+    "n_clusters": 1042,
+    "max_size": 23965,
+    "max_pct": 3.2,
+    "top5": [
+      23965,
+      13652,
+      12135,
+      11837,
+      11070
+    ]
+  },
+  {
+    "label": "f12_boosted",
+    "gamma": 1e-05,
+    "n_clusters": 1145,
+    "max_size": 22300,
+    "max_pct": 3.0,
+    "top5": [
+      22300,
+      12749,
+      12318,
+      10472,
+      6845
+    ]
+  },
+  {
+    "label": "f12_boosted",
+    "gamma": 2e-05,
+    "n_clusters": 1319,
+    "max_size": 16232,
+    "max_pct": 2.2,
+    "top5": [
+      16232,
+      10924,
+      9581,
+      7648,
+      6833
+    ]
+  },
+  {
+    "label": "f12_boosted",
+    "gamma": 5e-05,
+    "n_clusters": 1645,
+    "max_size": 10630,
+    "max_pct": 1.4,
+    "top5": [
+      10630,
+      9081,
+      8380,
+      5968,
+      5708
+    ]
+  },
+  {
+    "label": "f12_boosted",
+    "gamma": 0.0001,
+    "n_clusters": 1887,
+    "max_size": 7138,
+    "max_pct": 0.9,
+    "top5": [
+      7138,
+      7075,
+      6893,
+      5906,
+      4994
+    ]
+  },
+  {
+    "label": "f12_sum",
+    "gamma": 1e-06,
+    "n_clusters": 896,
+    "max_size": 29061,
+    "max_pct": 3.9,
+    "top5": [
+      29061,
+      16626,
+      15255,
+      14664,
+      14252
+    ]
+  },
+  {
+    "label": "f12_sum",
+    "gamma": 5e-06,
+    "n_clusters": 1008,
+    "max_size": 24337,
+    "max_pct": 3.2,
+    "top5": [
+      24337,
+      12492,
+      11163,
+      10692,
+      10172
+    ]
+  },
+  {
+    "label": "f12_sum",
+    "gamma": 1e-05,
+    "n_clusters": 1113,
+    "max_size": 21557,
+    "max_pct": 2.9,
+    "top5": [
+      21557,
+      13094,
+      12291,
+      11262,
+      10096
+    ]
+  },
+  {
+    "label": "f12_sum",
+    "gamma": 2e-05,
+    "n_clusters": 1303,
+    "max_size": 18260,
+    "max_pct": 2.4,
+    "top5": [
+      18260,
+      10718,
+      9209,
+      8199,
+      7468
+    ]
+  },
+  {
+    "label": "f12_sum",
+    "gamma": 5e-05,
+    "n_clusters": 1653,
+    "max_size": 8916,
+    "max_pct": 1.2,
+    "top5": [
+      8916,
+      8349,
+      7697,
+      6918,
+      5769
+    ]
+  },
+  {
+    "label": "f12_sum",
+    "gamma": 0.0001,
+    "n_clusters": 1903,
+    "max_size": 7228,
+    "max_pct": 1.0,
+    "top5": [
+      7228,
+      7010,
+      6255,
+      4507,
+      3834
+    ]
+  },
+  {
+    "label": "f15_4layer_boosted",
+    "gamma": 1e-06,
+    "n_clusters": 44,
+    "max_size": 26209,
+    "max_pct": 22.7,
+    "top5": [
+      26209,
+      17572,
+      16370,
+      12499,
+      8085
+    ]
+  },
+  {
+    "label": "f15_4layer_boosted",
+    "gamma": 5e-06,
+    "n_clusters": 50,
+    "max_size": 23456,
+    "max_pct": 20.3,
+    "top5": [
+      23456,
+      19053,
+      16842,
+      9548,
+      7933
+    ]
+  },
+  {
+    "label": "f15_4layer_boosted",
+    "gamma": 1e-05,
+    "n_clusters": 42,
+    "max_size": 26825,
+    "max_pct": 23.3,
+    "top5": [
+      26825,
+      19049,
+      16798,
+      10907,
+      8393
+    ]
+  },
+  {
+    "label": "f15_4layer_boosted",
+    "gamma": 2e-05,
+    "n_clusters": 48,
+    "max_size": 26205,
+    "max_pct": 22.7,
+    "top5": [
+      26205,
+      19042,
+      16430,
+      8836,
+      8002
+    ]
+  },
+  {
+    "label": "f15_4layer_boosted",
+    "gamma": 5e-05,
+    "n_clusters": 46,
+    "max_size": 26326,
+    "max_pct": 22.8,
+    "top5": [
+      26326,
+      20103,
+      16258,
+      10749,
+      8977
+    ]
+  },
+  {
+    "label": "f15_4layer_boosted",
+    "gamma": 0.0001,
+    "n_clusters": 58,
+    "max_size": 20506,
+    "max_pct": 17.8,
+    "top5": [
+      20506,
+      20183,
+      7533,
+      7451,
+      7167
+    ]
+  },
+  {
+    "label": "f15_4layer_sum",
+    "gamma": 1e-06,
+    "n_clusters": 43,
+    "max_size": 26465,
+    "max_pct": 23.0,
+    "top5": [
+      26465,
+      20474,
+      20140,
+      11000,
+      7374
+    ]
+  },
+  {
+    "label": "f15_4layer_sum",
+    "gamma": 5e-06,
+    "n_clusters": 43,
+    "max_size": 27268,
+    "max_pct": 23.7,
+    "top5": [
+      27268,
+      20196,
+      20147,
+      9953,
+      7381
+    ]
+  },
+  {
+    "label": "f15_4layer_sum",
+    "gamma": 1e-05,
+    "n_clusters": 38,
+    "max_size": 26371,
+    "max_pct": 22.9,
+    "top5": [
+      26371,
+      20738,
+      20080,
+      9382,
+      6125
+    ]
+  },
+  {
+    "label": "f15_4layer_sum",
+    "gamma": 2e-05,
+    "n_clusters": 45,
+    "max_size": 22026,
+    "max_pct": 19.1,
+    "top5": [
+      22026,
+      20201,
+      20081,
+      10116,
+      7450
+    ]
+  },
+  {
+    "label": "f15_4layer_sum",
+    "gamma": 5e-05,
+    "n_clusters": 44,
+    "max_size": 22703,
+    "max_pct": 19.7,
+    "top5": [
+      22703,
+      19123,
+      12537,
+      9320,
+      9094
+    ]
+  },
+  {
+    "label": "f15_4layer_sum",
+    "gamma": 0.0001,
+    "n_clusters": 41,
+    "max_size": 25190,
+    "max_pct": 21.8,
+    "top5": [
+      25190,
+      19018,
+      18581,
+      10570,
+      8149
+    ]
+  }
+]

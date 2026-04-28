@@ -1,10 +1,12 @@
-"""Tests for quality filters P1, P3, P4, P5, P6.
+"""Tests for quality filters P1-P7.
 
 P1: Academic stopword filtering
+P2: Plural merging in normalization
 P3: Auto-merge without LLM (high-confidence term network groups)
 P4: Short-term abbreviation expansion via cooccurrence
 P5: Artifact filtering (LaTeX, numbers, single chars)
 P6: Cross-cluster score penalty
+P7: Fragment suppression (truncated n-gram boundary artifacts)
 """
 
 import numpy as np
@@ -437,6 +439,207 @@ class TestQualityFiltersIntegration:
         )
         keywords = run_keyword_pipeline(cfg)
         assert not keywords.empty
+
+
+# ---------------------------------------------------------------------------
+# P2: Plural merging in normalization
+# ---------------------------------------------------------------------------
+
+class TestPluralMerge:
+    def test_plural_merged_into_singular(self):
+        """When both 'neural networks' and 'neural network' exist, merge into singular."""
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0, 0],
+            "term": ["neural network", "neural networks", "deep learning"],
+            "score": [2.0, 1.5, 1.8],
+            "frequency": [200, 150, 180],
+        })
+        from sciscape.keyword_extraction.normalization import normalize_keywords
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases={},
+            plural_merge_enabled=True,
+        )
+        terms = result["term"].tolist()
+        assert "neural networks" not in terms, "plural should be merged"
+        assert "neural network" in terms
+
+    def test_plural_frequency_summed(self):
+        """Merged term gets summed frequency."""
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0],
+            "term": ["neural network", "neural networks"],
+            "score": [2.0, 1.5],
+            "frequency": [200, 150],
+        })
+        from sciscape.keyword_extraction.normalization import normalize_keywords
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases={},
+            plural_merge_enabled=True,
+        )
+        row = result[result["term"] == "neural network"]
+        assert len(row) == 1
+        assert row["frequency"].iloc[0] == 350
+
+    def test_singular_only_no_change(self):
+        """If only singular exists, nothing happens."""
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0],
+            "term": ["solar energy", "quantum bit"],
+            "score": [1.0, 1.0],
+            "frequency": [100, 80],
+        })
+        from sciscape.keyword_extraction.normalization import normalize_keywords
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases={},
+            plural_merge_enabled=True,
+        )
+        assert len(result) == 2
+
+    def test_plural_only_singularized(self):
+        """If only the plural form exists, it is singularized."""
+        top_df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["point clouds"],
+            "score": [1.0],
+            "frequency": [100],
+        })
+        from sciscape.keyword_extraction.normalization import normalize_keywords
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases={},
+            plural_merge_enabled=True,
+        )
+        assert result["term"].iloc[0] == "point cloud"
+
+    def test_disabled_keeps_plural(self):
+        """With plural merge disabled, plural forms survive."""
+        top_df = pd.DataFrame({
+            "cluster_id": [0, 0],
+            "term": ["neural network", "neural networks"],
+            "score": [2.0, 1.5],
+            "frequency": [200, 150],
+        })
+        from sciscape.keyword_extraction.normalization import normalize_keywords
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases={},
+            plural_merge_enabled=False,
+        )
+        terms = result["term"].tolist()
+        assert "neural network" in terms
+        assert "neural networks" in terms
+
+    def test_irregular_plural_unchanged(self):
+        """Irregular plurals like 'series' are not singularized."""
+        top_df = pd.DataFrame({
+            "cluster_id": [0],
+            "term": ["time series"],
+            "score": [1.0],
+            "frequency": [100],
+        })
+        from sciscape.keyword_extraction.normalization import normalize_keywords
+        result = normalize_keywords(
+            top_df,
+            builtin_aliases={},
+            plural_merge_enabled=True,
+        )
+        assert result["term"].iloc[0] == "time series"
+
+    def test_integration_pipeline(self, sample_data):
+        """P2 works through the full pipeline."""
+        cfg = _base_config(
+            *sample_data,
+            normalization_enabled=True,
+            norm_plural_merge_enabled=True,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+
+
+# ---------------------------------------------------------------------------
+# P7: Fragment suppression (pipeline-level integration)
+# ---------------------------------------------------------------------------
+
+class TestFragmentSuppression:
+    def test_fragment_removed(self, sample_data):
+        """With fragment suppression enabled, truncated n-grams are filtered."""
+        cfg = _base_config(
+            *sample_data,
+            fragment_suppression_enabled=True,
+            ngram_min=1,
+            ngram_max=3,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+
+    def test_disabled_keeps_fragments(self, sample_data):
+        """With fragment suppression disabled, pipeline still runs."""
+        cfg = _base_config(
+            *sample_data,
+            fragment_suppression_enabled=False,
+            ngram_min=1,
+            ngram_max=3,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        assert not keywords.empty
+
+    def test_fragment_suppression_fewer_terms(self, sample_data):
+        """Enabling fragment suppression should produce <= terms compared to disabled."""
+        cfg_on = _base_config(
+            *sample_data,
+            fragment_suppression_enabled=True,
+            ngram_min=1,
+            ngram_max=3,
+        )
+        cfg_off = _base_config(
+            *sample_data,
+            fragment_suppression_enabled=False,
+            ngram_min=1,
+            ngram_max=3,
+        )
+        kw_on = run_keyword_pipeline(cfg_on)
+        kw_off = run_keyword_pipeline(cfg_off)
+        # With suppression, we should have <= terms (or equal if no fragments exist)
+        assert len(kw_on) <= len(kw_off)
+
+    def test_fragment_unit_prefix_suppressed(self):
+        """Directly test that _detect_boundary_fragments catches prefix fragments."""
+        feature_names = np.array([
+            "solar", "energy", "battery",
+            "solar energy", "solar energy battery",
+        ])
+        cluster_freq = np.array([500, 400, 300, 490, 480])
+        scored_terms = [
+            ("solar energy", 0.01, 490),
+        ]
+        fragments = _detect_boundary_fragments(
+            scored_terms, feature_names, cluster_freq, min_longer_ratio=0.5
+        )
+        # "solar energy" freq=490, "solar energy battery" freq=480.
+        # 480 >= 0.5 * 490 = 245  → "solar energy" IS a fragment
+        assert "solar energy" in fragments
+
+    def test_fragment_config_ratio(self):
+        """min_longer_ratio controls the suppression threshold."""
+        feature_names = np.array([
+            "deep", "learning", "model",
+            "deep learning", "deep learning model",
+        ])
+        cluster_freq = np.array([1000, 1200, 800, 950, 200])
+        scored_terms = [("deep learning", 0.01, 950)]
+        # Strict ratio: 200 < 0.5*950=475 → not suppressed
+        frags_strict = _detect_boundary_fragments(
+            scored_terms, feature_names, cluster_freq, min_longer_ratio=0.5
+        )
+        assert "deep learning" not in frags_strict
+        # Lenient ratio: 200 >= 0.1*950=95 → suppressed
+        frags_lenient = _detect_boundary_fragments(
+            scored_terms, feature_names, cluster_freq, min_longer_ratio=0.1
+        )
+        assert "deep learning" in frags_lenient
 
 
 # ---------------------------------------------------------------------------

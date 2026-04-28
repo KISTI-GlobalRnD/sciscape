@@ -1,0 +1,46 @@
+{
+  "field": "field_15_k06_sum_minus_emb_vs_consensus_null_control_frozen",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum_minus_emb",
+  "label_b": "consensus_all",
+  "layers_a": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.85,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.45,
+  "allow_cluster_change": false,
+  "sample_only": true,
+  "method_a_run": {
+    "n_edges": 866866,
+    "gamma": 8.441308158271217e-07,
+    "n_clusters": 2984,
+    "max_pct": 1.36
+  },
+  "method_b_run": {
+    "n_edges": 1344540,
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 2517,
+    "max_pct": 2.48
+  },
+  "n_eligible_nodes": 38145,
+  "n_candidate_cases": 0,
+  "selected_cases": []
+}

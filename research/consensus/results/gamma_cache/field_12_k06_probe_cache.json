@@ -1,0 +1,30 @@
+{
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_12\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 0.000814032,
+    "n_clusters": 20362,
+    "max_pct": 0.14,
+    "top5": [
+      1033,
+      1014,
+      938,
+      839,
+      808
+    ],
+    "field": "field_12_k06_probe",
+    "label": "consensus_probe_high"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_12\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\"], \"min_size\": 10, \"strategy\": \"sum\", \"target_pct\": 3.0, \"top_k\": 6}": {
+    "gamma": 2.63268e-07,
+    "n_clusters": 18616,
+    "max_pct": 1.24,
+    "top5": [
+      9328,
+      3892,
+      3242,
+      2745,
+      2609
+    ],
+    "field": "field_12_k06_probe",
+    "label": "sum_minus_emb_low"
+  }
+}

@@ -1,0 +1,4838 @@
+{
+  "field": "field_15",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "reference": "consensus_all",
+  "compare_labels": [
+    "sum_all",
+    "sum_minus_cc",
+    "sum_minus_emb"
+  ],
+  "policy": "intersection",
+  "top_k": 30,
+  "target_pct": 3.0,
+  "min_size": 10,
+  "n_neighbors": 8,
+  "max_rank_jaccard": 0.85,
+  "n_target_uids": 128,
+  "target_uids": [
+    "W1982883251",
+    "W4400972925",
+    "W2147516482",
+    "W2052973400",
+    "W3022806127",
+    "W2753987841",
+    "W3118655976",
+    "W1966554660",
+    "W4301370137",
+    "W2112002317",
+    "W4200626129",
+    "W2024779001",
+    "W2038072233",
+    "W2274172752",
+    "W3162642496",
+    "W1205690758",
+    "W1994438459",
+    "W2586394585",
+    "W2042746129",
+    "W2142433498",
+    "W2991135186",
+    "W2060442727",
+    "W2467915023",
+    "W3000476018",
+    "W1985041539",
+    "W3088126537",
+    "W2963081565",
+    "W2659984736",
+    "W4379932898",
+    "W2021514999",
+    "W4391612791",
+    "W2765612543",
+    "W2012804551",
+    "W2043931076",
+    "W2604609627",
+    "W2326758683",
+    "W4205161486",
+    "W2310179563",
+    "W2037953627",
+    "W4319736387",
+    "W2024795243",
+    "W2067783257",
+    "W2784258061",
+    "W4400387238",
+    "W2319365190",
+    "W2076209562",
+    "W2788807110",
+    "W2283580175",
+    "W2147642403",
+    "W2887539139",
+    "W3007729030",
+    "W2089948654",
+    "W2068909679",
+    "W2043312329",
+    "W2103207805",
+    "W2321129933",
+    "W2464344453",
+    "W1629033089",
+    "W2063425427",
+    "W3024169960",
+    "W3006455595",
+    "W4224466341",
+    "W2788213189",
+    "W4285999682",
+    "W2199395546",
+    "W2058255711",
+    "W2148447332",
+    "W2042946028",
+    "W2006827676",
+    "W2038253529",
+    "W2040809991",
+    "W2148970161",
+    "W4394794042",
+    "W3105564267",
+    "W3127855981",
+    "W2000771500",
+    "W1994511147",
+    "W2315645811",
+    "W2328174681",
+    "W2976899473",
+    "W4285092658",
+    "W4382299710",
+    "W2763255186",
+    "W4381597890",
+    "W2170735980",
+    "W2090414198",
+    "W2624800133",
+    "W2115482446",
+    "W4210846807",
+    "W3117862516",
+    "W2169049961",
+    "W2109102162",
+    "W2003476302",
+    "W2046173011",
+    "W2052938357",
+    "W2069904245",
+    "W2108194501",
+    "W2113860105",
+    "W2167252522",
+    "W2808294331",
+    "W4293233314",
+    "W2790953549",
+    "W3045485212",
+    "W3207203953",
+    "W2024830713",
+    "W2770959905",
+    "W3108914496",
+    "W4386952531",
+    "W1984101145",
+    "W2621761134",
+    "W2951758462",
+    "W2159369983",
+    "W4285494896",
+    "W4372403492",
+    "W4391296871",
+    "W2027666267",
+    "W2731330748",
+    "W4290566930",
+    "W2012971251",
+    "W2952205579",
+    "W2009149960",
+    "W2912300834",
+    "W2021268896",
+    "W3046547768",
+    "W3026673503",
+    "W3154334064",
+    "W3048132712",
+    "W3205332923"
+  ],
+  "target_summaries": [
+    {
+      "target_uid": "W1982883251",
+      "target_title": "Synthesis of Dimethyl Carbonate from Methanol and Carbon Dioxide: Circumventing Thermodynamic Limitations",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.9464,
+      "avg_rank_jaccard": 0.0953,
+      "avg_mean_abs_rank_shift": 6.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.7946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 667
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 1174
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.7946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 318
+        }
+      }
+    },
+    {
+      "target_uid": "W4400972925",
+      "target_title": "Recent Advances in Ammonia Electrolysis for Sustainable Hydrogen Generation",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.9242,
+      "avg_rank_jaccard": 0.1175,
+      "avg_mean_abs_rank_shift": 6.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.8571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 931,
+          "comparison_cluster_size": 50
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 931,
+          "comparison_cluster_size": 172
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.0583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 7.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 931,
+          "comparison_cluster_size": 2799
+        }
+      }
+    },
+    {
+      "target_uid": "W2147516482",
+      "target_title": "Improved recovery of ionic liquids from contaminated aqueous streams using aluminium-based salts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.8621,
+      "avg_rank_jaccard": 0.1587,
+      "avg_mean_abs_rank_shift": 6.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4792,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 581,
+          "comparison_cluster_size": 107
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 581,
+          "comparison_cluster_size": 460
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.8571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 581,
+          "comparison_cluster_size": 1628
+        }
+      }
+    },
+    {
+      "target_uid": "W2052973400",
+      "target_title": "On the solid, liquid and solution structural organization of imidazolium ionic liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.8407,
+      "avg_rank_jaccard": 0.1246,
+      "avg_mean_abs_rank_shift": 5.7222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6696,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 330,
+          "comparison_cluster_size": 1532
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 330,
+          "comparison_cluster_size": 173
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 330,
+          "comparison_cluster_size": 91
+        }
+      }
+    },
+    {
+      "target_uid": "W3022806127",
+      "target_title": "Carboxylation of α,β-Unsaturated Ketones by CO<sub>2</sub> Fixation through Photoelectro-chemistry",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7907,
+      "avg_rank_jaccard": 0.1468,
+      "avg_mean_abs_rank_shift": 5.5,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.7692,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2336,
+          "comparison_cluster_size": 445
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6696,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 2336,
+          "comparison_cluster_size": 60
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2336,
+          "comparison_cluster_size": 1520
+        }
+      }
+    },
+    {
+      "target_uid": "W2753987841",
+      "target_title": "General Synthesis of the Nitropyrrolin Family of Natural Products via Regioselective CO<sub>2</sub>-Mediated Alkyne Hydration",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7628,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 5.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5192,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 464,
+          "comparison_cluster_size": 760
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 464,
+          "comparison_cluster_size": 784
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5192,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 464,
+          "comparison_cluster_size": 439
+        }
+      }
+    },
+    {
+      "target_uid": "W3118655976",
+      "target_title": "Efficient nitrogen reduction to ammonia by fluorine vacancies with a multi-step promoting effect",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7628,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 5.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5192,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 127,
+          "comparison_cluster_size": 1532
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 127,
+          "comparison_cluster_size": 349
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5192,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 127,
+          "comparison_cluster_size": 1740
+        }
+      }
+    },
+    {
+      "target_uid": "W1966554660",
+      "target_title": "Transition Metal Catalyzed Reactions of Carbon Dioxide and Other Heterocumulenes",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7381,
+      "avg_rank_jaccard": 0.0953,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4821,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1239,
+          "comparison_cluster_size": 365
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1239,
+          "comparison_cluster_size": 324
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4821,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1239,
+          "comparison_cluster_size": 154
+        }
+      }
+    },
+    {
+      "target_uid": "W4301370137",
+      "target_title": "Multi-heterointerfaces for selective and efficient urea production",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7356,
+      "avg_rank_jaccard": 0.188,
+      "avg_mean_abs_rank_shift": 5.3889,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 461,
+          "comparison_cluster_size": 991
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 461,
+          "comparison_cluster_size": 2331
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 461,
+          "comparison_cluster_size": 1520
+        }
+      }
+    },
+    {
+      "target_uid": "W2112002317",
+      "target_title": "A single-site hydroxyapatite-bound zinc catalyst for highly efficient chemical fixation of carbon dioxide with epoxides",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7351,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 5.1111,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4776,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 770
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 1156
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4776,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 1425
+        }
+      }
+    },
+    {
+      "target_uid": "W4200626129",
+      "target_title": "Design of porous organic polymer catalysts for transformation of carbon dioxide",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7306,
+      "avg_rank_jaccard": 0.2,
+      "avg_mean_abs_rank_shift": 5.4444,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1421,
+          "comparison_cluster_size": 1413
+        },
+        "sum_minus_cc": {
+          "shift_score": 0.6917,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 0.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 1421,
+          "comparison_cluster_size": 265
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1421,
+          "comparison_cluster_size": 2799
+        }
+      }
+    },
+    {
+      "target_uid": "W2024779001",
+      "target_title": "RAFT Polymerization of<i>N</i>-Vinylimidazolium Salts and Synthesis of Thermoresponsive Ionic Liquid Block Copolymers",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7257,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 5.5833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4792,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 17
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 880
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 987
+        }
+      }
+    },
+    {
+      "target_uid": "W2038072233",
+      "target_title": "Criteria to Design Green Enzymatic Processes in Ionic Liquid/Supercritical Carbon Dioxide Systems",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7158,
+      "avg_rank_jaccard": 0.1175,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 202,
+          "comparison_cluster_size": 625
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6833,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 202,
+          "comparison_cluster_size": 59
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 202,
+          "comparison_cluster_size": 581
+        }
+      }
+    },
+    {
+      "target_uid": "W2274172752",
+      "target_title": "Activation of carbon dioxide by a terminal uranium–nitrogen bond in the gas-phase: a demonstration of the principle of microscopic reversibility",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7153,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 5.5,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 326,
+          "comparison_cluster_size": 2173
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 326,
+          "comparison_cluster_size": 286
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 326,
+          "comparison_cluster_size": 1103
+        }
+      }
+    },
+    {
+      "target_uid": "W3162642496",
+      "target_title": "Nitrate reduction to ammonium: from CuO defect engineering to waste NO<sub>x</sub>-to-NH<sub>3</sub>economic feasibility",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.709,
+      "avg_rank_jaccard": 0.1556,
+      "avg_mean_abs_rank_shift": 4.9167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 427
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 1302
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 33
+        }
+      }
+    },
+    {
+      "target_uid": "W1205690758",
+      "target_title": "Ni-Supported Pd Nanoparticles with Ca Promoter: A New Catalyst for Low-Temperature Ammonia Cracking",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7073,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 4.8889,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4359,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 812,
+          "comparison_cluster_size": 1616
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 812,
+          "comparison_cluster_size": 1720
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4359,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 812,
+          "comparison_cluster_size": 1899
+        }
+      }
+    },
+    {
+      "target_uid": "W1994438459",
+      "target_title": "Ionic liquids with metal chelate anions",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.7073,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 4.8889,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4359,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 34,
+          "comparison_cluster_size": 1059
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 34,
+          "comparison_cluster_size": 820
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4359,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 34,
+          "comparison_cluster_size": 196
+        }
+      }
+    },
+    {
+      "target_uid": "W2586394585",
+      "target_title": "A Viewpoint on Chemical Reductions of Carbon–Oxygen Bonds in Renewable Feedstocks Including CO<sub>2</sub> and Biomass",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6945,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 5.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 352,
+          "comparison_cluster_size": 470
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 352,
+          "comparison_cluster_size": 217
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 352,
+          "comparison_cluster_size": 477
+        }
+      }
+    },
+    {
+      "target_uid": "W2042746129",
+      "target_title": "Preparation and Characterization of New Room Temperature Ionic Liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6889,
+      "avg_rank_jaccard": 0.1722,
+      "avg_mean_abs_rank_shift": 4.8889,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4776,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 442
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 1041
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 921
+        }
+      }
+    },
+    {
+      "target_uid": "W2142433498",
+      "target_title": "Chemical fixation of carbon dioxide to styrene carbonate under supercritical conditions with DMF in the absence of any additional catalysts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6805,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 5.0555,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5609,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 213,
+          "comparison_cluster_size": 884
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 213,
+          "comparison_cluster_size": 1211
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6859,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 213,
+          "comparison_cluster_size": 17
+        }
+      }
+    },
+    {
+      "target_uid": "W2991135186",
+      "target_title": "Zn(<scp>ii</scp>)@TFP-DAQ COF: an efficient mesoporous catalyst for the synthesis of<i>N</i>-methylated amine and carbamate through chemical fixation of CO<sub>2</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6736,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 5.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2917,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 127
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 66
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4792,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 307
+        }
+      }
+    },
+    {
+      "target_uid": "W2060442727",
+      "target_title": "Carbon Paste Electrode Modified with Functionalized Nanoporous Silica Gel as a New Sensor for Determination of Silver Ion",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6712,
+      "avg_rank_jaccard": 0.1761,
+      "avg_mean_abs_rank_shift": 4.7778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 768,
+          "comparison_cluster_size": 75
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 768,
+          "comparison_cluster_size": 1720
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 768,
+          "comparison_cluster_size": 452
+        }
+      }
+    },
+    {
+      "target_uid": "W2467915023",
+      "target_title": "Chemoselective Synthesis of Carbamates using CO<sub>2</sub> as Carbon Source",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6642,
+      "avg_rank_jaccard": 0.1587,
+      "avg_mean_abs_rank_shift": 4.5833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 1348
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 599
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4821,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 921
+        }
+      }
+    },
+    {
+      "target_uid": "W3000476018",
+      "target_title": "Rare Earth Single-Atom Catalysts for Nitrogen and Carbon Dioxide Reduction",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6637,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 5.7333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 432,
+          "comparison_cluster_size": 481
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 432,
+          "comparison_cluster_size": 368
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 432,
+          "comparison_cluster_size": 581
+        }
+      }
+    },
+    {
+      "target_uid": "W1985041539",
+      "target_title": "CO2 Hydrogenation to Alcohols over Highly Dispersed Co/SiO2 Catalysts Derived from Acetate",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.647,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 5.6,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 1421,
+          "comparison_cluster_size": 1532
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1421,
+          "comparison_cluster_size": 639
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 1421,
+          "comparison_cluster_size": 1794
+        }
+      }
+    },
+    {
+      "target_uid": "W3088126537",
+      "target_title": "ZrB<sub>2</sub>as an earth-abundant metal diboride catalyst for electroreduction of dinitrogen to ammonia",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6436,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 5.25,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3854,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 285,
+          "comparison_cluster_size": 222
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 285,
+          "comparison_cluster_size": 1866
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 285,
+          "comparison_cluster_size": 1875
+        }
+      }
+    },
+    {
+      "target_uid": "W2963081565",
+      "target_title": "Co-Ni Cyanide Bi-Metal Catalysts: Copolymerization of Carbon Dioxide with Propylene Oxide and Chain Transfer Agents",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6349,
+      "avg_rank_jaccard": 0.188,
+      "avg_mean_abs_rank_shift": 4.5833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 365,
+          "comparison_cluster_size": 681
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3942,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 365,
+          "comparison_cluster_size": 945
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 365,
+          "comparison_cluster_size": 1207
+        }
+      }
+    },
+    {
+      "target_uid": "W2659984736",
+      "target_title": "Highly Efficient CO<sub>2</sub> Capture by Imidazolium Ionic Liquids through a Reduction in the Formation of the Carbene–CO<sub>2</sub> Complex",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6329,
+      "avg_rank_jaccard": 0.1587,
+      "avg_mean_abs_rank_shift": 4.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 1616
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3542,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 512
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 408
+        }
+      }
+    },
+    {
+      "target_uid": "W4379932898",
+      "target_title": "Laser-controlled tandem catalytic sites of CuNi alloys with ampere-level electrocatalytic nitrate-to-ammonia reduction activities for Zn–nitrate batteries",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.632,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 2116
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 1220
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 2799
+        }
+      }
+    },
+    {
+      "target_uid": "W2021514999",
+      "target_title": "Tunable thermomorphism and applications of ionic liquid analogues of Girard's reagents",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6319,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3229,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 698,
+          "comparison_cluster_size": 146
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 698,
+          "comparison_cluster_size": 309
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3229,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 698,
+          "comparison_cluster_size": 97
+        }
+      }
+    },
+    {
+      "target_uid": "W4391612791",
+      "target_title": "Application of Intermetallic Compounds as Catalysts for the Selective Hydrogenation of CO<sub>2</sub> to Methanol",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6318,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 1678
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 730
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6071,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1669,
+          "comparison_cluster_size": 2056
+        }
+      }
+    },
+    {
+      "target_uid": "W2765612543",
+      "target_title": "Cerium(III) Carbonate Formation from {CeCp*<sub>2</sub>H}<sub>2</sub> and Carbon Dioxide: Structure and Mechanistic Insights",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 5.4667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 330,
+          "comparison_cluster_size": 107
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 330,
+          "comparison_cluster_size": 140
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 330,
+          "comparison_cluster_size": 3045
+        }
+      }
+    },
+    {
+      "target_uid": "W2012804551",
+      "target_title": "Application of Poly(ethylene glycol)-based Aqueous Biphasic Systems as Reaction and Reactive Extraction Media",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6222,
+      "avg_rank_jaccard": 0.0445,
+      "avg_mean_abs_rank_shift": 3.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 1.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 817
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 1807
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 1.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 1355
+        }
+      }
+    },
+    {
+      "target_uid": "W2043931076",
+      "target_title": "A New Category of Liquid Salt--Liquid Ionic Phosphates (LIPs)",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6111,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2917,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 75
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 839
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2917,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 275
+        }
+      }
+    },
+    {
+      "target_uid": "W2604609627",
+      "target_title": "Heterogeneous Catalysis for Oxazolidinone Synthesis from Aziridines and CO2",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6053,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 5.2667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 22,
+          "comparison_cluster_size": 303
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 22,
+          "comparison_cluster_size": 599
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 22,
+          "comparison_cluster_size": 407
+        }
+      }
+    },
+    {
+      "target_uid": "W2326758683",
+      "target_title": "Surface Analysis of Ionic Liquids with and without Lithium Salt Using X-ray Photoelectron Spectroscopy",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.605,
+      "avg_rank_jaccard": 0.1991,
+      "avg_mean_abs_rank_shift": 4.4333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.0205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 1.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 1536
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 1035
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5446,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 3810
+        }
+      }
+    },
+    {
+      "target_uid": "W4205161486",
+      "target_title": "Charge transfer and polarisability in ionic liquids: a case study",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.6017,
+      "avg_rank_jaccard": 0.1587,
+      "avg_mean_abs_rank_shift": 4.0833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 1.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 181
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3229,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 631
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 1628
+        }
+      }
+    },
+    {
+      "target_uid": "W2310179563",
+      "target_title": "Cycloaddition of CO<sub>2</sub>to epoxides using di-nuclear transition metal complexes as catalysts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5999,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 4.9,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 548,
+          "comparison_cluster_size": 1348
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 548,
+          "comparison_cluster_size": 1436
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3542,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 548,
+          "comparison_cluster_size": 1875
+        }
+      }
+    },
+    {
+      "target_uid": "W2037953627",
+      "target_title": "Dicyanoaurate(i) salts with 1-alkyl-3-methylimidazolium: luminescent properties and room-temperature liquid forming",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.597,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 5.2,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 1907,
+          "comparison_cluster_size": 376
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1907,
+          "comparison_cluster_size": 277
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 1907,
+          "comparison_cluster_size": 448
+        }
+      }
+    },
+    {
+      "target_uid": "W4319736387",
+      "target_title": "Propane Dehydrogenation on Pt<sub><i>x</i></sub>Sn<sub><i>y</i></sub> (<i>x</i>, <i>y</i> ≤ 4) Clusters on Al<sub>2</sub>O<sub>3</sub>(110)",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.597,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 5.2,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 185,
+          "comparison_cluster_size": 1785
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 185,
+          "comparison_cluster_size": 25
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 185,
+          "comparison_cluster_size": 183
+        }
+      }
+    },
+    {
+      "target_uid": "W2024795243",
+      "target_title": "Chemical Absorption of Sulfur Dioxide in Room-Temperature Ionic Liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5903,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.5,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 768,
+          "comparison_cluster_size": 212
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 768,
+          "comparison_cluster_size": 1192
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 768,
+          "comparison_cluster_size": 167
+        }
+      }
+    },
+    {
+      "target_uid": "W2067783257",
+      "target_title": "The Catalytic Use of Onion-Like Carbon Materials for Styrene Synthesis by Oxidative Dehydrogenation of Ethylbenzene",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5903,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.5,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 1536
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 159
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2604,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 1425
+        }
+      }
+    },
+    {
+      "target_uid": "W2784258061",
+      "target_title": "Copolymerization of Epoxides and CO<sub>2</sub> by Cobalt(II) Oxaporphyrins with Mechanistic Explorations on Poly(Propylene Carbonate) Formation",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5846,
+      "avg_rank_jaccard": 0.1737,
+      "avg_mean_abs_rank_shift": 4.0667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 1.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 545,
+          "comparison_cluster_size": 1059
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.1955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 545,
+          "comparison_cluster_size": 608
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 545,
+          "comparison_cluster_size": 987
+        }
+      }
+    },
+    {
+      "target_uid": "W4400387238",
+      "target_title": "Ionic liquid fluoropolymer membranes for the separation of R-410A: Understanding the effect of ionic liquid on membrane characteristics and separation performance",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5828,
+      "avg_rank_jaccard": 0.2991,
+      "avg_mean_abs_rank_shift": 5.0556,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5729,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 5.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 491,
+          "comparison_cluster_size": 617
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5729,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 5.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 491,
+          "comparison_cluster_size": 130
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 491,
+          "comparison_cluster_size": 1628
+        }
+      }
+    },
+    {
+      "target_uid": "W2319365190",
+      "target_title": "Insights into the Synthesis and Properties of Deep Eutectic Solvents Based on Cholinium Chloride and Carboxylic Acids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5772,
+      "avg_rank_jaccard": 0.2769,
+      "avg_mean_abs_rank_shift": 4.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.9625,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 46,
+          "comparison_cluster_size": 2991
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5192,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 46,
+          "comparison_cluster_size": 1866
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 46,
+          "comparison_cluster_size": 407
+        }
+      }
+    },
+    {
+      "target_uid": "W2076209562",
+      "target_title": "Design and Characterization of Liquid Crystal−Graphite Composite Electrodes",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5763,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 4.2222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5609,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 163,
+          "comparison_cluster_size": 895
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6071,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 163,
+          "comparison_cluster_size": 722
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5609,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 163,
+          "comparison_cluster_size": 230
+        }
+      }
+    },
+    {
+      "target_uid": "W2788807110",
+      "target_title": "Toward nitrogen-fixing plants",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5763,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 4.2222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4776,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 2336,
+          "comparison_cluster_size": 1785
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2336,
+          "comparison_cluster_size": 241
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5192,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2336,
+          "comparison_cluster_size": 116
+        }
+      }
+    },
+    {
+      "target_uid": "W2283580175",
+      "target_title": "Efficient continuous synthesis of high purity deep eutectic solvents by twin screw extrusion",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5722,
+      "avg_rank_jaccard": 0.4,
+      "avg_mean_abs_rank_shift": 5.7778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2333,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 1785
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 220
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2333,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 1540
+        }
+      }
+    },
+    {
+      "target_uid": "W2147642403",
+      "target_title": "Palladium‐Catalyzed Carboxylation of Benzyl Chlorides with Atmospheric Carbon Dioxide in Combination with Manganese/Magnesium Chloride",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5704,
+      "avg_rank_jaccard": 0.1587,
+      "avg_mean_abs_rank_shift": 3.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1042,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 321,
+          "comparison_cluster_size": 331
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 321,
+          "comparison_cluster_size": 246
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 2.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 321,
+          "comparison_cluster_size": 1875
+        }
+      }
+    },
+    {
+      "target_uid": "W2887539139",
+      "target_title": "Stereocontrolled, Divergent, Al(lll)-Catalyzed Coupling of Chiral <i>N</i>-Aryl Epoxy Amines and CO<sub>2</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.57,
+      "avg_rank_jaccard": 0.1175,
+      "avg_mean_abs_rank_shift": 3.5,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4821,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 156,
+          "comparison_cluster_size": 96
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6833,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 156,
+          "comparison_cluster_size": 1510
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5446,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 156,
+          "comparison_cluster_size": 170
+        }
+      }
+    },
+    {
+      "target_uid": "W3007729030",
+      "target_title": "Cu(<scp>i</scp>) complex bearing a PNP-pincer-type phosphaalkene ligand with a bulky fused-ring Eind group: properties and applications to FLP-type bond activation and catalytic CO<sub>2</sub> reduction",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5695,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 739
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 14
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 101
+        }
+      }
+    },
+    {
+      "target_uid": "W2089948654",
+      "target_title": "Utilization of carbon dioxide in heterogeneous catalytic synthesis",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5688,
+      "avg_rank_jaccard": 0.2284,
+      "avg_mean_abs_rank_shift": 4.3778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3109,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 2.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 965
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 2331
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 1740
+        }
+      }
+    },
+    {
+      "target_uid": "W2068909679",
+      "target_title": "Ionic Liquids for Electrochemical Deposition: Prospects and Challenges",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5685,
+      "avg_rank_jaccard": 0.1468,
+      "avg_mean_abs_rank_shift": 3.7222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3526,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 2.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 1228,
+          "comparison_cluster_size": 2612
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.0583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 7.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1228,
+          "comparison_cluster_size": 1720
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1228,
+          "comparison_cluster_size": 448
+        }
+      }
+    },
+    {
+      "target_uid": "W2043312329",
+      "target_title": "Chloroalkylsulfonate ionic liquids by ring opening of sultones with organic chloride salts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5684,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 3.7778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 326,
+          "comparison_cluster_size": 936
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 326,
+          "comparison_cluster_size": 1866
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 326,
+          "comparison_cluster_size": 3045
+        }
+      }
+    },
+    {
+      "target_uid": "W2103207805",
+      "target_title": "Influence of chloride, water, and organic solvents on the physical properties of ionic liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5684,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 3.7778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 545,
+          "comparison_cluster_size": 53
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 545,
+          "comparison_cluster_size": 820
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 545,
+          "comparison_cluster_size": 370
+        }
+      }
+    },
+    {
+      "target_uid": "W2321129933",
+      "target_title": "Studies of Ring-Opening Reactions of Styrene Oxide by Chromium Tetraphenylporphyrin Initiators. Mechanistic and Stereochemical Considerations",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5684,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 3.7778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 21,
+          "comparison_cluster_size": 212
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 21,
+          "comparison_cluster_size": 388
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 21,
+          "comparison_cluster_size": 3810
+        }
+      }
+    },
+    {
+      "target_uid": "W2464344453",
+      "target_title": "Interaction between ionic liquid cation and water: infrared predissociation study of [bmim]<sup>+</sup>·(H<sub>2</sub>O)<sub>n</sub> clusters",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.568,
+      "avg_rank_jaccard": 0.2444,
+      "avg_mean_abs_rank_shift": 4.5,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 160
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 1866
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 1036,
+          "comparison_cluster_size": 982
+        }
+      }
+    },
+    {
+      "target_uid": "W1629033089",
+      "target_title": "Recent Advances in Constitutive Modeling of Polymer Melts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5637,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.9333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 721,
+          "comparison_cluster_size": 1616
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 721,
+          "comparison_cluster_size": 1247
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 721,
+          "comparison_cluster_size": 970
+        }
+      }
+    },
+    {
+      "target_uid": "W2063425427",
+      "target_title": "Flexible ring polymers in an obstacle environment: Molecular theory of linear viscoelasticity",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5624,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 4.1111,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4359,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 355,
+          "comparison_cluster_size": 45
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6071,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 355,
+          "comparison_cluster_size": 599
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 355,
+          "comparison_cluster_size": 767
+        }
+      }
+    },
+    {
+      "target_uid": "W3024169960",
+      "target_title": "Ring-Opening Copolymerizaton of Cyclohexene Oxide and Succinic Anhydride by Zinc and Magnesium Schiff-Base Complexes Containing Alkoxy Side Arms",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5616,
+      "avg_rank_jaccard": 0.2468,
+      "avg_mean_abs_rank_shift": 4.4667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 1008,
+          "comparison_cluster_size": 1885
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6696,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1008,
+          "comparison_cluster_size": 1174
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.7946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1008,
+          "comparison_cluster_size": 280
+        }
+      }
+    },
+    {
+      "target_uid": "W3006455595",
+      "target_title": "Electrolyte Engineering for Efficient Electrochemical Nitrate Reduction to Ammonia on a Titanium Electrode",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5582,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 4.5667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 127,
+          "comparison_cluster_size": 470
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 127,
+          "comparison_cluster_size": 46
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 127,
+          "comparison_cluster_size": 1740
+        }
+      }
+    },
+    {
+      "target_uid": "W4224466341",
+      "target_title": "Intramolecular synergistic catalysis for asymmetric alternating copolymerization of <scp>CO<sub>2</sub></scp> and <i>meso</i>‐epoxides",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5576,
+      "avg_rank_jaccard": 0.2444,
+      "avg_mean_abs_rank_shift": 4.4167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2917,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 597
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 1302
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 3045
+        }
+      }
+    },
+    {
+      "target_uid": "W2788213189",
+      "target_title": "Nitrogen fixation and reduction at boron",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.555,
+      "avg_rank_jaccard": 0.1991,
+      "avg_mean_abs_rank_shift": 4.0333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 506,
+          "comparison_cluster_size": 759
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.1205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 506,
+          "comparison_cluster_size": 1174
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 506,
+          "comparison_cluster_size": 1397
+        }
+      }
+    },
+    {
+      "target_uid": "W4285999682",
+      "target_title": "Facile Tailoring of the Electronic Structure and the d-Band Center of Copper-Doped Cobaltate for Efficient Nitrate Electrochemical Hydrogenation",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.554,
+      "avg_rank_jaccard": 0.2064,
+      "avg_mean_abs_rank_shift": 4.0833,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1979,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 94
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 272
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 66
+        }
+      }
+    },
+    {
+      "target_uid": "W2199395546",
+      "target_title": "Equilibrium Data and Physical Properties of Aqueous Two Phase Systems Formed by PEG (1500 and 4000) g·mol<sup>–1</sup> + Sodium Sulfate + Water at Different Temperatures and pH 2",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5535,
+      "avg_rank_jaccard": 0.3111,
+      "avg_mean_abs_rank_shift": 4.9167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.025,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 491,
+          "comparison_cluster_size": 454
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 491,
+          "comparison_cluster_size": 177
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3854,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 491,
+          "comparison_cluster_size": 45
+        }
+      }
+    },
+    {
+      "target_uid": "W2058255711",
+      "target_title": "Nanoscale Perturbations of Room Temperature Ionic Liquid Structure at Charged and Uncharged Interfaces",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5495,
+      "avg_rank_jaccard": 0.2769,
+      "avg_mean_abs_rank_shift": 4.6111,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.0042,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 2.8333,
+          "cluster_changed": true,
+          "reference_cluster_size": 269,
+          "comparison_cluster_size": 215
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3942,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 269,
+          "comparison_cluster_size": 820
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 269,
+          "comparison_cluster_size": 84
+        }
+      }
+    },
+    {
+      "target_uid": "W2148447332",
+      "target_title": "Lyotropic liquid crystalline phases formed in an ionic liquid",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5486,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1979,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 96,
+          "comparison_cluster_size": 2991
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 96,
+          "comparison_cluster_size": 527
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1979,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 96,
+          "comparison_cluster_size": 1103
+        }
+      }
+    },
+    {
+      "target_uid": "W2042946028",
+      "target_title": "Biodegradability of Ionic Liquids – Test Procedures and Structural Design",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5482,
+      "avg_rank_jaccard": 0.181,
+      "avg_mean_abs_rank_shift": 3.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6696,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 1991
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 503
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 419
+        }
+      }
+    },
+    {
+      "target_uid": "W2006827676",
+      "target_title": "Dual 1,3-dipolar cycloaddition of carbon dioxide: two CO bonds of CO2 react in one reaction",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5472,
+      "avg_rank_jaccard": 0.2444,
+      "avg_mean_abs_rank_shift": 4.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 717,
+          "comparison_cluster_size": 936
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 717,
+          "comparison_cluster_size": 1436
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 717,
+          "comparison_cluster_size": 1520
+        }
+      }
+    },
+    {
+      "target_uid": "W2038253529",
+      "target_title": "Platinum Dioxide Cation:  Easy to Generate Experimentally but Difficult to Describe Theoretically",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.547,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.8,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 1536
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 13
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 376
+        }
+      }
+    },
+    {
+      "target_uid": "W2040809991",
+      "target_title": "Unsymmetrical Tetradentate Schiff Bases Copper (II) Complex as Neutral Carrier for Thiocyanate‐Selective Electrode",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.547,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.8,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 1448,
+          "comparison_cluster_size": 2173
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1448,
+          "comparison_cluster_size": 876
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 1448,
+          "comparison_cluster_size": 3810
+        }
+      }
+    },
+    {
+      "target_uid": "W2148970161",
+      "target_title": "Ionic liquids: Solvation ability and polarity",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5459,
+      "avg_rank_jaccard": 0.2815,
+      "avg_mean_abs_rank_shift": 4.619,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.7044,
+          "rank_jaccard": 0.7778,
+          "mean_abs_rank_shift": 1.8571,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 1991
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6833,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 1605
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 229
+        }
+      }
+    },
+    {
+      "target_uid": "W4394794042",
+      "target_title": "Enabling Logistics Automation in Nanofactory: Cobalt Phosphide Embedded Metal–Organic Frameworks for Efficient Electrocatalytic Nitrate Reduction to Ammonia",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5436,
+      "avg_rank_jaccard": 0.2064,
+      "avg_mean_abs_rank_shift": 4.0,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1042,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1239,
+          "comparison_cluster_size": 1526
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1239,
+          "comparison_cluster_size": 1807
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6696,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1239,
+          "comparison_cluster_size": 1381
+        }
+      }
+    },
+    {
+      "target_uid": "W3105564267",
+      "target_title": "Dielectric study on mixtures of ionic liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5416,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 4.4333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 574,
+          "comparison_cluster_size": 35
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 574,
+          "comparison_cluster_size": 264
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 574,
+          "comparison_cluster_size": 196
+        }
+      }
+    },
+    {
+      "target_uid": "W3127855981",
+      "target_title": "Green Synthesis of 2-Oxazolidinones by an Efficient and Recyclable CuBr/Ionic Liquid System via CO&lt;sub&gt;2&lt;/sub&gt;, Propargylic Alcohols and 2-Aminoethanols",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5406,
+      "avg_rank_jaccard": 0.1539,
+      "avg_mean_abs_rank_shift": 3.5555,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1859,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 895
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 1436
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1859,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 42
+        }
+      }
+    },
+    {
+      "target_uid": "W2000771500",
+      "target_title": "Developing Innovative Synthetic Technologies of Industrial Relevance Based on Carbon Dioxide as Raw Material",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5402,
+      "avg_rank_jaccard": 0.2848,
+      "avg_mean_abs_rank_shift": 4.6,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2917,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 751,
+          "comparison_cluster_size": 357
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.0583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 7.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 751,
+          "comparison_cluster_size": 343
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 751,
+          "comparison_cluster_size": 66
+        }
+      }
+    },
+    {
+      "target_uid": "W1994511147",
+      "target_title": "Tubular microporous organic networks bearing imidazolium salts and their catalytic CO<sub>2</sub>conversion to cyclic carbonates",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 97,
+          "comparison_cluster_size": 1526
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 97,
+          "comparison_cluster_size": 1866
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 97,
+          "comparison_cluster_size": 2056
+        }
+      }
+    },
+    {
+      "target_uid": "W2315645811",
+      "target_title": "Ordered Structure in Room Temperature Molten Salts Containing Aliphatic Quaternary Ammonium Ions",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1185,
+          "comparison_cluster_size": 458
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1185,
+          "comparison_cluster_size": 108
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1185,
+          "comparison_cluster_size": 183
+        }
+      }
+    },
+    {
+      "target_uid": "W2328174681",
+      "target_title": "SO<sub>2</sub>Capture by Guanidinium-Based Ionic Liquids: A Theoretical Study",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 560,
+          "comparison_cluster_size": 331
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 560,
+          "comparison_cluster_size": 241
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 560,
+          "comparison_cluster_size": 289
+        }
+      }
+    },
+    {
+      "target_uid": "W2976899473",
+      "target_title": "Radical-Type Difunctionalization of Alkenes with CO<sub>2</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 133,
+          "comparison_cluster_size": 275
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 133,
+          "comparison_cluster_size": 599
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 133,
+          "comparison_cluster_size": 408
+        }
+      }
+    },
+    {
+      "target_uid": "W4285092658",
+      "target_title": "Boosted ammonium production by single cobalt atom catalysts with high Faradic efficiencies",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 269
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 297
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 2799
+        }
+      }
+    },
+    {
+      "target_uid": "W4382299710",
+      "target_title": "An Imidazol Based Novel Potentiometric PVC Membrane Sensor for Aluminium(III) Determination",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5303,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.6667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 698,
+          "comparison_cluster_size": 895
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 698,
+          "comparison_cluster_size": 722
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 698,
+          "comparison_cluster_size": 987
+        }
+      }
+    },
+    {
+      "target_uid": "W2763255186",
+      "target_title": "Environmental Engineering of Pd Nanoparticle Catalysts for Catalytic Hydrogenation of CO<sub>2</sub> and Bicarbonate",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5293,
+      "avg_rank_jaccard": 0.2103,
+      "avg_mean_abs_rank_shift": 3.9167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3854,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 160
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 1045
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 1425
+        }
+      }
+    },
+    {
+      "target_uid": "W4381597890",
+      "target_title": "Dual‐Site W‐O‐CoP Catalysts for Active and Selective Nitrate Conversion to Ammonia in a Broad Concentration Window",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5292,
+      "avg_rank_jaccard": 0.3111,
+      "avg_mean_abs_rank_shift": 4.7222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.7958,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 1.1667,
+          "cluster_changed": true,
+          "reference_cluster_size": 36,
+          "comparison_cluster_size": 1526
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 36,
+          "comparison_cluster_size": 273
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5417,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 36,
+          "comparison_cluster_size": 285
+        }
+      }
+    },
+    {
+      "target_uid": "W2170735980",
+      "target_title": "Densities and low pressure solubilities of carbon dioxide in five promising ionic liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5283,
+      "avg_rank_jaccard": 0.1175,
+      "avg_mean_abs_rank_shift": 3.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6071,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 762,
+          "comparison_cluster_size": 62
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 1.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 762,
+          "comparison_cluster_size": 1269
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6696,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 4.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 762,
+          "comparison_cluster_size": 216
+        }
+      }
+    },
+    {
+      "target_uid": "W2090414198",
+      "target_title": "Viscosities, Vapor Pressures, and Excess Enthalpies of Choline Lactate + Water, Choline Glycolate + Water, and Choline Methanesulfonate + Water Systems",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5278,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 4.0,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1667,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 105,
+          "comparison_cluster_size": 331
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 105,
+          "comparison_cluster_size": 761
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1667,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 105,
+          "comparison_cluster_size": 1007
+        }
+      }
+    },
+    {
+      "target_uid": "W2624800133",
+      "target_title": "Critical test of bead–spring model to resolve the scaling laws of polymer melts: a molecular dynamics study",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5264,
+      "avg_rank_jaccard": 0.2444,
+      "avg_mean_abs_rank_shift": 4.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3229,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 38,
+          "comparison_cluster_size": 41
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 38,
+          "comparison_cluster_size": 839
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3229,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 38,
+          "comparison_cluster_size": 198
+        }
+      }
+    },
+    {
+      "target_uid": "W2115482446",
+      "target_title": "Model for the Conductivity of Ionic Liquids Based on an Infinite Dilution of Holes",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5223,
+      "avg_rank_jaccard": 0.1722,
+      "avg_mean_abs_rank_shift": 3.5556,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4196,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 254,
+          "comparison_cluster_size": 706
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 254,
+          "comparison_cluster_size": 486
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3526,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 2.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 254,
+          "comparison_cluster_size": 300
+        }
+      }
+    },
+    {
+      "target_uid": "W4210846807",
+      "target_title": "Oxygen‐Functionalized Boron Nitride for the Oxidative Dehydrogenation of Propane – The Case for Supported Liquid Phase Catalysis",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5218,
+      "avg_rank_jaccard": 0.2698,
+      "avg_mean_abs_rank_shift": 4.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3854,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 799
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7321,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 880
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4479,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 1875
+        }
+      }
+    },
+    {
+      "target_uid": "W3117862516",
+      "target_title": "On the role of water in the hydrogen bond network in DESs: an <i>ab initio</i> molecular dynamics and quantum mechanical study on the urea–betaine system",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5208,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 3.7778,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 46,
+          "comparison_cluster_size": 242
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.1026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 0.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 46,
+          "comparison_cluster_size": 309
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.8571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 46,
+          "comparison_cluster_size": 271
+        }
+      }
+    },
+    {
+      "target_uid": "W2169049961",
+      "target_title": "An ultra high vacuum-spectroelectrochemical study of the dissolution of copper in the ionic liquid (N-methylacetate)-4-picolinium bis(trifluoromethylsulfonyl)imide",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5174,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 3.9167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1979,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 481,
+          "comparison_cluster_size": 269
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 481,
+          "comparison_cluster_size": 1507
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1042,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 481,
+          "comparison_cluster_size": 111
+        }
+      }
+    },
+    {
+      "target_uid": "W2109102162",
+      "target_title": "A new fragment contribution‐corresponding states method for physicochemical properties prediction of ionic liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5152,
+      "avg_rank_jaccard": 0.3515,
+      "avg_mean_abs_rank_shift": 4.9333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.025,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 923,
+          "comparison_cluster_size": 969
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.2705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 923,
+          "comparison_cluster_size": 277
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 923,
+          "comparison_cluster_size": 3810
+        }
+      }
+    },
+    {
+      "target_uid": "W2003476302",
+      "target_title": "Structure and Properties of <i>N</i>,<i>N</i>-Alkylene Bis(<i>N</i>′-Alkylimidazolium) Salts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5145,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 4.2167,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1979,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 1650,
+          "comparison_cluster_size": 568
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1650,
+          "comparison_cluster_size": 722
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.0955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.4,
+          "cluster_changed": true,
+          "reference_cluster_size": 1650,
+          "comparison_cluster_size": 262
+        }
+      }
+    },
+    {
+      "target_uid": "W2046173011",
+      "target_title": "Synthesis of an Amide‐Linked Diporphyrin Xanthene as a Neutral Carrier for a Lead(II)‐Sensitive Electrode",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 270,
+          "comparison_cluster_size": 1536
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 270,
+          "comparison_cluster_size": 1156
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 270,
+          "comparison_cluster_size": 19
+        }
+      }
+    },
+    {
+      "target_uid": "W2052938357",
+      "target_title": "On the dissolution of non-metallic solid elements (sulfur, selenium, tellurium and phosphorus) in ionic liquids",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 285,
+          "comparison_cluster_size": 490
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 285,
+          "comparison_cluster_size": 486
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 285,
+          "comparison_cluster_size": 452
+        }
+      }
+    },
+    {
+      "target_uid": "W2069904245",
+      "target_title": "Catalytic fluoride triggers dehydrative oxazolidinone synthesis from CO<sub>2</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 189,
+          "comparison_cluster_size": 2612
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 189,
+          "comparison_cluster_size": 941
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 189,
+          "comparison_cluster_size": 192
+        }
+      }
+    },
+    {
+      "target_uid": "W2108194501",
+      "target_title": "C-H-π Interactions in 1-n-Butyl-3-methylimidazolium Tetraphenylborate Molten Salt: Solid and Solution Structures",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 923,
+          "comparison_cluster_size": 1885
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 923,
+          "comparison_cluster_size": 1041
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 923,
+          "comparison_cluster_size": 280
+        }
+      }
+    },
+    {
+      "target_uid": "W2113860105",
+      "target_title": "New, highly acidic ionic liquid systems and their application in the carbonylation of tolueneElectronic supplementary information (ESI) available: experimental details. See http://www.rsc.org/suppdata/cc/b4/b403464c/",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 269,
+          "comparison_cluster_size": 203
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 269,
+          "comparison_cluster_size": 1302
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 269,
+          "comparison_cluster_size": 2056
+        }
+      }
+    },
+    {
+      "target_uid": "W2167252522",
+      "target_title": "The alternation effect in ionic liquid homologous series",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 86,
+          "comparison_cluster_size": 1536
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 86,
+          "comparison_cluster_size": 72
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 86,
+          "comparison_cluster_size": 828
+        }
+      }
+    },
+    {
+      "target_uid": "W2808294331",
+      "target_title": "Synthesis and Reactivity of Copper(I) Complexes Based on <i>C</i><sub>3</sub>‐Symmetric Tripodal HTIM(PR<sub>2</sub>)<sub>3</sub> Ligands",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5137,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.5333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 696
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 211
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 1024,
+          "comparison_cluster_size": 516
+        }
+      }
+    },
+    {
+      "target_uid": "W4293233314",
+      "target_title": "Recent Advances in the Catalytic Umpolung Carboxylation of Allylic Alcohol Derivatives with Carbon Dioxide",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5125,
+      "avg_rank_jaccard": 0.2445,
+      "avg_mean_abs_rank_shift": 4.0556,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 2.0583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 7.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 602,
+          "comparison_cluster_size": 203
+        },
+        "sum_minus_cc": {
+          "shift_score": 0.6708,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 0.1667,
+          "cluster_changed": true,
+          "reference_cluster_size": 602,
+          "comparison_cluster_size": 631
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.8083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 602,
+          "comparison_cluster_size": 1794
+        }
+      }
+    },
+    {
+      "target_uid": "W2790953549",
+      "target_title": "Development of Low-Cost Deep Eutectic Solvents for CO2 Capture",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5124,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 4.2,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.8705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 0.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 273
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.4167,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 121
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1418,
+          "comparison_cluster_size": 102
+        }
+      }
+    },
+    {
+      "target_uid": "W3045485212",
+      "target_title": "Molecular Dynamics Insights into the Nanoscale Structural Organization and Local Interaction of Aqueous Solutions of Ionic Liquid 1-Butyl-3-methylimidazolium Nitrate",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5109,
+      "avg_rank_jaccard": 0.2357,
+      "avg_mean_abs_rank_shift": 3.9722,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3854,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 110,
+          "comparison_cluster_size": 376
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.2276,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 110,
+          "comparison_cluster_size": 463
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.9196,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 6.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 110,
+          "comparison_cluster_size": 2799
+        }
+      }
+    },
+    {
+      "target_uid": "W3207203953",
+      "target_title": "Cobalt Catalysts Enable Selective Hydrogenation of CO<sub>2</sub> toward Diverse Products: Recent Progress and Perspective",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5082,
+      "avg_rank_jaccard": 0.2626,
+      "avg_mean_abs_rank_shift": 4.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.0455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 574,
+          "comparison_cluster_size": 991
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 574,
+          "comparison_cluster_size": 674
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 574,
+          "comparison_cluster_size": 1425
+        }
+      }
+    },
+    {
+      "target_uid": "W2024830713",
+      "target_title": "Influence of the ionic liquid/gas surface on ionic liquid chemistry",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5069,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 3.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1354,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 254,
+          "comparison_cluster_size": 26
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 254,
+          "comparison_cluster_size": 273
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1354,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 254,
+          "comparison_cluster_size": 15
+        }
+      }
+    },
+    {
+      "target_uid": "W2770959905",
+      "target_title": "Fluid Elasticity in Plastic Pipe Extrusion: Loads on Die Barrel",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5069,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 3.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1354,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1008,
+          "comparison_cluster_size": 56
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1008,
+          "comparison_cluster_size": 159
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1354,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 1008,
+          "comparison_cluster_size": 698
+        }
+      }
+    },
+    {
+      "target_uid": "W3108914496",
+      "target_title": "Highly effective and selective molecular nanowire catalysts for hydrogen and ammonia synthesis",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5069,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 3.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1354,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 375,
+          "comparison_cluster_size": 1272
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 375,
+          "comparison_cluster_size": 488
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1354,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.75,
+          "cluster_changed": true,
+          "reference_cluster_size": 375,
+          "comparison_cluster_size": 3810
+        }
+      }
+    },
+    {
+      "target_uid": "W4386952531",
+      "target_title": "Fe and Cu Double-Doped Co<sub>3</sub>O<sub>4</sub> Nanorod with Abundant Oxygen Vacancies: A High-Rate Electrocatalyst for Tandem Electroreduction of Nitrate to Ammonia",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5069,
+      "avg_rank_jaccard": 0.2222,
+      "avg_mean_abs_rank_shift": 3.8333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.8375,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 477
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 1247
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 2.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2117,
+          "comparison_cluster_size": 930
+        }
+      }
+    },
+    {
+      "target_uid": "W1984101145",
+      "target_title": "Galvanic deposition of Rh and Ru on randomly structured Ti felts for the electrochemical NH<sub>3</sub>synthesis",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.506,
+      "avg_rank_jaccard": 0.1468,
+      "avg_mean_abs_rank_shift": 3.2222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3526,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 2.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 123
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.6833,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 4.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 1866
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4821,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1848,
+          "comparison_cluster_size": 921
+        }
+      }
+    },
+    {
+      "target_uid": "W2621761134",
+      "target_title": "Reduction of carbon dioxide and organic carbonyls by hydrosilanes catalysed by the perrhenate anion",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5053,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.4667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 54,
+          "comparison_cluster_size": 454
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 54,
+          "comparison_cluster_size": 968
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 54,
+          "comparison_cluster_size": 553
+        }
+      }
+    },
+    {
+      "target_uid": "W2951758462",
+      "target_title": "Natural Amino Acid-Based Ionic Liquids as Efficient Catalysts for the Synthesis of Cyclic Carbonates from CO2 and Epoxides under Solvent- Free Conditions",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5053,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.4667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1455,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 559,
+          "comparison_cluster_size": 96
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 559,
+          "comparison_cluster_size": 400
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 559,
+          "comparison_cluster_size": 1397
+        }
+      }
+    },
+    {
+      "target_uid": "W2159369983",
+      "target_title": "Aggregation Influence of Polyethyleneglycol Organic Solvents with Ionic Liquids BMIBF<sub>4</sub> and BMIPF<sub>6</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5028,
+      "avg_rank_jaccard": 0.4,
+      "avg_mean_abs_rank_shift": 5.2222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1292,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.8333,
+          "cluster_changed": true,
+          "reference_cluster_size": 762,
+          "comparison_cluster_size": 572
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 762,
+          "comparison_cluster_size": 397
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1292,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.8333,
+          "cluster_changed": true,
+          "reference_cluster_size": 762,
+          "comparison_cluster_size": 188
+        }
+      }
+    },
+    {
+      "target_uid": "W4285494896",
+      "target_title": "Intrinsic Catalytic Activity of Carbon Nanotubes for Electrochemical Nitrate Reduction",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5028,
+      "avg_rank_jaccard": 0.4,
+      "avg_mean_abs_rank_shift": 5.2222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1292,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.8333,
+          "cluster_changed": true,
+          "reference_cluster_size": 23,
+          "comparison_cluster_size": 1194
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 23,
+          "comparison_cluster_size": 964
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1292,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.8333,
+          "cluster_changed": true,
+          "reference_cluster_size": 23,
+          "comparison_cluster_size": 231
+        }
+      }
+    },
+    {
+      "target_uid": "W4372403492",
+      "target_title": "High‐Throughput Screening of Heterogeneous Transition Metal Dual‐Atom Catalysts by Synergistic Effect for Nitrate Reduction to Ammonia",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.5009,
+      "avg_rank_jaccard": 0.2769,
+      "avg_mean_abs_rank_shift": 4.2222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.0667,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 3.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 828
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.1859,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 761
+        },
+        "sum_minus_emb": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3104,
+          "comparison_cluster_size": 1875
+        }
+      }
+    },
+    {
+      "target_uid": "W4391296871",
+      "target_title": "Fundamentals and Rational Design of Heterogeneous C‐N Coupling Electrocatalysts for Urea Synthesis at Ambient Conditions",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4994,
+      "avg_rank_jaccard": 0.2284,
+      "avg_mean_abs_rank_shift": 3.8222,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.8955,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 0.8,
+          "cluster_changed": true,
+          "reference_cluster_size": 213,
+          "comparison_cluster_size": 620
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 213,
+          "comparison_cluster_size": 75
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3526,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 2.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 213,
+          "comparison_cluster_size": 1794
+        }
+      }
+    },
+    {
+      "target_uid": "W2027666267",
+      "target_title": "Preparation of Catalytic Materials Using Ionic Liquids as the Media and Functional Components",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.499,
+      "avg_rank_jaccard": 0.1468,
+      "avg_mean_abs_rank_shift": 3.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.4196,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 375,
+          "comparison_cluster_size": 991
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.1442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 1.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 375,
+          "comparison_cluster_size": 1211
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 375,
+          "comparison_cluster_size": 19
+        }
+      }
+    },
+    {
+      "target_uid": "W2731330748",
+      "target_title": "Recent Progress in the Cyclization Reactions Using Carbon Dioxide",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.497,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.4,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 189,
+          "comparison_cluster_size": 1461
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 189,
+          "comparison_cluster_size": 998
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1205,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.6,
+          "cluster_changed": true,
+          "reference_cluster_size": 189,
+          "comparison_cluster_size": 1397
+        }
+      }
+    },
+    {
+      "target_uid": "W4290566930",
+      "target_title": "Hollow Cu<sub>2</sub>O@CoMn<sub>2</sub>O<sub>4</sub> Nanoreactors for Electrochemical NO Reduction to NH<sub>3</sub>: Elucidating the Void‐Confinement Effects on Intermediates",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.497,
+      "avg_rank_jaccard": 0.303,
+      "avg_mean_abs_rank_shift": 4.4,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.0705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 2.2,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 614
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 674
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.1705,
+          "rank_jaccard": 0.4545,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 487
+        }
+      }
+    },
+    {
+      "target_uid": "W2012971251",
+      "target_title": "Platinum Nanoparticles Supported on Ionic Liquid‐Modified Magnetic Nanoparticles: Selective Hydrogenation Catalysts",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4946,
+      "avg_rank_jaccard": 0.2103,
+      "avg_mean_abs_rank_shift": 3.6389,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3229,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 195,
+          "comparison_cluster_size": 804
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 195,
+          "comparison_cluster_size": 387
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 195,
+          "comparison_cluster_size": 62
+        }
+      }
+    },
+    {
+      "target_uid": "W2952205579",
+      "target_title": "Room‐Temperature Synthesis of Bismuth Clusters in Ionic Liquids and Crystal Growth of Bi<sub>5</sub>(AlCl<sub>4</sub>)<sub>3</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4946,
+      "avg_rank_jaccard": 0.2103,
+      "avg_mean_abs_rank_shift": 3.6389,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.1979,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 991
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.8083,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 748
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.4776,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 93
+        }
+      }
+    },
+    {
+      "target_uid": "W2009149960",
+      "target_title": "Insulator-metal Transition of an Alumina Cement Constituent, C12A7, Realized by Employing a Built-in Nanostructure: Fabrication of Highly Transparent Conductive Thin Films and Their Application to an Electron Injection Electrode in Organic Devices Utilizing the Low Work Function",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4945,
+      "avg_rank_jaccard": 0.1722,
+      "avg_mean_abs_rank_shift": 3.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5446,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1650,
+          "comparison_cluster_size": 218
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5446,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1650,
+          "comparison_cluster_size": 130
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3942,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1650,
+          "comparison_cluster_size": 2799
+        }
+      }
+    },
+    {
+      "target_uid": "W2912300834",
+      "target_title": "Dehydrogenation of Propane to Propylene Using Promoter-Free Hierarchical Pt/Silicalite-1 Nanosheets",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4939,
+      "avg_rank_jaccard": 0.2769,
+      "avg_mean_abs_rank_shift": 4.1667,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 0.8375,
+          "rank_jaccard": 0.6,
+          "mean_abs_rank_shift": 1.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 751,
+          "comparison_cluster_size": 1764
+        },
+        "sum_minus_cc": {
+          "shift_score": 2.25,
+          "rank_jaccard": 0.0,
+          "mean_abs_rank_shift": 8.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 751,
+          "comparison_cluster_size": 1174
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3942,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 751,
+          "comparison_cluster_size": 1381
+        }
+      }
+    },
+    {
+      "target_uid": "W2021268896",
+      "target_title": "(CrCl<sub>3</sub>)<sub>3</sub>@2[C<sub>4</sub>mim][OMe]—Molecular Cluster-Type Chromium(III) Chloride Stabilized in a Salt Matrix",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.493,
+      "avg_rank_jaccard": 0.2015,
+      "avg_mean_abs_rank_shift": 3.5555,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5609,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 39
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3571,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 2.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 1581
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5609,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 1271,
+          "comparison_cluster_size": 196
+        }
+      }
+    },
+    {
+      "target_uid": "W3046547768",
+      "target_title": "Fast CO2 hydrogenation to formic acid catalyzed by an Ir(PSiP) pincer hydride in a DMSO/water/ionic liquid solvent system",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4925,
+      "avg_rank_jaccard": 0.2991,
+      "avg_mean_abs_rank_shift": 4.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.5417,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 993,
+          "comparison_cluster_size": 530
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.3942,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 993,
+          "comparison_cluster_size": 1581
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5417,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 993,
+          "comparison_cluster_size": 11
+        }
+      }
+    },
+    {
+      "target_uid": "W3026673503",
+      "target_title": "Photoelectrochemical Nitrogen Reduction to Ammonia on Cupric and Cuprous Oxide Photocathodes",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4911,
+      "avg_rank_jaccard": 0.2103,
+      "avg_mean_abs_rank_shift": 3.6111,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.3542,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 3.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 97
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.5583,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 3.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 2328
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.5609,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 2096,
+          "comparison_cluster_size": 1866
+        }
+      }
+    },
+    {
+      "target_uid": "W3154334064",
+      "target_title": "A single-site iron catalyst with preoccupied active centers that achieves selective ammonia electrosynthesis from nitrate",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4911,
+      "avg_rank_jaccard": 0.2103,
+      "avg_mean_abs_rank_shift": 3.6111,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.2292,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 2.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1063,
+          "comparison_cluster_size": 667
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.9333,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 6.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 1063,
+          "comparison_cluster_size": 220
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.3109,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 2.3333,
+          "cluster_changed": true,
+          "reference_cluster_size": 1063,
+          "comparison_cluster_size": 302
+        }
+      }
+    },
+    {
+      "target_uid": "W3048132712",
+      "target_title": "Visible-Light-Driven Anti-Markovnikov Hydrocarboxylation of Acrylates and Styrenes with CO <sub>2</sub>",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.4906,
+      "avg_rank_jaccard": 0.1761,
+      "avg_mean_abs_rank_shift": 3.3333,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.6442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 884
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.1833,
+          "rank_jaccard": 0.0667,
+          "mean_abs_rank_shift": 0.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 1261
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6442,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 5.0,
+          "cluster_changed": true,
+          "reference_cluster_size": 3284,
+          "comparison_cluster_size": 198
+        }
+      }
+    },
+    {
+      "target_uid": "W3205332923",
+      "target_title": "Electrochemistry-Assisted Photoelectrochemical Reduction of Nitrogen to Ammonia",
+      "target_year": null,
+      "n_comparisons": 3,
+      "avg_shift_score": 1.49,
+      "avg_rank_jaccard": 0.2357,
+      "avg_mean_abs_rank_shift": 3.8056,
+      "cluster_changed_rate": 1.0,
+      "comparisons": {
+        "sum_all": {
+          "shift_score": 1.0729,
+          "rank_jaccard": 0.3333,
+          "mean_abs_rank_shift": 1.25,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 212
+        },
+        "sum_minus_cc": {
+          "shift_score": 1.7946,
+          "rank_jaccard": 0.1429,
+          "mean_abs_rank_shift": 5.5,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 1627
+        },
+        "sum_minus_emb": {
+          "shift_score": 1.6026,
+          "rank_jaccard": 0.2308,
+          "mean_abs_rank_shift": 4.6667,
+          "cluster_changed": true,
+          "reference_cluster_size": 1079,
+          "comparison_cluster_size": 15
+        }
+      }
+    }
+  ],
+  "comparison_stats": [
+    {
+      "label": "sum_all",
+      "n_eligible": 38145,
+      "n_candidates": 23520,
+      "reference_clusters": 584,
+      "comparison_clusters": 391
+    },
+    {
+      "label": "sum_minus_cc",
+      "n_eligible": 38145,
+      "n_candidates": 29064,
+      "reference_clusters": 584,
+      "comparison_clusters": 377
+    },
+    {
+      "label": "sum_minus_emb",
+      "n_eligible": 38145,
+      "n_candidates": 37647,
+      "reference_clusters": 584,
+      "comparison_clusters": 1007
+    }
+  ],
+  "configs": [
+    {
+      "label": "consensus_all",
+      "strategy": "consensus",
+      "include": null,
+      "exclude": null,
+      "gamma_override": null,
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ]
+    },
+    {
+      "label": "sum_all",
+      "strategy": "sum",
+      "include": null,
+      "exclude": null,
+      "gamma_override": null,
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ]
+    },
+    {
+      "label": "sum_minus_cc",
+      "strategy": "sum",
+      "include": null,
+      "exclude": [
+        "cc_cosine"
+      ],
+      "gamma_override": null,
+      "layers": [
+        "bc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ]
+    },
+    {
+      "label": "sum_minus_emb",
+      "strategy": "sum",
+      "include": null,
+      "exclude": [
+        "emb_knn"
+      ],
+      "gamma_override": null,
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional"
+      ]
+    }
+  ],
+  "gamma_cache": "research/consensus/results/gamma_cache/field_15_gamma_cache.json"
+}

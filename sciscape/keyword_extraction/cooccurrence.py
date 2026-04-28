@@ -13,6 +13,12 @@ import numpy as np
 from scipy import sparse as sp
 from sklearn.feature_extraction.text import CountVectorizer
 
+try:
+    import sciscape_text as _rust_text
+    _RUST_TEXT_AVAILABLE = True
+except ImportError:
+    _RUST_TEXT_AVAILABLE = False
+
 
 def collect_cooccurrence(
     texts_iter: Iterator[List[str]],
@@ -79,8 +85,8 @@ def collect_cooccurrence(
             dtype=np.int32,
         )
 
-    # Accumulate co-occurrence counts
-    cooc = sp.lil_matrix((n, n), dtype=np.int64)
+    # Collect per-document term indices across all batches
+    all_doc_indices: List[List[int]] = []
 
     for batch_texts in texts_iter:
         if not batch_texts:
@@ -105,19 +111,38 @@ def collect_cooccurrence(
                     term_to_idx[phrase_terms[j]] for j in row.indices
                 )
 
-        # For each document, count co-occurrences between present terms
-        for indices in present_indices_per_doc:
-            if len(indices) < 2:
-                continue
-            for i_pos in range(len(indices)):
-                for j_pos in range(i_pos + 1, len(indices)):
-                    ti, tj = indices[i_pos], indices[j_pos]
-                    cooc[ti, tj] += 1
-                    cooc[tj, ti] += 1
+        all_doc_indices.extend(present_indices_per_doc)
+
+    # ── Accumulate co-occurrence pairs ──
+    if _RUST_TEXT_AVAILABLE:
+        # Rust fast path: parallel COO accumulation
+        doc_indices_u32 = [
+            [np.uint32(x) for x in indices]
+            for indices in all_doc_indices
+            if len(indices) >= 2
+        ]
+        rows, cols, vals, _ = _rust_text.rust_collect_cooccurrence(
+            doc_indices_u32, n, min_cooc_count,
+        )
+        if len(rows) == 0:
+            return sp.csr_matrix((n, n), dtype=np.int64)
+        return sp.csr_matrix(
+            (np.asarray(vals), (np.asarray(rows), np.asarray(cols))),
+            shape=(n, n),
+        )
+
+    # Python fallback
+    cooc = sp.lil_matrix((n, n), dtype=np.int64)
+    for indices in all_doc_indices:
+        if len(indices) < 2:
+            continue
+        for i_pos in range(len(indices)):
+            for j_pos in range(i_pos + 1, len(indices)):
+                ti, tj = indices[i_pos], indices[j_pos]
+                cooc[ti, tj] += 1
+                cooc[tj, ti] += 1
 
     result = cooc.tocsr()
-
-    # Apply minimum count filter
     if min_cooc_count > 1:
         result.data[result.data < min_cooc_count] = 0
         result.eliminate_zeros()

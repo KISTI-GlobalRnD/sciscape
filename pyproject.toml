@@ -4,12 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sciscape"
-version = "0.1.0"
-description = "SciScape: Leiden clustering + keyword extraction toolkit."
-readme = "sciscape/README.md"
+version = "0.2.0"
+description = "SciScape: Leiden clustering + keyword extraction for scientific paper networks."
+readme = {file = "sciscape/README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 license = "LicenseRef-KRISS-Internal"
 authors = [{ name = "KRISS" }]
+keywords = ["leiden", "clustering", "network-analysis", "keyword-extraction", "bibliometrics", "openalex"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
   "igraph>=1.0.0",
   "leidenalg>=0.11.0",
@@ -19,13 +30,18 @@ dependencies = [
   "scipy>=1.10",
   "scikit-learn>=1.2",
   "joblib>=1.2",
+  "pyarrow>=12",
 ]
 
 [project.optional-dependencies]
-arrow = ["pyarrow>=12"]
 llm = ["openai>=1.0"]
 mysql = ["pymysql>=1.0"]
 viz = ["plotly>=5.0"]
+largescale = ["sparse_dot_topn>=1.1"]
+openalex = ["requests>=2.28"]
+web = ["fastapi>=0.100", "uvicorn>=0.20", "requests>=2.28"]
+java = []  # No Python deps; requires JDK>=11 + CWTS networkanalysis JAR on PATH
+rust = []  # install via: pip install ./rust ./rust-text .
 dev = ["pytest>=8", "build>=1.2"]
 
 [project.scripts]
@@ -33,6 +49,10 @@ sciscape = "sciscape.cli:main"
 
 [tool.setuptools]
 include-package-data = false
+
+[tool.setuptools.package-data]
+"sciscape.keyword_extraction.visualization" = ["*.html"]
+"sciscape.web" = ["static/*"]
 
 [tool.setuptools.packages.find]
 include = ["sciscape*", "sos*"]

@@ -1,0 +1,454 @@
+{
+  "rows": [
+    {
+      "field": "field_15",
+      "top_k": 6,
+      "slice": "field_15 k=6",
+      "ablated_label": "sum_minus_emb",
+      "sum_all": {
+        "method": "sum_all",
+        "label": "bc_cosine+cc_cosine+dc_fractional+emb_knn",
+        "layers": [
+          "bc_cosine",
+          "cc_cosine",
+          "dc_fractional",
+          "emb_knn"
+        ],
+        "n_layers": 4,
+        "strategy": "sum",
+        "top_k": 6,
+        "layer_top_k": {
+          "bc_cosine": 6,
+          "cc_cosine": 6,
+          "dc_fractional": 6,
+          "emb_knn": 6
+        },
+        "min_size": 10,
+        "n_edges": 1344540,
+        "gamma": 0.000285494207576822,
+        "n_clusters": 3358,
+        "max_pct": 1.84,
+        "top5": [
+          2117,
+          2022,
+          1821,
+          1606,
+          1576
+        ],
+        "ami_mean": 0.8004269107793188,
+        "ami_std": 0.007409852202702544,
+        "ari_mean": 0.5475460400097429,
+        "ari_std": 0.02584192609307144,
+        "singleton_pct": 0.4,
+        "consensus_edges": {
+          "4": 0.4,
+          "3": 2.4,
+          "2": 8.8,
+          "1": 88.5
+        }
+      },
+      "ablated": {
+        "method": "sum_minus_emb",
+        "label": "bc_cosine+cc_cosine+dc_fractional",
+        "layers": [
+          "bc_cosine",
+          "cc_cosine",
+          "dc_fractional"
+        ],
+        "n_layers": 3,
+        "strategy": "sum",
+        "top_k": 6,
+        "layer_top_k": {
+          "bc_cosine": 6,
+          "cc_cosine": 6,
+          "dc_fractional": 6
+        },
+        "min_size": 10,
+        "n_edges": 866866,
+        "gamma": 8.441308158271217e-07,
+        "n_clusters": 9123,
+        "max_pct": 1.12,
+        "top5": [
+          1289,
+          1287,
+          1108,
+          844,
+          726
+        ],
+        "ami_mean": 0.8567794650365501,
+        "ami_std": 0.002610835368613357,
+        "ari_mean": 0.6485527189092267,
+        "ari_std": 0.021871197973212384,
+        "singleton_pct": 0.0,
+        "consensus_edges": {
+          "3": 1.1,
+          "1": 89.1,
+          "2": 9.8
+        }
+      },
+      "consensus_all": {
+        "method": "consensus_all",
+        "label": "bc_cosine+cc_cosine+dc_fractional+emb_knn",
+        "layers": [
+          "bc_cosine",
+          "cc_cosine",
+          "dc_fractional",
+          "emb_knn"
+        ],
+        "n_layers": 4,
+        "strategy": "consensus",
+        "top_k": 6,
+        "layer_top_k": {
+          "bc_cosine": 6,
+          "cc_cosine": 6,
+          "dc_fractional": 6,
+          "emb_knn": 6
+        },
+        "min_size": 10,
+        "n_edges": 1344540,
+        "gamma": 0.0002846448567410888,
+        "n_clusters": 8042,
+        "max_pct": 2.14,
+        "top5": [
+          2471,
+          2397,
+          2379,
+          2232,
+          2210
+        ],
+        "ami_mean": 0.7976343274104353,
+        "ami_std": 0.0070066190449698425,
+        "ari_mean": 0.5265464471217025,
+        "ari_std": 0.03464176860667151,
+        "singleton_pct": 0.2,
+        "consensus_edges": {
+          "1": 88.5,
+          "3": 2.4,
+          "2": 8.8,
+          "4": 0.4
+        }
+      },
+      "sum_vs_ablated_review": {
+        "review_json": "research/consensus/results/ablation_compare_field15/field_15_k06_sum_vs_sum_minus_emb_local_v1_rank_shift_review.json",
+        "field": "field_15_k06_sum_vs_sum_minus_emb_local_v1",
+        "top_k": 6,
+        "label_a": "sum_all",
+        "label_b": "sum_minus_emb",
+        "summary": {
+          "n_reviewed_cases": 16,
+          "comparison": {
+            "method_a": "sum_all",
+            "method_b": "sum_minus_emb",
+            "method_a_wins": 12,
+            "method_b_wins": 4,
+            "ties_or_invalid": 0,
+            "method_a_win_rate": 0.75,
+            "method_b_win_rate": 0.25,
+            "method_a_win_rate_no_ties": 0.75,
+            "method_b_win_rate_no_ties": 0.25,
+            "score_a_mean": 4.4375,
+            "score_b_mean": 3.625,
+            "score_gap_mean": 0.8125
+          },
+          "sample_stats": {
+            "shift_score_mean": 1.2082,
+            "rank_jaccard_mean": 0.4092,
+            "mean_abs_rank_shift_mean": 2.939,
+            "cluster_changed_rate": 1.0
+          }
+        }
+      },
+      "sum_vs_consensus_review": {
+        "review_json": "research/consensus/results/local_review_field15/field_15_k06_sum_vs_consensus_local_v2_rank_shift_review.json",
+        "field": "field_15_k06_sum_vs_consensus_local_v2",
+        "top_k": 6,
+        "label_a": "sum",
+        "label_b": "consensus",
+        "summary": {
+          "n_reviewed_cases": 24,
+          "comparison": {
+            "method_a": "sum",
+            "method_b": "consensus",
+            "method_a_wins": 9,
+            "method_b_wins": 15,
+            "ties_or_invalid": 0,
+            "method_a_win_rate": 0.375,
+            "method_b_win_rate": 0.625,
+            "method_a_win_rate_no_ties": 0.375,
+            "method_b_win_rate_no_ties": 0.625,
+            "score_a_mean": 3.9167,
+            "score_b_mean": 4.125,
+            "score_gap_mean": -0.2083
+          },
+          "sample_stats": {
+            "shift_score_mean": 0.681,
+            "rank_jaccard_mean": 0.7037,
+            "mean_abs_rank_shift_mean": 1.0774,
+            "cluster_changed_rate": 1.0
+          }
+        }
+      },
+      "ablated_vs_consensus_review": {
+        "review_json": "research/consensus/results/case_banks/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_rank_shift_review.json",
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "label_a": "sum_minus_emb",
+        "label_b": "consensus_all",
+        "summary": {
+          "n_reviewed_cases": 48,
+          "comparison": {
+            "method_a": "sum_minus_emb",
+            "method_b": "consensus_all",
+            "method_a_wins": 19,
+            "method_b_wins": 29,
+            "ties_or_invalid": 0,
+            "method_a_win_rate": 0.3958,
+            "method_b_win_rate": 0.6042,
+            "method_a_win_rate_no_ties": 0.3958,
+            "method_b_win_rate_no_ties": 0.6042,
+            "score_a_mean": 3.7917,
+            "score_b_mean": 4.0625,
+            "score_gap_mean": -0.2708
+          },
+          "sample_stats": {
+            "shift_score_mean": 1.2277,
+            "rank_jaccard_mean": 0.4025,
+            "mean_abs_rank_shift_mean": 3.041,
+            "cluster_changed_rate": 1.0
+          }
+        }
+      },
+      "sum_all_structure": "3358 / 1.84",
+      "ablated_structure": "9123 / 1.12",
+      "consensus_structure": "8042 / 2.14",
+      "sum_vs_ablated": "12:4",
+      "sum_vs_consensus": "9:15",
+      "ablated_vs_consensus": "19:29"
+    },
+    {
+      "field": "field_15",
+      "top_k": 30,
+      "slice": "field_15 k=30",
+      "ablated_label": "sum_minus_cc",
+      "sum_all": {
+        "method": "sum_all",
+        "label": "bc_cosine+cc_cosine+dc_fractional+emb_knn",
+        "layers": [
+          "bc_cosine",
+          "cc_cosine",
+          "dc_fractional",
+          "emb_knn"
+        ],
+        "n_layers": 4,
+        "strategy": "sum",
+        "top_k": 30,
+        "layer_top_k": {
+          "bc_cosine": 30,
+          "cc_cosine": 30,
+          "dc_fractional": 30,
+          "emb_knn": 30
+        },
+        "min_size": 10,
+        "n_edges": 4984706,
+        "gamma": 0.0011834844033785765,
+        "n_clusters": 523,
+        "max_pct": 2.57,
+        "top5": [
+          2965,
+          2696,
+          2482,
+          2136,
+          2071
+        ],
+        "ami_mean": 0.8773210526391624,
+        "ami_std": 0.003570740421390549,
+        "ari_mean": 0.6943767885508784,
+        "ari_std": 0.014502380186731258,
+        "singleton_pct": 18.4,
+        "consensus_edges": {
+          "1": 88.4,
+          "4": 0.5,
+          "2": 8.7,
+          "3": 2.3
+        }
+      },
+      "ablated": {
+        "method": "sum_minus_cc",
+        "label": "bc_cosine+dc_fractional+emb_knn",
+        "layers": [
+          "bc_cosine",
+          "dc_fractional",
+          "emb_knn"
+        ],
+        "n_layers": 3,
+        "strategy": "sum",
+        "top_k": 30,
+        "layer_top_k": {
+          "bc_cosine": 30,
+          "dc_fractional": 30,
+          "emb_knn": 30
+        },
+        "min_size": 10,
+        "n_edges": 4681364,
+        "gamma": 0.001929709892996202,
+        "n_clusters": 510,
+        "max_pct": 2.4,
+        "top5": [
+          2772,
+          2573,
+          1919,
+          1830,
+          1782
+        ],
+        "ami_mean": 0.8819708285685494,
+        "ami_std": 0.0030528778989375874,
+        "ari_mean": 0.715142132912219,
+        "ari_std": 0.011894008587650745,
+        "singleton_pct": 23.3,
+        "consensus_edges": {
+          "2": 7.9,
+          "3": 1.7,
+          "1": 90.4
+        }
+      },
+      "consensus_all": {
+        "method": "consensus_all",
+        "label": "bc_cosine+cc_cosine+dc_fractional+emb_knn",
+        "layers": [
+          "bc_cosine",
+          "cc_cosine",
+          "dc_fractional",
+          "emb_knn"
+        ],
+        "n_layers": 4,
+        "strategy": "consensus",
+        "top_k": 30,
+        "layer_top_k": {
+          "bc_cosine": 30,
+          "cc_cosine": 30,
+          "dc_fractional": 30,
+          "emb_knn": 30
+        },
+        "min_size": 10,
+        "n_edges": 4984706,
+        "gamma": 0.0008088005947128995,
+        "n_clusters": 969,
+        "max_pct": 2.33,
+        "top5": [
+          2686,
+          2525,
+          2425,
+          2374,
+          2070
+        ],
+        "ami_mean": 0.8713470517922115,
+        "ami_std": 0.007138640727810079,
+        "ari_mean": 0.6896433844544685,
+        "ari_std": 0.029711624998497468,
+        "singleton_pct": 6.8,
+        "consensus_edges": {
+          "1": 88.4,
+          "2": 8.7,
+          "3": 2.3,
+          "4": 0.5
+        }
+      },
+      "sum_vs_ablated_review": {
+        "review_json": "research/consensus/results/ablation_compare_field15/field_15_k30_sum_vs_sum_minus_cc_local_v1_rank_shift_review.json",
+        "field": "field_15_k30_sum_vs_sum_minus_cc_local_v1",
+        "top_k": 30,
+        "label_a": "sum_all",
+        "label_b": "sum_minus_cc",
+        "summary": {
+          "n_reviewed_cases": 16,
+          "comparison": {
+            "method_a": "sum_all",
+            "method_b": "sum_minus_cc",
+            "method_a_wins": 7,
+            "method_b_wins": 9,
+            "ties_or_invalid": 0,
+            "method_a_win_rate": 0.4375,
+            "method_b_win_rate": 0.5625,
+            "method_a_win_rate_no_ties": 0.4375,
+            "method_b_win_rate_no_ties": 0.5625,
+            "score_a_mean": 3.75,
+            "score_b_mean": 4.3125,
+            "score_gap_mean": -0.5625
+          },
+          "sample_stats": {
+            "shift_score_mean": 1.1299,
+            "rank_jaccard_mean": 0.4487,
+            "mean_abs_rank_shift_mean": 2.6286,
+            "cluster_changed_rate": 1.0
+          }
+        }
+      },
+      "sum_vs_consensus_review": {
+        "review_json": "research/consensus/results/local_review_field15/field_15_k30_sum_vs_consensus_local_v2_rank_shift_review.json",
+        "field": "field_15_k30_sum_vs_consensus_local_v2",
+        "top_k": 30,
+        "label_a": "sum",
+        "label_b": "consensus",
+        "summary": {
+          "n_reviewed_cases": 24,
+          "comparison": {
+            "method_a": "sum",
+            "method_b": "consensus",
+            "method_a_wins": 10,
+            "method_b_wins": 14,
+            "ties_or_invalid": 0,
+            "method_a_win_rate": 0.4167,
+            "method_b_win_rate": 0.5833,
+            "method_a_win_rate_no_ties": 0.4167,
+            "method_b_win_rate_no_ties": 0.5833,
+            "score_a_mean": 4.1667,
+            "score_b_mean": 4.4583,
+            "score_gap_mean": -0.2917
+          },
+          "sample_stats": {
+            "shift_score_mean": 0.8229,
+            "rank_jaccard_mean": 0.5882,
+            "mean_abs_rank_shift_mean": 1.2887,
+            "cluster_changed_rate": 1.0
+          }
+        }
+      },
+      "ablated_vs_consensus_review": {
+        "review_json": "research/consensus/results/case_banks/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_rank_shift_review.json",
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "label_a": "sum_minus_cc",
+        "label_b": "consensus_all",
+        "summary": {
+          "n_reviewed_cases": 48,
+          "comparison": {
+            "method_a": "sum_minus_cc",
+            "method_b": "consensus_all",
+            "method_a_wins": 13,
+            "method_b_wins": 35,
+            "ties_or_invalid": 0,
+            "method_a_win_rate": 0.2708,
+            "method_b_win_rate": 0.7292,
+            "method_a_win_rate_no_ties": 0.2708,
+            "method_b_win_rate_no_ties": 0.7292,
+            "score_a_mean": 2.8333,
+            "score_b_mean": 4.3333,
+            "score_gap_mean": -1.5
+          },
+          "sample_stats": {
+            "shift_score_mean": 1.9658,
+            "rank_jaccard_mean": 0.0966,
+            "mean_abs_rank_shift_mean": 6.499,
+            "cluster_changed_rate": 1.0
+          }
+        }
+      },
+      "sum_all_structure": "523 / 2.57",
+      "ablated_structure": "510 / 2.40",
+      "consensus_structure": "969 / 2.33",
+      "sum_vs_ablated": "7:9",
+      "sum_vs_consensus": "10:14",
+      "ablated_vs_consensus": "13:35"
+    }
+  ]
+}

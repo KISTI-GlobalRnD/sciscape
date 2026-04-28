@@ -10,7 +10,7 @@ import math
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import logging
 from datetime import datetime, timezone
@@ -326,10 +326,17 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             C_phrase = None
             DF_phrase = None
 
+        # Build numpy lookup array for cluster_id → index (avoids per-row dict lookup)
+        _ci = self.cluster_index
+        _max_cid = max(_ci.keys()) if _ci else 0
+        _cid_to_idx = np.full(_max_cid + 1, -1, dtype=np.int32)
+        for _cid, _idx in _ci.items():
+            _cid_to_idx[_cid] = _idx
+
         for batch in self._data.batch_iter():
             texts = batch["text"].tolist()
             clusters = batch["cluster_id"].astype(int).to_numpy()
-            codes = np.array([self.cluster_index[int(cid)] for cid in clusters], dtype=np.int32)
+            codes = _cid_to_idx[clusters]
 
             X_uni = self.vec_uni.transform(texts)
             C_uni = C_uni + _group_sum_by_cluster(X_uni, codes, K)
@@ -530,19 +537,27 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         if self.config.cross_cluster_penalty_enabled and DF_all is not None:
             cluster_freq = np.asarray((DF_all > 0).astype(bool).sum(axis=0)).ravel()
 
+        # Pre-extract CSR internals for direct indptr access (avoids getrow() overhead)
+        sc_indptr, sc_indices, sc_data = scores.indptr, scores.indices, scores.data
+        ca_indptr, ca_indices, ca_data = C_all.indptr, C_all.indices, C_all.data
+        df_indptr, df_indices, df_data = (
+            (DF_all.indptr, DF_all.indices, DF_all.data) if DF_all is not None
+            else (None, None, None)
+        )
+
         def extract_row(r: int) -> List[Tuple[int, str, float, int, int]]:
-            row = scores.getrow(r)
-            if row.nnz == 0:
+            s0, s1 = sc_indptr[r], sc_indptr[r + 1]
+            if s0 == s1:
                 return []
             cluster_id = int(self.cluster_ids[r])
             cluster_docs = int(cluster_doc_counts[r]) if cluster_doc_counts is not None else None
-            top_terms = _argpartition_topk(row.data, row.indices, pool_size)
-            counts_row = C_all.getrow(r)
-            freq_map = {j: int(v) for j, v in zip(counts_row.indices, counts_row.data)}
+            top_terms = _argpartition_topk(sc_data[s0:s1], sc_indices[s0:s1], pool_size)
+            c0, c1 = ca_indptr[r], ca_indptr[r + 1]
+            freq_map = {j: int(v) for j, v in zip(ca_indices[c0:c1], ca_data[c0:c1])}
             doc_cov_map: Dict[int, int] = {}
-            if DF_all is not None:
-                df_row = DF_all.getrow(r)
-                doc_cov_map = {j: int(v) for j, v in zip(df_row.indices, df_row.data)}
+            if df_indptr is not None:
+                d0, d1 = df_indptr[r], df_indptr[r + 1]
+                doc_cov_map = {j: int(v) for j, v in zip(df_indices[d0:d1], df_data[d0:d1])}
 
             terms: List[str] = []
             term_vocab_indices: List[int] = []  # original vocab index for P6
@@ -632,7 +647,8 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
 
             # Fragment suppression: remove truncated n-gram boundary artifacts
             if self.config.fragment_suppression_enabled:
-                cluster_freq_vec = np.asarray(counts_row.todense()).ravel()
+                cluster_freq_vec = np.zeros(C_all.shape[1], dtype=ca_data.dtype)
+                cluster_freq_vec[ca_indices[c0:c1]] = ca_data[c0:c1]
                 fragments = _detect_boundary_fragments(
                     scored_terms,
                     feature_names,
@@ -923,10 +939,10 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         term_year = self._compute_year_series(top_df)
         if not top_df.empty:
             top_df = top_df.assign(
-                pub_year_series=[
-                    dict(term_year.get(int(row.cluster_id), {}).get(str(row.term), {}))
-                    for row in top_df.itertuples(index=False)
-                ]
+                pub_year_series=top_df.apply(
+                    lambda r: dict(term_year.get(int(r["cluster_id"]), {}).get(str(r["term"]), {})),
+                    axis=1,
+                )
             )
         else:
             top_df = top_df.assign(pub_year_series=[])
@@ -1142,23 +1158,27 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
 
         term_to_idx = {t: i for i, t in enumerate(selected_terms)}
         cooc = self.cooc_matrix
+        # Pre-extract CSR internals for direct indptr access
+        co_indptr, co_indices, co_data = cooc.indptr, cooc.indices, cooc.data
 
         top_df = top_df.copy()
         expansions: Dict[str, str] = {}
 
-        for _, row in top_df.iterrows():
-            term = row["term"]
+        for row in top_df.itertuples(index=False):
+            term = row.term
             if len(term) > max_len or " " in term:
                 continue
             tidx = term_to_idx.get(term)
             if tidx is None:
                 continue
 
-            # Get cooccurrence partners sorted by strength
-            cooc_row = cooc.getrow(tidx)
-            if cooc_row.nnz == 0:
+            # Get cooccurrence partners via direct CSR access
+            c0, c1 = co_indptr[tidx], co_indptr[tidx + 1]
+            if c0 == c1:
                 continue
-            term_total = float(cooc_row.sum())
+            row_indices = co_indices[c0:c1]
+            row_data = co_data[c0:c1]
+            term_total = float(row_data.sum())
             if term_total == 0:
                 continue
 
@@ -1167,7 +1187,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             best_cooc = None       # highest cooccurrence partner (fallback)
             best_cooc_ratio = 0.0
 
-            for partner_idx, count in zip(cooc_row.indices, cooc_row.data):
+            for partner_idx, count in zip(row_indices, row_data):
                 partner = selected_terms[partner_idx]
                 if len(partner) <= max_len:
                     continue  # skip other short terms
@@ -1239,20 +1259,22 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             return top_df
 
         # Apply merges per cluster: sum frequencies, keep max score
+        # Pre-build index: (term, cluster_id) → row index for O(1) lookup
         top_df = top_df.copy()
+        tc_to_idx: Dict[Tuple[str, Any], int] = {}
+        for row in top_df.itertuples():
+            tc_to_idx.setdefault((row.term, row.cluster_id), row.Index)
+
         rows_to_drop = []
-        for idx, row in top_df.iterrows():
+        for idx in list(top_df.index):
+            row = top_df.loc[idx]
             target = merge_actions.get(row["term"])
             if target is None:
                 continue
-            # Match target within the SAME cluster to avoid cross-cluster contamination
             cluster_id = row["cluster_id"]
-            target_rows = top_df[
-                (top_df["term"] == target) & (top_df["cluster_id"] == cluster_id)
-            ]
-            if target_rows.empty:
+            tidx = tc_to_idx.get((target, cluster_id))
+            if tidx is None:
                 continue
-            tidx = target_rows.index[0]
             top_df.at[tidx, "frequency"] = top_df.at[tidx, "frequency"] + row["frequency"]
             top_df.at[tidx, "score"] = max(top_df.at[tidx, "score"], row["score"])
             if "doc_coverage" in top_df.columns:
@@ -1334,10 +1356,10 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         term_year = self._compute_year_series(top_df)       # Stage 9
         if not top_df.empty:
             top_df = top_df.assign(
-                pub_year_series=[
-                    dict(term_year.get(int(row.cluster_id), {}).get(str(row.term), {}))
-                    for row in top_df.itertuples(index=False)
-                ]
+                pub_year_series=top_df.apply(
+                    lambda r: dict(term_year.get(int(r["cluster_id"]), {}).get(str(r["term"]), {})),
+                    axis=1,
+                )
             )
         else:
             top_df = top_df.assign(pub_year_series=[])
@@ -1356,14 +1378,18 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         top_k = max(1, int(self.config.top_n_unigrams))
         names = self.feature_names_uni
 
+        # Pre-extract CSR internals for direct indptr access
+        sc_ip, sc_ix, sc_dt = scores.indptr, scores.indices, scores.data
+        cu_ip, cu_ix, cu_dt = self.C_uni.indptr, self.C_uni.indices, self.C_uni.data
+
         def extract(r: int) -> List[Tuple[int, str, float, int]]:
-            row = scores.getrow(r)
-            if row.nnz == 0:
+            s0, s1 = sc_ip[r], sc_ip[r + 1]
+            if s0 == s1:
                 return []
             cid = int(self.cluster_ids[r])
-            top_terms = _argpartition_topk(row.data, row.indices, top_k)
-            counts_row = self.C_uni.getrow(r)
-            freq_map = {j: int(v) for j, v in zip(counts_row.indices, counts_row.data)}
+            top_terms = _argpartition_topk(sc_dt[s0:s1], sc_ix[s0:s1], top_k)
+            c0, c1 = cu_ip[r], cu_ip[r + 1]
+            freq_map = {j: int(v) for j, v in zip(cu_ix[c0:c1], cu_dt[c0:c1])}
             return [
                 (cid, names[idx], float(score), freq_map.get(idx, 0))
                 for idx, score in top_terms
@@ -1426,13 +1452,16 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         # Normalization merges (post-scoring) — extracted from the output DataFrame
         norm_merges = {}
         if self.final_keywords is not None and "norm_merged_from" in self.final_keywords.columns:
-            for _, r in self.final_keywords.iterrows():
-                merged = r.get("norm_merged_from")
-                if isinstance(merged, list) and merged:
-                    # Filter out self-references
-                    real_sources = [t for t in merged if t != r["term"]]
-                    if real_sources:
-                        norm_merges[r["term"]] = real_sources
+            has_merge = self.final_keywords["norm_merged_from"].apply(
+                lambda x: isinstance(x, list) and len(x) > 0
+            )
+            for term, merged in zip(
+                self.final_keywords.loc[has_merge, "term"],
+                self.final_keywords.loc[has_merge, "norm_merged_from"],
+            ):
+                real_sources = [t for t in merged if t != term]
+                if real_sources:
+                    norm_merges[term] = real_sources
         data["norm_merges"] = norm_merges
 
         # Subphrase tree: parent-child containment pairs per cluster
@@ -1458,30 +1487,31 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         # --- Trend scores (emerging / declining) ---
         trend_scores: Dict[str, float] = {}
         if self.final_keywords is not None:
-            for _, row in self.final_keywords.iterrows():
-                series = row.get("ppm_series") or row.get("pub_year_series")
-                if not series or not isinstance(series, dict):
-                    continue
-                term = row["term"]
-                if term in trend_scores:
-                    continue  # already computed from an earlier row
-                # Convert keys to int years and sort
-                try:
-                    yearly = {int(k): float(v) for k, v in series.items()}
-                except (ValueError, TypeError):
-                    continue
-                if len(yearly) < 2:
-                    continue
-                years = sorted(yearly)
-                mid = len(years) // 2
-                first_half = [yearly[y] for y in years[:mid]]
-                second_half = [yearly[y] for y in years[mid:]]
-                mean_first = np.mean(first_half) if first_half else 0.0
-                mean_second = np.mean(second_half) if second_half else 0.0
-                diff = mean_second - mean_first
-                denom = max(abs(mean_first), abs(mean_second), 1e-12)
-                raw = diff / denom  # in [-1, 1] range approximately
-                trend_scores[term] = float(np.clip(raw, -1.0, 1.0))
+            fk = self.final_keywords
+            has_ppm = "ppm_series" in fk.columns
+            has_pub = "pub_year_series" in fk.columns
+            if has_ppm or has_pub:
+                deduped = fk.drop_duplicates(subset=["term"], keep="first")
+                for row in deduped.itertuples(index=False):
+                    series = (getattr(row, "ppm_series", None) if has_ppm else None) or \
+                             (getattr(row, "pub_year_series", None) if has_pub else None)
+                    if not series or not isinstance(series, dict):
+                        continue
+                    try:
+                        yearly = {int(k): float(v) for k, v in series.items()}
+                    except (ValueError, TypeError):
+                        continue
+                    if len(yearly) < 2:
+                        continue
+                    years = sorted(yearly)
+                    mid = len(years) // 2
+                    first_half = [yearly[y] for y in years[:mid]]
+                    second_half = [yearly[y] for y in years[mid:]]
+                    mean_first = np.mean(first_half) if first_half else 0.0
+                    mean_second = np.mean(second_half) if second_half else 0.0
+                    diff = mean_second - mean_first
+                    denom = max(abs(mean_first), abs(mean_second), 1e-12)
+                    trend_scores[row.term] = float(np.clip(diff / denom, -1.0, 1.0))
         data["trend_scores"] = trend_scores
 
         # --- Network centrality ---
@@ -1511,12 +1541,14 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             term_clusters: Dict[str, List[int]] = defaultdict(list)
             term_scores: Dict[str, Dict[int, float]] = defaultdict(dict)
             term_freqs: Dict[str, Dict[int, int]] = defaultdict(dict)
-            for _, row in self.final_keywords.iterrows():
-                t = row["term"]
-                cid = int(row["cluster_id"])
+            _score_col = "score" in self.final_keywords.columns
+            _freq_col = "frequency" in self.final_keywords.columns
+            for row in self.final_keywords.itertuples(index=False):
+                t = row.term
+                cid = int(row.cluster_id)
                 term_clusters[t].append(cid)
-                term_scores[t][cid] = float(row.get("score", 0.0))
-                term_freqs[t][cid] = int(row.get("frequency", 0))
+                term_scores[t][cid] = float(row.score) if _score_col else 0.0
+                term_freqs[t][cid] = int(row.frequency) if _freq_col else 0
             for t, cids in term_clusters.items():
                 unique_cids = sorted(set(cids))
                 if len(unique_cids) >= 2:

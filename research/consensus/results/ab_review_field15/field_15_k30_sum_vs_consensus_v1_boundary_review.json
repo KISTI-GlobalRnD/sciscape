@@ -1,0 +1,1884 @@
+{
+  "field": "field_15_k30_sum_vs_consensus_v1",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "target_pct": 3.0,
+  "top_k": 30,
+  "min_size": 10,
+  "n_seeds": 2,
+  "n_cases": 24,
+  "n_neighbors": 8,
+  "boundary_quantile": 0.9,
+  "used_boundary_quantile": 0.9,
+  "max_group_jaccard": 0.5,
+  "used_max_group_jaccard": 0.5,
+  "sample_only": false,
+  "secondary_checks": false,
+  "method_a_run": {
+    "n_edges": 4984706,
+    "gamma": 0.0011834844033785765,
+    "n_clusters": 507,
+    "max_pct": 2.79
+  },
+  "method_b_run": {
+    "n_edges": 4984706,
+    "gamma": 0.0012501858236026884,
+    "n_clusters": 1111,
+    "max_pct": 2.39
+  },
+  "n_candidate_cases": 3705,
+  "n_reviewable_cases": 100,
+  "selected_cases": [
+    {
+      "target_uid": "W2026894116",
+      "target_title": "Relaxation Dynamics of Polymer Liquids in Nonlinear Step Shear",
+      "target_year": null,
+      "method_a_cluster_id": 442,
+      "method_b_cluster_id": 239,
+      "method_a_cluster_size": 51,
+      "method_b_cluster_size": 2752,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9938,
+      "group_a_uids": [
+        "W2014454903",
+        "W2040922725",
+        "W2060574208",
+        "W2094169336",
+        "W2120628926",
+        "W2195626532",
+        "W2900853537",
+        "W2969301387"
+      ],
+      "group_b_uids": [
+        "W2889009889",
+        "W2901173163",
+        "W2788966268",
+        "W2292981819",
+        "W4214594922",
+        "W2038956444",
+        "W2159109488",
+        "W1990743224"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1969904242",
+      "target_title": "A Study of <sup>15</sup>N/<sup>14</sup>N Isotopic Exchange over Cobalt Molybdenum Nitrides",
+      "target_year": null,
+      "method_a_cluster_id": 176,
+      "method_b_cluster_id": 542,
+      "method_a_cluster_size": 433,
+      "method_b_cluster_size": 167,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2337126838",
+        "W2109502029",
+        "W2099655722",
+        "W2566720242",
+        "W2749566078",
+        "W2907206408",
+        "W3108630891",
+        "W2753499958"
+      ],
+      "group_b_uids": [
+        "W3103004176",
+        "W3157570838",
+        "W1996573874",
+        "W3084268032",
+        "W880169337",
+        "W2196477211",
+        "W4396929218",
+        "W1981638559"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1979933083",
+      "target_title": "Experimental and Theoretical Investigations of Solvation Dynamics of Ionic Fluids:  Appropriateness of Dielectric Theory and the Role of DC Conductivity",
+      "target_year": null,
+      "method_a_cluster_id": 207,
+      "method_b_cluster_id": 211,
+      "method_a_cluster_size": 547,
+      "method_b_cluster_size": 665,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W4396854218",
+        "W2692558239",
+        "W4399658610",
+        "W2883678530",
+        "W2788351282",
+        "W2157849458",
+        "W1879999207",
+        "W3148133515"
+      ],
+      "group_b_uids": [
+        "W2903305194",
+        "W2035390147",
+        "W4308263974",
+        "W2042926180",
+        "W2560707559",
+        "W4309089105",
+        "W2025164678",
+        "W4404244919"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1481798533",
+      "target_title": "Synthesis and Catalytic Activity of Molybdenum–Nitride Complexes Bearing Pincer Ligands",
+      "target_year": null,
+      "method_a_cluster_id": 226,
+      "method_b_cluster_id": 668,
+      "method_a_cluster_size": 2587,
+      "method_b_cluster_size": 817,
+      "method_a_cross_cluster_ratio": 0.9783,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3198291551",
+        "W2805563858",
+        "W1968789413",
+        "W4200321634",
+        "W4401818977",
+        "W1972190683",
+        "W2901637141",
+        "W1909815693"
+      ],
+      "group_b_uids": [
+        "W2312408191",
+        "W2439692477",
+        "W4322709406",
+        "W3195820802",
+        "W2087334840",
+        "W2897906428",
+        "W2965852174",
+        "W2118135805"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1968356133",
+      "target_title": "Liquid forms of pharmaceutical co-crystals: exploring the boundaries of salt formation",
+      "target_year": null,
+      "method_a_cluster_id": 200,
+      "method_b_cluster_id": 770,
+      "method_a_cluster_size": 180,
+      "method_b_cluster_size": 23,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3073621530",
+        "W2021860166",
+        "W4360853988",
+        "W4399466633",
+        "W1980180533",
+        "W2116755647",
+        "W1887528451",
+        "W2081086244"
+      ],
+      "group_b_uids": [
+        "W1992665379",
+        "W2946600953",
+        "W2966487002",
+        "W4210681833",
+        "W4283587777"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1932708047",
+      "target_title": "Microstructured Al‐fiber@meso‐Al<sub>2</sub>O<sub>3</sub>@Fe‐Mn‐K Fischer–Tropsch catalyst for lower olefins",
+      "target_year": null,
+      "method_a_cluster_id": 292,
+      "method_b_cluster_id": 166,
+      "method_a_cluster_size": 94,
+      "method_b_cluster_size": 165,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2159704768",
+        "W2601134960",
+        "W2025478714",
+        "W1971711124",
+        "W1980674632",
+        "W1989410652",
+        "W2012735819",
+        "W2014511666"
+      ],
+      "group_b_uids": [
+        "W4328049658",
+        "W4388631451",
+        "W2150403656",
+        "W3116318922",
+        "W4390268531",
+        "W1974837290",
+        "W2027815238",
+        "W1983683793"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1989094210",
+      "target_title": "Modeling phase diagrams of systems containing ionic liquids used in different applications",
+      "target_year": null,
+      "method_a_cluster_id": 60,
+      "method_b_cluster_id": 419,
+      "method_a_cluster_size": 293,
+      "method_b_cluster_size": 150,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9934,
+      "group_a_uids": [
+        "W2742845628",
+        "W2250556170",
+        "W2086035645",
+        "W4200293192",
+        "W2073201195",
+        "W2344608581",
+        "W2569007639",
+        "W2566593193"
+      ],
+      "group_b_uids": [
+        "W4205847090",
+        "W3158629554",
+        "W1763859401",
+        "W2902121386",
+        "W1997451633",
+        "W2035982679",
+        "W3212354842",
+        "W4318689271"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2029372883",
+      "target_title": "Studies on the Solvation Dynamics of Coumarin 153 in 1‐Ethyl‐3‐Methylimidazolium Alkylsulfate Ionic Liquids: Dependence on Alkyl Chain Length",
+      "target_year": null,
+      "method_a_cluster_id": 226,
+      "method_b_cluster_id": 236,
+      "method_a_cluster_size": 2587,
+      "method_b_cluster_size": 286,
+      "method_a_cross_cluster_ratio": 0.9835,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3198291551",
+        "W2805563858",
+        "W1968789413",
+        "W4200321634",
+        "W4401818977",
+        "W1972190683",
+        "W2901637141",
+        "W1909815693"
+      ],
+      "group_b_uids": [
+        "W2323880545",
+        "W2520928444",
+        "W3176915238",
+        "W4386832799",
+        "W2321266723",
+        "W2468868134",
+        "W2952205579",
+        "W3198194757"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2008343163",
+      "target_title": "PEO−[M(CN)<sub>5</sub>NO]<sup><i>x</i>-</sup> (M = Fe, Mn, or Cr) Interaction as a Driving Force in the Partitioning of the Pentacyanonitrosylmetallate Anion in ATPS: Strong Effect of the Central Atom",
+      "target_year": null,
+      "method_a_cluster_id": 168,
+      "method_b_cluster_id": 426,
+      "method_a_cluster_size": 861,
+      "method_b_cluster_size": 1549,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9938,
+      "group_a_uids": [
+        "W3213736673",
+        "W2508206034",
+        "W2804447714",
+        "W4224255610",
+        "W3116575568",
+        "W2932364778",
+        "W4390906547",
+        "W3135679957"
+      ],
+      "group_b_uids": [
+        "W2007397594",
+        "W2914328072",
+        "W2072309762",
+        "W3108298521",
+        "W4244357359",
+        "W2529751157",
+        "W2067276838",
+        "W4385658048"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1750916019",
+      "target_title": "Transport properties of aqueous ionic liquid microemulsions: influence of the anion type and presence of the cosurfactant",
+      "target_year": null,
+      "method_a_cluster_id": 132,
+      "method_b_cluster_id": 545,
+      "method_a_cluster_size": 1913,
+      "method_b_cluster_size": 553,
+      "method_a_cross_cluster_ratio": 0.911,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2078526257",
+        "W2324500051",
+        "W4283750854",
+        "W2079011550"
+      ],
+      "group_b_uids": [
+        "W2325808258",
+        "W2135085828",
+        "W2746168731",
+        "W1999546589",
+        "W4281743489",
+        "W2050570984",
+        "W4212884630",
+        "W4319061380"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1993664692",
+      "target_title": "Pressure−Density−Temperature (<i>p−</i>ρ<i>−T</i>) Surface of [C<sub>6</sub>mim][NTf<sub>2</sub>]",
+      "target_year": null,
+      "method_a_cluster_id": 246,
+      "method_b_cluster_id": 3,
+      "method_a_cluster_size": 2711,
+      "method_b_cluster_size": 1736,
+      "method_a_cross_cluster_ratio": 0.9125,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2078599874",
+        "W2323613248",
+        "W2210471804",
+        "W2324931567",
+        "W2150676497"
+      ],
+      "group_b_uids": [
+        "W2039448014",
+        "W1988943746",
+        "W1968919514",
+        "W1595419249",
+        "W2203848210",
+        "W2077871761",
+        "W2121177215",
+        "W2133935090"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1979963443",
+      "target_title": "Urea Assisted Synthesis of Flower Like CuO Nanostructures and Their Chemical Sensing Application for the Determination of Cadmium Ions",
+      "target_year": null,
+      "method_a_cluster_id": 248,
+      "method_b_cluster_id": 774,
+      "method_a_cluster_size": 2372,
+      "method_b_cluster_size": 469,
+      "method_a_cross_cluster_ratio": 0.9958,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2129233090",
+        "W2523397185",
+        "W2782725202",
+        "W3183962655",
+        "W2621982058",
+        "W2082306115",
+        "W4210772182",
+        "W4281863264"
+      ],
+      "group_b_uids": [
+        "W1981047083",
+        "W1489353548",
+        "W2121149822",
+        "W2329607850",
+        "W2166812989",
+        "W3166806254",
+        "W2005211800",
+        "W2556188656"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1963655362",
+      "target_title": "Investigation and Comparison of Residual Gas Enhanced HCCI using Trapping (NVO HCCI) or Rebreathing of Residual Gases",
+      "target_year": null,
+      "method_a_cluster_id": 245,
+      "method_b_cluster_id": 627,
+      "method_a_cluster_size": 533,
+      "method_b_cluster_size": 457,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9894,
+      "group_a_uids": [
+        "W2415884520",
+        "W3107353966",
+        "W2014284995",
+        "W2604801889",
+        "W2908907261",
+        "W2319502881",
+        "W2921638553",
+        "W2323903979"
+      ],
+      "group_b_uids": [
+        "W4388923671",
+        "W2944871924",
+        "W2096379884",
+        "W1978619727",
+        "W2086378299",
+        "W2072425649",
+        "W4224990566",
+        "W2324462072"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2032619003",
+      "target_title": "CO2 capture from flue gas at high temperatures by new ionic liquids with high capacity",
+      "target_year": null,
+      "method_a_cluster_id": 241,
+      "method_b_cluster_id": 644,
+      "method_a_cluster_size": 110,
+      "method_b_cluster_size": 35,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2887190474",
+        "W2950180295",
+        "W2890762065",
+        "W2802972452",
+        "W4205279230",
+        "W2783903402",
+        "W2183748358",
+        "W2791916762"
+      ],
+      "group_b_uids": [
+        "W1504830243",
+        "W2017012828",
+        "W2028306078",
+        "W2045522442",
+        "W2084993698",
+        "W2121492825",
+        "W2395383184",
+        "W2794045301"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2022066961",
+      "target_title": "Atomistic Simulation of the Absorption of Carbon Dioxide and Water in the Ionic Liquid 1-<i>n</i>-Hexyl-3-methylimidazolium Bis(trifluoromethylsulfonyl)imide ([hmim][Tf<sub>2</sub>N]",
+      "target_year": null,
+      "method_a_cluster_id": 153,
+      "method_b_cluster_id": 83,
+      "method_a_cluster_size": 339,
+      "method_b_cluster_size": 108,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2340063144",
+        "W2069074373",
+        "W2102886706",
+        "W2127947635",
+        "W2058809871",
+        "W2092046719",
+        "W2055767365",
+        "W2168422917"
+      ],
+      "group_b_uids": [
+        "W2006983199",
+        "W2007298486",
+        "W2014756169",
+        "W1975841402",
+        "W2094588807",
+        "W1649657699",
+        "W1696360129",
+        "W1976651458"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1973810355",
+      "target_title": "Characterization of Livestock Odors Using Steel Plates, Solid-Phase Microextraction, and Multidimensional Gas Chromatography–Mass Spectrometry–Olfactometry",
+      "target_year": null,
+      "method_a_cluster_id": 359,
+      "method_b_cluster_id": 607,
+      "method_a_cluster_size": 323,
+      "method_b_cluster_size": 1459,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9992,
+      "group_a_uids": [
+        "W2047841306",
+        "W1987729745",
+        "W4214771991",
+        "W2046961441",
+        "W3126753800",
+        "W4402237882",
+        "W4294688765",
+        "W4403205355"
+      ],
+      "group_b_uids": [
+        "W2094325514",
+        "W2152116424",
+        "W2583796172",
+        "W3006916761",
+        "W2144592307",
+        "W3027422850",
+        "W2079018507",
+        "W3183541556"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2031599865",
+      "target_title": "High Conversion, Solvent Free, Continuous Synthesis of Imidazolium Ionic Liquids In Spinning Tube-in-Tube Reactors",
+      "target_year": null,
+      "method_a_cluster_id": 142,
+      "method_b_cluster_id": 831,
+      "method_a_cluster_size": 1449,
+      "method_b_cluster_size": 1130,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9762,
+      "group_a_uids": [
+        "W2018782826",
+        "W2763274695",
+        "W2700345772",
+        "W2109418156",
+        "W2563934114",
+        "W2001030317",
+        "W2171125088",
+        "W2328221846"
+      ],
+      "group_b_uids": [
+        "W2117828282",
+        "W4389144547",
+        "W2997410966",
+        "W2169405853",
+        "W3137958545",
+        "W3035945525",
+        "W3180473974",
+        "W2098984447"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1998127710",
+      "target_title": "Influence of anionic structure on the dissolution of chitosan in 1-butyl-3-methylimidazolium-based ionic liquids",
+      "target_year": null,
+      "method_a_cluster_id": 433,
+      "method_b_cluster_id": 17,
+      "method_a_cluster_size": 483,
+      "method_b_cluster_size": 2203,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9989,
+      "group_a_uids": [
+        "W1967200725",
+        "W2596336138",
+        "W2320580466",
+        "W2329499450",
+        "W1974162399",
+        "W3115046969",
+        "W4392390320",
+        "W2044596097"
+      ],
+      "group_b_uids": [
+        "W2091494917",
+        "W2045022932",
+        "W2025761076",
+        "W2797492470",
+        "W2766564858",
+        "W2604801889",
+        "W2747278404",
+        "W2005738873"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1838460720",
+      "target_title": "Flammability, thermal stability, and phase change characteristics of several trialkylimidazolium saltsThe authors wish to thank the scientists at the Occupational Safety and Health Administration ? Salt Lake Technical Center for their measurement of the imidazolium flashpoints.The policy of the National Institute of Standards and Technology (NIST) is to use metric units of measurement in all its publications, and to provide statements of uncertainty for all original measurements. In this document however, data from organizations outside NIST are shown, which may include measurements in non-metric units or measurements without uncertainty statements. The identification of any commercial product or trade name does not imply endorsement or recommendation by NIST or the United States Air Force (USAF). Opinions, interpretations, conclusions, and recommendations are those of the authors and are not necessarily endorsed by the USAF or NIST.",
+      "target_year": null,
+      "method_a_cluster_id": 24,
+      "method_b_cluster_id": 848,
+      "method_a_cluster_size": 254,
+      "method_b_cluster_size": 124,
+      "method_a_cross_cluster_ratio": 0.9785,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1995030777",
+        "W4387164769",
+        "W4396769500",
+        "W3028104016",
+        "W4386477522",
+        "W3080522554",
+        "W4393149583",
+        "W4393261720"
+      ],
+      "group_b_uids": [
+        "W2004882912",
+        "W1984220930",
+        "W4285159259",
+        "W1986063447",
+        "W2321973773",
+        "W4214716734",
+        "W1965108034",
+        "W1975200944"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2013866286",
+      "target_title": "Raman spectra of acetonitrile in imidazolium ionic liquids",
+      "target_year": null,
+      "method_a_cluster_id": 406,
+      "method_b_cluster_id": 259,
+      "method_a_cluster_size": 1098,
+      "method_b_cluster_size": 1313,
+      "method_a_cross_cluster_ratio": 0.9923,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2070235115",
+        "W2052327443",
+        "W1998770611",
+        "W2903728632",
+        "W2044209856",
+        "W2004578758",
+        "W3160879590",
+        "W1994161194"
+      ],
+      "group_b_uids": [
+        "W2902128976",
+        "W2745853251",
+        "W2903728632",
+        "W2989605370",
+        "W4385689154",
+        "W2897782504",
+        "W2341095121",
+        "W3197715789"
+      ],
+      "overlap_size": 1,
+      "jaccard": 0.0667
+    },
+    {
+      "target_uid": "W1508359924",
+      "target_title": "Nonhumidified Fuel Cells Using N-Ethyl-N-methyl-pyrrolidinium Fluorohydrogenate Ionic Liquid-poly(Vinylidene Fluoride-Hexafluoropropylene) Composite Membranes",
+      "target_year": null,
+      "method_a_cluster_id": 89,
+      "method_b_cluster_id": 689,
+      "method_a_cluster_size": 589,
+      "method_b_cluster_size": 36,
+      "method_a_cross_cluster_ratio": 0.9948,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2153222976",
+        "W2512837731",
+        "W3082043805",
+        "W2332630964",
+        "W3084044564",
+        "W2059367294",
+        "W3134059873",
+        "W2800165191"
+      ],
+      "group_b_uids": [
+        "W1975129937",
+        "W2032842953",
+        "W2151735396",
+        "W2315177676",
+        "W2566885337",
+        "W2765327965",
+        "W2774886565",
+        "W3003600160"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W2007693086",
+      "target_title": "Various metal nanoparticles produced by accelerated electron beam irradiation of room-temperature ionic liquid",
+      "target_year": null,
+      "method_a_cluster_id": 40,
+      "method_b_cluster_id": 792,
+      "method_a_cluster_size": 3212,
+      "method_b_cluster_size": 125,
+      "method_a_cross_cluster_ratio": 0.9904,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1801156806",
+        "W2109977502",
+        "W2166276784",
+        "W2078181075",
+        "W4392191744",
+        "W1991776068",
+        "W3130452425",
+        "W2126249881"
+      ],
+      "group_b_uids": [
+        "W2039293143",
+        "W1881801259",
+        "W2793092347",
+        "W4372338125",
+        "W4295083530",
+        "W1979769822",
+        "W2032982933",
+        "W2046778639"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1997111966",
+      "target_title": "HCCI Combustion Control Using Dual-Fuel Approach: Experimental and Modeling Investigations",
+      "target_year": null,
+      "method_a_cluster_id": 385,
+      "method_b_cluster_id": 369,
+      "method_a_cluster_size": 475,
+      "method_b_cluster_size": 2480,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9336,
+      "group_a_uids": [
+        "W4389483219",
+        "W2732124762",
+        "W2312671776",
+        "W2321243941",
+        "W1982159630",
+        "W2101410882",
+        "W3046112412",
+        "W3029798817"
+      ],
+      "group_b_uids": [
+        "W2060655894",
+        "W2103873115",
+        "W2158765454",
+        "W3034129260"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    },
+    {
+      "target_uid": "W1972080435",
+      "target_title": "On the Interactions between Amino Acids and Ionic Liquids in Aqueous Media",
+      "target_year": null,
+      "method_a_cluster_id": 129,
+      "method_b_cluster_id": 259,
+      "method_a_cluster_size": 387,
+      "method_b_cluster_size": 1313,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9946,
+      "group_a_uids": [
+        "W4380319868",
+        "W4200110402",
+        "W2508812891",
+        "W3034129260",
+        "W2778930700",
+        "W2910917027",
+        "W1981638559",
+        "W2141706599"
+      ],
+      "group_b_uids": [
+        "W2902128976",
+        "W2745853251",
+        "W2903728632",
+        "W2989605370",
+        "W4385689154",
+        "W2897782504",
+        "W2341095121",
+        "W3197715789"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W2026894116",
+      "target_title": "Relaxation Dynamics of Polymer Liquids in Nonlinear Step Shear",
+      "target_year": null,
+      "method_a_cluster_id": 442,
+      "method_b_cluster_id": 239,
+      "method_a_cluster_size": 51,
+      "method_b_cluster_size": 2752,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9938,
+      "group_a_uids": [
+        "W2014454903",
+        "W2040922725",
+        "W2060574208",
+        "W2094169336",
+        "W2120628926",
+        "W2195626532",
+        "W2900853537",
+        "W2969301387"
+      ],
+      "group_b_uids": [
+        "W2889009889",
+        "W2901173163",
+        "W2788966268",
+        "W2292981819",
+        "W4214594922",
+        "W2038956444",
+        "W2159109488",
+        "W1990743224"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 2,
+        "reasoning": "Neither group is a good fit for the target paper on polymer rheology. Group A is a very scattered collection of papers from various subfields of chemistry with no clear theme. Group B is also a poor topical match, but it is more internally coherent, with a distinct sub-cluster of papers focused on the structure and dynamics of ionic liquids, which, like the target, falls under the broad umbrella of complex fluid physics."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 2,
+        "reasoning": "While neither group is a strong match, Group B is the less-wrong choice. The target paper focuses on the physical dynamics and rheology of polymer liquids. Group B contains one paper on polymer chemistry (synthesis and degradation), establishing a weak thematic link through the general topic of polymers. Group A, in contrast, has no papers related to polymers and is instead focused on ionic liquids and CO2 catalysis, making it a poorer fit."
+      }
+    },
+    {
+      "target_uid": "W1969904242",
+      "target_title": "A Study of <sup>15</sup>N/<sup>14</sup>N Isotopic Exchange over Cobalt Molybdenum Nitrides",
+      "target_year": null,
+      "method_a_cluster_id": 176,
+      "method_b_cluster_id": 542,
+      "method_a_cluster_size": 433,
+      "method_b_cluster_size": 167,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2337126838",
+        "W2109502029",
+        "W2099655722",
+        "W2566720242",
+        "W2749566078",
+        "W2907206408",
+        "W3108630891",
+        "W2753499958"
+      ],
+      "group_b_uids": [
+        "W3103004176",
+        "W3157570838",
+        "W1996573874",
+        "W3084268032",
+        "W880169337",
+        "W2196477211",
+        "W4396929218",
+        "W1981638559"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 3,
+        "reasoning": "Group A is a better cluster because its papers consistently relate to the target's broad field of catalysis and chemical synthesis. Although the specific reactions and catalysts differ, the overarching theme is coherent. Group B is a highly disjointed mix of unrelated topics, including electrochemistry, fluid dynamics, and catalysis, with no clear central theme, making it a very poor fit for the target."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper is a fundamental study of a catalytic process (isotopic exchange over a nitride catalyst for ammonia synthesis). Group A is strongly and consistently focused on catalysis for various chemical transformations, such as methane conversion, dehydrogenation, and hydrogen production. In contrast, Group B is thematically diverse, with strong clusters in electrochemistry, sensors, and fluid dynamics, making the target paper a clear outlier in that group."
+      }
+    },
+    {
+      "target_uid": "W1979933083",
+      "target_title": "Experimental and Theoretical Investigations of Solvation Dynamics of Ionic Fluids:  Appropriateness of Dielectric Theory and the Role of DC Conductivity",
+      "target_year": null,
+      "method_a_cluster_id": 207,
+      "method_b_cluster_id": 211,
+      "method_a_cluster_size": 547,
+      "method_b_cluster_size": 665,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W4396854218",
+        "W2692558239",
+        "W4399658610",
+        "W2883678530",
+        "W2788351282",
+        "W2157849458",
+        "W1879999207",
+        "W3148133515"
+      ],
+      "group_b_uids": [
+        "W2903305194",
+        "W2035390147",
+        "W4308263974",
+        "W2042926180",
+        "W2560707559",
+        "W4309089105",
+        "W2025164678",
+        "W4404244919"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 2,
+        "score_b": 4,
+        "reasoning": "Group B is a much better cluster as it focuses on the structure and dynamics of ionic systems, which is the core theme of the target paper. It includes papers on ionic liquids, molten salts, and electrides, all of which are thematically related. Group A is very noisy, with two relevant papers on ionic liquids mixed with several completely unrelated papers on electrocatalysis and polymer rheology."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper investigates the fundamental solvation dynamics in ionic liquids. Group B contains a stronger cluster of thematically related papers, including one on the bulk structure of ionic liquids ([4]), one on the structure of molten salts ([5]), which are a related class of ionic fluids, and another on simulating solvation shells ([7]). While Group A has two papers on ionic liquids ([5], [6]), they focus on a specific sub-topic (structure at solid-vacuum interfaces) which is less aligned with the target's focus on bulk fluid dynamics and dielectric theory."
+      }
+    },
+    {
+      "target_uid": "W1481798533",
+      "target_title": "Synthesis and Catalytic Activity of Molybdenum–Nitride Complexes Bearing Pincer Ligands",
+      "target_year": null,
+      "method_a_cluster_id": 226,
+      "method_b_cluster_id": 668,
+      "method_a_cluster_size": 2587,
+      "method_b_cluster_size": 817,
+      "method_a_cross_cluster_ratio": 0.9783,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3198291551",
+        "W2805563858",
+        "W1968789413",
+        "W4200321634",
+        "W4401818977",
+        "W1972190683",
+        "W2901637141",
+        "W1909815693"
+      ],
+      "group_b_uids": [
+        "W2312408191",
+        "W2439692477",
+        "W4322709406",
+        "W3195820802",
+        "W2087334840",
+        "W2897906428",
+        "W2965852174",
+        "W2118135805"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 3,
+        "score_b": 1,
+        "reasoning": "Group A is the clear winner as it contains two papers directly focused on the target's central theme of ammonia synthesis from nitrogen (N2 fixation). Although the rest of Group A is noisy with other catalysis topics, Group B is entirely off-topic, containing papers on ionic liquids, gas-phase chemistry, and CO2 coupling, with no relevance to the target's specific molybdenum-nitride chemistry or application."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper focuses on synthesizing molybdenum-nitride complexes as catalysts for converting dinitrogen to ammonia. Group B contains two papers ([1] and [6]) that are directly on this topic, using terms like \"electrochemical ammonia synthesis,\" \"nitrogen reduction reaction (NRR),\" and \"artificial N2 fixation.\" Furthermore, paper [1] in Group B also investigates a molybdenum-based catalyst (MoS2) for this exact reaction, creating a strong overlap in both the target application and the key element used in the catalyst."
+      }
+    },
+    {
+      "target_uid": "W1968356133",
+      "target_title": "Liquid forms of pharmaceutical co-crystals: exploring the boundaries of salt formation",
+      "target_year": null,
+      "method_a_cluster_id": 200,
+      "method_b_cluster_id": 770,
+      "method_a_cluster_size": 180,
+      "method_b_cluster_size": 23,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3073621530",
+        "W2021860166",
+        "W4360853988",
+        "W4399466633",
+        "W1980180533",
+        "W2116755647",
+        "W1887528451",
+        "W2081086244"
+      ],
+      "group_b_uids": [
+        "W1992665379",
+        "W2946600953",
+        "W2966487002",
+        "W4210681833",
+        "W4283587777"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 1,
+        "reasoning": "Group B is clearly superior as it forms a coherent cluster around the topic of ionic liquids, a key concept mentioned explicitly in the target paper's abstract. While Group B contains a few outliers, its core theme is highly relevant. Group A, in contrast, is a collection of papers from disparate fields of chemistry and engineering with no discernible thematic connection to the target or to each other."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper explicitly places its subject, a liquid pharmaceutical complex, at the \"boundary between simple eutectics and partially ionised ionic liquids.\" Group B has a very strong and recurring theme centered on the study of ionic liquids, including their thermodynamic properties, solubility characteristics, and applications. This makes for a direct and obvious thematic and terminological link that is completely absent in Group A, which focuses on catalysis, reaction kinetics, and computational fluid dynamics."
+      }
+    },
+    {
+      "target_uid": "W1932708047",
+      "target_title": "Microstructured Al‐fiber@meso‐Al<sub>2</sub>O<sub>3</sub>@Fe‐Mn‐K Fischer–Tropsch catalyst for lower olefins",
+      "target_year": null,
+      "method_a_cluster_id": 292,
+      "method_b_cluster_id": 166,
+      "method_a_cluster_size": 94,
+      "method_b_cluster_size": 165,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2159704768",
+        "W2601134960",
+        "W2025478714",
+        "W1971711124",
+        "W1980674632",
+        "W1989410652",
+        "W2012735819",
+        "W2014511666"
+      ],
+      "group_b_uids": [
+        "W4328049658",
+        "W4388631451",
+        "W2150403656",
+        "W3116318922",
+        "W4390268531",
+        "W1974837290",
+        "W2027815238",
+        "W1983683793"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 3,
+        "score_b": 1,
+        "reasoning": "Group B is the better cluster because it contains several papers on catalysis, which is the central theme of the target paper. Specifically, the paper on the oxidation of VOx/Pt(111) shares a strong thematic link related to supported metal oxide catalysts. Group A, with its focus on ionic liquids and polymers, has very little thematic relevance to the target's research on Fischer-Tropsch synthesis."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 2,
+        "reasoning": "This is a weak fit, but Group A is the better choice. The target paper is about heterogeneous catalysis (Fischer-Tropsch synthesis). Group A contains several papers on catalysis, including one on metal oxide catalysis on a metal surface ([5]), which shares a domain with the target's catalyst. In contrast, Group B is almost entirely focused on ionic liquids and polymer science, with no papers on heterogeneous catalysis for small molecule synthesis."
+      }
+    },
+    {
+      "target_uid": "W1989094210",
+      "target_title": "Modeling phase diagrams of systems containing ionic liquids used in different applications",
+      "target_year": null,
+      "method_a_cluster_id": 60,
+      "method_b_cluster_id": 419,
+      "method_a_cluster_size": 293,
+      "method_b_cluster_size": 150,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9934,
+      "group_a_uids": [
+        "W2742845628",
+        "W2250556170",
+        "W2086035645",
+        "W4200293192",
+        "W2073201195",
+        "W2344608581",
+        "W2569007639",
+        "W2566593193"
+      ],
+      "group_b_uids": [
+        "W4205847090",
+        "W3158629554",
+        "W1763859401",
+        "W2902121386",
+        "W1997451633",
+        "W2035982679",
+        "W3212354842",
+        "W4318689271"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 2,
+        "reasoning": "Group B is a better cluster because it maintains a consistent focus on the properties and behavior of ionic liquids, which is the core topic of the target paper. Group A is highly incoherent, as half of its papers are on a completely unrelated topic of catalysis for CO2 and nitrogen fixation. While Group B contains some noise (e.g., polymer modeling), its central theme is much more aligned with the target, including papers on thermodynamics and phase transitions of ionic liquids."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper focuses on modeling phase diagrams of ionic liquids, which is a topic in physical chemistry and thermodynamics. Group B contains several papers on the fundamental thermodynamic and phase properties of ionic liquids, such as paper [4] on \"Thermodynamics of Ionic Liquids\" and paper [7] on \"High Pressure Phase Transition Behavior\". This aligns much more closely than Group A, which has a weaker and more scattered focus on specific applications like enzyme catalysis or properties like thermochromism, alongside several unrelated papers on CO2 fixation and catalysis."
+      }
+    },
+    {
+      "target_uid": "W2029372883",
+      "target_title": "Studies on the Solvation Dynamics of Coumarin 153 in 1‐Ethyl‐3‐Methylimidazolium Alkylsulfate Ionic Liquids: Dependence on Alkyl Chain Length",
+      "target_year": null,
+      "method_a_cluster_id": 226,
+      "method_b_cluster_id": 236,
+      "method_a_cluster_size": 2587,
+      "method_b_cluster_size": 286,
+      "method_a_cross_cluster_ratio": 0.9835,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W3198291551",
+        "W2805563858",
+        "W1968789413",
+        "W4200321634",
+        "W4401818977",
+        "W1972190683",
+        "W2901637141",
+        "W1909815693"
+      ],
+      "group_b_uids": [
+        "W2323880545",
+        "W2520928444",
+        "W3176915238",
+        "W4386832799",
+        "W2321266723",
+        "W2468868134",
+        "W2952205579",
+        "W3198194757"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 4,
+        "reasoning": "Group B is significantly better as it contains a strong and coherent subset of papers focused on the physical chemistry and application of ionic liquids as solvents, which directly aligns with the target paper's topic. In contrast, Group A is extremely noisy, with only one paper on ionic liquids and the rest covering disparate topics in catalysis and organic synthesis that are unrelated to the target."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper investigates the solvation dynamics in 1‐ethyl‐3‐methylimidazolium-based ionic liquids. Group B has a strong and repeated focus on ionic liquids, including several papers ([4], [5], [6], [7]) that study their fundamental properties and use them as solvents, with papers [4] and [5] specifically mentioning the same 1‐ethyl‐3‐methylimidazolium cation. In contrast, Group A is focused on catalysis and synthetic organic chemistry, with only one tangentially related paper on the toxicity of ionic liquids."
+      }
+    },
+    {
+      "target_uid": "W2008343163",
+      "target_title": "PEO−[M(CN)<sub>5</sub>NO]<sup><i>x</i>-</sup> (M = Fe, Mn, or Cr) Interaction as a Driving Force in the Partitioning of the Pentacyanonitrosylmetallate Anion in ATPS: Strong Effect of the Central Atom",
+      "target_year": null,
+      "method_a_cluster_id": 168,
+      "method_b_cluster_id": 426,
+      "method_a_cluster_size": 861,
+      "method_b_cluster_size": 1549,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9938,
+      "group_a_uids": [
+        "W3213736673",
+        "W2508206034",
+        "W2804447714",
+        "W4224255610",
+        "W3116575568",
+        "W2932364778",
+        "W4390906547",
+        "W3135679957"
+      ],
+      "group_b_uids": [
+        "W2007397594",
+        "W2914328072",
+        "W2072309762",
+        "W3108298521",
+        "W4244357359",
+        "W2529751157",
+        "W2067276838",
+        "W4385658048"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 2,
+        "reasoning": "Group B is a much better fit because it shares a strong thematic focus on the chemistry of metal complexes in solution, which is central to the target paper. Although Group B focuses on catalytic applications while the target studies physical partitioning, the underlying subject of coordination chemistry provides a strong and coherent link. Group A is thematically scattered, with disconnected sub-topics including ionic liquids, polymer synthesis, and polymer rheology, making its connection to the target much weaker and less specific."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper investigates the partitioning behavior of metal complexes in an aqueous two-phase system created using poly(ethylene oxide) (PEO), a polymer. This focus on the physical chemistry of polymer solutions and phase separation aligns well with Group B, which contains multiple papers on polymer science, including polymerization, rheology, and interfacial properties. In contrast, Group A is uniformly focused on catalysis for chemical reactions (e.g., CO2 reduction, dehydrogenation), a theme entirely absent from the target paper."
+      }
+    },
+    {
+      "target_uid": "W1750916019",
+      "target_title": "Transport properties of aqueous ionic liquid microemulsions: influence of the anion type and presence of the cosurfactant",
+      "target_year": null,
+      "method_a_cluster_id": 132,
+      "method_b_cluster_id": 545,
+      "method_a_cluster_size": 1913,
+      "method_b_cluster_size": 553,
+      "method_a_cross_cluster_ratio": 0.911,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2078526257",
+        "W2324500051",
+        "W4283750854",
+        "W2079011550"
+      ],
+      "group_b_uids": [
+        "W2325808258",
+        "W2135085828",
+        "W2746168731",
+        "W1999546589",
+        "W4281743489",
+        "W2050570984",
+        "W4212884630",
+        "W4319061380"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 1,
+        "reasoning": "Group A is a much better fit, as its papers focus on the physical properties of ionic liquid microemulsions, which is the specific topic of the target paper. Several papers in Group A investigate the exact same or very similar chemical systems (ionic liquids like [bmim][PF6] and the surfactant TX-100). Group B is a very poor match, containing a mix of unrelated topics such as polymer rheology, CO2 catalysis, and electrochemistry, with little thematic connection to the target's focus on transport properties."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper and Group B both focus on the physical chemistry of ionic liquid microemulsions. There is a significant overlap in specific terminology and chemical systems, including 'microemulsions', 'transport properties', the surfactant 'TX-100', and the ionic liquid '[BMIM][PF6]'. In contrast, Group A focuses on the electrochemical and catalytic applications of ionic liquids or is diluted with unrelated topics like polymer rheology."
+      }
+    },
+    {
+      "target_uid": "W1993664692",
+      "target_title": "Pressure−Density−Temperature (<i>p−</i>ρ<i>−T</i>) Surface of [C<sub>6</sub>mim][NTf<sub>2</sub>]",
+      "target_year": null,
+      "method_a_cluster_id": 246,
+      "method_b_cluster_id": 3,
+      "method_a_cluster_size": 2711,
+      "method_b_cluster_size": 1736,
+      "method_a_cross_cluster_ratio": 0.9125,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2078599874",
+        "W2323613248",
+        "W2210471804",
+        "W2324931567",
+        "W2150676497"
+      ],
+      "group_b_uids": [
+        "W2039448014",
+        "W1988943746",
+        "W1968919514",
+        "W1595419249",
+        "W2203848210",
+        "W2077871761",
+        "W2121177215",
+        "W2133935090"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 1,
+        "reasoning": "Group A is a highly coherent cluster focused on the experimental measurement of thermophysical properties (density, pressure, phase behavior) of the same family of ionic liquids as the target, with several papers studying the exact same compound. Group B is extremely noisy and incoherent, mixing a few papers on ionic liquids with completely unrelated topics like internal combustion engines and chemical sensors."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper, which measures the pressure-density-temperature (p-ρ-T) surface of the ionic liquid [C6mim][NTf2], fits perfectly into Group A. Group A is highly coherent, focusing on experimental measurements of thermophysical properties of ionic liquids. Specifically, papers A[0], A[1], and A[4] investigate the exact same or closely related ionic liquids, and papers A[1] and A[2] study the exact same property (density-pressure-temperature relationships). In contrast, Group B is thematically incoherent, containing papers on unrelated topics like combustion engines and sensors."
+      }
+    },
+    {
+      "target_uid": "W1979963443",
+      "target_title": "Urea Assisted Synthesis of Flower Like CuO Nanostructures and Their Chemical Sensing Application for the Determination of Cadmium Ions",
+      "target_year": null,
+      "method_a_cluster_id": 248,
+      "method_b_cluster_id": 774,
+      "method_a_cluster_size": 2372,
+      "method_b_cluster_size": 469,
+      "method_a_cross_cluster_ratio": 0.9958,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2129233090",
+        "W2523397185",
+        "W2782725202",
+        "W3183962655",
+        "W2621982058",
+        "W2082306115",
+        "W4210772182",
+        "W4281863264"
+      ],
+      "group_b_uids": [
+        "W1981047083",
+        "W1489353548",
+        "W2121149822",
+        "W2329607850",
+        "W2166812989",
+        "W3166806254",
+        "W2005211800",
+        "W2556188656"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 3,
+        "score_b": 1,
+        "reasoning": "Group A is a very poor match, containing disparate papers on rheology, tribology of ionic liquids, and catalysis, with no clear thematic connection to the target's topic of nanostructure synthesis for sensing. While Group B is also noisy with a strong focus on catalysis, it contains one paper on ion-selective electrodes, which directly relates to the target paper's application of chemical sensing for ions. This single, highly relevant paper makes Group B a significantly better, though still broad, cluster."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper describes the synthesis of a CuO nanostructure for chemical sensing of cadmium ions. Group B has a very strong thematic link through paper [3], which focuses on 'All-Solid-State Ion-Selective Electrodes', a topic directly related to ion sensing. While Group A involves materials science and catalysis, it lacks any focus on sensing applications, making Group B, with its explicit inclusion of ion measurement devices, the much more natural fit."
+      }
+    },
+    {
+      "target_uid": "W1963655362",
+      "target_title": "Investigation and Comparison of Residual Gas Enhanced HCCI using Trapping (NVO HCCI) or Rebreathing of Residual Gases",
+      "target_year": null,
+      "method_a_cluster_id": 245,
+      "method_b_cluster_id": 627,
+      "method_a_cluster_size": 533,
+      "method_b_cluster_size": 457,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9894,
+      "group_a_uids": [
+        "W2415884520",
+        "W3107353966",
+        "W2014284995",
+        "W2604801889",
+        "W2908907261",
+        "W2319502881",
+        "W2921638553",
+        "W2323903979"
+      ],
+      "group_b_uids": [
+        "W4388923671",
+        "W2944871924",
+        "W2096379884",
+        "W1978619727",
+        "W2086378299",
+        "W2072425649",
+        "W4224990566",
+        "W2324462072"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 1,
+        "reasoning": "Both groups are extremely poor fits for the target paper, which is about internal combustion engine mechanics and thermodynamics. Neither group contains any papers on this topic. Group B is chosen as the marginal winner because it contains a few papers on catalysis involving fuel-related molecules (methanol) and combustion products (CO2), creating a very faint thematic link to the target's general area of combustion. Group A is dominated by polymer physics and the properties of ionic liquids, which are entirely unrelated to the target."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 1,
+        "reasoning": "Neither group is a good fit, as the target paper is on internal combustion engines, a topic absent from both candidate groups. However, Group B contains papers on rheology and fluid mechanics ([3], [4]), which are sub-disciplines of mechanics. The target paper, dealing with gas dynamics and thermodynamics within an engine, also falls under the broad umbrella of mechanics, making Group B a marginally less incorrect fit than Group A, which is almost exclusively focused on synthetic and catalytic chemistry."
+      }
+    },
+    {
+      "target_uid": "W2032619003",
+      "target_title": "CO2 capture from flue gas at high temperatures by new ionic liquids with high capacity",
+      "target_year": null,
+      "method_a_cluster_id": 241,
+      "method_b_cluster_id": 644,
+      "method_a_cluster_size": 110,
+      "method_b_cluster_size": 35,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2887190474",
+        "W2950180295",
+        "W2890762065",
+        "W2802972452",
+        "W4205279230",
+        "W2783903402",
+        "W2183748358",
+        "W2791916762"
+      ],
+      "group_b_uids": [
+        "W1504830243",
+        "W2017012828",
+        "W2028306078",
+        "W2045522442",
+        "W2084993698",
+        "W2121492825",
+        "W2395383184",
+        "W2794045301"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 2,
+        "reasoning": "Group B is a much better fit because it contains multiple papers directly related to the target's theme of gas capture using ionic liquids. Specifically, papers B[6] (CO2 capture) and B[3], B[4] (SO2 capture) are highly relevant. Group A is very noisy, with only a few papers on ionic liquids, but for completely unrelated applications like chromatography and polymer science."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "Group B has a clear and strong thematic focus on gas capture and utilization, which directly aligns with the target paper's topic of CO2 capture. Specifically, papers B[3], B[4], and B[6] all deal with capturing acid gases (SO2 or CO2) using ionic liquids. In contrast, while Group A contains several papers on ionic liquids, they are for disparate applications like chromatography, electrolytes, and reaction solvents, lacking the central theme of gas capture."
+      }
+    },
+    {
+      "target_uid": "W2022066961",
+      "target_title": "Atomistic Simulation of the Absorption of Carbon Dioxide and Water in the Ionic Liquid 1-<i>n</i>-Hexyl-3-methylimidazolium Bis(trifluoromethylsulfonyl)imide ([hmim][Tf<sub>2</sub>N]",
+      "target_year": null,
+      "method_a_cluster_id": 153,
+      "method_b_cluster_id": 83,
+      "method_a_cluster_size": 339,
+      "method_b_cluster_size": 108,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2340063144",
+        "W2069074373",
+        "W2102886706",
+        "W2127947635",
+        "W2058809871",
+        "W2092046719",
+        "W2055767365",
+        "W2168422917"
+      ],
+      "group_b_uids": [
+        "W2006983199",
+        "W2007298486",
+        "W2014756169",
+        "W1975841402",
+        "W2094588807",
+        "W1649657699",
+        "W1696360129",
+        "W1976651458"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 4,
+        "reasoning": "Group B is a much better cluster because it is thematically centered on ionic liquids, which is the specific chemical system studied in the target paper. Several papers in Group B even investigate ionic liquids with the same or similar cation/anion structures as the target. Group A is a thematically inconsistent collection of papers on topics like catalysis and polymer chemistry, with only a tenuous link via the use of CO2 as a reagent in a completely different context."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper is an atomistic simulation of CO2 absorption in a specific ionic liquid, 1-n-hexyl-3-methylimidazolium bis(trifluoromethylsulfonyl)imide ([hmim][Tf2N]). Group B is almost exclusively focused on the properties and applications of ionic liquids, with multiple papers studying similar imidazolium-based cations and the bis(trifluoromethylsulfonyl)imide ([N(Tf)2] or [TFSI]) anion. In contrast, Group A focuses on catalysis and polymer chemistry, with only a tangential connection through the use of CO2 as a reactant, which is a much weaker link than the shared class of compounds with Group B."
+      }
+    },
+    {
+      "target_uid": "W1973810355",
+      "target_title": "Characterization of Livestock Odors Using Steel Plates, Solid-Phase Microextraction, and Multidimensional Gas Chromatography–Mass Spectrometry–Olfactometry",
+      "target_year": null,
+      "method_a_cluster_id": 359,
+      "method_b_cluster_id": 607,
+      "method_a_cluster_size": 323,
+      "method_b_cluster_size": 1459,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9992,
+      "group_a_uids": [
+        "W2047841306",
+        "W1987729745",
+        "W4214771991",
+        "W2046961441",
+        "W3126753800",
+        "W4402237882",
+        "W4294688765",
+        "W4403205355"
+      ],
+      "group_b_uids": [
+        "W2094325514",
+        "W2152116424",
+        "W2583796172",
+        "W3006916761",
+        "W2144592307",
+        "W3027422850",
+        "W2079018507",
+        "W3183541556"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 1,
+        "reasoning": "Both groups are extremely poor matches to the target paper. Group A contains papers on polymer rheology and electrocatalysis, which have no thematic or methodological overlap with the target's focus on analytical chemistry for odor characterization. Group B is also thematically incoherent, but one of its papers mentions the use of 'gas-liquid chromatography', a technique related to the 'gas chromatography' used in the target paper, providing a single, albeit very weak, methodological link. Therefore, Group B is infinitesimally better due to this faint connection, while Group A is completely unrelated."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper is an analytical chemistry study using gas chromatography-mass spectrometry (GC-MS) to characterize a complex mixture of gases. Group A's focus on polymer rheology and electrocatalysis for nitrate reduction is thematically unrelated. Group B, while diverse, includes a paper [6] that explicitly uses gas-liquid chromatography, a method directly related to the target's core technique. The broader theme of characterizing chemical systems and their properties in Group B is also a better fit than the specific catalysis and polymer physics topics of Group A."
+      }
+    },
+    {
+      "target_uid": "W2031599865",
+      "target_title": "High Conversion, Solvent Free, Continuous Synthesis of Imidazolium Ionic Liquids In Spinning Tube-in-Tube Reactors",
+      "target_year": null,
+      "method_a_cluster_id": 142,
+      "method_b_cluster_id": 831,
+      "method_a_cluster_size": 1449,
+      "method_b_cluster_size": 1130,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9762,
+      "group_a_uids": [
+        "W2018782826",
+        "W2763274695",
+        "W2700345772",
+        "W2109418156",
+        "W2563934114",
+        "W2001030317",
+        "W2171125088",
+        "W2328221846"
+      ],
+      "group_b_uids": [
+        "W2117828282",
+        "W4389144547",
+        "W2997410966",
+        "W2169405853",
+        "W3137958545",
+        "W3035945525",
+        "W3180473974",
+        "W2098984447"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 2,
+        "score_b": 3,
+        "reasoning": "Group B is a better fit because it contains two papers on deep eutectic solvents (DESs), which are a class of solvents closely related to the target's ionic liquids. While Group A has one paper on ionic liquids, the rest of the cluster is extremely noisy with unrelated topics in methane activation and CO2 chemistry. Group B, despite also being noisy, has a stronger and more numerous core theme that aligns with the target paper."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 3,
+        "reasoning": "This is an ambiguous case, but Group A is a slightly better fit. The target paper is on the synthesis of imidazolium ionic liquids. Group A contains a paper specifically on \"protic ionic liquids\" (A[1]), establishing a direct thematic link to the same class of compounds. While Group B works on deep eutectic solvents (B[0], B[3]), which are related to ionic liquids, the explicit mention of \"ionic liquids\" in Group A provides a more direct connection than the analogous link in Group B."
+      }
+    },
+    {
+      "target_uid": "W1998127710",
+      "target_title": "Influence of anionic structure on the dissolution of chitosan in 1-butyl-3-methylimidazolium-based ionic liquids",
+      "target_year": null,
+      "method_a_cluster_id": 433,
+      "method_b_cluster_id": 17,
+      "method_a_cluster_size": 483,
+      "method_b_cluster_size": 2203,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9989,
+      "group_a_uids": [
+        "W1967200725",
+        "W2596336138",
+        "W2320580466",
+        "W2329499450",
+        "W1974162399",
+        "W3115046969",
+        "W4392390320",
+        "W2044596097"
+      ],
+      "group_b_uids": [
+        "W2091494917",
+        "W2045022932",
+        "W2025761076",
+        "W2797492470",
+        "W2766564858",
+        "W2604801889",
+        "W2747278404",
+        "W2005738873"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 2,
+        "reasoning": "Group B forms a highly coherent cluster focused on the fundamental physical chemistry of ionic liquids, particularly the relationship between ion structure (especially the anion) and the resulting properties and interactions. This aligns perfectly with the target paper's investigation into how anionic structure affects chitosan solubility. Group A is a very noisy and incoherent collection, containing only a few tangentially related papers on ionic liquids alongside several complete mismatches on topics like rheology and combustion."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 5,
+        "reasoning": "The target paper investigates how the anionic structure of an ionic liquid (IL) affects its ability to dissolve chitosan. Group A has a very strong and coherent focus on the fundamental physical chemistry of ILs, specifically how ion structure (both cation and anion) influences bulk properties, ion-ion interactions, and interactions with solutes. Paper A[5], which studies the 'Effect of Aromaticity in Anion on the Cation–Anion Interactions', is particularly synergistic. In contrast, Group B is much more thematically scattered, with sub-clusters on DNA interactions, catalysis, and several outliers in rheology and combustion."
+      }
+    },
+    {
+      "target_uid": "W1838460720",
+      "target_title": "Flammability, thermal stability, and phase change characteristics of several trialkylimidazolium saltsThe authors wish to thank the scientists at the Occupational Safety and Health Administration ? Salt Lake Technical Center for their measurement of the imidazolium flashpoints.The policy of the National Institute of Standards and Technology (NIST) is to use metric units of measurement in all its publications, and to provide statements of uncertainty for all original measurements. In this document however, data from organizations outside NIST are shown, which may include measurements in non-metric units or measurements without uncertainty statements. The identification of any commercial product or trade name does not imply endorsement or recommendation by NIST or the United States Air Force (USAF). Opinions, interpretations, conclusions, and recommendations are those of the authors and are not necessarily endorsed by the USAF or NIST.",
+      "target_year": null,
+      "method_a_cluster_id": 24,
+      "method_b_cluster_id": 848,
+      "method_a_cluster_size": 254,
+      "method_b_cluster_size": 124,
+      "method_a_cross_cluster_ratio": 0.9785,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1995030777",
+        "W4387164769",
+        "W4396769500",
+        "W3028104016",
+        "W4386477522",
+        "W3080522554",
+        "W4393149583",
+        "W4393261720"
+      ],
+      "group_b_uids": [
+        "W2004882912",
+        "W1984220930",
+        "W4285159259",
+        "W1986063447",
+        "W2321973773",
+        "W4214716734",
+        "W1965108034",
+        "W1975200944"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 4,
+        "reasoning": "Group B is a much better cluster because it contains a strong and specific sub-theme on ionic liquids and their physical properties, which is the core topic of the target paper. Multiple papers in Group B investigate phase transitions, interfacial structure, and solution behavior of ionic liquids, directly aligning with the target's focus. Group A, while internally coherent, is thematically irrelevant as it focuses entirely on heterogeneous catalysis."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper investigates the physical properties (flammability, thermal stability, phase change) of imidazolium-based ionic liquids. Group B contains a strong cluster of papers ([2], [5], [6], [7]) that also focus on the physical chemistry and properties of ionic liquids, including phase transitions and imidazolium-related structures. In contrast, Group A is exclusively focused on heterogeneous catalysis for reactions like hydrogenation and polymerization, which is thematically distant from the target paper's subject."
+      }
+    },
+    {
+      "target_uid": "W2013866286",
+      "target_title": "Raman spectra of acetonitrile in imidazolium ionic liquids",
+      "target_year": null,
+      "method_a_cluster_id": 406,
+      "method_b_cluster_id": 259,
+      "method_a_cluster_size": 1098,
+      "method_b_cluster_size": 1313,
+      "method_a_cross_cluster_ratio": 0.9923,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2070235115",
+        "W2052327443",
+        "W1998770611",
+        "W2903728632",
+        "W2044209856",
+        "W2004578758",
+        "W3160879590",
+        "W1994161194"
+      ],
+      "group_b_uids": [
+        "W2902128976",
+        "W2745853251",
+        "W2903728632",
+        "W2989605370",
+        "W4385689154",
+        "W2897782504",
+        "W2341095121",
+        "W3197715789"
+      ],
+      "overlap_size": 1,
+      "jaccard": 0.0667,
+      "comparison": {
+        "winner": "A",
+        "score_a": 4,
+        "score_b": 2,
+        "reasoning": "Group A provides a much more coherent cluster focused on the central theme of the target paper: using spectroscopic techniques to study probe molecules within ionic liquids. Papers [1] and [2] in Group A are methodologically and conceptually very similar to the target. While Group B contains two excellent papers on ionic liquid polarity, the majority of the group is highly noisy, with papers on completely unrelated topics like electrides and catalysis."
+      },
+      "belonging": {
+        "belongs_to": "A",
+        "confidence": 4,
+        "reasoning": "The target paper uses Raman spectroscopy on a probe molecule (acetonitrile) to study the local environment within ionic liquids. Group A contains several papers ([1], [2]) that use a very similar methodology, employing NMR and EPR spectroscopy on probe molecules (water, benzene, nitroxide radicals) to investigate dynamics and properties within ionic liquids. While Group B has papers on ionic liquid polarity, the specific methodological approach of spectroscopic probing is a much stronger and more specific link to Group A."
+      }
+    },
+    {
+      "target_uid": "W1508359924",
+      "target_title": "Nonhumidified Fuel Cells Using N-Ethyl-N-methyl-pyrrolidinium Fluorohydrogenate Ionic Liquid-poly(Vinylidene Fluoride-Hexafluoropropylene) Composite Membranes",
+      "target_year": null,
+      "method_a_cluster_id": 89,
+      "method_b_cluster_id": 689,
+      "method_a_cluster_size": 589,
+      "method_b_cluster_size": 36,
+      "method_a_cross_cluster_ratio": 0.9948,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2153222976",
+        "W2512837731",
+        "W3082043805",
+        "W2332630964",
+        "W3084044564",
+        "W2059367294",
+        "W3134059873",
+        "W2800165191"
+      ],
+      "group_b_uids": [
+        "W1975129937",
+        "W2032842953",
+        "W2151735396",
+        "W2315177676",
+        "W2566885337",
+        "W2765327965",
+        "W2774886565",
+        "W3003600160"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 3,
+        "score_b": 4,
+        "reasoning": "Group B is a better fit because it focuses more specifically on ionic liquids and their use in electrochemical applications, which directly aligns with the target paper's topic of fuel cells. Papers B[2] (polymer electrolytes) and B[7] (Li-ion batteries) are particularly strong matches. While Group A contains relevant papers on polymer/ionic liquid systems, its theme is broader and it includes more unrelated papers on general polymer physics and catalysis."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper develops an ionic liquid-polymer composite membrane for fuel cells, focusing on its ionic conductivity. Group A is strongly focused on ionic liquids, including their synthesis and use in electrochemical applications like polymer electrolytes (A[2]) and Li-ion batteries (A[7]), which is a direct thematic and application match. While Group B also features papers combining polymers and ionic liquids, their focus is on fundamental physical properties and phase behavior in solution, not on creating functional materials for electrochemical devices."
+      }
+    },
+    {
+      "target_uid": "W2007693086",
+      "target_title": "Various metal nanoparticles produced by accelerated electron beam irradiation of room-temperature ionic liquid",
+      "target_year": null,
+      "method_a_cluster_id": 40,
+      "method_b_cluster_id": 792,
+      "method_a_cluster_size": 3212,
+      "method_b_cluster_size": 125,
+      "method_a_cross_cluster_ratio": 0.9904,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W1801156806",
+        "W2109977502",
+        "W2166276784",
+        "W2078181075",
+        "W4392191744",
+        "W1991776068",
+        "W3130452425",
+        "W2126249881"
+      ],
+      "group_b_uids": [
+        "W2039293143",
+        "W1881801259",
+        "W2793092347",
+        "W4372338125",
+        "W4295083530",
+        "W1979769822",
+        "W2032982933",
+        "W2046778639"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "A",
+        "score_a": 3,
+        "score_b": 2,
+        "reasoning": "Both groups are noisy, containing several papers on unrelated topics. However, Group B has a stronger thematic core related to the target, with multiple papers ([0], [7]) specifically discussing nanoparticles in ionic liquids. Group A has only one paper ([6]) that directly matches this specific combination, making its overall thematic connection to the target weaker."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 4,
+        "reasoning": "The target paper details the synthesis of metal nanoparticles within an ionic liquid. Group A contains a paper ([6]) that describes a very similar process: the synthesis of palladium nanoparticles in ionic liquids for hydrogenation reactions. This provides a direct and specific overlap in problem setting, materials (nanoparticles, ionic liquids), and methodology (synthesis). While Group B also has papers related to nanoparticles and ionic liquids ([0], [7]), the connection in Group A is stronger due to the shared focus on the primary synthesis of these materials."
+      }
+    },
+    {
+      "target_uid": "W1997111966",
+      "target_title": "HCCI Combustion Control Using Dual-Fuel Approach: Experimental and Modeling Investigations",
+      "target_year": null,
+      "method_a_cluster_id": 385,
+      "method_b_cluster_id": 369,
+      "method_a_cluster_size": 475,
+      "method_b_cluster_size": 2480,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9336,
+      "group_a_uids": [
+        "W4389483219",
+        "W2732124762",
+        "W2312671776",
+        "W2321243941",
+        "W1982159630",
+        "W2101410882",
+        "W3046112412",
+        "W3029798817"
+      ],
+      "group_b_uids": [
+        "W2060655894",
+        "W2103873115",
+        "W2158765454",
+        "W3034129260"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 1,
+        "score_b": 5,
+        "reasoning": "Group A is an excellent cluster, with all papers focusing specifically on advanced, low-temperature engine combustion strategies like HCCI and RCCI, which is the exact topic of the target paper. In contrast, Group B is completely irrelevant, containing a mixture of chemistry papers on topics like ionic liquids, catalysts, and polymers, with no connection to internal combustion engines."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper focuses on Homogeneous Charge Compression Ignition (HCCI) combustion control in an engine, a topic that aligns perfectly with every paper in Group A. Group A's research is centered on advanced engine combustion modes like HCCI and RCCI, fuel properties, and control strategies. Group B's research is in completely different fields of chemistry, such as ionic liquids, catalysis, and polymer synthesis, showing no thematic overlap with the target paper."
+      }
+    },
+    {
+      "target_uid": "W1972080435",
+      "target_title": "On the Interactions between Amino Acids and Ionic Liquids in Aqueous Media",
+      "target_year": null,
+      "method_a_cluster_id": 129,
+      "method_b_cluster_id": 259,
+      "method_a_cluster_size": 387,
+      "method_b_cluster_size": 1313,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 0.9946,
+      "group_a_uids": [
+        "W4380319868",
+        "W4200110402",
+        "W2508812891",
+        "W3034129260",
+        "W2778930700",
+        "W2910917027",
+        "W1981638559",
+        "W2141706599"
+      ],
+      "group_b_uids": [
+        "W2902128976",
+        "W2745853251",
+        "W2903728632",
+        "W2989605370",
+        "W4385689154",
+        "W2897782504",
+        "W2341095121",
+        "W3197715789"
+      ],
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "comparison": {
+        "winner": "B",
+        "score_a": 2,
+        "score_b": 2,
+        "reasoning": "Both groups are very noisy, containing multiple distinct and unrelated research topics. However, Group A is the slightly better choice because its two relevant papers ([3], [6]) focus on the fundamental solvation properties and polarity of ionic liquids, which is a direct and specific match to the target's investigation of molecular interactions in ionic liquid solutions. The relevant papers in Group B concern the application of ionic liquids in catalysis, which is a less direct thematic link to the target's physical chemistry focus."
+      },
+      "belonging": {
+        "belongs_to": "B",
+        "confidence": 5,
+        "reasoning": "The target paper investigates the fundamental molecular interactions and solution properties of ionic liquids (ILs) with amino acids. Group A has a clear sub-theme dedicated to the fundamental properties of ILs as solvents, as seen in papers [3] and [6] which discuss 'solvation properties' and 'Kamlet-Taft parameters'. While Group B also mentions ILs, it uses them in an applied context for catalysis, making the thematic fit with the target's physical chemistry focus much weaker."
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 24,
+    "comparison": {
+      "method_a": "sum",
+      "method_b": "consensus",
+      "method_a_wins": 12,
+      "method_b_wins": 12,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.5,
+      "method_b_win_rate": 0.5,
+      "method_a_win_rate_no_ties": 0.5,
+      "method_b_win_rate_no_ties": 0.5,
+      "score_a_mean": 2.625,
+      "score_b_mean": 2.2917,
+      "score_gap_mean": 0.3333
+    },
+    "belonging": {
+      "method_a_prefers": 13,
+      "method_b_prefers": 11,
+      "ties_or_invalid": 0,
+      "method_a_preference_rate": 0.5417,
+      "method_b_preference_rate": 0.4583,
+      "method_a_preference_rate_no_ties": 0.5417,
+      "method_b_preference_rate_no_ties": 0.4583,
+      "confidence_mean": 4.2917
+    }
+  }
+}

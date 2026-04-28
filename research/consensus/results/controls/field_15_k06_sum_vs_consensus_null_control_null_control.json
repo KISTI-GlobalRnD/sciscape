@@ -1,0 +1,1205 @@
+{
+  "field": "field_15_k06_sum_vs_consensus_null_control",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum",
+  "label_b": "consensus",
+  "layers_a": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.85,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.45,
+  "allow_cluster_change": false,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 1344540,
+    "gamma": 0.000285494207576822,
+    "n_clusters": 1740,
+    "max_pct": 2.16
+  },
+  "method_b_run": {
+    "n_edges": 1344540,
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 2521,
+    "max_pct": 2.85
+  },
+  "n_eligible_nodes": 38145,
+  "n_candidate_cases": 3,
+  "selected_cases": [
+    {
+      "target_uid": "W4283705902",
+      "target_title": "Combined Brønsted Base-Promoted CO<sub>2</sub> Fixation into Benzylic C–H Bonds of Alkylarenes",
+      "target_year": null,
+      "method_a_cluster_id": 285,
+      "method_b_cluster_id": 285,
+      "method_a_cluster_size": 533,
+      "method_b_cluster_size": 38,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.5,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0625,
+      "neighbors_a": [
+        {
+          "uid": "W3165244921",
+          "rank": 1,
+          "weight": 1.744624,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4205192339",
+          "rank": 2,
+          "weight": 1.576124,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2947837110",
+          "rank": 3,
+          "weight": 0.990442,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4310485211",
+          "rank": 4,
+          "weight": 0.955866,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4405642302",
+          "rank": 5,
+          "weight": 0.836843,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902045646",
+          "rank": 6,
+          "weight": 0.633356,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213127116",
+          "rank": 7,
+          "weight": 0.578173,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182564584",
+          "rank": 8,
+          "weight": 0.548503,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3165244921",
+          "rank": 1,
+          "weight": 6.978498,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4205192339",
+          "rank": 2,
+          "weight": 6.304496,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4310485211",
+          "rank": 3,
+          "weight": 2.867599,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4405642302",
+          "rank": 4,
+          "weight": 2.510528,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2947837110",
+          "rank": 5,
+          "weight": 1.980883,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902045646",
+          "rank": 6,
+          "weight": 0.633356,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213127116",
+          "rank": 7,
+          "weight": 0.578173,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182564584",
+          "rank": 8,
+          "weight": 0.548503,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2182564584",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.548503,
+          "weight_b": 0.548503
+        },
+        {
+          "uid": "W2902045646",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.633356,
+          "weight_b": 0.633356
+        },
+        {
+          "uid": "W2947837110",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.990442,
+          "weight_b": 1.980883
+        },
+        {
+          "uid": "W3165244921",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.744624,
+          "weight_b": 6.978498
+        },
+        {
+          "uid": "W4205192339",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.576124,
+          "weight_b": 6.304496
+        },
+        {
+          "uid": "W4213127116",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.578173,
+          "weight_b": 0.578173
+        },
+        {
+          "uid": "W4310485211",
+          "rank_a": 4,
+          "rank_b": 3,
+          "delta": -1,
+          "weight_a": 0.955866,
+          "weight_b": 2.867599
+        },
+        {
+          "uid": "W4405642302",
+          "rank_a": 5,
+          "rank_b": 4,
+          "delta": -1,
+          "weight_a": 0.836843,
+          "weight_b": 2.510528
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W2023021295",
+      "target_title": "Saturation of turbulent drag reduction in dilute polymer solutions",
+      "target_year": null,
+      "method_a_cluster_id": 872,
+      "method_b_cluster_id": 872,
+      "method_a_cluster_size": 119,
+      "method_b_cluster_size": 1278,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.75,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.0938,
+      "neighbors_a": [
+        {
+          "uid": "W2061315801",
+          "rank": 1,
+          "weight": 1.863497,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2152753188",
+          "rank": 2,
+          "weight": 1.730663,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 3,
+          "weight": 1.084733,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2073282075",
+          "rank": 4,
+          "weight": 1.084666,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2003447076",
+          "rank": 5,
+          "weight": 0.969004,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2009841173",
+          "rank": 6,
+          "weight": 0.813965,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061623523",
+          "rank": 7,
+          "weight": 0.758355,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2745962556",
+          "rank": 8,
+          "weight": 0.531129,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2061315801",
+          "rank": 1,
+          "weight": 7.453989,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2152753188",
+          "rank": 2,
+          "weight": 6.922653,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 3,
+          "weight": 3.2542,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061623523",
+          "rank": 4,
+          "weight": 2.275065,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2073282075",
+          "rank": 5,
+          "weight": 2.169333,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2003447076",
+          "rank": 6,
+          "weight": 1.938009,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2009841173",
+          "rank": 7,
+          "weight": 1.627929,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2745962556",
+          "rank": 8,
+          "weight": 0.531129,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2003447076",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.969004,
+          "weight_b": 1.938009
+        },
+        {
+          "uid": "W2009841173",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.813965,
+          "weight_b": 1.627929
+        },
+        {
+          "uid": "W2061315801",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.863497,
+          "weight_b": 7.453989
+        },
+        {
+          "uid": "W2061623523",
+          "rank_a": 7,
+          "rank_b": 4,
+          "delta": -3,
+          "weight_a": 0.758355,
+          "weight_b": 2.275065
+        },
+        {
+          "uid": "W2073282075",
+          "rank_a": 4,
+          "rank_b": 5,
+          "delta": 1,
+          "weight_a": 1.084666,
+          "weight_b": 2.169333
+        },
+        {
+          "uid": "W2121743594",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.084733,
+          "weight_b": 3.2542
+        },
+        {
+          "uid": "W2152753188",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.730663,
+          "weight_b": 6.922653
+        },
+        {
+          "uid": "W2745962556",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.531129,
+          "weight_b": 0.531129
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W2790883182",
+      "target_title": "Comproportionation Reaction of Cu(II)/Cu(0) in Ethaline-Water Mixed Solvents",
+      "target_year": null,
+      "method_a_cluster_id": 210,
+      "method_b_cluster_id": 210,
+      "method_a_cluster_size": 1032,
+      "method_b_cluster_size": 10,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.0,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.125,
+      "neighbors_a": [
+        {
+          "uid": "W2899683046",
+          "rank": 1,
+          "weight": 1.490043,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2804873868",
+          "rank": 2,
+          "weight": 1.209446,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2898551222",
+          "rank": 3,
+          "weight": 0.846358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033792535",
+          "rank": 4,
+          "weight": 0.791696,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4200460146",
+          "rank": 5,
+          "weight": 0.764801,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2988922649",
+          "rank": 6,
+          "weight": 0.696267,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2981059806",
+          "rank": 7,
+          "weight": 0.609448,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2789802127",
+          "rank": 8,
+          "weight": 0.564239,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2899683046",
+          "rank": 1,
+          "weight": 4.470129,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2804873868",
+          "rank": 2,
+          "weight": 3.628339,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4200460146",
+          "rank": 3,
+          "weight": 1.529601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2988922649",
+          "rank": 4,
+          "weight": 1.392534,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2898551222",
+          "rank": 5,
+          "weight": 0.846358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033792535",
+          "rank": 6,
+          "weight": 0.791696,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2981059806",
+          "rank": 7,
+          "weight": 0.609448,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2789802127",
+          "rank": 8,
+          "weight": 0.564239,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2789802127",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.564239,
+          "weight_b": 0.564239
+        },
+        {
+          "uid": "W2804873868",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.209446,
+          "weight_b": 3.628339
+        },
+        {
+          "uid": "W2898551222",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.846358,
+          "weight_b": 0.846358
+        },
+        {
+          "uid": "W2899683046",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.490043,
+          "weight_b": 4.470129
+        },
+        {
+          "uid": "W2981059806",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.609448,
+          "weight_b": 0.609448
+        },
+        {
+          "uid": "W2988922649",
+          "rank_a": 6,
+          "rank_b": 4,
+          "delta": -2,
+          "weight_a": 0.696267,
+          "weight_b": 1.392534
+        },
+        {
+          "uid": "W3033792535",
+          "rank_a": 4,
+          "rank_b": 6,
+          "delta": 2,
+          "weight_a": 0.791696,
+          "weight_b": 0.791696
+        },
+        {
+          "uid": "W4200460146",
+          "rank_a": 5,
+          "rank_b": 3,
+          "delta": -2,
+          "weight_a": 0.764801,
+          "weight_b": 1.529601
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W4283705902",
+      "target_title": "Combined Brønsted Base-Promoted CO<sub>2</sub> Fixation into Benzylic C–H Bonds of Alkylarenes",
+      "target_year": null,
+      "method_a_cluster_id": 285,
+      "method_b_cluster_id": 285,
+      "method_a_cluster_size": 533,
+      "method_b_cluster_size": 38,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.5,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0625,
+      "neighbors_a": [
+        {
+          "uid": "W3165244921",
+          "rank": 1,
+          "weight": 1.744624,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4205192339",
+          "rank": 2,
+          "weight": 1.576124,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2947837110",
+          "rank": 3,
+          "weight": 0.990442,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4310485211",
+          "rank": 4,
+          "weight": 0.955866,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4405642302",
+          "rank": 5,
+          "weight": 0.836843,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902045646",
+          "rank": 6,
+          "weight": 0.633356,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213127116",
+          "rank": 7,
+          "weight": 0.578173,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182564584",
+          "rank": 8,
+          "weight": 0.548503,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3165244921",
+          "rank": 1,
+          "weight": 6.978498,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4205192339",
+          "rank": 2,
+          "weight": 6.304496,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4310485211",
+          "rank": 3,
+          "weight": 2.867599,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4405642302",
+          "rank": 4,
+          "weight": 2.510528,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2947837110",
+          "rank": 5,
+          "weight": 1.980883,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902045646",
+          "rank": 6,
+          "weight": 0.633356,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213127116",
+          "rank": 7,
+          "weight": 0.578173,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182564584",
+          "rank": 8,
+          "weight": 0.548503,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2182564584",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.548503,
+          "weight_b": 0.548503
+        },
+        {
+          "uid": "W2902045646",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.633356,
+          "weight_b": 0.633356
+        },
+        {
+          "uid": "W2947837110",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.990442,
+          "weight_b": 1.980883
+        },
+        {
+          "uid": "W3165244921",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.744624,
+          "weight_b": 6.978498
+        },
+        {
+          "uid": "W4205192339",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.576124,
+          "weight_b": 6.304496
+        },
+        {
+          "uid": "W4213127116",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.578173,
+          "weight_b": 0.578173
+        },
+        {
+          "uid": "W4310485211",
+          "rank_a": 4,
+          "rank_b": 3,
+          "delta": -1,
+          "weight_a": 0.955866,
+          "weight_b": 2.867599
+        },
+        {
+          "uid": "W4405642302",
+          "rank_a": 5,
+          "rank_b": 4,
+          "delta": -1,
+          "weight_a": 0.836843,
+          "weight_b": 2.510528
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 4,
+        "reasoning": "Both groups identify the same excellent set of neighbors, but Group A's ranking is slightly more coherent. The target paper's contribution is applying a specific \"Combined Brønsted Base\" method to benzylic C-H bonds. Group A's top-ranked papers logically progress from applying this exact method to aromatic C-H bonds to then applying it to benzylic C-H bonds (on heteroarenes), which perfectly frames the target's immediate context. Group B's ranking is slightly less focused, as it elevates a paper at rank 4 that uses a different reagent system over a paper at rank 5 that uses the same Brønsted base methodology as the target.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 4,
+        "presented_method_a": "sum",
+        "presented_method_b": "consensus",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W2023021295",
+      "target_title": "Saturation of turbulent drag reduction in dilute polymer solutions",
+      "target_year": null,
+      "method_a_cluster_id": 872,
+      "method_b_cluster_id": 872,
+      "method_a_cluster_size": 119,
+      "method_b_cluster_size": 1278,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.75,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.0938,
+      "neighbors_a": [
+        {
+          "uid": "W2061315801",
+          "rank": 1,
+          "weight": 1.863497,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2152753188",
+          "rank": 2,
+          "weight": 1.730663,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 3,
+          "weight": 1.084733,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2073282075",
+          "rank": 4,
+          "weight": 1.084666,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2003447076",
+          "rank": 5,
+          "weight": 0.969004,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2009841173",
+          "rank": 6,
+          "weight": 0.813965,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061623523",
+          "rank": 7,
+          "weight": 0.758355,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2745962556",
+          "rank": 8,
+          "weight": 0.531129,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2061315801",
+          "rank": 1,
+          "weight": 7.453989,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2152753188",
+          "rank": 2,
+          "weight": 6.922653,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 3,
+          "weight": 3.2542,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2061623523",
+          "rank": 4,
+          "weight": 2.275065,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2073282075",
+          "rank": 5,
+          "weight": 2.169333,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2003447076",
+          "rank": 6,
+          "weight": 1.938009,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2009841173",
+          "rank": 7,
+          "weight": 1.627929,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2745962556",
+          "rank": 8,
+          "weight": 0.531129,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2003447076",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.969004,
+          "weight_b": 1.938009
+        },
+        {
+          "uid": "W2009841173",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.813965,
+          "weight_b": 1.627929
+        },
+        {
+          "uid": "W2061315801",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.863497,
+          "weight_b": 7.453989
+        },
+        {
+          "uid": "W2061623523",
+          "rank_a": 7,
+          "rank_b": 4,
+          "delta": -3,
+          "weight_a": 0.758355,
+          "weight_b": 2.275065
+        },
+        {
+          "uid": "W2073282075",
+          "rank_a": 4,
+          "rank_b": 5,
+          "delta": 1,
+          "weight_a": 1.084666,
+          "weight_b": 2.169333
+        },
+        {
+          "uid": "W2121743594",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.084733,
+          "weight_b": 3.2542
+        },
+        {
+          "uid": "W2152753188",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.730663,
+          "weight_b": 6.922653
+        },
+        {
+          "uid": "W2745962556",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.531129,
+          "weight_b": 0.531129
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 4,
+        "reasoning": "Both groups present an excellent and highly relevant set of neighbors, consisting of the exact same papers. However, Group B's ranking is superior because it prioritizes papers that are more central to the target's specific focus on the non-universal aspects of drag reduction saturation. Specifically, Group B correctly ranks the paper on concentration and Reynolds number dependence higher than the paper comparing flexible vs. rodlike polymers, which is more of a lateral comparison and less direct to the target's main topic.",
+        "presented_winner": "B",
+        "presented_score_a": 4,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus",
+        "presented_method_b": "sum",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W2790883182",
+      "target_title": "Comproportionation Reaction of Cu(II)/Cu(0) in Ethaline-Water Mixed Solvents",
+      "target_year": null,
+      "method_a_cluster_id": 210,
+      "method_b_cluster_id": 210,
+      "method_a_cluster_size": 1032,
+      "method_b_cluster_size": 10,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.0,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.125,
+      "neighbors_a": [
+        {
+          "uid": "W2899683046",
+          "rank": 1,
+          "weight": 1.490043,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2804873868",
+          "rank": 2,
+          "weight": 1.209446,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2898551222",
+          "rank": 3,
+          "weight": 0.846358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033792535",
+          "rank": 4,
+          "weight": 0.791696,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4200460146",
+          "rank": 5,
+          "weight": 0.764801,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2988922649",
+          "rank": 6,
+          "weight": 0.696267,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2981059806",
+          "rank": 7,
+          "weight": 0.609448,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2789802127",
+          "rank": 8,
+          "weight": 0.564239,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2899683046",
+          "rank": 1,
+          "weight": 4.470129,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2804873868",
+          "rank": 2,
+          "weight": 3.628339,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4200460146",
+          "rank": 3,
+          "weight": 1.529601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2988922649",
+          "rank": 4,
+          "weight": 1.392534,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2898551222",
+          "rank": 5,
+          "weight": 0.846358,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3033792535",
+          "rank": 6,
+          "weight": 0.791696,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2981059806",
+          "rank": 7,
+          "weight": 0.609448,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2789802127",
+          "rank": 8,
+          "weight": 0.564239,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2789802127",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.564239,
+          "weight_b": 0.564239
+        },
+        {
+          "uid": "W2804873868",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.209446,
+          "weight_b": 3.628339
+        },
+        {
+          "uid": "W2898551222",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.846358,
+          "weight_b": 0.846358
+        },
+        {
+          "uid": "W2899683046",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.490043,
+          "weight_b": 4.470129
+        },
+        {
+          "uid": "W2981059806",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.609448,
+          "weight_b": 0.609448
+        },
+        {
+          "uid": "W2988922649",
+          "rank_a": 6,
+          "rank_b": 4,
+          "delta": -2,
+          "weight_a": 0.696267,
+          "weight_b": 1.392534
+        },
+        {
+          "uid": "W3033792535",
+          "rank_a": 4,
+          "rank_b": 6,
+          "delta": 2,
+          "weight_a": 0.791696,
+          "weight_b": 0.791696
+        },
+        {
+          "uid": "W4200460146",
+          "rank_a": 5,
+          "rank_b": 3,
+          "delta": -2,
+          "weight_a": 0.764801,
+          "weight_b": 1.529601
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "B",
+        "score_a": 4,
+        "score_b": 5,
+        "reasoning": "Both groups contain the same excellent set of papers, so the decision rests entirely on the ranking. Group A is superior because its top-ranked papers are more tightly focused on the target's core topic: copper redox chemistry and kinetics in ethaline. Group B weakens its neighborhood by promoting a less relevant paper on silver electrodeposition to rank 3, while demoting a highly relevant paper on Cu2+/Cu1+ charge-transfer kinetics.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 4,
+        "presented_method_a": "consensus",
+        "presented_method_b": "sum",
+        "swapped": true
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 3,
+    "comparison": {
+      "method_a": "sum",
+      "method_b": "consensus",
+      "method_a_wins": 2,
+      "method_b_wins": 1,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.6667,
+      "method_b_win_rate": 0.3333,
+      "score_a_mean": 4.6667,
+      "score_b_mean": 4.3333,
+      "score_gap_mean": 0.3333
+    },
+    "sample_stats": {
+      "shift_score_mean": 0.0938,
+      "rank_jaccard_mean": 1.0,
+      "mean_abs_rank_shift_mean": 0.75,
+      "cluster_changed_rate": 0.0
+    }
+  }
+}

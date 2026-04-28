@@ -27,6 +27,12 @@ from .normalization import _normalize_notation, _normalize_spelling, _phrase_sin
 from .utils import _edit_distance
 from .vocab_merge import _simple_singular
 
+try:
+    import sciscape_text as _rust_text
+    _RUST_TEXT_AVAILABLE = True
+except ImportError:
+    _RUST_TEXT_AVAILABLE = False
+
 
 # ---------------------------------------------------------------------------
 # 3a: Notation + Spelling normalization
@@ -213,9 +219,26 @@ def _build_edit_distance_merge_map(
         return merge_map
 
     col_sums = np.asarray(C.sum(axis=0)).ravel()
-    C_dense_cols: Optional[np.ndarray] = None  # lazy load
+    C_csc = C.tocsc()
 
-    # Block by prefix for efficiency
+    # ── Rust fast path: sparse column comparison, no todense() ──
+    if _RUST_TEXT_AVAILABLE:
+        merge_keys = np.array(list(existing_merges.keys()), dtype=np.uint32)
+        merge_vals = np.array(list(existing_merges.values()), dtype=np.uint32)
+        pairs = _rust_text.rust_build_edit_distance_merge_map(
+            list(feature_names),
+            merge_keys,
+            merge_vals,
+            np.asarray(C_csc.indptr, dtype=np.uint64),
+            np.asarray(C_csc.indices, dtype=np.uint32),
+            np.asarray(C_csc.data, dtype=np.float64),
+            np.asarray(col_sums, dtype=np.float64),
+            max_edit_distance=max_edit_distance,
+            global_ratio_threshold=global_ratio_threshold,
+        )
+        return {int(src): int(tgt) for src, tgt in pairs}
+
+    # ── Python fallback ──
     prefix_len = 3
     blocks: Dict[str, List[int]] = defaultdict(list)
     for idx in unigram_indices:
@@ -226,7 +249,6 @@ def _build_edit_distance_merge_map(
     for block_indices in blocks.values():
         if len(block_indices) < 2:
             continue
-        # Sort by frequency descending
         block_sorted = sorted(block_indices, key=lambda i: -col_sums[i])
 
         for bi in range(len(block_sorted)):
@@ -248,7 +270,6 @@ def _build_edit_distance_merge_map(
                 if dist > max_edit_distance:
                     continue
 
-                # Frequency ratio check
                 freq_i = col_sums[idx_i]
                 freq_j = col_sums[idx_j]
                 major_freq = max(freq_i, freq_j)
@@ -257,21 +278,17 @@ def _build_edit_distance_merge_map(
                     continue
                 ratio = minor_freq / major_freq
                 if ratio >= global_ratio_threshold:
-                    continue  # both forms too frequent — not a typo
+                    continue
 
-                # Cluster dominance check: is the minor form dominant anywhere?
                 major_idx = idx_i if freq_i >= freq_j else idx_j
                 minor_idx = idx_j if freq_i >= freq_j else idx_i
 
-                if C_dense_cols is None:
-                    C_dense_cols = np.asarray(C.todense())
-
-                minor_col = C_dense_cols[:, minor_idx]
-                major_col = C_dense_cols[:, major_idx]
+                minor_col = np.asarray(C_csc[:, minor_idx].todense()).ravel()
+                major_col = np.asarray(C_csc[:, major_idx].todense()).ravel()
 
                 minor_leads_anywhere = np.any(minor_col > major_col)
                 if minor_leads_anywhere:
-                    continue  # minor dominates in at least one cluster
+                    continue
 
                 merge_map[minor_idx] = major_idx
 
@@ -336,10 +353,11 @@ def _build_similarity_graph(
     graph = VocabSimGraph()
     involved = set(existing_merges.keys())  # already merged away
     col_sums = np.asarray(C.sum(axis=0)).ravel()
-    C.shape[0]
+    C_csc_sim = C.tocsc()  # efficient column slicing for per-pair extraction
 
     # Active indices (not merged away)
-    active = [i for i in range(len(feature_names)) if i not in involved]
+    all_idx = np.arange(len(feature_names))
+    active = all_idx[~np.isin(all_idx, np.array(list(involved)))].tolist()
 
     # Blocking: group by shared words (phrases) or prefix (unigrams)
     prefix_len = 3
@@ -385,8 +403,8 @@ def _build_similarity_graph(
                 freq_i = float(col_sums[idx_i])
                 freq_j = float(col_sums[idx_j])
                 # Per-cluster frequency vectors for cross-cluster analysis
-                cluster_freq_i = np.asarray(C[:, idx_i].todense()).ravel().tolist()
-                cluster_freq_j = np.asarray(C[:, idx_j].todense()).ravel().tolist()
+                cluster_freq_i = np.asarray(C_csc_sim[:, idx_i].toarray()).ravel()
+                cluster_freq_j = np.asarray(C_csc_sim[:, idx_j].toarray()).ravel()
                 graph.add_edge(
                     name_i, name_j, dist,
                     meta={
@@ -611,24 +629,44 @@ def _merge_columns(
     feature_names: np.ndarray,
     merge_map: Dict[int, int],
 ) -> Tuple[sp.csr_matrix, np.ndarray]:
-    """Merge sparse matrix columns: sum source into target, drop source."""
+    """Merge sparse matrix columns: sum source into target, drop source.
+
+    Uses a sparse projection matrix ``X @ P`` instead of per-column LIL
+    extraction, avoiding O(merges × rows) memory churn.
+    """
     if not merge_map:
         return X, feature_names
 
     n_cols = X.shape[1]
-    X_lil = X.tolil()
 
-    for src, tgt in merge_map.items():
-        if src >= n_cols or tgt >= n_cols:
-            continue
-        src_col = X_lil[:, src].toarray().ravel()
-        X_lil[:, tgt] = X_lil[:, tgt].toarray().ravel() + src_col
-        X_lil[:, src] = 0
+    # Filter out-of-range entries
+    valid_merges = {s: t for s, t in merge_map.items() if s < n_cols and t < n_cols}
+    if not valid_merges:
+        return X, feature_names
 
-    drop_cols = set(merge_map.keys())
-    keep_mask = np.array([i not in drop_cols for i in range(n_cols)])
+    # Build column mapping: source cols redirect to their target col
+    drop_cols = set(valid_merges.keys())
+    keep_cols = sorted(set(range(n_cols)) - drop_cols)
+    n_new = len(keep_cols)
 
-    X_merged = X_lil.tocsc()[:, keep_mask].tocsr()
+    # old_col → new_col index
+    col_remap = np.full(n_cols, -1, dtype=np.int32)
+    for new_idx, old_idx in enumerate(keep_cols):
+        col_remap[old_idx] = new_idx
+    for src, tgt in valid_merges.items():
+        col_remap[src] = col_remap[tgt]
+
+    # Sparse projection matrix P (n_cols × n_new): X_merged = X @ P
+    p_rows = np.arange(n_cols, dtype=np.int32)
+    p_cols = col_remap
+    valid = p_cols >= 0
+    P = sp.csc_matrix(
+        (np.ones(valid.sum(), dtype=np.float64), (p_rows[valid], p_cols[valid])),
+        shape=(n_cols, n_new),
+    )
+    X_merged = (X @ P).tocsr()
+
+    keep_mask = np.array(keep_cols)
     names_merged = feature_names[keep_mask] if len(feature_names) == n_cols else feature_names
 
     return X_merged, names_merged

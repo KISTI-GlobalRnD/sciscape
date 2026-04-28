@@ -1,0 +1,65 @@
+{
+  "field": "field_15",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "gamma_cache": "research/consensus/results/gamma_cache/field_15_gamma_cache.json",
+  "top_k": 6,
+  "target_pct": 3.0,
+  "min_size": 10,
+  "force": false,
+  "results": [
+    {
+      "label": "consensus_all",
+      "strategy": "consensus",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "status": "computed",
+      "gamma": 0.0002846448567410888,
+      "n_clusters": 8406,
+      "max_pct": 2.67
+    },
+    {
+      "label": "sum_all",
+      "strategy": "sum",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "status": "computed",
+      "gamma": 0.000285494207576822,
+      "n_clusters": 3397,
+      "max_pct": 2.6
+    },
+    {
+      "label": "sum_minus_cc",
+      "strategy": "sum",
+      "layers": [
+        "bc_cosine",
+        "dc_fractional",
+        "emb_knn"
+      ],
+      "status": "computed",
+      "gamma": 0.000321036882690266,
+      "n_clusters": 3364,
+      "max_pct": 2.56
+    },
+    {
+      "label": "sum_minus_emb",
+      "strategy": "sum",
+      "layers": [
+        "bc_cosine",
+        "cc_cosine",
+        "dc_fractional"
+      ],
+      "status": "computed",
+      "gamma": 8.441308158271217e-07,
+      "n_clusters": 9221,
+      "max_pct": 1.1
+    }
+  ]
+}

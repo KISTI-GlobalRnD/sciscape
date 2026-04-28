@@ -20,6 +20,7 @@ import gc
 import logging
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -43,17 +44,106 @@ PRX_ADAPTER_DIR = (
 PRX_CTRL_TOKEN = "[PRX]"
 
 
-def load_texts(field_id: int) -> tuple[list[str], list[str]]:
-    """Load texts and work_ids for a field."""
-    path = TEXT_DIR / f"field_{field_id}" / "works_text.parquet"
-    df = pl.read_parquet(path, columns=["work_id", "title", "abstract"])
-    df = df.with_columns(
+def filter_text_rows(
+    df: pl.DataFrame,
+    *,
+    min_text_len: int = 0,
+    min_title_len: int = 0,
+    min_abstract_len: int = 0,
+    require_abstract: bool = False,
+) -> tuple[pl.DataFrame, dict[str, Any]]:
+    """Filter rows by title/abstract quality before embedding."""
+    scored = df.with_columns([
+        pl.col("title").fill_null("").cast(pl.String),
+        pl.col("abstract").fill_null("").cast(pl.String),
+    ]).with_columns([
+        pl.col("title").str.len_chars().alias("title_len"),
+        pl.col("abstract").str.len_chars().alias("abstract_len"),
+    ]).with_columns([
+        (pl.col("title_len") + pl.col("abstract_len")).alias("text_len"),
+        (
+            (pl.col("title_len") >= min_title_len)
+            & (pl.col("abstract_len") >= min_abstract_len)
+            & (pl.col("title_len") + pl.col("abstract_len") >= min_text_len)
+            & ((pl.col("abstract_len") > 0) if require_abstract else pl.lit(True))
+        ).alias("keep"),
+    ])
+    kept = scored.filter(pl.col("keep")).drop(["title_len", "abstract_len", "text_len", "keep"])
+    stats = {
+        "input_rows": df.height,
+        "kept_rows": kept.height,
+        "dropped_rows": df.height - kept.height,
+    }
+    return kept, stats
+
+
+def build_text_column(df: pl.DataFrame) -> pl.DataFrame:
+    return df.with_columns(
         pl.when(pl.col("abstract").is_not_null() & (pl.col("abstract") != ""))
         .then(pl.col("title").fill_null("") + " " + pl.col("abstract").fill_null(""))
         .otherwise(pl.col("title").fill_null(""))
         .alias("text")
     )
-    return df["text"].to_list(), df["work_id"].to_list()
+
+
+def load_texts(
+    field_id: int,
+    *,
+    min_text_len: int = 0,
+    min_title_len: int = 0,
+    min_abstract_len: int = 0,
+    require_abstract: bool = False,
+) -> tuple[list[str], list[str], dict[str, Any] | None]:
+    """Load texts and work_ids for a field, with optional quality filtering."""
+    path = TEXT_DIR / f"field_{field_id}" / "works_text.parquet"
+    df = pl.read_parquet(path, columns=["work_id", "title", "abstract"])
+    filter_active = (
+        min_text_len > 0
+        or min_title_len > 0
+        or min_abstract_len > 0
+        or require_abstract
+    )
+    filter_stats = None
+    if filter_active:
+        df, filter_stats = filter_text_rows(
+            df,
+            min_text_len=min_text_len,
+            min_title_len=min_title_len,
+            min_abstract_len=min_abstract_len,
+            require_abstract=require_abstract,
+        )
+        log.info("  Text-quality filter: kept %d / %d rows",
+                 filter_stats["kept_rows"], filter_stats["input_rows"])
+    df = build_text_column(df)
+    return df["text"].to_list(), df["work_id"].to_list(), filter_stats
+
+
+def validate_knn_inputs(n_nodes: int, k: int) -> None:
+    if k <= 0:
+        raise ValueError(f"k must be positive, got {k}")
+    if n_nodes <= k:
+        raise ValueError(
+            f"k={k} requires at least {k + 1} nodes after filtering, got {n_nodes}"
+        )
+
+
+def _filtered_suffix(
+    *,
+    min_text_len: int,
+    min_title_len: int,
+    min_abstract_len: int,
+    require_abstract: bool,
+) -> str:
+    parts = ["textfilt"]
+    if min_text_len:
+        parts.append(f"txt{min_text_len}")
+    if min_title_len:
+        parts.append(f"title{min_title_len}")
+    if min_abstract_len:
+        parts.append(f"abs{min_abstract_len}")
+    if require_abstract:
+        parts.append("reqabs")
+    return "_" + "_".join(parts)
 
 
 def compute_prx_embeddings(texts: list[str], batch_size: int = 256) -> np.ndarray:
@@ -185,14 +275,33 @@ def build_knn_edges(
 
 
 def process_field(field_id: int, k: int, batch_size: int,
-                  skip_prx: bool, skip_mpnet: bool):
+                  skip_prx: bool, skip_mpnet: bool,
+                  min_text_len: int, min_title_len: int,
+                  min_abstract_len: int, require_abstract: bool):
     """Build embedding k-NN edges for one field."""
     log.info("=== Field %d ===", field_id)
-    texts, work_ids = load_texts(field_id)
+    texts, work_ids, filter_stats = load_texts(
+        field_id,
+        min_text_len=min_text_len,
+        min_title_len=min_title_len,
+        min_abstract_len=min_abstract_len,
+        require_abstract=require_abstract,
+    )
     log.info("  %d texts loaded", len(texts))
+    validate_knn_inputs(len(work_ids), k)
 
     out_dir = EDGE_DIR / f"field_{field_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
+    suffix = (
+        _filtered_suffix(
+            min_text_len=min_text_len,
+            min_title_len=min_title_len,
+            min_abstract_len=min_abstract_len,
+            require_abstract=require_abstract,
+        )
+        if filter_stats is not None
+        else ""
+    )
 
     if not skip_prx:
         log.info("Computing PRX embeddings...")
@@ -203,7 +312,7 @@ def process_field(field_id: int, k: int, batch_size: int,
         log.info("Building PRX k-NN edges...")
         t0 = time.time()
         df_prx = build_knn_edges(emb_prx, work_ids, k=k)
-        out_path = out_dir / f"emb_prx_knn{k}.parquet"
+        out_path = out_dir / f"emb_prx_knn{k}{suffix}.parquet"
         df_prx.write_parquet(out_path)
         log.info("  Saved → %s (%.1fs)", out_path, time.time() - t0)
         del emb_prx, df_prx
@@ -218,7 +327,7 @@ def process_field(field_id: int, k: int, batch_size: int,
         log.info("Building MPNet k-NN edges...")
         t0 = time.time()
         df_mpnet = build_knn_edges(emb_mpnet, work_ids, k=k)
-        out_path = out_dir / f"emb_mpnet_knn{k}.parquet"
+        out_path = out_dir / f"emb_mpnet_knn{k}{suffix}.parquet"
         df_mpnet.write_parquet(out_path)
         log.info("  Saved → %s (%.1fs)", out_path, time.time() - t0)
         del emb_mpnet, df_mpnet
@@ -232,11 +341,17 @@ def main():
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--skip-prx", action="store_true")
     parser.add_argument("--skip-mpnet", action="store_true")
+    parser.add_argument("--min-text-len", type=int, default=0)
+    parser.add_argument("--min-title-len", type=int, default=0)
+    parser.add_argument("--min-abstract-len", type=int, default=0)
+    parser.add_argument("--require-abstract", action="store_true")
     args = parser.parse_args()
 
     for field_id in args.fields:
         process_field(field_id, args.k, args.batch_size,
-                      args.skip_prx, args.skip_mpnet)
+                      args.skip_prx, args.skip_mpnet,
+                      args.min_text_len, args.min_title_len,
+                      args.min_abstract_len, args.require_abstract)
 
     log.info("Done!")
 

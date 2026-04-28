@@ -1,0 +1,27 @@
+{
+  "winner_counts": {
+    "consensus_all": 6,
+    "sum_minus_emb": 3,
+    "sum_minus_cc": 3
+  },
+  "label_counts": {
+    "broad_context_noise": 1,
+    "material_family_coherence": 3,
+    "method_family_coherence": 2,
+    "over_regularized_consensus": 2,
+    "semantic_drift": 1,
+    "application_umbrella_noise": 1,
+    "coherent_refinement": 1,
+    "single_cue_specificity": 1
+  },
+  "winner_by_k": {
+    "6": {
+      "consensus_all": 5,
+      "sum_minus_emb": 3
+    },
+    "30": {
+      "consensus_all": 1,
+      "sum_minus_cc": 3
+    }
+  }
+}

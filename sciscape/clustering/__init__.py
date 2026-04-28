@@ -37,7 +37,7 @@ from .postprocess import (
     resolve_small_clusters,
 )
 from .partitioning import partition_class
-from .runner import LeidenRunner, LeidenRunResult
+from .runner import LeidenRunner, RustLeidenRunner, LeidenRunResult
 from .core_documents import (
     ClusterDocument,
     ClusterDBConfig,
@@ -62,15 +62,35 @@ from .ensemble import (
 )
 from .dendrogram import build_dendrogram
 from .constrained_cut import CutResult, constrained_cut
-from .block_init import (
-    BlockInitResult,
+from .integer_remap import (
+    RemapResult,
+    integer_remap,
+    join_back_uids,
+    load_manifest,
+)
+from .leiden_java import (
+    JavaLeidenResult,
+    JavaMultiLevelResult,
+    LevelConfig,
+    run_leiden_java,
+    run_multilevel_java,
+    postprocess_small_clusters_java,
+)
+from .leiden_rust import (
+    RUST_AVAILABLE,
+    RustLeidenResult,
+    run_leiden_rust,
+    postprocess_small_clusters_rust,
+)
+from .prepartition import (
+    PrepartitionResult,
     CascadeResult,
-    block_init,
+    prepartition,
     contract_graph,
     cascade_search,
-    save_blocks,
-    load_blocks,
-    load_blocks_metadata,
+    save_prepartition,
+    load_prepartition,
+    load_prepartition_metadata,
     is_cache_valid,
 )
 
@@ -128,13 +148,27 @@ __all__ = [
     "build_dendrogram",
     "CutResult",
     "constrained_cut",
-    "BlockInitResult",
+    "PrepartitionResult",
     "CascadeResult",
-    "block_init",
+    "prepartition",
     "contract_graph",
     "cascade_search",
-    "save_blocks",
-    "load_blocks",
-    "load_blocks_metadata",
+    "save_prepartition",
+    "load_prepartition",
+    "load_prepartition_metadata",
     "is_cache_valid",
+    "RemapResult",
+    "integer_remap",
+    "join_back_uids",
+    "load_manifest",
+    "JavaLeidenResult",
+    "JavaMultiLevelResult",
+    "LevelConfig",
+    "run_leiden_java",
+    "run_multilevel_java",
+    "postprocess_small_clusters_java",
+    "RUST_AVAILABLE",
+    "RustLeidenResult",
+    "run_leiden_rust",
+    "postprocess_small_clusters_rust",
 ]

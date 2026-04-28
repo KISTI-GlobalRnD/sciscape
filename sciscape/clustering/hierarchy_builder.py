@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import Counter
 from typing import Dict, List
 
 import igraph as ig
+import numpy as np
 
 from .config import HierarchyConfig, HierarchyLevelConfig, PostprocessConfig
 from .postprocess import PostprocessResult, merge_small_clusters
-from .runner import LeidenRunResult, LeidenRunner
+from .runner import LeidenRunResult, LeidenRunner, RustLeidenRunner
 
 
 @dataclass(frozen=True)
@@ -82,6 +84,7 @@ class HierarchyBuilder:
         self._memberships_original: Dict[str, List[int]] = {}
         self._prev_original_membership: List[int] | None = None
         self._prev_graph_membership: List[int] | None = None
+        self._node_sizes: List[int] | None = None  # per-supernode original node counts
         self._stopped: bool = False
 
     # ------------------------------------------------------------------
@@ -126,6 +129,7 @@ class HierarchyBuilder:
                     self._prev_graph_membership
                     if self._reuse_membership else None
                 ),
+                node_sizes=self._node_sizes,
             )
             if best_run is None or result.quality > best_run.quality:
                 best_run = result
@@ -136,12 +140,51 @@ class HierarchyBuilder:
         # Post-process (merge small clusters)
         post_cfg = level_cfg.postprocess or self._default_postprocess
         post_result: PostprocessResult | None = None
-        graph_weights = (
-            runner.graph.vs["weight"]
-            if "weight" in runner.graph.vs.attributes() else None
-        )
 
-        if post_cfg is not None:
+        if post_cfg is not None and isinstance(runner, RustLeidenRunner):
+            # Rust path: use Rust postprocess with weighted thresholds
+            from .leiden_rust import postprocess_small_clusters_rust
+            has_nw = runner._node_weights is not None
+            min_size, min_weight = post_cfg.resolve_thresholds(
+                has_node_weights=has_nw
+            )
+            do_post = (
+                (min_weight is not None and min_weight > 0)
+                or (min_size is not None and min_size > 1)
+            )
+            if do_post:
+                mem = np.asarray(best_run.membership, dtype=np.uint64)
+                graph = getattr(runner, "_graph", None)
+                if graph is not None:
+                    rust_post = graph.postprocess_small_clusters(
+                        resolution=level_cfg.resolution,
+                        min_size=int(min_size or 0),
+                        min_weight=float(min_weight or 0.0),
+                        membership=mem,
+                        seed=best_seed or 0,
+                    )
+                else:
+                    rust_post = postprocess_small_clusters_rust(
+                        resolution=level_cfg.resolution,
+                        min_size=int(min_size or 0),
+                        min_weight=float(min_weight or 0.0),
+                        membership=mem,
+                        edges_src=runner._src,
+                        edges_dst=runner._dst,
+                        edges_weight=runner._weight,
+                        node_weights=runner._node_weights,
+                        n_nodes=runner.n_nodes,
+                        seed=best_seed or 0,
+                    )
+                final_membership = rust_post.membership.tolist()
+            else:
+                final_membership = best_run.membership
+        elif post_cfg is not None:
+            # igraph path
+            graph_weights = (
+                runner.graph.vs["weight"]
+                if "weight" in runner.graph.vs.attributes() else None
+            )
             min_size, min_weight = post_cfg.resolve_thresholds(
                 has_node_weights=graph_weights is not None
             )
@@ -173,10 +216,18 @@ class HierarchyBuilder:
         if self._prev_original_membership is None:
             self._memberships_original[level_cfg.name] = list(final_membership)
         else:
-            mapped = [
-                final_membership[parent]
-                for parent in self._prev_original_membership
-            ]
+            if isinstance(runner, RustLeidenRunner):
+                from .leiden_rust import project_membership_rust
+
+                mapped = project_membership_rust(
+                    np.asarray(final_membership, dtype=np.uint64),
+                    np.asarray(self._prev_original_membership),
+                ).tolist()
+            else:
+                mapped = [
+                    final_membership[parent]
+                    for parent in self._prev_original_membership
+                ]
             self._memberships_original[level_cfg.name] = mapped
 
         self._prev_original_membership = self._memberships_original[level_cfg.name]
@@ -188,13 +239,30 @@ class HierarchyBuilder:
         if level_cfg.stop_if_singleton and layer.cluster_count <= 1:
             self._stopped = True
         elif layer.cluster_count > 1:
-            contracted = runner.contract(
-                final_membership,
-                combine_weights=self._contract_weights,
-                keep_loops=self._contract_loops,
-            )
-            self._runner = runner.clone_for_graph(contracted)
+            if isinstance(runner, RustLeidenRunner):
+                # Rust runner: contract returns a new runner directly
+                self._runner = runner.contract(final_membership)
+            else:
+                contracted = runner.contract(
+                    final_membership,
+                    combine_weights=self._contract_weights,
+                    keep_loops=self._contract_loops,
+                )
+                self._runner = runner.clone_for_graph(contracted)
             self._prev_graph_membership = None
+
+            # Compute node_sizes for next level: each super-node
+            # represents the total original nodes it contains.
+            cluster_counts = Counter(final_membership)
+            if self._node_sizes is not None:
+                # Already contracted: accumulate original sizes
+                agg: Dict[int, int] = {}
+                for v, cid in enumerate(final_membership):
+                    agg[cid] = agg.get(cid, 0) + self._node_sizes[v]
+                self._node_sizes = [agg[cid] for cid in range(layer.cluster_count)]
+            else:
+                # First contraction: sizes = cluster membership counts
+                self._node_sizes = [cluster_counts[cid] for cid in range(layer.cluster_count)]
 
         return layer
 

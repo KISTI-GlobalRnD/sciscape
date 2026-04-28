@@ -1,0 +1,19 @@
+{
+  "{\"cache_context\": {\"achieved_edge_count\": 522335, \"search_strategy\": \"uniform\", \"target_edge_count\": 521873}, \"edge_dir\": \"data/linktype_edges_gcc/field_15\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\", \"emb_knn\"], \"min_size\": 10, \"protocol\": \"edge_count_matched\", \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": {\"bc_cosine\": 2, \"cc_cosine\": 2, \"dc_fractional\": 2, \"emb_knn\": 2}}": {
+    "gamma": 3.1202500320355597e-06,
+    "n_clusters": 22519,
+    "max_pct": 0.15,
+    "top5": [
+      171,
+      109,
+      89,
+      88,
+      86
+    ],
+    "field": "field_15",
+    "label": "all_consensus",
+    "search_strategy": "uniform",
+    "target_edge_count": 521873,
+    "achieved_edge_count": 522335
+  }
+}

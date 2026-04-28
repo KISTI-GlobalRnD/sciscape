@@ -1,0 +1,149 @@
+{
+  "field": "field_15_pilot_adaptive",
+  "edge_dir": "research/pilot_data/field_15_subset/edges",
+  "abstract_path": "research/pilot_data/field_15_subset/metadata/works_text.parquet",
+  "target_pct": 3.0,
+  "top_k": 30,
+  "min_size": 10,
+  "n_seeds": 2,
+  "samples_per_level": 4,
+  "n_neighbors": 8,
+  "boundary_quantile": 0.9,
+  "used_boundary_quantile": 0.9,
+  "sample_only": true,
+  "n_candidate_cases": 100,
+  "selected_cases": [
+    {
+      "target_uid": "W1965457461",
+      "cluster_id": 698,
+      "cluster_size": 28,
+      "cross_cluster_ratio": 1.0,
+      "n_cross_edges": 22,
+      "consensus_level": 1,
+      "group_a_uids": [
+        "W1608620684",
+        "W1968165539",
+        "W1969654302",
+        "W1990262185",
+        "W4382407256",
+        "W4386521335",
+        "W4392300157",
+        "W4394578631"
+      ],
+      "group_b_uids": [
+        "W3104981834",
+        "W2909822057"
+      ]
+    },
+    {
+      "target_uid": "W4391684226",
+      "cluster_id": 151,
+      "cluster_size": 17,
+      "cross_cluster_ratio": 1.0,
+      "n_cross_edges": 18,
+      "consensus_level": 1,
+      "group_a_uids": [
+        "W1907249425",
+        "W1987317120",
+        "W2007362044",
+        "W2027416035",
+        "W4205857777",
+        "W4206373681",
+        "W4238523658",
+        "W4324123134"
+      ],
+      "group_b_uids": [
+        "W2564515886"
+      ]
+    },
+    {
+      "target_uid": "W2810270534",
+      "cluster_id": 142,
+      "cluster_size": 10,
+      "cross_cluster_ratio": 1.0,
+      "n_cross_edges": 50,
+      "consensus_level": 1,
+      "group_a_uids": [
+        "W1986553742",
+        "W1995855126",
+        "W2317723842",
+        "W2790700536",
+        "W3157108422",
+        "W4200503725",
+        "W4295232502",
+        "W4362695358"
+      ],
+      "group_b_uids": [
+        "W4231453240",
+        "W2769390082",
+        "W2905045146",
+        "W3161470147",
+        "W3213499913"
+      ]
+    },
+    {
+      "target_uid": "W4399535084",
+      "cluster_id": 426,
+      "cluster_size": 16,
+      "cross_cluster_ratio": 1.0,
+      "n_cross_edges": 10,
+      "consensus_level": 1,
+      "group_a_uids": [
+        "W1979338730",
+        "W1984975586",
+        "W2016474226",
+        "W2016671487",
+        "W4242650172",
+        "W4321095484",
+        "W4389564149",
+        "W4404039760"
+      ],
+      "group_b_uids": [
+        "W4312404251"
+      ]
+    },
+    {
+      "target_uid": "W2002952493",
+      "cluster_id": 1486,
+      "cluster_size": 15,
+      "cross_cluster_ratio": 1.0,
+      "n_cross_edges": 46,
+      "consensus_level": 2,
+      "group_a_uids": [
+        "W1965359200",
+        "W2137536001",
+        "W2316179540",
+        "W2327348803",
+        "W3005950797",
+        "W3103898300",
+        "W3207249207",
+        "W83047224"
+      ],
+      "group_b_uids": [
+        "W2000190587"
+      ]
+    },
+    {
+      "target_uid": "W1998709262",
+      "cluster_id": 196,
+      "cluster_size": 44,
+      "cross_cluster_ratio": 1.0,
+      "n_cross_edges": 48,
+      "consensus_level": 2,
+      "group_a_uids": [
+        "W2090349344",
+        "W3039311455",
+        "W1991652602",
+        "W2336167445",
+        "W4390892418",
+        "W4392514970",
+        "W4399885909",
+        "W4403478587"
+      ],
+      "group_b_uids": [
+        "W2162741936",
+        "W1996224137"
+      ]
+    }
+  ]
+}

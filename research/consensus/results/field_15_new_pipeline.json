@@ -1,0 +1,28 @@
+{
+  "pipeline": "new (adaptive top-k, consensus, auto-gamma with refinement)",
+  "top_k": 30,
+  "n_nodes": 115290,
+  "n_edges": 2509921,
+  "gamma": 5.840214754755488e-07,
+  "n_clusters": 5797,
+  "max_pct": 2.26,
+  "top5": [
+    2607,
+    1721,
+    1617,
+    1500,
+    1468
+  ],
+  "ami_mean": 0.888507347884693,
+  "ami_std": 0.005106792940829148,
+  "ari_mean": 0.6928354275574875,
+  "singleton_pct": 0.0,
+  "consensus_edges": {
+    "3": 1.8,
+    "2": 8.4,
+    "1": 89.8
+  },
+  "time_combine": 29.3,
+  "time_gamma": 160.6,
+  "time_stability": 167.2
+}

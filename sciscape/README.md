@@ -7,7 +7,7 @@
 ```
 sciscape/
 ├── clustering/              # CPM Leiden 클러스터링
-│   ├── block_init.py        #   high-γ block → contraction → cascade hot start
+│   ├── prepartition.py        #   high-γ block → contraction → cascade hot start
 │   ├── postprocess.py       #   split/merge refinement, γ search
 │   ├── dendrogram.py        #   CPM density HAC
 │   ├── constrained_cut.py   #   size-constrained optimal cut (DP)
@@ -38,14 +38,14 @@ pip install ".[dev]"          # + 개발/테스트
 ### `sciscape landscape` — 전체 파이프라인
 
 ```bash
-sciscape landscape edges.parquet abstracts.parquet -o output/ [options]
+sciscape landscape abstracts.parquet edges.parquet -o output/ [options]
 ```
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
 | `--n-nodes` | 100000 | BFS 서브샘플 대상 노드 수 |
 | `--min-docs` | 1000 | 클러스터당 최소 문서 수 |
-| `--gamma-block` | auto | Block-init γ (`auto`, `none`, 또는 float) |
+| `--gamma-block` | auto | Pre-partition γ (`auto`, `none`, 또는 float) |
 | `--gamma-range` | 1e-6,1e-3 | γ 탐색 범위 (lo,hi) |
 | `--seed` | 42 | 랜덤 시드 |
 | `--top-n` | 80 | 클러스터당 키워드 수 |
@@ -93,7 +93,7 @@ sciscape gui
 ```
 output/
 ├── membership.parquet       # uid + cluster_nano + cluster_micro
-├── blocks.parquet           # block-init 캐시 (gamma_block, seed 등 메타데이터 포함)
+├── blocks.parquet           # pre-partition 캐시 (gamma_block, seed 등 메타데이터 포함)
 ├── abstracts_subset.parquet # 서브샘플된 초록 데이터
 ├── keywords.parquet         # 키워드 테이블 (term, score, frequency, temporal 등)
 └── report/

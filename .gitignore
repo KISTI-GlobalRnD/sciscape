@@ -7,11 +7,41 @@ __pycache__/
 .env.*
 !.env.example
 cpm-dendro/target/
+rust/target/
+rust-text/target/
+
+# Build artifacts
+build/
+dist/
+rust/dist/
+*.whl
+
+# LaTeX intermediate files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+
+# Lock files
+uv.lock
 
 # Local data / output / experiments
 data/
 output/
+reports/
 pilot_*.html
 pilot_*.parquet
 *.parquet
 !tests/**/*.parquet
+
+# Web output (temporary job results)
+sciscape_web_output/
+
+# Generated API docs (rebuild with: make docs)
+docs/api/
+
+# SQLite job store
+sciscape_jobs.db

@@ -1,0 +1,518 @@
+[
+  {
+    "label": "field_15_k06_sum_minus_emb_vs_consensus",
+    "same_case_order": true,
+    "winner_agreement_rate": 0.7917,
+    "old_summary": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 19,
+      "method_b_wins": 29,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.3958,
+      "method_b_win_rate": 0.6042,
+      "method_a_win_rate_no_ties": 0.3958,
+      "method_b_win_rate_no_ties": 0.6042,
+      "score_a_mean": 3.7917,
+      "score_b_mean": 4.0625,
+      "score_gap_mean": -0.2708
+    },
+    "new_summary": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 24,
+      "method_b_wins": 23,
+      "ties_or_invalid": 1,
+      "method_a_win_rate": 0.5,
+      "method_b_win_rate": 0.4792,
+      "method_a_win_rate_no_ties": 0.5106,
+      "method_b_win_rate_no_ties": 0.4894,
+      "score_a_mean": 4.0417,
+      "score_b_mean": 3.9792,
+      "score_gap_mean": 0.0625
+    },
+    "sample_stats_new": {
+      "shift_score_mean": 1.2277,
+      "rank_jaccard_mean": 0.4025,
+      "mean_abs_rank_shift_mean": 3.041,
+      "cluster_overlap_coeff_mean": 0.0417,
+      "cluster_changed_rate": 1.0
+    },
+    "flips": [
+      {
+        "target_uid": "W2064036092",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          5
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W2166319170",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          4,
+          5
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W4200136216",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          4,
+          3
+        ],
+        "new_scores": [
+          3,
+          4
+        ]
+      },
+      {
+        "target_uid": "W2341391009",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          4
+        ],
+        "new_scores": [
+          5,
+          4
+        ]
+      },
+      {
+        "target_uid": "W2019752210",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          5
+        ],
+        "new_scores": [
+          5,
+          4
+        ]
+      },
+      {
+        "target_uid": "W4360616186",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          4
+        ],
+        "new_scores": [
+          4,
+          5
+        ]
+      },
+      {
+        "target_uid": "W1965930538",
+        "old_winner": "B",
+        "new_winner": "TIE",
+        "old_scores": [
+          4,
+          5
+        ],
+        "new_scores": [
+          5,
+          5
+        ]
+      },
+      {
+        "target_uid": "W4391466701",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          4
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W4283658647",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          2,
+          5
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W2894988700",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          4,
+          5
+        ],
+        "new_scores": [
+          4,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "label": "field_15_k30_sum_minus_cc_vs_consensus",
+    "same_case_order": true,
+    "winner_agreement_rate": 0.8542,
+    "old_summary": {
+      "method_a": "sum_minus_cc",
+      "method_b": "consensus_all",
+      "method_a_wins": 13,
+      "method_b_wins": 35,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.2708,
+      "method_b_win_rate": 0.7292,
+      "method_a_win_rate_no_ties": 0.2708,
+      "method_b_win_rate_no_ties": 0.7292,
+      "score_a_mean": 2.8333,
+      "score_b_mean": 4.3333,
+      "score_gap_mean": -1.5
+    },
+    "new_summary": {
+      "method_a": "sum_minus_cc",
+      "method_b": "consensus_all",
+      "method_a_wins": 14,
+      "method_b_wins": 34,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.2917,
+      "method_b_win_rate": 0.7083,
+      "method_a_win_rate_no_ties": 0.2917,
+      "method_b_win_rate_no_ties": 0.7083,
+      "score_a_mean": 3.0208,
+      "score_b_mean": 4.2292,
+      "score_gap_mean": -1.2083
+    },
+    "sample_stats_new": {
+      "shift_score_mean": 1.9658,
+      "rank_jaccard_mean": 0.0966,
+      "mean_abs_rank_shift_mean": 6.499,
+      "cluster_overlap_coeff_mean": 0.0213,
+      "cluster_changed_rate": 1.0
+    },
+    "flips": [
+      {
+        "target_uid": "W4400972925",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          4
+        ],
+        "new_scores": [
+          5,
+          2
+        ]
+      },
+      {
+        "target_uid": "W1966554660",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          2,
+          5
+        ],
+        "new_scores": [
+          4,
+          3
+        ]
+      },
+      {
+        "target_uid": "W4301370137",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          4
+        ],
+        "new_scores": [
+          2,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2042746129",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          3
+        ],
+        "new_scores": [
+          2,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2963081565",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          3
+        ],
+        "new_scores": [
+          3,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2784258061",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          4,
+          5
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W2319365190",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          5
+        ],
+        "new_scores": [
+          5,
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "label": "field_12_k06_sum_minus_emb_vs_consensus",
+    "same_case_order": true,
+    "winner_agreement_rate": 0.7292,
+    "old_summary": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 11,
+      "method_b_wins": 37,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.2292,
+      "method_b_win_rate": 0.7708,
+      "method_a_win_rate_no_ties": 0.2292,
+      "method_b_win_rate_no_ties": 0.7708,
+      "score_a_mean": 3.5625,
+      "score_b_mean": 4.5417,
+      "score_gap_mean": -0.9792
+    },
+    "new_summary": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 8,
+      "method_b_wins": 40,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.1667,
+      "method_b_win_rate": 0.8333,
+      "method_a_win_rate_no_ties": 0.1667,
+      "method_b_win_rate_no_ties": 0.8333,
+      "score_a_mean": 3.2292,
+      "score_b_mean": 4.6667,
+      "score_gap_mean": -1.4375
+    },
+    "sample_stats_new": {
+      "shift_score_mean": 2.25,
+      "rank_jaccard_mean": 0.0,
+      "mean_abs_rank_shift_mean": 8.0,
+      "cluster_overlap_coeff_mean": 0.0409,
+      "cluster_changed_rate": 1.0
+    },
+    "flips": [
+      {
+        "target_uid": "W1816905911",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          5
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W2141008042",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          3
+        ],
+        "new_scores": [
+          4,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2189406290",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          4
+        ],
+        "new_scores": [
+          3,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2218607418",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          4
+        ],
+        "new_scores": [
+          4,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2254152513",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          5
+        ],
+        "new_scores": [
+          5,
+          4
+        ]
+      },
+      {
+        "target_uid": "W2317906726",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          4,
+          5
+        ],
+        "new_scores": [
+          5,
+          2
+        ]
+      },
+      {
+        "target_uid": "W2327516229",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          4,
+          5
+        ],
+        "new_scores": [
+          5,
+          3
+        ]
+      },
+      {
+        "target_uid": "W2784999814",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          4
+        ],
+        "new_scores": [
+          2,
+          4
+        ]
+      },
+      {
+        "target_uid": "W2953409530",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          4,
+          3
+        ],
+        "new_scores": [
+          2,
+          5
+        ]
+      },
+      {
+        "target_uid": "W2958376204",
+        "old_winner": "B",
+        "new_winner": "A",
+        "old_scores": [
+          3,
+          5
+        ],
+        "new_scores": [
+          5,
+          4
+        ]
+      },
+      {
+        "target_uid": "W2974965964",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          4,
+          2
+        ],
+        "new_scores": [
+          3,
+          5
+        ]
+      },
+      {
+        "target_uid": "W3016217815",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          3
+        ],
+        "new_scores": [
+          2,
+          5
+        ]
+      },
+      {
+        "target_uid": "W3037514453",
+        "old_winner": "A",
+        "new_winner": "B",
+        "old_scores": [
+          5,
+          3
+        ],
+        "new_scores": [
+          4,
+          5
+        ]
+      }
+    ]
+  }
+]

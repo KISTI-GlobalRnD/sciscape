@@ -1,0 +1,21 @@
+{
+  "winner_counts": {
+    "consensus_all": 3,
+    "sum_minus_emb": 1
+  },
+  "label_counts": {
+    "broad_context_noise": 1,
+    "material_family_coherence": 1,
+    "method_family_coherence": 1,
+    "over_regularized_consensus": 1
+  },
+  "winner_by_k": {
+    "6": {
+      "consensus_all": 2,
+      "sum_minus_emb": 1
+    },
+    "30": {
+      "consensus_all": 1
+    }
+  }
+}

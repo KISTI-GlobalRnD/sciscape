@@ -1,0 +1,164 @@
+{
+  "review_json": "research/consensus/results/local_review_field12/field_12_k06_sum_vs_consensus_local_v1_rank_shift_review.json",
+  "field": "field_12_k06_sum_vs_consensus_local_v1",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "winner_filter": "B",
+  "noisy_side": "a",
+  "top_k": 6,
+  "n_selected_cases": 18,
+  "n_suspect_rows": 80,
+  "n_unique_pairs": 80,
+  "layer_weights": {
+    "bc_cosine": 0.639908,
+    "cc_cosine": 2.616354,
+    "dc_fractional": 0.531501,
+    "emb_knn": 0.212236
+  },
+  "dominant_layer_counts": {
+    "cc_cosine": 54,
+    "emb_knn": 19,
+    "bc_cosine": 7
+  },
+  "single_layer_counts": {
+    "cc_cosine": 49,
+    "emb_knn": 19,
+    "bc_cosine": 7
+  },
+  "present_any_counts": {
+    "cc_cosine": 54,
+    "emb_knn": 20,
+    "bc_cosine": 10,
+    "dc_fractional": 1
+  },
+  "top_examples": [
+    {
+      "target_uid": "W3090421772",
+      "target_title": "Review and assessment of factors affecting adaptive reuse of commercial projects in Saudi Arabia",
+      "neighbor_uid": "W4283275802",
+      "neighbor_title": "FACTORS INFLUENCING ADAPTIVE REUSE OF DECLINING SHOPPING MALLS IN THE U.S.: A MULTI-STAKEHOLDER VIEW",
+      "kind": "shared",
+      "delta": 1,
+      "rank": null,
+      "rank_a": 3,
+      "rank_b": 4,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.654728
+      }
+    },
+    {
+      "target_uid": "W3090421772",
+      "target_title": "Review and assessment of factors affecting adaptive reuse of commercial projects in Saudi Arabia",
+      "neighbor_uid": "W4284895426",
+      "neighbor_title": "Re-Thinking Detroit: A Multicriteria-Based Approach for Adaptive Reuse for the Corktown District",
+      "kind": "shared",
+      "delta": 1,
+      "rank": null,
+      "rank_a": 4,
+      "rank_b": 5,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.654728
+      }
+    },
+    {
+      "target_uid": "W3090421772",
+      "target_title": "Review and assessment of factors affecting adaptive reuse of commercial projects in Saudi Arabia",
+      "neighbor_uid": "W4288039082",
+      "neighbor_title": "Comparison of the building adaptability assessment models: a semi - systematic review",
+      "kind": "shared",
+      "delta": 1,
+      "rank": null,
+      "rank_a": 5,
+      "rank_b": 6,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.654728
+      }
+    },
+    {
+      "target_uid": "W2741551648",
+      "target_title": "Alcohol Storylines in Television Episodes: The Preventive Effect of Countering Epilogues",
+      "neighbor_uid": "W2492823786",
+      "neighbor_title": "Transformative Stories: A Framework for Crafting Stories for Social Impact Organizations",
+      "kind": "shared",
+      "delta": 4,
+      "rank": null,
+      "rank_a": 1,
+      "rank_b": 5,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.614849
+      }
+    },
+    {
+      "target_uid": "W3090421772",
+      "target_title": "Review and assessment of factors affecting adaptive reuse of commercial projects in Saudi Arabia",
+      "neighbor_uid": "W2982731810",
+      "neighbor_title": "Decision making on adaptive reuse of historic buildings in Sri Lanka",
+      "kind": "shared",
+      "delta": 2,
+      "rank": null,
+      "rank_a": 6,
+      "rank_b": 8,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.35108
+      }
+    },
+    {
+      "target_uid": "W3090421772",
+      "target_title": "Review and assessment of factors affecting adaptive reuse of commercial projects in Saudi Arabia",
+      "neighbor_uid": "W2948219179",
+      "neighbor_title": "Adaptive Reuse of Apartments as Heritage Assets in the Seoul Station Urban Regeneration Area",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 7,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.298075
+      }
+    },
+    {
+      "target_uid": "W2916736045",
+      "target_title": "Entheseal changes in ancient Egyptians from the pyramid builders of Giza—Old Kingdom",
+      "neighbor_uid": "W2793516856",
+      "neighbor_title": "Entheseal changes and demographic/health indicators in the upper extremity of modern Americans: Associations with age and physical activity",
+      "kind": "shared",
+      "delta": 1,
+      "rank": null,
+      "rank_a": 4,
+      "rank_b": 5,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.132915
+      }
+    },
+    {
+      "target_uid": "W2741551648",
+      "target_title": "Alcohol Storylines in Television Episodes: The Preventive Effect of Countering Epilogues",
+      "neighbor_uid": "W1979392494",
+      "neighbor_title": "An Examination of the Narrative Persuasion with Epilogue through the Lens of the Elaboration Likelihood Model",
+      "kind": "shared",
+      "delta": 3,
+      "rank": null,
+      "rank_a": 4,
+      "rank_b": 7,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 1.121295
+      }
+    }
+  ]
+}

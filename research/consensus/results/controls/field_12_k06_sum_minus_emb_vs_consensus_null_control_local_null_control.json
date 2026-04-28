@@ -1,0 +1,4632 @@
+{
+  "field": "field_12_k06_sum_minus_emb_vs_consensus_null_control_local",
+  "edge_dir": "data/linktype_edges_gcc/field_12",
+  "abstract_path": "data/openalex_metadata/field_12/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum_minus_emb",
+  "label_b": "consensus_all",
+  "layers_a": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.85,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.45,
+  "min_cluster_overlap": 0.5,
+  "allow_cluster_change": true,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 2934994,
+    "gamma": 2.63268e-07,
+    "n_clusters": 18658,
+    "max_pct": 1.27
+  },
+  "method_b_run": {
+    "n_edges": 6509685,
+    "gamma": 2.5e-05,
+    "n_clusters": 12274,
+    "max_pct": 2.5
+  },
+  "n_eligible_nodes": 28886,
+  "n_candidate_cases": 4151,
+  "selected_cases": [
+    {
+      "target_uid": "W100855298",
+      "target_title": "Teaching Communication: Helping Students to Learn and to Love a New Language",
+      "target_year": null,
+      "method_a_cluster_id": 7411,
+      "method_b_cluster_id": 757,
+      "method_a_cluster_size": 77,
+      "method_b_cluster_size": 6658,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.013,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2174770050",
+          "rank": 1,
+          "weight": 0.050446,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280491535",
+          "rank": 2,
+          "weight": 0.050446,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973755425",
+          "rank": 3,
+          "weight": 0.047984,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2050444585",
+          "rank": 4,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125322109",
+          "rank": 5,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2132229198",
+          "rank": 6,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2157931313",
+          "rank": 7,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2160452362",
+          "rank": 8,
+          "weight": 0.004952,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2174770050",
+          "rank": 1,
+          "weight": 0.063693,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280491535",
+          "rank": 2,
+          "weight": 0.063693,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973755425",
+          "rank": 3,
+          "weight": 0.060584,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2050444585",
+          "rank": 4,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125322109",
+          "rank": 5,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2132229198",
+          "rank": 6,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2157931313",
+          "rank": 7,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2160452362",
+          "rank": 8,
+          "weight": 0.006253,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1973755425",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.047984,
+          "weight_b": 0.060584
+        },
+        {
+          "uid": "W2050444585",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2125322109",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2132229198",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2157931313",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2160452362",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2174770050",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.050446,
+          "weight_b": 0.063693
+        },
+        {
+          "uid": "W4280491535",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.050446,
+          "weight_b": 0.063693
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W102402406",
+      "target_title": "Modern analytical methods in art and archaeology",
+      "target_year": null,
+      "method_a_cluster_id": 4073,
+      "method_b_cluster_id": 2366,
+      "method_a_cluster_size": 88,
+      "method_b_cluster_size": 24,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0417,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2072132087",
+          "rank": 1,
+          "weight": 0.205432,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2155777064",
+          "rank": 2,
+          "weight": 0.202047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2014475614",
+          "rank": 3,
+          "weight": 0.196355,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2080365953",
+          "rank": 4,
+          "weight": 0.186278,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116538295",
+          "rank": 5,
+          "weight": 0.03508,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2054464572",
+          "rank": 6,
+          "weight": 0.019135,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1928182035",
+          "rank": 7,
+          "weight": 0.014516,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1945566533",
+          "rank": 8,
+          "weight": 0.013579,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2072132087",
+          "rank": 1,
+          "weight": 0.259376,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2155777064",
+          "rank": 2,
+          "weight": 0.255102,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2014475614",
+          "rank": 3,
+          "weight": 0.247915,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2080365953",
+          "rank": 4,
+          "weight": 0.235193,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116538295",
+          "rank": 5,
+          "weight": 0.044292,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2054464572",
+          "rank": 6,
+          "weight": 0.024159,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1928182035",
+          "rank": 7,
+          "weight": 0.018328,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1945566533",
+          "rank": 8,
+          "weight": 0.017145,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1928182035",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.014516,
+          "weight_b": 0.018328
+        },
+        {
+          "uid": "W1945566533",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.013579,
+          "weight_b": 0.017145
+        },
+        {
+          "uid": "W2014475614",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.196355,
+          "weight_b": 0.247915
+        },
+        {
+          "uid": "W2054464572",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.019135,
+          "weight_b": 0.024159
+        },
+        {
+          "uid": "W2072132087",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.205432,
+          "weight_b": 0.259376
+        },
+        {
+          "uid": "W2080365953",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.186278,
+          "weight_b": 0.235193
+        },
+        {
+          "uid": "W2116538295",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.03508,
+          "weight_b": 0.044292
+        },
+        {
+          "uid": "W2155777064",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.202047,
+          "weight_b": 0.255102
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1028548253",
+      "target_title": "Born or made? Developing personal attributes of teachers",
+      "target_year": null,
+      "method_a_cluster_id": 18487,
+      "method_b_cluster_id": 11752,
+      "method_a_cluster_size": 15,
+      "method_b_cluster_size": 30,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0667,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W36254957",
+          "rank": 1,
+          "weight": 0.117898,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125807507",
+          "rank": 2,
+          "weight": 0.108363,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047018715",
+          "rank": 3,
+          "weight": 0.094318,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3210176266",
+          "rank": 4,
+          "weight": 0.093226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2023185909",
+          "rank": 5,
+          "weight": 0.081272,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993853124",
+          "rank": 6,
+          "weight": 0.030069,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2024755216",
+          "rank": 7,
+          "weight": 0.030069,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2069250049",
+          "rank": 8,
+          "weight": 0.030069,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W36254957",
+          "rank": 1,
+          "weight": 0.148856,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125807507",
+          "rank": 2,
+          "weight": 0.136818,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047018715",
+          "rank": 3,
+          "weight": 0.119085,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3210176266",
+          "rank": 4,
+          "weight": 0.117706,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2023185909",
+          "rank": 5,
+          "weight": 0.102614,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993853124",
+          "rank": 6,
+          "weight": 0.037964,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2024755216",
+          "rank": 7,
+          "weight": 0.037964,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2069250049",
+          "rank": 8,
+          "weight": 0.037964,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1993853124",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2023185909",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.081272,
+          "weight_b": 0.102614
+        },
+        {
+          "uid": "W2024755216",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2047018715",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.094318,
+          "weight_b": 0.119085
+        },
+        {
+          "uid": "W2069250049",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2125807507",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.108363,
+          "weight_b": 0.136818
+        },
+        {
+          "uid": "W3210176266",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.093226,
+          "weight_b": 0.117706
+        },
+        {
+          "uid": "W36254957",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.117898,
+          "weight_b": 0.148856
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1042508212",
+      "target_title": "Pràctica Docent Efectiva AICLE",
+      "target_year": null,
+      "method_a_cluster_id": 6485,
+      "method_b_cluster_id": 4038,
+      "method_a_cluster_size": 43,
+      "method_b_cluster_size": 12,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0833,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2305306121",
+          "rank": 1,
+          "weight": 0.087784,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182978042",
+          "rank": 2,
+          "weight": 0.087435,
+          "same_cluster": false
+        },
+        {
+          "uid": "W87945706",
+          "rank": 3,
+          "weight": 0.076992,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2625645453",
+          "rank": 4,
+          "weight": 0.0694,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1792459446",
+          "rank": 5,
+          "weight": 0.014032,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1810875460",
+          "rank": 6,
+          "weight": 0.014032,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101748480",
+          "rank": 7,
+          "weight": 0.014032,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2105611155",
+          "rank": 8,
+          "weight": 0.014032,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2305306121",
+          "rank": 1,
+          "weight": 0.110835,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182978042",
+          "rank": 2,
+          "weight": 0.110395,
+          "same_cluster": false
+        },
+        {
+          "uid": "W87945706",
+          "rank": 3,
+          "weight": 0.097209,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2625645453",
+          "rank": 4,
+          "weight": 0.087623,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1792459446",
+          "rank": 5,
+          "weight": 0.017717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1810875460",
+          "rank": 6,
+          "weight": 0.017717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101748480",
+          "rank": 7,
+          "weight": 0.017717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2105611155",
+          "rank": 8,
+          "weight": 0.017717,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1792459446",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W1810875460",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W2101748480",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W2105611155",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W2182978042",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.087435,
+          "weight_b": 0.110395
+        },
+        {
+          "uid": "W2305306121",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.087784,
+          "weight_b": 0.110835
+        },
+        {
+          "uid": "W2625645453",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.0694,
+          "weight_b": 0.087623
+        },
+        {
+          "uid": "W87945706",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.076992,
+          "weight_b": 0.097209
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1098979113",
+      "target_title": "‘They wasn't makin’ my kinda music’: a hip-hop musician's perspective on school, schooling, and school music",
+      "target_year": null,
+      "method_a_cluster_id": 8026,
+      "method_b_cluster_id": 8035,
+      "method_a_cluster_size": 77,
+      "method_b_cluster_size": 11,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0909,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2331226045",
+          "rank": 1,
+          "weight": 0.669218,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2332854150",
+          "rank": 2,
+          "weight": 0.613737,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2191246884",
+          "rank": 3,
+          "weight": 0.582242,
+          "same_cluster": false
+        },
+        {
+          "uid": "W157259953",
+          "rank": 4,
+          "weight": 0.475399,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2168933243",
+          "rank": 5,
+          "weight": 0.214172,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2755307492",
+          "rank": 6,
+          "weight": 0.114937,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2291814862",
+          "rank": 7,
+          "weight": 0.10372,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2903713042",
+          "rank": 8,
+          "weight": 0.101365,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2331226045",
+          "rank": 1,
+          "weight": 1.689893,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2332854150",
+          "rank": 2,
+          "weight": 0.774897,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2191246884",
+          "rank": 3,
+          "weight": 0.735132,
+          "same_cluster": false
+        },
+        {
+          "uid": "W157259953",
+          "rank": 4,
+          "weight": 0.600233,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2168933243",
+          "rank": 5,
+          "weight": 0.270411,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2755307492",
+          "rank": 6,
+          "weight": 0.145118,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2291814862",
+          "rank": 7,
+          "weight": 0.130955,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2903713042",
+          "rank": 8,
+          "weight": 0.127982,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W157259953",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.475399,
+          "weight_b": 0.600233
+        },
+        {
+          "uid": "W2168933243",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.214172,
+          "weight_b": 0.270411
+        },
+        {
+          "uid": "W2191246884",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.582242,
+          "weight_b": 0.735132
+        },
+        {
+          "uid": "W2291814862",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.10372,
+          "weight_b": 0.130955
+        },
+        {
+          "uid": "W2331226045",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.669218,
+          "weight_b": 1.689893
+        },
+        {
+          "uid": "W2332854150",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.613737,
+          "weight_b": 0.774897
+        },
+        {
+          "uid": "W2755307492",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.114937,
+          "weight_b": 0.145118
+        },
+        {
+          "uid": "W2903713042",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.101365,
+          "weight_b": 0.127982
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W1108914747",
+      "target_title": "A study of language learning strategies that successful pre-service teachers utilize in English pedagogy programs at two universities in Concepción, Chile: a case study",
+      "target_year": null,
+      "method_a_cluster_id": 9184,
+      "method_b_cluster_id": 955,
+      "method_a_cluster_size": 97,
+      "method_b_cluster_size": 14914,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0412,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W4240593158",
+          "rank": 1,
+          "weight": 0.438921,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1686778264",
+          "rank": 2,
+          "weight": 0.130861,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2909177106",
+          "rank": 3,
+          "weight": 0.121154,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2053846784",
+          "rank": 4,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116010272",
+          "rank": 5,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2151412647",
+          "rank": 6,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2169330552",
+          "rank": 7,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2254282863",
+          "rank": 8,
+          "weight": 0.013155,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4240593158",
+          "rank": 1,
+          "weight": 1.532564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1686778264",
+          "rank": 2,
+          "weight": 0.165224,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2909177106",
+          "rank": 3,
+          "weight": 0.152967,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2053846784",
+          "rank": 4,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116010272",
+          "rank": 5,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2151412647",
+          "rank": 6,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2169330552",
+          "rank": 7,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2254282863",
+          "rank": 8,
+          "weight": 0.016609,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1686778264",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.130861,
+          "weight_b": 0.165224
+        },
+        {
+          "uid": "W2053846784",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2116010272",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2151412647",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2169330552",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2254282863",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2909177106",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.121154,
+          "weight_b": 0.152967
+        },
+        {
+          "uid": "W4240593158",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.438921,
+          "weight_b": 1.532564
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W115134899",
+      "target_title": "Beyond methods: macrostrategies for language teaching",
+      "target_year": null,
+      "method_a_cluster_id": 6801,
+      "method_b_cluster_id": 2339,
+      "method_a_cluster_size": 51,
+      "method_b_cluster_size": 6499,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0196,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2154172527",
+          "rank": 1,
+          "weight": 0.443233,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1990417079",
+          "rank": 2,
+          "weight": 0.34605,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2029396157",
+          "rank": 3,
+          "weight": 0.280439,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101069214",
+          "rank": 4,
+          "weight": 0.257334,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2492647817",
+          "rank": 5,
+          "weight": 0.097147,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2585194793",
+          "rank": 6,
+          "weight": 0.022156,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2154824282",
+          "rank": 7,
+          "weight": 0.019135,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3176472484",
+          "rank": 8,
+          "weight": 0.015591,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2154172527",
+          "rank": 1,
+          "weight": 0.559621,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1990417079",
+          "rank": 2,
+          "weight": 0.436918,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2029396157",
+          "rank": 3,
+          "weight": 0.354079,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101069214",
+          "rank": 4,
+          "weight": 0.324907,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2492647817",
+          "rank": 5,
+          "weight": 0.122657,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2585194793",
+          "rank": 6,
+          "weight": 0.027974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2154824282",
+          "rank": 7,
+          "weight": 0.024159,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3176472484",
+          "rank": 8,
+          "weight": 0.019685,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1990417079",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.34605,
+          "weight_b": 0.436918
+        },
+        {
+          "uid": "W2029396157",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.280439,
+          "weight_b": 0.354079
+        },
+        {
+          "uid": "W2101069214",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.257334,
+          "weight_b": 0.324907
+        },
+        {
+          "uid": "W2154172527",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.443233,
+          "weight_b": 0.559621
+        },
+        {
+          "uid": "W2154824282",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.019135,
+          "weight_b": 0.024159
+        },
+        {
+          "uid": "W2492647817",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.097147,
+          "weight_b": 0.122657
+        },
+        {
+          "uid": "W2585194793",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.022156,
+          "weight_b": 0.027974
+        },
+        {
+          "uid": "W3176472484",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.015591,
+          "weight_b": 0.019685
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W119780142",
+      "target_title": "Historiografía e invención: Wamba en el \"Libro de las Generaciones\"",
+      "target_year": null,
+      "method_a_cluster_id": 12830,
+      "method_b_cluster_id": 8222,
+      "method_a_cluster_size": 37,
+      "method_b_cluster_size": 13,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0769,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W144277306",
+          "rank": 1,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1520736510",
+          "rank": 2,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1565480766",
+          "rank": 3,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2018002792",
+          "rank": 4,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2131515129",
+          "rank": 5,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2145368749",
+          "rank": 6,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275098435",
+          "rank": 7,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2303932784",
+          "rank": 8,
+          "weight": 2.072216,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W144277306",
+          "rank": 1,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1520736510",
+          "rank": 2,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1565480766",
+          "rank": 3,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2018002792",
+          "rank": 4,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2131515129",
+          "rank": 5,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2145368749",
+          "rank": 6,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275098435",
+          "rank": 7,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2303932784",
+          "rank": 8,
+          "weight": 2.616354,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W144277306",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W1520736510",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W1565480766",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2018002792",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2131515129",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2145368749",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2275098435",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2303932784",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W123700017",
+      "target_title": "Two puzzles for linguistic theory: nativelike selection and nativelike fluency",
+      "target_year": null,
+      "method_a_cluster_id": 565,
+      "method_b_cluster_id": 248,
+      "method_a_cluster_size": 17,
+      "method_b_cluster_size": 246,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0588,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1984640704",
+          "rank": 1,
+          "weight": 0.238501,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964788111",
+          "rank": 2,
+          "weight": 0.206505,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066646430",
+          "rank": 3,
+          "weight": 0.197254,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2027746468",
+          "rank": 4,
+          "weight": 0.175674,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2425946538",
+          "rank": 5,
+          "weight": 0.03508,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2776222193",
+          "rank": 6,
+          "weight": 0.022156,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2187742800",
+          "rank": 7,
+          "weight": 0.013579,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3208225581",
+          "rank": 8,
+          "weight": 0.012756,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1984640704",
+          "rank": 1,
+          "weight": 0.301129,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964788111",
+          "rank": 2,
+          "weight": 0.260731,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066646430",
+          "rank": 3,
+          "weight": 0.249051,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2027746468",
+          "rank": 4,
+          "weight": 0.221804,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2425946538",
+          "rank": 5,
+          "weight": 0.044292,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2776222193",
+          "rank": 6,
+          "weight": 0.027974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2187742800",
+          "rank": 7,
+          "weight": 0.017145,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3208225581",
+          "rank": 8,
+          "weight": 0.016106,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1964788111",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.206505,
+          "weight_b": 0.260731
+        },
+        {
+          "uid": "W1984640704",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.238501,
+          "weight_b": 0.301129
+        },
+        {
+          "uid": "W2027746468",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.175674,
+          "weight_b": 0.221804
+        },
+        {
+          "uid": "W2066646430",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.197254,
+          "weight_b": 0.249051
+        },
+        {
+          "uid": "W2187742800",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.013579,
+          "weight_b": 0.017145
+        },
+        {
+          "uid": "W2425946538",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.03508,
+          "weight_b": 0.044292
+        },
+        {
+          "uid": "W2776222193",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.022156,
+          "weight_b": 0.027974
+        },
+        {
+          "uid": "W3208225581",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.012756,
+          "weight_b": 0.016106
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W124220571",
+      "target_title": "Technology-geeks speak out: what students think about vocational CLIL",
+      "target_year": null,
+      "method_a_cluster_id": 1670,
+      "method_b_cluster_id": 8847,
+      "method_a_cluster_size": 52,
+      "method_b_cluster_size": 163,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0192,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1503421983",
+          "rank": 1,
+          "weight": 0.504444,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1873013051",
+          "rank": 2,
+          "weight": 0.324285,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1513233627",
+          "rank": 3,
+          "weight": 0.314792,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075193653",
+          "rank": 4,
+          "weight": 0.296789,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1988734112",
+          "rank": 5,
+          "weight": 0.030069,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005960477",
+          "rank": 6,
+          "weight": 0.02631,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4282012236",
+          "rank": 7,
+          "weight": 0.019135,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4390194898",
+          "rank": 8,
+          "weight": 0.009355,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1503421983",
+          "rank": 1,
+          "weight": 0.636905,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1873013051",
+          "rank": 2,
+          "weight": 0.409439,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1513233627",
+          "rank": 3,
+          "weight": 0.397453,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075193653",
+          "rank": 4,
+          "weight": 0.374722,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1988734112",
+          "rank": 5,
+          "weight": 0.037964,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005960477",
+          "rank": 6,
+          "weight": 0.033219,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4282012236",
+          "rank": 7,
+          "weight": 0.024159,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4390194898",
+          "rank": 8,
+          "weight": 0.011811,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1503421983",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.504444,
+          "weight_b": 0.636905
+        },
+        {
+          "uid": "W1513233627",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.314792,
+          "weight_b": 0.397453
+        },
+        {
+          "uid": "W1873013051",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.324285,
+          "weight_b": 0.409439
+        },
+        {
+          "uid": "W1988734112",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2005960477",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.02631,
+          "weight_b": 0.033219
+        },
+        {
+          "uid": "W2075193653",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.296789,
+          "weight_b": 0.374722
+        },
+        {
+          "uid": "W4282012236",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.019135,
+          "weight_b": 0.024159
+        },
+        {
+          "uid": "W4390194898",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.009355,
+          "weight_b": 0.011811
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W124938565",
+      "target_title": "Implementing the Oral English Task in the Spanish University Admission Examination: an International Perspective of the Language1 La implementacion de la prueba de ingles oral en la Prueba de Acceso a la Universidad: una perspectiva internacional de la lengua",
+      "target_year": null,
+      "method_a_cluster_id": 2615,
+      "method_b_cluster_id": 8179,
+      "method_a_cluster_size": 72,
+      "method_b_cluster_size": 4752,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0278,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2108961835",
+          "rank": 1,
+          "weight": 0.380117,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2238524115",
+          "rank": 2,
+          "weight": 0.144316,
+          "same_cluster": false
+        },
+        {
+          "uid": "W199650928",
+          "rank": 3,
+          "weight": 0.13794,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2941486535",
+          "rank": 4,
+          "weight": 0.133902,
+          "same_cluster": false
+        },
+        {
+          "uid": "W72693133",
+          "rank": 5,
+          "weight": 0.130341,
+          "same_cluster": false
+        },
+        {
+          "uid": "W560198312",
+          "rank": 6,
+          "weight": 0.126787,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991128045",
+          "rank": 7,
+          "weight": 0.106848,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991440261",
+          "rank": 8,
+          "weight": 0.015591,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2108961835",
+          "rank": 1,
+          "weight": 1.3692,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2238524115",
+          "rank": 2,
+          "weight": 0.182212,
+          "same_cluster": false
+        },
+        {
+          "uid": "W199650928",
+          "rank": 3,
+          "weight": 0.174161,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2941486535",
+          "rank": 4,
+          "weight": 0.169062,
+          "same_cluster": false
+        },
+        {
+          "uid": "W72693133",
+          "rank": 5,
+          "weight": 0.164567,
+          "same_cluster": false
+        },
+        {
+          "uid": "W560198312",
+          "rank": 6,
+          "weight": 0.160079,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991128045",
+          "rank": 7,
+          "weight": 0.134905,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991440261",
+          "rank": 8,
+          "weight": 0.019685,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1991128045",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.106848,
+          "weight_b": 0.134905
+        },
+        {
+          "uid": "W1991440261",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.015591,
+          "weight_b": 0.019685
+        },
+        {
+          "uid": "W199650928",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.13794,
+          "weight_b": 0.174161
+        },
+        {
+          "uid": "W2108961835",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.380117,
+          "weight_b": 1.3692
+        },
+        {
+          "uid": "W2238524115",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.144316,
+          "weight_b": 0.182212
+        },
+        {
+          "uid": "W2941486535",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.133902,
+          "weight_b": 0.169062
+        },
+        {
+          "uid": "W560198312",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.126787,
+          "weight_b": 0.160079
+        },
+        {
+          "uid": "W72693133",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.130341,
+          "weight_b": 0.164567
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W125555014",
+      "target_title": "La exégesis como instrumento de creación cultural: el testimonio de las obras de Gregorio de Elbira",
+      "target_year": null,
+      "method_a_cluster_id": 4476,
+      "method_b_cluster_id": 739,
+      "method_a_cluster_size": 1962,
+      "method_b_cluster_size": 16417,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.024,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1516187034",
+          "rank": 1,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1535323388",
+          "rank": 2,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1901796965",
+          "rank": 3,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1905952621",
+          "rank": 4,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2100608256",
+          "rank": 5,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1587394006",
+          "rank": 6,
+          "weight": 1.702499,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972448232",
+          "rank": 7,
+          "weight": 0.002664,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972572444",
+          "rank": 8,
+          "weight": 0.002664,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1516187034",
+          "rank": 1,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1535323388",
+          "rank": 2,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1901796965",
+          "rank": 3,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1905952621",
+          "rank": 4,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2100608256",
+          "rank": 5,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1587394006",
+          "rank": 6,
+          "weight": 2.149554,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972448232",
+          "rank": 7,
+          "weight": 0.003364,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972572444",
+          "rank": 8,
+          "weight": 0.003364,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1516187034",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W1535323388",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W1587394006",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 1.702499,
+          "weight_b": 2.149554
+        },
+        {
+          "uid": "W1901796965",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W1905952621",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W2100608256",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W2972448232",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.002664,
+          "weight_b": 0.003364
+        },
+        {
+          "uid": "W2972572444",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.002664,
+          "weight_b": 0.003364
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W100855298",
+      "target_title": "Teaching Communication: Helping Students to Learn and to Love a New Language",
+      "target_year": null,
+      "method_a_cluster_id": 7411,
+      "method_b_cluster_id": 757,
+      "method_a_cluster_size": 77,
+      "method_b_cluster_size": 6658,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.013,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2174770050",
+          "rank": 1,
+          "weight": 0.050446,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280491535",
+          "rank": 2,
+          "weight": 0.050446,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973755425",
+          "rank": 3,
+          "weight": 0.047984,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2050444585",
+          "rank": 4,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125322109",
+          "rank": 5,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2132229198",
+          "rank": 6,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2157931313",
+          "rank": 7,
+          "weight": 0.004952,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2160452362",
+          "rank": 8,
+          "weight": 0.004952,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2174770050",
+          "rank": 1,
+          "weight": 0.063693,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280491535",
+          "rank": 2,
+          "weight": 0.063693,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1973755425",
+          "rank": 3,
+          "weight": 0.060584,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2050444585",
+          "rank": 4,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125322109",
+          "rank": 5,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2132229198",
+          "rank": 6,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2157931313",
+          "rank": 7,
+          "weight": 0.006253,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2160452362",
+          "rank": 8,
+          "weight": 0.006253,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1973755425",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.047984,
+          "weight_b": 0.060584
+        },
+        {
+          "uid": "W2050444585",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2125322109",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2132229198",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2157931313",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2160452362",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.004952,
+          "weight_b": 0.006253
+        },
+        {
+          "uid": "W2174770050",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.050446,
+          "weight_b": 0.063693
+        },
+        {
+          "uid": "W4280491535",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.050446,
+          "weight_b": 0.063693
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 3,
+        "score_b": 3,
+        "reasoning": "Both groups are identical. The provided neighborhood is coherent around the topic of anxiety and psychological factors in second/foreign language learning, which is loosely related to the target's theme of teaching a new language. However, this focus is quite narrow and specific, failing to capture the broader pedagogical and reflective nature of the target portfolio about an educator's growth.",
+        "presented_winner": "A",
+        "presented_score_a": 3,
+        "presented_score_b": 3,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W102402406",
+      "target_title": "Modern analytical methods in art and archaeology",
+      "target_year": null,
+      "method_a_cluster_id": 4073,
+      "method_b_cluster_id": 2366,
+      "method_a_cluster_size": 88,
+      "method_b_cluster_size": 24,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0417,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2072132087",
+          "rank": 1,
+          "weight": 0.205432,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2155777064",
+          "rank": 2,
+          "weight": 0.202047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2014475614",
+          "rank": 3,
+          "weight": 0.196355,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2080365953",
+          "rank": 4,
+          "weight": 0.186278,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116538295",
+          "rank": 5,
+          "weight": 0.03508,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2054464572",
+          "rank": 6,
+          "weight": 0.019135,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1928182035",
+          "rank": 7,
+          "weight": 0.014516,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1945566533",
+          "rank": 8,
+          "weight": 0.013579,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2072132087",
+          "rank": 1,
+          "weight": 0.259376,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2155777064",
+          "rank": 2,
+          "weight": 0.255102,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2014475614",
+          "rank": 3,
+          "weight": 0.247915,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2080365953",
+          "rank": 4,
+          "weight": 0.235193,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116538295",
+          "rank": 5,
+          "weight": 0.044292,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2054464572",
+          "rank": 6,
+          "weight": 0.024159,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1928182035",
+          "rank": 7,
+          "weight": 0.018328,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1945566533",
+          "rank": 8,
+          "weight": 0.017145,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1928182035",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.014516,
+          "weight_b": 0.018328
+        },
+        {
+          "uid": "W1945566533",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.013579,
+          "weight_b": 0.017145
+        },
+        {
+          "uid": "W2014475614",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.196355,
+          "weight_b": 0.247915
+        },
+        {
+          "uid": "W2054464572",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.019135,
+          "weight_b": 0.024159
+        },
+        {
+          "uid": "W2072132087",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.205432,
+          "weight_b": 0.259376
+        },
+        {
+          "uid": "W2080365953",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.186278,
+          "weight_b": 0.235193
+        },
+        {
+          "uid": "W2116538295",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.03508,
+          "weight_b": 0.044292
+        },
+        {
+          "uid": "W2155777064",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.202047,
+          "weight_b": 0.255102
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "The target paper is a book reviewing a wide range of analytical methods in art and archaeology. Both groups provide an identical and excellent set of neighbors, which are specific research articles applying the very techniques discussed in the target (e.g., Raman spectroscopy, XRF, mass spectrometry) to cultural artifacts. Since the two groups are identical, the choice is arbitrary, but the proposed neighborhood perfectly represents the practical application of the target's subject matter.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W1028548253",
+      "target_title": "Born or made? Developing personal attributes of teachers",
+      "target_year": null,
+      "method_a_cluster_id": 18487,
+      "method_b_cluster_id": 11752,
+      "method_a_cluster_size": 15,
+      "method_b_cluster_size": 30,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0667,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W36254957",
+          "rank": 1,
+          "weight": 0.117898,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125807507",
+          "rank": 2,
+          "weight": 0.108363,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047018715",
+          "rank": 3,
+          "weight": 0.094318,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3210176266",
+          "rank": 4,
+          "weight": 0.093226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2023185909",
+          "rank": 5,
+          "weight": 0.081272,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993853124",
+          "rank": 6,
+          "weight": 0.030069,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2024755216",
+          "rank": 7,
+          "weight": 0.030069,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2069250049",
+          "rank": 8,
+          "weight": 0.030069,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W36254957",
+          "rank": 1,
+          "weight": 0.148856,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2125807507",
+          "rank": 2,
+          "weight": 0.136818,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2047018715",
+          "rank": 3,
+          "weight": 0.119085,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3210176266",
+          "rank": 4,
+          "weight": 0.117706,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2023185909",
+          "rank": 5,
+          "weight": 0.102614,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1993853124",
+          "rank": 6,
+          "weight": 0.037964,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2024755216",
+          "rank": 7,
+          "weight": 0.037964,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2069250049",
+          "rank": 8,
+          "weight": 0.037964,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1993853124",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2023185909",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.081272,
+          "weight_b": 0.102614
+        },
+        {
+          "uid": "W2024755216",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2047018715",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.094318,
+          "weight_b": 0.119085
+        },
+        {
+          "uid": "W2069250049",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2125807507",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.108363,
+          "weight_b": 0.136818
+        },
+        {
+          "uid": "W3210176266",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.093226,
+          "weight_b": 0.117706
+        },
+        {
+          "uid": "W36254957",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.117898,
+          "weight_b": 0.148856
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 2,
+        "score_b": 2,
+        "reasoning": "Both groups are identical. They present a very coherent but overly narrow neighborhood focused exclusively on music teacher education. The target paper is about developing attributes of teachers in a general context, so a neighborhood restricted to a single subject like music is too specific and fails to capture the target's broader research context.",
+        "presented_winner": "A",
+        "presented_score_a": 2,
+        "presented_score_b": 2,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1042508212",
+      "target_title": "Pràctica Docent Efectiva AICLE",
+      "target_year": null,
+      "method_a_cluster_id": 6485,
+      "method_b_cluster_id": 4038,
+      "method_a_cluster_size": 43,
+      "method_b_cluster_size": 12,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0833,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2305306121",
+          "rank": 1,
+          "weight": 0.087784,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182978042",
+          "rank": 2,
+          "weight": 0.087435,
+          "same_cluster": false
+        },
+        {
+          "uid": "W87945706",
+          "rank": 3,
+          "weight": 0.076992,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2625645453",
+          "rank": 4,
+          "weight": 0.0694,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1792459446",
+          "rank": 5,
+          "weight": 0.014032,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1810875460",
+          "rank": 6,
+          "weight": 0.014032,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101748480",
+          "rank": 7,
+          "weight": 0.014032,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2105611155",
+          "rank": 8,
+          "weight": 0.014032,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2305306121",
+          "rank": 1,
+          "weight": 0.110835,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2182978042",
+          "rank": 2,
+          "weight": 0.110395,
+          "same_cluster": false
+        },
+        {
+          "uid": "W87945706",
+          "rank": 3,
+          "weight": 0.097209,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2625645453",
+          "rank": 4,
+          "weight": 0.087623,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1792459446",
+          "rank": 5,
+          "weight": 0.017717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1810875460",
+          "rank": 6,
+          "weight": 0.017717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101748480",
+          "rank": 7,
+          "weight": 0.017717,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2105611155",
+          "rank": 8,
+          "weight": 0.017717,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1792459446",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W1810875460",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W2101748480",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W2105611155",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.014032,
+          "weight_b": 0.017717
+        },
+        {
+          "uid": "W2182978042",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.087435,
+          "weight_b": 0.110395
+        },
+        {
+          "uid": "W2305306121",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.087784,
+          "weight_b": 0.110835
+        },
+        {
+          "uid": "W2625645453",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.0694,
+          "weight_b": 0.087623
+        },
+        {
+          "uid": "W87945706",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.076992,
+          "weight_b": 0.097209
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "The two groups are identical and both provide an excellent, highly coherent local neighborhood for the target paper. All neighbors focus on Content and Language Integrated Learning (CLIL), the direct English equivalent of the target's AICLE, with several papers specifically addressing effective pedagogy and program evaluation in a Spanish or European context. Since the groups are exactly the same, they are of equal quality.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1098979113",
+      "target_title": "‘They wasn't makin’ my kinda music’: a hip-hop musician's perspective on school, schooling, and school music",
+      "target_year": null,
+      "method_a_cluster_id": 8026,
+      "method_b_cluster_id": 8035,
+      "method_a_cluster_size": 77,
+      "method_b_cluster_size": 11,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0909,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2331226045",
+          "rank": 1,
+          "weight": 0.669218,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2332854150",
+          "rank": 2,
+          "weight": 0.613737,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2191246884",
+          "rank": 3,
+          "weight": 0.582242,
+          "same_cluster": false
+        },
+        {
+          "uid": "W157259953",
+          "rank": 4,
+          "weight": 0.475399,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2168933243",
+          "rank": 5,
+          "weight": 0.214172,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2755307492",
+          "rank": 6,
+          "weight": 0.114937,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2291814862",
+          "rank": 7,
+          "weight": 0.10372,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2903713042",
+          "rank": 8,
+          "weight": 0.101365,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2331226045",
+          "rank": 1,
+          "weight": 1.689893,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2332854150",
+          "rank": 2,
+          "weight": 0.774897,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2191246884",
+          "rank": 3,
+          "weight": 0.735132,
+          "same_cluster": false
+        },
+        {
+          "uid": "W157259953",
+          "rank": 4,
+          "weight": 0.600233,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2168933243",
+          "rank": 5,
+          "weight": 0.270411,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2755307492",
+          "rank": 6,
+          "weight": 0.145118,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2291814862",
+          "rank": 7,
+          "weight": 0.130955,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2903713042",
+          "rank": 8,
+          "weight": 0.127982,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W157259953",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.475399,
+          "weight_b": 0.600233
+        },
+        {
+          "uid": "W2168933243",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.214172,
+          "weight_b": 0.270411
+        },
+        {
+          "uid": "W2191246884",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.582242,
+          "weight_b": 0.735132
+        },
+        {
+          "uid": "W2291814862",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.10372,
+          "weight_b": 0.130955
+        },
+        {
+          "uid": "W2331226045",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.669218,
+          "weight_b": 1.689893
+        },
+        {
+          "uid": "W2332854150",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.613737,
+          "weight_b": 0.774897
+        },
+        {
+          "uid": "W2755307492",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.114937,
+          "weight_b": 0.145118
+        },
+        {
+          "uid": "W2903713042",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.101365,
+          "weight_b": 0.127982
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical, presenting the same papers in the same order. The shared neighborhood is excellent, as the top-ranked papers focus specifically on hip-hop pedagogy and learning within music education, directly matching the target paper's core theme. The subsequent papers coherently broaden the context to popular and non-traditional music in schools, perfectly capturing the target's immediate research context.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1108914747",
+      "target_title": "A study of language learning strategies that successful pre-service teachers utilize in English pedagogy programs at two universities in Concepción, Chile: a case study",
+      "target_year": null,
+      "method_a_cluster_id": 9184,
+      "method_b_cluster_id": 955,
+      "method_a_cluster_size": 97,
+      "method_b_cluster_size": 14914,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0412,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W4240593158",
+          "rank": 1,
+          "weight": 0.438921,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1686778264",
+          "rank": 2,
+          "weight": 0.130861,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2909177106",
+          "rank": 3,
+          "weight": 0.121154,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2053846784",
+          "rank": 4,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116010272",
+          "rank": 5,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2151412647",
+          "rank": 6,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2169330552",
+          "rank": 7,
+          "weight": 0.013155,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2254282863",
+          "rank": 8,
+          "weight": 0.013155,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4240593158",
+          "rank": 1,
+          "weight": 1.532564,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1686778264",
+          "rank": 2,
+          "weight": 0.165224,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2909177106",
+          "rank": 3,
+          "weight": 0.152967,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2053846784",
+          "rank": 4,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2116010272",
+          "rank": 5,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2151412647",
+          "rank": 6,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2169330552",
+          "rank": 7,
+          "weight": 0.016609,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2254282863",
+          "rank": 8,
+          "weight": 0.016609,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1686778264",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.130861,
+          "weight_b": 0.165224
+        },
+        {
+          "uid": "W2053846784",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2116010272",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2151412647",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2169330552",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2254282863",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.013155,
+          "weight_b": 0.016609
+        },
+        {
+          "uid": "W2909177106",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.121154,
+          "weight_b": 0.152967
+        },
+        {
+          "uid": "W4240593158",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.438921,
+          "weight_b": 1.532564
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent local neighborhood for the target paper. All neighbors are directly related to the central topic of Language Learning Strategies (LLSs), covering empirical studies, theoretical frameworks, and meta-discussions of the field. This perfectly captures the target paper's immediate research context.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W115134899",
+      "target_title": "Beyond methods: macrostrategies for language teaching",
+      "target_year": null,
+      "method_a_cluster_id": 6801,
+      "method_b_cluster_id": 2339,
+      "method_a_cluster_size": 51,
+      "method_b_cluster_size": 6499,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0196,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2154172527",
+          "rank": 1,
+          "weight": 0.443233,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1990417079",
+          "rank": 2,
+          "weight": 0.34605,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2029396157",
+          "rank": 3,
+          "weight": 0.280439,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101069214",
+          "rank": 4,
+          "weight": 0.257334,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2492647817",
+          "rank": 5,
+          "weight": 0.097147,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2585194793",
+          "rank": 6,
+          "weight": 0.022156,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2154824282",
+          "rank": 7,
+          "weight": 0.019135,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3176472484",
+          "rank": 8,
+          "weight": 0.015591,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2154172527",
+          "rank": 1,
+          "weight": 0.559621,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1990417079",
+          "rank": 2,
+          "weight": 0.436918,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2029396157",
+          "rank": 3,
+          "weight": 0.354079,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2101069214",
+          "rank": 4,
+          "weight": 0.324907,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2492647817",
+          "rank": 5,
+          "weight": 0.122657,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2585194793",
+          "rank": 6,
+          "weight": 0.027974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2154824282",
+          "rank": 7,
+          "weight": 0.024159,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3176472484",
+          "rank": 8,
+          "weight": 0.019685,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1990417079",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.34605,
+          "weight_b": 0.436918
+        },
+        {
+          "uid": "W2029396157",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.280439,
+          "weight_b": 0.354079
+        },
+        {
+          "uid": "W2101069214",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.257334,
+          "weight_b": 0.324907
+        },
+        {
+          "uid": "W2154172527",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.443233,
+          "weight_b": 0.559621
+        },
+        {
+          "uid": "W2154824282",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.019135,
+          "weight_b": 0.024159
+        },
+        {
+          "uid": "W2492647817",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.097147,
+          "weight_b": 0.122657
+        },
+        {
+          "uid": "W2585194793",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.022156,
+          "weight_b": 0.027974
+        },
+        {
+          "uid": "W3176472484",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.015591,
+          "weight_b": 0.019685
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent local neighborhood for the target paper. The top-ranked neighbors perfectly capture the target's core theme of moving 'beyond methods' to a 'postmethod pedagogy', with several papers being seminal works on this specific topic by the same author. The neighborhood is highly coherent and directly relevant.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W119780142",
+      "target_title": "Historiografía e invención: Wamba en el \"Libro de las Generaciones\"",
+      "target_year": null,
+      "method_a_cluster_id": 12830,
+      "method_b_cluster_id": 8222,
+      "method_a_cluster_size": 37,
+      "method_b_cluster_size": 13,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0769,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W144277306",
+          "rank": 1,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1520736510",
+          "rank": 2,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1565480766",
+          "rank": 3,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2018002792",
+          "rank": 4,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2131515129",
+          "rank": 5,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2145368749",
+          "rank": 6,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275098435",
+          "rank": 7,
+          "weight": 2.072216,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2303932784",
+          "rank": 8,
+          "weight": 2.072216,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W144277306",
+          "rank": 1,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1520736510",
+          "rank": 2,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1565480766",
+          "rank": 3,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2018002792",
+          "rank": 4,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2131515129",
+          "rank": 5,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2145368749",
+          "rank": 6,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2275098435",
+          "rank": 7,
+          "weight": 2.616354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2303932784",
+          "rank": 8,
+          "weight": 2.616354,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W144277306",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W1520736510",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W1565480766",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2018002792",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2131515129",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2145368749",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2275098435",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        },
+        {
+          "uid": "W2303932784",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 2.072216,
+          "weight_b": 2.616354
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent neighborhood for the target paper. The neighbors directly address the specific figure of King Wamba, the Visigothic period, and the central themes of historiography, memory, and the divine nature of kingship. As the groups are the same, they are equally effective at capturing the target's immediate research context.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W123700017",
+      "target_title": "Two puzzles for linguistic theory: nativelike selection and nativelike fluency",
+      "target_year": null,
+      "method_a_cluster_id": 565,
+      "method_b_cluster_id": 248,
+      "method_a_cluster_size": 17,
+      "method_b_cluster_size": 246,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0588,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1984640704",
+          "rank": 1,
+          "weight": 0.238501,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964788111",
+          "rank": 2,
+          "weight": 0.206505,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066646430",
+          "rank": 3,
+          "weight": 0.197254,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2027746468",
+          "rank": 4,
+          "weight": 0.175674,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2425946538",
+          "rank": 5,
+          "weight": 0.03508,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2776222193",
+          "rank": 6,
+          "weight": 0.022156,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2187742800",
+          "rank": 7,
+          "weight": 0.013579,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3208225581",
+          "rank": 8,
+          "weight": 0.012756,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1984640704",
+          "rank": 1,
+          "weight": 0.301129,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964788111",
+          "rank": 2,
+          "weight": 0.260731,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2066646430",
+          "rank": 3,
+          "weight": 0.249051,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2027746468",
+          "rank": 4,
+          "weight": 0.221804,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2425946538",
+          "rank": 5,
+          "weight": 0.044292,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2776222193",
+          "rank": 6,
+          "weight": 0.027974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2187742800",
+          "rank": 7,
+          "weight": 0.017145,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3208225581",
+          "rank": 8,
+          "weight": 0.016106,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1964788111",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.206505,
+          "weight_b": 0.260731
+        },
+        {
+          "uid": "W1984640704",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.238501,
+          "weight_b": 0.301129
+        },
+        {
+          "uid": "W2027746468",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.175674,
+          "weight_b": 0.221804
+        },
+        {
+          "uid": "W2066646430",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.197254,
+          "weight_b": 0.249051
+        },
+        {
+          "uid": "W2187742800",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.013579,
+          "weight_b": 0.017145
+        },
+        {
+          "uid": "W2425946538",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.03508,
+          "weight_b": 0.044292
+        },
+        {
+          "uid": "W2776222193",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.022156,
+          "weight_b": 0.027974
+        },
+        {
+          "uid": "W3208225581",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.012756,
+          "weight_b": 0.016106
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent neighborhood for the target paper. The neighbors focus on key concepts like 'formulaic sequences,' 'lexical bundles,' and 'conventional expressions,' which are central to understanding the target's theme of 'nativelike selection.' Additionally, several papers explicitly address 'fluency,' directly matching the other core concept from the target's title.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W124220571",
+      "target_title": "Technology-geeks speak out: what students think about vocational CLIL",
+      "target_year": null,
+      "method_a_cluster_id": 1670,
+      "method_b_cluster_id": 8847,
+      "method_a_cluster_size": 52,
+      "method_b_cluster_size": 163,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0192,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1503421983",
+          "rank": 1,
+          "weight": 0.504444,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1873013051",
+          "rank": 2,
+          "weight": 0.324285,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1513233627",
+          "rank": 3,
+          "weight": 0.314792,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075193653",
+          "rank": 4,
+          "weight": 0.296789,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1988734112",
+          "rank": 5,
+          "weight": 0.030069,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005960477",
+          "rank": 6,
+          "weight": 0.02631,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4282012236",
+          "rank": 7,
+          "weight": 0.019135,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4390194898",
+          "rank": 8,
+          "weight": 0.009355,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1503421983",
+          "rank": 1,
+          "weight": 0.636905,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1873013051",
+          "rank": 2,
+          "weight": 0.409439,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1513233627",
+          "rank": 3,
+          "weight": 0.397453,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2075193653",
+          "rank": 4,
+          "weight": 0.374722,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1988734112",
+          "rank": 5,
+          "weight": 0.037964,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2005960477",
+          "rank": 6,
+          "weight": 0.033219,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4282012236",
+          "rank": 7,
+          "weight": 0.024159,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4390194898",
+          "rank": 8,
+          "weight": 0.011811,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1503421983",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.504444,
+          "weight_b": 0.636905
+        },
+        {
+          "uid": "W1513233627",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.314792,
+          "weight_b": 0.397453
+        },
+        {
+          "uid": "W1873013051",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.324285,
+          "weight_b": 0.409439
+        },
+        {
+          "uid": "W1988734112",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.030069,
+          "weight_b": 0.037964
+        },
+        {
+          "uid": "W2005960477",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.02631,
+          "weight_b": 0.033219
+        },
+        {
+          "uid": "W2075193653",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.296789,
+          "weight_b": 0.374722
+        },
+        {
+          "uid": "W4282012236",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.019135,
+          "weight_b": 0.024159
+        },
+        {
+          "uid": "W4390194898",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.009355,
+          "weight_b": 0.011811
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent local neighborhood. The papers all focus on Content and Language Integrated Learning (CLIL) or a closely related topic (EMI), and many share the target's context of vocational, scientific, or engineering education. The neighborhood successfully captures the specific research area of the target paper.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W124938565",
+      "target_title": "Implementing the Oral English Task in the Spanish University Admission Examination: an International Perspective of the Language1 La implementacion de la prueba de ingles oral en la Prueba de Acceso a la Universidad: una perspectiva internacional de la lengua",
+      "target_year": null,
+      "method_a_cluster_id": 2615,
+      "method_b_cluster_id": 8179,
+      "method_a_cluster_size": 72,
+      "method_b_cluster_size": 4752,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.0278,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W2108961835",
+          "rank": 1,
+          "weight": 0.380117,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2238524115",
+          "rank": 2,
+          "weight": 0.144316,
+          "same_cluster": false
+        },
+        {
+          "uid": "W199650928",
+          "rank": 3,
+          "weight": 0.13794,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2941486535",
+          "rank": 4,
+          "weight": 0.133902,
+          "same_cluster": false
+        },
+        {
+          "uid": "W72693133",
+          "rank": 5,
+          "weight": 0.130341,
+          "same_cluster": false
+        },
+        {
+          "uid": "W560198312",
+          "rank": 6,
+          "weight": 0.126787,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991128045",
+          "rank": 7,
+          "weight": 0.106848,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991440261",
+          "rank": 8,
+          "weight": 0.015591,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2108961835",
+          "rank": 1,
+          "weight": 1.3692,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2238524115",
+          "rank": 2,
+          "weight": 0.182212,
+          "same_cluster": false
+        },
+        {
+          "uid": "W199650928",
+          "rank": 3,
+          "weight": 0.174161,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2941486535",
+          "rank": 4,
+          "weight": 0.169062,
+          "same_cluster": false
+        },
+        {
+          "uid": "W72693133",
+          "rank": 5,
+          "weight": 0.164567,
+          "same_cluster": false
+        },
+        {
+          "uid": "W560198312",
+          "rank": 6,
+          "weight": 0.160079,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991128045",
+          "rank": 7,
+          "weight": 0.134905,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1991440261",
+          "rank": 8,
+          "weight": 0.019685,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1991128045",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.106848,
+          "weight_b": 0.134905
+        },
+        {
+          "uid": "W1991440261",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.015591,
+          "weight_b": 0.019685
+        },
+        {
+          "uid": "W199650928",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.13794,
+          "weight_b": 0.174161
+        },
+        {
+          "uid": "W2108961835",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.380117,
+          "weight_b": 1.3692
+        },
+        {
+          "uid": "W2238524115",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.144316,
+          "weight_b": 0.182212
+        },
+        {
+          "uid": "W2941486535",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 0.133902,
+          "weight_b": 0.169062
+        },
+        {
+          "uid": "W560198312",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.126787,
+          "weight_b": 0.160079
+        },
+        {
+          "uid": "W72693133",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.130341,
+          "weight_b": 0.164567
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 5,
+        "score_b": 5,
+        "reasoning": "Both groups are identical and provide an excellent, highly coherent local neighborhood for the target paper. The neighbors all focus on the core topics of designing, implementing, and assessing oral English language tests, which is a perfect match for the target's focus on an oral task for a university admission exam.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 5,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W125555014",
+      "target_title": "La exégesis como instrumento de creación cultural: el testimonio de las obras de Gregorio de Elbira",
+      "target_year": null,
+      "method_a_cluster_id": 4476,
+      "method_b_cluster_id": 739,
+      "method_a_cluster_size": 1962,
+      "method_b_cluster_size": 16417,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.0,
+      "max_abs_rank_shift": 0,
+      "cluster_overlap_coeff": 0.024,
+      "cluster_changed": true,
+      "shift_score": 0.25,
+      "neighbors_a": [
+        {
+          "uid": "W1516187034",
+          "rank": 1,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1535323388",
+          "rank": 2,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1901796965",
+          "rank": 3,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1905952621",
+          "rank": 4,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2100608256",
+          "rank": 5,
+          "weight": 1.794591,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1587394006",
+          "rank": 6,
+          "weight": 1.702499,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972448232",
+          "rank": 7,
+          "weight": 0.002664,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972572444",
+          "rank": 8,
+          "weight": 0.002664,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1516187034",
+          "rank": 1,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1535323388",
+          "rank": 2,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1901796965",
+          "rank": 3,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1905952621",
+          "rank": 4,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2100608256",
+          "rank": 5,
+          "weight": 2.265829,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1587394006",
+          "rank": 6,
+          "weight": 2.149554,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972448232",
+          "rank": 7,
+          "weight": 0.003364,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2972572444",
+          "rank": 8,
+          "weight": 0.003364,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1516187034",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W1535323388",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W1587394006",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 1.702499,
+          "weight_b": 2.149554
+        },
+        {
+          "uid": "W1901796965",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W1905952621",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W2100608256",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 1.794591,
+          "weight_b": 2.265829
+        },
+        {
+          "uid": "W2972448232",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.002664,
+          "weight_b": 0.003364
+        },
+        {
+          "uid": "W2972572444",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.002664,
+          "weight_b": 0.003364
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "TIE",
+        "score_a": 2,
+        "score_b": 2,
+        "reasoning": "Both groups are identical and provide a weak local neighborhood for the target paper. The target focuses on patristic exegesis in the late 4th century, specifically the works of Gregory of Elvira. The proposed neighbors are almost all focused on the later Visigothic kingdom's political, social, and material history, making the context too broad and thematically mismatched. While one paper on Ambrose of Milan (rank 4) is a very good topical and chronological match, the top-ranked paper is a major error, discussing modern reinterpretations of medieval legends.",
+        "presented_winner": "A",
+        "presented_score_a": 2,
+        "presented_score_b": 2,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 12,
+    "comparison": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 0,
+      "method_b_wins": 0,
+      "ties_or_invalid": 12,
+      "method_a_win_rate": 0.0,
+      "method_b_win_rate": 0.0,
+      "score_a_mean": 4.3333,
+      "score_b_mean": 4.3333,
+      "score_gap_mean": 0.0
+    },
+    "sample_stats": {
+      "shift_score_mean": 0.25,
+      "rank_jaccard_mean": 1.0,
+      "mean_abs_rank_shift_mean": 0.0,
+      "cluster_overlap_coeff_mean": 0.0469,
+      "cluster_changed_rate": 1.0
+    }
+  }
+}

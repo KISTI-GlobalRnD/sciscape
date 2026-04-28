@@ -1,0 +1,101 @@
+{
+  "field": "field_15_pilot",
+  "method": "hybrid_hierarchy",
+  "edge_path": "research/pilot_data/field_15_subset/edges/dc_fractional.parquet",
+  "cache_dir": "research/dendrogram/results/pilot_field15/field_15_pilot_hybrid_cache",
+  "n_nodes": 17618,
+  "n_levels": 4,
+  "requested_n_levels": 4,
+  "seed": 42,
+  "stop_at_clusters": 5,
+  "target_pct": 3.0,
+  "min_size": 30,
+  "levels": [
+    {
+      "name": "nano",
+      "gamma": 8.727877501855863e-05,
+      "n_clusters": 607,
+      "max_pct": 3.1,
+      "avg_size": 29,
+      "top5": [
+        553,
+        422,
+        419,
+        304,
+        276
+      ],
+      "elapsed": 164.6,
+      "singleton_pct": 3.5
+    },
+    {
+      "name": "micro",
+      "gamma": 1.4592136658132388e-05,
+      "n_clusters": 607,
+      "max_pct": 3.1,
+      "avg_size": 29,
+      "top5": [
+        553,
+        422,
+        419,
+        304,
+        276
+      ],
+      "elapsed": 0.2,
+      "singleton_pct": 3.5
+    },
+    {
+      "name": "meso",
+      "gamma": 1.4592136658132388e-05,
+      "n_clusters": 607,
+      "max_pct": 3.1,
+      "avg_size": 29,
+      "top5": [
+        553,
+        422,
+        419,
+        304,
+        276
+      ],
+      "elapsed": 0.2,
+      "singleton_pct": 3.5
+    },
+    {
+      "name": "macro",
+      "gamma": 1.4592136658132388e-05,
+      "n_clusters": 607,
+      "max_pct": 3.1,
+      "avg_size": 29,
+      "top5": [
+        553,
+        422,
+        419,
+        304,
+        276
+      ],
+      "elapsed": 0.1,
+      "singleton_pct": 3.5
+    }
+  ],
+  "deepest_level": {
+    "name": "macro",
+    "gamma": 1.4592136658132388e-05,
+    "n_clusters": 607,
+    "max_pct": 3.1,
+    "avg_size": 29,
+    "top5": [
+      553,
+      422,
+      419,
+      304,
+      276
+    ],
+    "elapsed": 0.1,
+    "singleton_pct": 3.5
+  },
+  "stability": {
+    "ami_mean": 0.8193296869326756,
+    "ami_std": 0.006229758872943571,
+    "ari_mean": 0.5996492586013994,
+    "ari_std": 0.02736500117459
+  }
+}

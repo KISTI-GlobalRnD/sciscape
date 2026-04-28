@@ -1,0 +1,90 @@
+{
+  "n_cases": 144,
+  "class_balance": {
+    "consensus_wins": 101,
+    "baseline_wins": 43
+  },
+  "cross_validated_metrics": {
+    "accuracy": 0.5694,
+    "balanced_accuracy": 0.5328,
+    "roc_auc": 0.4822,
+    "brier": 0.2716
+  },
+  "top_positive_coefficients": [
+    {
+      "feature": "num__mean_abs_rank_shift",
+      "coefficient": 0.17353
+    },
+    {
+      "feature": "num__shift_score",
+      "coefficient": 0.159036
+    },
+    {
+      "feature": "cat__field_prefix_field_15",
+      "coefficient": 0.08039
+    },
+    {
+      "feature": "num__log_consensus_cluster_size",
+      "coefficient": 0.054
+    },
+    {
+      "feature": "num__top_k",
+      "coefficient": 0.040564
+    },
+    {
+      "feature": "cat__baseline_label_sum_minus_cc",
+      "coefficient": 0.020714
+    }
+  ],
+  "top_negative_coefficients": [
+    {
+      "feature": "num__log_baseline_cluster_size",
+      "coefficient": -0.282653
+    },
+    {
+      "feature": "num__cluster_size_ratio",
+      "coefficient": -0.170131
+    },
+    {
+      "feature": "num__rank_jaccard",
+      "coefficient": -0.129744
+    },
+    {
+      "feature": "num__overlap_size",
+      "coefficient": -0.077216
+    },
+    {
+      "feature": "cat__field_prefix_field_12",
+      "coefficient": -0.075614
+    },
+    {
+      "feature": "num__max_abs_rank_shift",
+      "coefficient": -0.036582
+    },
+    {
+      "feature": "cat__baseline_label_sum_minus_emb",
+      "coefficient": -0.015938
+    }
+  ],
+  "decision_tree": {
+    "feature_importances": [
+      {
+        "feature": "num__shift_score",
+        "importance": 0.535977
+      },
+      {
+        "feature": "num__cluster_size_ratio",
+        "importance": 0.205018
+      },
+      {
+        "feature": "num__log_baseline_cluster_size",
+        "importance": 0.179787
+      },
+      {
+        "feature": "num__mean_abs_rank_shift",
+        "importance": 0.079218
+      }
+    ],
+    "rules": "|--- num__shift_score <= 1.47\n|   |--- num__mean_abs_rank_shift <= 2.77\n|   |   |--- num__log_baseline_cluster_size <= 3.68\n|   |   |   |--- class: 0\n|   |   |--- num__log_baseline_cluster_size >  3.68\n|   |   |   |--- class: 1\n|   |--- num__mean_abs_rank_shift >  2.77\n|   |   |--- num__cluster_size_ratio <= 2.14\n|   |   |   |--- class: 0\n|   |   |--- num__cluster_size_ratio >  2.14\n|   |   |   |--- class: 0\n|--- num__shift_score >  1.47\n|   |--- num__shift_score <= 1.71\n|   |   |--- class: 1\n|   |--- num__shift_score >  1.71\n|   |   |--- num__cluster_size_ratio <= 0.68\n|   |   |   |--- class: 0\n|   |   |--- num__cluster_size_ratio >  0.68\n|   |   |   |--- class: 1\n"
+  }
+}

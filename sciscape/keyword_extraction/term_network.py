@@ -25,6 +25,12 @@ from .utils import _edit_distance
 
 logger = logging.getLogger(__name__)
 
+try:
+    import sciscape_text as _rust_text
+    _RUST_TEXT_AVAILABLE = True
+except ImportError:
+    _RUST_TEXT_AVAILABLE = False
+
 
 @dataclass
 class TermNetworkConfig:
@@ -135,12 +141,33 @@ class TermNetwork:
         """Layer 1: character-level similarity (edit distance + char n-gram).
 
         Uses blocking to avoid O(n^2) comparisons.
+        Accelerated by Rust (sciscape_text) when available.
         """
         n = len(terms)
         if n == 0:
             return sp.csr_matrix((0, 0), dtype=np.float32)
 
         cfg = self.config
+
+        # ── Rust fast path ──
+        if _RUST_TEXT_AVAILABLE:
+            rows, cols, vals, _ = _rust_text.rust_build_layer_string(
+                list(terms),
+                char_ngram_n=cfg.char_ngram_n,
+                max_edit_distance=cfg.max_edit_distance,
+                min_sim=cfg.min_char_ngram_sim,
+                max_block_size=cfg.max_block_size,
+                prefix_len=cfg.prefix_length,
+                blocking_strategy=cfg.blocking_strategy,
+            )
+            if len(rows) == 0:
+                return sp.csr_matrix((n, n), dtype=np.float32)
+            return sp.csr_matrix(
+                (np.asarray(vals), (np.asarray(rows), np.asarray(cols))),
+                shape=(n, n),
+            )
+
+        # ── Python fallback ──
         blocks = _build_blocks(terms, cfg.blocking_strategy, cfg.prefix_length)
         ngrams = [_char_ngrams(t.lower(), cfg.char_ngram_n) for t in terms]
 
@@ -162,17 +189,14 @@ class TermNetwork:
                         continue
                     seen.add(pair)
 
-                    # Edit distance similarity
                     dist = _edit_distance(terms[i].lower(), terms[j].lower())
                     max_len = max(len(terms[i]), len(terms[j]))
                     if max_len == 0:
                         continue
                     ed_sim = 1.0 - (dist / max_len) if dist <= cfg.max_edit_distance else 0.0
 
-                    # Char n-gram similarity
                     ng_sim = _jaccard(ngrams[i], ngrams[j])
 
-                    # Combined
                     sim = max(ed_sim, ng_sim)
                     if sim >= cfg.min_char_ngram_sim:
                         rows.extend([i, j])
@@ -188,12 +212,33 @@ class TermNetwork:
         )
 
     def build_layer_token(self, terms: Sequence[str]) -> sp.csr_matrix:
-        """Layer 2: word-level overlap, containment, abbreviation detection."""
+        """Layer 2: word-level overlap, containment, abbreviation detection.
+
+        Accelerated by Rust (sciscape_text) when available.
+        """
         n = len(terms)
         if n == 0:
             return sp.csr_matrix((0, 0), dtype=np.float32)
 
         cfg = self.config
+
+        # ── Rust fast path ──
+        if _RUST_TEXT_AVAILABLE:
+            rows, cols, vals, _ = _rust_text.rust_build_layer_token(
+                list(terms),
+                min_sim=cfg.min_token_overlap,
+                max_block_size=cfg.max_block_size,
+                prefix_len=cfg.prefix_length,
+                blocking_strategy=cfg.blocking_strategy,
+            )
+            if len(rows) == 0:
+                return sp.csr_matrix((n, n), dtype=np.float32)
+            return sp.csr_matrix(
+                (np.asarray(vals), (np.asarray(rows), np.asarray(cols))),
+                shape=(n, n),
+            )
+
+        # ── Python fallback ──
         token_sets = [set(t.lower().split()) for t in terms]
         blocks = _build_blocks(terms, cfg.blocking_strategy, cfg.prefix_length)
 
@@ -320,8 +365,8 @@ class TermNetwork:
         thresh = threshold if threshold is not None else self.config.merge_threshold
         max_size = self.config.max_group_size
 
-        # Threshold the similarity matrix
-        thresholded = combined.copy()
+        # Threshold the similarity matrix (in-place on CSR)
+        thresholded = combined.tocsr()
         thresholded.data[thresholded.data < thresh] = 0
         thresholded.eliminate_zeros()
 
@@ -344,36 +389,44 @@ class TermNetwork:
 
             # Split oversized group: extract subgraph, remove weakest edges
             sub_idx = np.array(member_indices)
-            sub_mat = thresholded[np.ix_(sub_idx, sub_idx)].tolil()
-            max_iter = sub_mat.nnz // 2 + 1  # upper bound: remove all edges
+            sub_csr = thresholded[np.ix_(sub_idx, sub_idx)].tocsr()
+            max_iter = sub_csr.nnz // 2 + 1  # upper bound: remove all edges
+            prev_comp_sizes = None
             for _split_iter in range(max_iter):
                 n_sub, sub_labels = sp.csgraph.connected_components(
-                    sub_mat.tocsr(), directed=False, return_labels=True
+                    sub_csr, directed=False, return_labels=True
                 )
                 # Check if all components are within limit
-                comp_sizes = {}
-                for si, sl in enumerate(sub_labels):
-                    comp_sizes[sl] = comp_sizes.get(sl, 0) + 1
-                if all(s <= max_size for s in comp_sizes.values()):
+                comp_sizes = np.bincount(sub_labels)
+                if comp_sizes.max() <= max_size:
                     break
-                # Find and remove weakest edge in any oversized component
+                comp_sizes_dict = {i: int(s) for i, s in enumerate(comp_sizes) if s > 0}
+                if prev_comp_sizes is not None and comp_sizes_dict == prev_comp_sizes:
+                    break
+                prev_comp_sizes = comp_sizes_dict
+                # Find weakest edge in any oversized component via CSR direct access
                 min_val, min_i, min_j = float("inf"), -1, -1
-                csr = sub_mat.tocsr()
-                for i in range(csr.shape[0]):
-                    row = csr.getrow(i)
-                    for j, v in zip(row.indices, row.data):
+                for i in range(sub_csr.shape[0]):
+                    if comp_sizes[sub_labels[i]] <= max_size:
+                        continue
+                    s0, s1 = sub_csr.indptr[i], sub_csr.indptr[i + 1]
+                    for pos in range(s0, s1):
+                        j = sub_csr.indices[pos]
+                        v = sub_csr.data[pos]
                         if j > i and 0 < v < min_val:
-                            # Only consider edges within oversized components
-                            if comp_sizes.get(sub_labels[i], 0) > max_size:
-                                min_val, min_i, min_j = v, i, j
+                            min_val, min_i, min_j = v, i, j
                 if min_i < 0:
                     break
-                sub_mat[min_i, min_j] = 0
-                sub_mat[min_j, min_i] = 0
+                # Convert to LIL only for the single edge removal, then back
+                sub_lil = sub_csr.tolil()
+                sub_lil[min_i, min_j] = 0
+                sub_lil[min_j, min_i] = 0
+                sub_csr = sub_lil.tocsr()
+                sub_csr.eliminate_zeros()
 
             # Collect final sub-components
             n_sub, sub_labels = sp.csgraph.connected_components(
-                sub_mat.tocsr(), directed=False, return_labels=True
+                sub_csr, directed=False, return_labels=True
             )
             sub_groups: Dict[int, List[str]] = {}
             for si, sl in enumerate(sub_labels):

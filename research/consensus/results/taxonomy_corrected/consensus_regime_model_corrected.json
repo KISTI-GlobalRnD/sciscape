@@ -1,0 +1,98 @@
+{
+  "n_cases": 143,
+  "class_balance": {
+    "consensus_wins": 97,
+    "baseline_wins": 46
+  },
+  "cross_validated_metrics": {
+    "accuracy": 0.6154,
+    "balanced_accuracy": 0.6136,
+    "roc_auc": 0.6726,
+    "brier": 0.2315
+  },
+  "top_positive_coefficients": [
+    {
+      "feature": "cat__field_prefix_field_12",
+      "coefficient": 0.398425
+    },
+    {
+      "feature": "num__shift_score",
+      "coefficient": 0.187263
+    },
+    {
+      "feature": "num__mean_abs_rank_shift",
+      "coefficient": 0.099936
+    },
+    {
+      "feature": "num__top_k",
+      "coefficient": 0.082353
+    },
+    {
+      "feature": "cat__baseline_label_sum_minus_cc",
+      "coefficient": 0.038933
+    },
+    {
+      "feature": "num__max_abs_rank_shift",
+      "coefficient": 0.002202
+    },
+    {
+      "feature": "num__overlap_size",
+      "coefficient": 0.000557
+    }
+  ],
+  "top_negative_coefficients": [
+    {
+      "feature": "cat__field_prefix_field_15",
+      "coefficient": -0.398294
+    },
+    {
+      "feature": "num__log_baseline_cluster_size",
+      "coefficient": -0.331612
+    },
+    {
+      "feature": "num__cluster_size_ratio",
+      "coefficient": -0.317892
+    },
+    {
+      "feature": "num__rank_jaccard",
+      "coefficient": -0.307739
+    },
+    {
+      "feature": "num__cluster_overlap_coeff",
+      "coefficient": -0.270956
+    },
+    {
+      "feature": "num__log_consensus_cluster_size",
+      "coefficient": -0.162776
+    },
+    {
+      "feature": "cat__baseline_label_sum_minus_emb",
+      "coefficient": -0.038802
+    }
+  ],
+  "decision_tree": {
+    "feature_importances": [
+      {
+        "feature": "num__max_abs_rank_shift",
+        "importance": 0.380605
+      },
+      {
+        "feature": "num__cluster_size_ratio",
+        "importance": 0.231712
+      },
+      {
+        "feature": "num__cluster_overlap_coeff",
+        "importance": 0.159691
+      },
+      {
+        "feature": "num__log_consensus_cluster_size",
+        "importance": 0.133437
+      },
+      {
+        "feature": "num__log_baseline_cluster_size",
+        "importance": 0.094555
+      }
+    ],
+    "rules": "|--- num__max_abs_rank_shift <= 5.50\n|   |--- num__cluster_size_ratio <= 0.41\n|   |   |--- class: 0\n|   |--- num__cluster_size_ratio >  0.41\n|   |   |--- num__cluster_overlap_coeff <= 0.04\n|   |   |   |--- class: 0\n|   |   |--- num__cluster_overlap_coeff >  0.04\n|   |   |   |--- class: 1\n|--- num__max_abs_rank_shift >  5.50\n|   |--- num__log_consensus_cluster_size <= 6.91\n|   |   |--- num__cluster_size_ratio <= 0.40\n|   |   |   |--- class: 1\n|   |   |--- num__cluster_size_ratio >  0.40\n|   |   |   |--- class: 1\n|   |--- num__log_consensus_cluster_size >  6.91\n|   |   |--- num__log_baseline_cluster_size <= 6.60\n|   |   |   |--- class: 0\n|   |   |--- num__log_baseline_cluster_size >  6.60\n|   |   |   |--- class: 1\n"
+  }
+}

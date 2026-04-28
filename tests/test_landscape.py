@@ -121,7 +121,7 @@ class TestInputValidation:
 
 class TestClustering:
     def test_standard_mode(self, sample_dir):
-        """Standard mode (gamma_block=None): direct γ search."""
+        """Standard mode (gamma_pre=None): direct γ search."""
         from sciscape.landscape import _run_clustering
 
         tmp_path, edge_path, _ = sample_dir
@@ -130,7 +130,7 @@ class TestClustering:
         out.mkdir()
 
         cfg = LandscapeConfig(
-            gamma_block=None,
+            gamma_pre=None,
             gamma_range=(1e-4, 1e-1),
             min_docs_per_cluster=5,
             n_hierarchy_levels=1,
@@ -146,8 +146,8 @@ class TestClustering:
         n_clusters = result["cluster_nano"].n_unique()
         assert n_clusters > 1
 
-    def test_block_init_mode(self, sample_dir):
-        """Block-init mode (gamma_block="auto"): blocks → contraction → cascade."""
+    def test_prepartition_mode(self, sample_dir):
+        """Pre-partition mode (gamma_pre="auto"): blocks → contraction → cascade."""
         from sciscape.landscape import _run_clustering
 
         tmp_path, edge_path, _ = sample_dir
@@ -156,7 +156,7 @@ class TestClustering:
         out.mkdir()
 
         cfg = LandscapeConfig(
-            gamma_block="auto",
+            gamma_pre="auto",
             gamma_range=(1e-4, 1e-1),
             min_docs_per_cluster=5,
             n_hierarchy_levels=1,
@@ -170,11 +170,11 @@ class TestClustering:
         n_clusters = result["cluster_nano"].n_unique()
         assert n_clusters > 1
 
-        # blocks.parquet should be cached
-        assert (out / "blocks.parquet").exists()
+        # parts.parquet should be cached
+        assert (out / "parts.parquet").exists()
 
-    def test_block_init_explicit_gamma(self, sample_dir):
-        """Explicit gamma_block value."""
+    def test_prepartition_explicit_gamma(self, sample_dir):
+        """Explicit gamma_pre value."""
         from sciscape.landscape import _run_clustering
 
         tmp_path, edge_path, _ = sample_dir
@@ -183,7 +183,7 @@ class TestClustering:
         out.mkdir()
 
         cfg = LandscapeConfig(
-            gamma_block=0.5,
+            gamma_pre=0.5,
             gamma_range=(1e-4, 1e-1),
             min_docs_per_cluster=5,
             n_hierarchy_levels=1,
@@ -204,7 +204,7 @@ class TestClustering:
         out.mkdir()
 
         cfg = LandscapeConfig(
-            gamma_block=0.5,
+            gamma_pre=0.5,
             gamma_range=(1e-4, 1e-1),
             min_docs_per_cluster=5,
             n_hierarchy_levels=1,
@@ -212,12 +212,12 @@ class TestClustering:
             seed=42,
         )
         _run_clustering(edges, cfg, out)
-        blocks_mtime = (out / "blocks.parquet").stat().st_mtime
+        parts_mtime = (out / "parts.parquet").stat().st_mtime
 
         # Force nano recalculation but blocks should be reused
         (out / "membership.parquet").unlink()
         _run_clustering(edges, cfg, out)
-        assert (out / "blocks.parquet").stat().st_mtime == blocks_mtime
+        assert (out / "parts.parquet").stat().st_mtime == parts_mtime
 
     def test_two_levels(self, sample_dir):
         """Two hierarchy levels: nano + micro (requires Rust cpm_dendro)."""
@@ -229,7 +229,7 @@ class TestClustering:
         out.mkdir()
 
         cfg = LandscapeConfig(
-            gamma_block=None,
+            gamma_pre=None,
             gamma_range=(1e-4, 1e-1),
             min_docs_per_cluster=5,
             n_hierarchy_levels=2,
@@ -255,35 +255,35 @@ class TestClustering:
 
 
 class TestCLI:
-    def test_gamma_block_auto(self):
+    def test_gamma_pre_auto(self):
         from sciscape.cli import _build_parser
         parser = _build_parser()
         args = parser.parse_args([
-            "landscape", "e.parquet", "a.parquet",
+            "landscape", "a.parquet", "e.parquet",
         ])
-        assert args.gamma_block == "auto"
+        assert args.gamma_pre == "auto"
 
-    def test_gamma_block_none(self):
+    def test_gamma_pre_none(self):
         from sciscape.cli import _build_parser
         parser = _build_parser()
         args = parser.parse_args([
-            "landscape", "e.parquet", "a.parquet", "--gamma-block", "none",
+            "landscape", "a.parquet", "e.parquet", "--gamma-pre", "none",
         ])
-        assert args.gamma_block == "none"
+        assert args.gamma_pre == "none"
 
-    def test_gamma_block_float(self):
+    def test_gamma_pre_float(self):
         from sciscape.cli import _build_parser
         parser = _build_parser()
         args = parser.parse_args([
-            "landscape", "e.parquet", "a.parquet", "--gamma-block", "0.01",
+            "landscape", "a.parquet", "e.parquet", "--gamma-pre", "0.01",
         ])
-        assert args.gamma_block == "0.01"
+        assert args.gamma_pre == "0.01"
 
     def test_gamma_range(self):
         from sciscape.cli import _build_parser
         parser = _build_parser()
         args = parser.parse_args([
-            "landscape", "e.parquet", "a.parquet",
+            "landscape", "a.parquet", "e.parquet",
             "--gamma-range", "1e-5,1e-2",
         ])
         assert args.gamma_range == "1e-5,1e-2"
@@ -292,7 +292,7 @@ class TestCLI:
         from sciscape.cli import _build_parser
         parser = _build_parser()
         args = parser.parse_args([
-            "landscape", "e.parquet", "a.parquet",
+            "landscape", "a.parquet", "e.parquet",
         ])
         assert args.gamma_range is None
 
@@ -303,20 +303,20 @@ class TestCLI:
 class TestConfig:
     def test_auto_default(self):
         cfg = LandscapeConfig()
-        assert cfg.gamma_block == "auto"
+        assert cfg.gamma_pre == "auto"
 
     def test_none_disables(self):
-        cfg = LandscapeConfig(gamma_block=None)
-        assert cfg.gamma_block is None
+        cfg = LandscapeConfig(gamma_pre=None)
+        assert cfg.gamma_pre is None
 
     def test_explicit_float(self):
-        cfg = LandscapeConfig(gamma_block=0.05)
-        assert cfg.gamma_block == 0.05
+        cfg = LandscapeConfig(gamma_pre=0.05)
+        assert cfg.gamma_pre == 0.05
 
     def test_auto_resolves_from_gamma_range(self):
-        """Auto gamma_block = 10 × gamma_range[1]."""
+        """Auto gamma_pre = 10 × gamma_range[1]."""
         cfg = LandscapeConfig(gamma_range=(1e-6, 1e-3))
-        assert cfg.gamma_block == "auto"
+        assert cfg.gamma_pre == "auto"
         # Resolution happens inside _run_clustering, not in config
         expected = 10.0 * cfg.gamma_range[1]
         assert expected == pytest.approx(1e-2)

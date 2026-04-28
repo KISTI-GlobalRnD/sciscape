@@ -1,12 +1,14 @@
 """SciScape CLI — minimal command-line interface.
 
 Usage:
+    sciscape query     <search_query> [options]          ← NEW: OpenAlex all-in-one
     sciscape cluster   <zip_path> <inner_name> [options]
     sciscape keywords  <abstract_parquet> <membership_parquet> [options]
     sciscape convert   <source> <input_file> [options]
     sciscape landscape <edge_file> <abstract_parquet> [options]
 
 Examples:
+    sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o ml_output/
     sciscape cluster edges.zip edges.txt --levels 5,100 80,500
     sciscape keywords abstracts.parquet membership.parquet --top-n 100 --include-title -o keywords.parquet
     sciscape convert wos savedrecs.txt -o abstracts.parquet
@@ -75,8 +77,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ---- landscape ----
     ls = sub.add_parser("landscape", help="Full pipeline: edges → clustering → keywords → report")
-    ls.add_argument("edge_path", type=Path, help="Edge list file (.parquet, .csv, .tsv, .txt)")
     ls.add_argument("abstract_path", type=Path, help="Abstract parquet (uid, title, abstract, pubyear)")
+    ls.add_argument("edge_path", type=Path, nargs="?", default=None,
+                     help="Edge list file (optional if --layers is used)")
     ls.add_argument("-o", "--output-dir", type=Path, default=Path("landscape_output"),
                      help="Output directory (default: landscape_output)")
     ls.add_argument("--n-nodes", type=int, default=100_000,
@@ -86,12 +89,26 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Min documents per cluster (default: 1000)")
     ls.add_argument("--top-n", type=int, default=80, help="Keywords per cluster (default: 80)")
     ls.add_argument("--title", type=str, default="SciScape Landscape", help="Report title")
-    ls.add_argument("--gamma-block", type=str, default="auto",
-                     help="Block-init γ: 'auto' (10×γ_range upper), 'none' (disable), or float (default: auto)")
+    ls.add_argument("--gamma-pre", type=str, default="auto",
+                     help="Pre-partition γ: 'auto' (10×γ_range upper), 'none' (disable), or float (default: auto)")
     ls.add_argument("--gamma-range", type=str, default=None,
                      help="Resolution search bounds lo,hi (default: 1e-6,1e-3)")
     ls.add_argument("--force", action="store_true",
                      help="Ignore cached intermediate results and re-run from scratch")
+    ls.add_argument("--layers", type=str, default=None,
+                     help="Multi-layer edge files: name=path,name=path,... "
+                          "(e.g. bc=bc.parquet,cc=cc.parquet,dc=dc.parquet)")
+    ls.add_argument("--combine-strategy", type=str, default="consensus",
+                     choices=["consensus", "rank", "sum", "max", "vote"],
+                     help="Edge combination strategy (default: consensus)")
+    ls.add_argument("--combine-top-k", type=str, default="auto",
+                     help="Per-node top-k filter: 'auto' (sqrt-based), integer, or 'balanced' (default: auto)")
+    ls.add_argument("--auto-gamma", action="store_true",
+                     help="Auto-select γ (target max cluster < 3%%)")
+    ls.add_argument("--auto-gamma-target", type=float, default=3.0,
+                     help="Max cluster %% target for auto-gamma (default: 3.0)")
+    ls.add_argument("--evaluate", action="store_true",
+                     help="Run stability evaluation (AMI/ARI with 5 seeds) + quality report")
     ls.add_argument("-v", "--verbose", action="store_true")
 
     # ---- viewer ----
@@ -100,6 +117,40 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Output HTML path (default: viewer.html)")
     vw.add_argument("--title", type=str, default="SciScape Viewer", help="Viewer title")
     vw.add_argument("--open", action="store_true", help="Open in browser after generation")
+
+    # ---- export ----
+    ex = sub.add_parser("export", help="Export network to GEXF (Gephi) or GraphML (Cytoscape)")
+    ex.add_argument("edge_path", type=Path, help="Edge parquet file")
+    ex.add_argument("membership_path", type=Path, help="Membership parquet file")
+    ex.add_argument("-o", "--output", type=Path, default=Path("network.gexf"),
+                     help="Output file (default: network.gexf)")
+    ex.add_argument("--format", choices=["gexf", "graphml"], default="gexf",
+                     help="Export format (default: gexf)")
+    ex.add_argument("--abstracts", type=Path, default=None,
+                     help="Abstracts parquet for title/year attributes")
+
+    # ---- query (OpenAlex) ----
+    qa = sub.add_parser("query", help="Query OpenAlex → fetch → edges → landscape (all-in-one)")
+    qa.add_argument("search", type=str, help="Search query (title + abstract)")
+    qa.add_argument("--years", type=str, default=None,
+                     help="Year range, e.g. 2020-2024")
+    qa.add_argument("--max-works", type=int, default=5000,
+                     help="Maximum works to fetch (default: 5000)")
+    qa.add_argument("--email", type=str, default=None,
+                     help="Email for OpenAlex polite pool (10x rate limit)")
+    qa.add_argument("--edges", type=str, default="dc,bc",
+                     help="Edge types to build (default: dc,bc)")
+    qa.add_argument("--no-landscape", action="store_true",
+                     help="Skip landscape pipeline (only fetch + edges)")
+    qa.add_argument("-o", "--output", type=Path, default=Path("openalex_output"),
+                     help="Output directory")
+    qa.add_argument("-v", "--verbose", action="store_true")
+
+    # ---- web ----
+    wb = sub.add_parser("web", help="Launch web interface (FastAPI)")
+    wb.add_argument("--host", type=str, default="127.0.0.1", help="Bind host")
+    wb.add_argument("--port", type=int, default=8000, help="Bind port")
+    wb.add_argument("--reload", action="store_true", help="Auto-reload on code changes")
 
     # ---- gui ----
     sub.add_parser("gui", help="Launch graphical interface")
@@ -141,8 +192,13 @@ def _run_cluster(args: argparse.Namespace) -> None:
     if args.levels:
         level_constraints = []
         for pair in args.levels:
-            lo, hi = pair.split(",")
-            level_constraints.append((int(lo), int(hi)))
+            try:
+                lo, hi = pair.split(",")
+                level_constraints.append((int(lo), int(hi)))
+            except ValueError:
+                print(f"Invalid --levels format: {pair!r}. Expected: min,max (e.g., 5,100)",
+                      file=sys.stderr)
+                sys.exit(1)
 
     lo, hi = args.resolution_bounds.split(",")
     resolution_bounds = (float(lo), float(hi))
@@ -249,14 +305,14 @@ def _run_landscape(args: argparse.Namespace) -> None:
                             format="%(asctime)s %(levelname)s %(message)s",
                             datefmt="%H:%M:%S")
 
-    # Parse gamma_block: "auto" | "none" | float
-    gb = args.gamma_block.strip().lower()
+    # Parse gamma_pre: "auto" | "none" | float
+    gb = args.gamma_pre.strip().lower()
     if gb == "none":
-        gamma_block = None
+        gamma_pre = None
     elif gb == "auto":
-        gamma_block = "auto"
+        gamma_pre = "auto"
     else:
-        gamma_block = float(gb)
+        gamma_pre = float(gb)
 
     cfg_kwargs = dict(
         n_target_nodes=args.n_nodes,
@@ -265,16 +321,90 @@ def _run_landscape(args: argparse.Namespace) -> None:
         min_docs_per_cluster=args.min_docs,
         top_n_keywords=args.top_n,
         report_title=args.title,
-        gamma_block=gamma_block,
+        gamma_pre=gamma_pre,
     )
     if args.gamma_range:
-        lo, hi = args.gamma_range.split(",")
-        cfg_kwargs["gamma_range"] = (float(lo), float(hi))
+        try:
+            lo, hi = args.gamma_range.split(",")
+            cfg_kwargs["gamma_range"] = (float(lo), float(hi))
+        except ValueError:
+            print(f"Invalid --gamma-range format. Expected: lo,hi (e.g., 1e-5,1e-2)",
+                  file=sys.stderr)
+            sys.exit(1)
+
+    # Multi-layer combination
+    if args.layers:
+        layer_paths = {}
+        for item in args.layers.split(","):
+            if "=" in item:
+                name, path = item.split("=", 1)
+                layer_paths[name.strip()] = Path(path.strip())
+            else:
+                layer_paths[Path(item).stem] = Path(item.strip())
+        cfg_kwargs["layer_paths"] = layer_paths
+        cfg_kwargs["combine_strategy"] = args.combine_strategy
+        # Parse combine_top_k: "auto", "balanced", or integer
+        tk = args.combine_top_k
+        if tk not in ("auto", "balanced"):
+            try:
+                tk = int(tk)
+            except ValueError:
+                tk = "auto"
+        cfg_kwargs["combine_top_k"] = tk
+
+    if args.auto_gamma:
+        cfg_kwargs["auto_gamma"] = True
+        cfg_kwargs["auto_gamma_target"] = args.auto_gamma_target
 
     cfg = LandscapeConfig(**cfg_kwargs)
 
-    result = run_landscape(args.edge_path, args.abstract_path, args.output_dir, config=cfg)
+    # Determine edge_path
+    edge_path = args.edge_path
+    if edge_path is None and not args.layers:
+        print("Error: provide either edge_path or --layers", file=sys.stderr)
+        sys.exit(1)
+    if edge_path is None:
+        # Placeholder — will be replaced by combined edges inside run_landscape
+        edge_path = args.output_dir / "_placeholder_edges.parquet"
+
+    result = run_landscape(edge_path, args.abstract_path, args.output_dir, config=cfg)
     print(f"Landscape complete → {result['report_dir']}/report.html")
+
+    # Optional evaluation
+    if getattr(args, "evaluate", False):
+        try:
+            from sciscape.evaluation.stability import evaluate_stability, compute_quality_report
+            import polars as pl
+            import numpy as np
+
+            # Load edges and membership
+            membership_path = args.output_dir / "membership.parquet"
+            if not membership_path.exists():
+                print("Evaluation skipped: membership.parquet not found")
+            elif not edge_path or not edge_path.exists():
+                print(f"Evaluation skipped: edge file not found at {edge_path}")
+            elif membership_path.exists():
+                edges = pl.read_parquet(edge_path)
+                mem_df = pl.read_parquet(membership_path)
+                cluster_col = next((c for c in mem_df.columns if c.startswith("cluster_")), None)
+                if cluster_col:
+                    membership = mem_df[cluster_col].to_numpy()
+                    gamma = result.get("gamma", 1.0)
+
+                    # Stability
+                    print("\n--- Stability Evaluation ---")
+                    min_sz = getattr(cfg, 'min_docs_per_cluster', None) or args.min_docs or 10
+                    stab = evaluate_stability(edges, gamma=gamma, n_seeds=5,
+                                              min_size=min_sz)
+                    print(stab.summary())
+
+                    # Quality report
+                    print("\n--- Quality Report ---")
+                    qr = compute_quality_report(edges, membership, gamma=gamma,
+                                                target_pct=cfg.auto_gamma_target)
+                    print(qr.summary())
+        except Exception as e:
+            print(f"Evaluation skipped: {e}")
 
 
 def _run_viewer(args: argparse.Namespace) -> None:
@@ -293,6 +423,52 @@ def _run_viewer(args: argparse.Namespace) -> None:
         webbrowser.open(f"file://{path}")
 
 
+def _run_export(args: argparse.Namespace) -> None:
+    import polars as pl
+    from sciscape.export import export_gexf, export_graphml
+
+    edges = pl.read_parquet(args.edge_path)
+    membership = pl.read_parquet(args.membership_path)
+    abstracts = pl.read_parquet(args.abstracts) if args.abstracts else None
+
+    if args.format == "graphml":
+        path = export_graphml(edges, membership, args.output, abstracts=abstracts)
+    else:
+        path = export_gexf(edges, membership, args.output, abstracts=abstracts)
+    print(f"Exported → {path}")
+
+
+def _run_query(args: argparse.Namespace) -> None:
+    from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
+
+    if args.verbose:
+        import logging
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    filters = {}
+    if args.years:
+        filters["publication_year"] = args.years
+
+    config = OpenAlexPipelineConfig(
+        query=args.search,
+        filters=filters,
+        max_works=args.max_works,
+        email=args.email,
+        edge_types=args.edges.split(","),
+        output_dir=Path(args.output),
+        run_landscape=not args.no_landscape,
+        progress=print,
+    )
+    result = run_openalex_pipeline(config)
+    print(f"\nDone: {result.n_works} works, {result.n_edges} edges")
+    if result.abstracts_path:
+        print(f"  Abstracts: {result.abstracts_path}")
+    if result.edges_path:
+        print(f"  Edges: {result.edges_path}")
+    if result.landscape_dir:
+        print(f"  Landscape: {result.landscape_dir}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -307,6 +483,18 @@ def main(argv: list[str] | None = None) -> None:
         _run_landscape(args)
     elif args.command == "viewer":
         _run_viewer(args)
+    elif args.command == "export":
+        _run_export(args)
+    elif args.command == "query":
+        _run_query(args)
+    elif args.command == "web":
+        import uvicorn
+        uvicorn.run(
+            "sciscape.web.app:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+        )
     elif args.command == "gui":
         from sciscape.gui import launch
         launch()

@@ -1,0 +1,164 @@
+{
+  "review_json": "research/consensus/results/local_review_field15/field_15_k06_sum_vs_consensus_local_v2_rank_shift_review.json",
+  "field": "field_15_k06_sum_vs_consensus_local_v2",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "winner_filter": "B",
+  "noisy_side": "a",
+  "top_k": 6,
+  "n_selected_cases": 15,
+  "n_suspect_rows": 56,
+  "n_unique_pairs": 56,
+  "layer_weights": {
+    "bc_cosine": 0.781579,
+    "cc_cosine": 1.828343,
+    "dc_fractional": 0.827228,
+    "emb_knn": 0.56285
+  },
+  "dominant_layer_counts": {
+    "emb_knn": 27,
+    "cc_cosine": 27,
+    "bc_cosine": 2
+  },
+  "single_layer_counts": {
+    "emb_knn": 26,
+    "cc_cosine": 16,
+    "bc_cosine": 2
+  },
+  "present_any_counts": {
+    "emb_knn": 33,
+    "cc_cosine": 27,
+    "bc_cosine": 5,
+    "dc_fractional": 5
+  },
+  "top_examples": [
+    {
+      "target_uid": "W2745962556",
+      "target_title": "Exceeding the Asymptotic Limit of Polymer Drag Reduction",
+      "neighbor_uid": "W2770191447",
+      "neighbor_title": "Viscoelastic Pipe Flow is Linearly Unstable",
+      "kind": "shared",
+      "delta": 2,
+      "rank": null,
+      "rank_a": 6,
+      "rank_b": 8,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.94657
+      }
+    },
+    {
+      "target_uid": "W2083845051",
+      "target_title": "Mechanistic Studies on Fast Ligand Substitution Reactions of Pt(II) in Different Ionic Liquids: Role of Solvent Polarity and Ion-Pair Formation",
+      "neighbor_uid": "W2033497923",
+      "neighbor_title": "Switching the Mechanism of Catalyst Activation by Ionic Liquids",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 6,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.923645
+      }
+    },
+    {
+      "target_uid": "W2132931892",
+      "target_title": "Recombination of Photogenerated Lophyl Radicals in Imidazolium‐Based Ionic Liquids",
+      "neighbor_uid": "W2140945177",
+      "neighbor_title": "Ionic Liquids in Polymer Synthesis",
+      "kind": "shared",
+      "delta": 5,
+      "rank": null,
+      "rank_a": 2,
+      "rank_b": 7,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.914171
+      }
+    },
+    {
+      "target_uid": "W2083845051",
+      "target_title": "Mechanistic Studies on Fast Ligand Substitution Reactions of Pt(II) in Different Ionic Liquids: Role of Solvent Polarity and Ion-Pair Formation",
+      "neighbor_uid": "W2319508696",
+      "neighbor_title": "Coordination of 1,10-Phenanthroline and 2,2′-Bipyridine to Li<sup>+</sup> in Different Ionic Liquids. How Innocent Are Ionic Liquids?",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 7,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.863811
+      }
+    },
+    {
+      "target_uid": "W2745962556",
+      "target_title": "Exceeding the Asymptotic Limit of Polymer Drag Reduction",
+      "neighbor_uid": "W2802551282",
+      "neighbor_title": "Onset of transition in the flow of polymer solutions through microtubes",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 7,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.855233
+      }
+    },
+    {
+      "target_uid": "W2745962556",
+      "target_title": "Exceeding the Asymptotic Limit of Polymer Drag Reduction",
+      "neighbor_uid": "W2070893156",
+      "neighbor_title": "Drag reduction and the dynamics of turbulence in simple and complex fluids",
+      "kind": "only_a",
+      "delta": null,
+      "rank": 8,
+      "rank_a": null,
+      "rank_b": null,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.764424
+      }
+    },
+    {
+      "target_uid": "W1965934283",
+      "target_title": "Dielectric and Viscoelastic Behavior of Low-M Linear Polyisoprene Blended in Long Matrix",
+      "neighbor_uid": "W2076865379",
+      "neighbor_title": "Entanglement Dynamics in Miscible Polyisoprene/Poly(<i>p</i>-<i>tert</i>-butylstyrene) Blends",
+      "kind": "shared",
+      "delta": 3,
+      "rank": null,
+      "rank_a": 3,
+      "rank_b": 6,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.760637
+      }
+    },
+    {
+      "target_uid": "W2088592882",
+      "target_title": "Sputter-Deposition of Silver Nanoparticles into Ionic Liquid as a Sacrificial Reservoir in Antimicrobial Organosilicate Nanocomposite Coatings",
+      "neighbor_uid": "W2069836089",
+      "neighbor_title": "High‐Throughput Fabrication of Au–Cu Nanoparticle Libraries by Combinatorial Sputtering in Ionic Liquids",
+      "kind": "shared",
+      "delta": 3,
+      "rank": null,
+      "rank_a": 1,
+      "rank_b": 4,
+      "dominant_layer": "cc_cosine",
+      "n_layers_present": 1,
+      "contributions": {
+        "cc_cosine": 0.680334
+      }
+    }
+  ]
+}

@@ -1,0 +1,1582 @@
+{
+  "field": "field_15_k30_sum_minus_cc_vs_consensus_null_control",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum_minus_cc",
+  "label_b": "consensus_all",
+  "layers_a": [
+    "bc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 30,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.85,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.45,
+  "allow_cluster_change": false,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 4681364,
+    "gamma": 0.001929709892996202,
+    "n_clusters": 362,
+    "max_pct": 2.44
+  },
+  "method_b_run": {
+    "n_edges": 4984706,
+    "gamma": 0.0008088005947128995,
+    "n_clusters": 591,
+    "max_pct": 3.05
+  },
+  "n_eligible_nodes": 38145,
+  "n_candidate_cases": 4,
+  "selected_cases": [
+    {
+      "target_uid": "W4396540319",
+      "target_title": "Construction of Polycarbonates with Pendant Multifunctional Groups via a One-Step CO<sub>2</sub>/ Diepoxide Copolymerization Approach",
+      "target_year": null,
+      "method_a_cluster_id": 114,
+      "method_b_cluster_id": 114,
+      "method_a_cluster_size": 120,
+      "method_b_cluster_size": 1507,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.5,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0625,
+      "neighbors_a": [
+        {
+          "uid": "W2784333730",
+          "rank": 1,
+          "weight": 0.659085,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2153222976",
+          "rank": 2,
+          "weight": 0.598226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4244044651",
+          "rank": 3,
+          "weight": 0.598226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2398289767",
+          "rank": 4,
+          "weight": 0.581973,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2330726269",
+          "rank": 5,
+          "weight": 0.564121,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2142476184",
+          "rank": 6,
+          "weight": 0.47745,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2802218215",
+          "rank": 7,
+          "weight": 0.452433,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2012283697",
+          "rank": 8,
+          "weight": 0.448563,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2784333730",
+          "rank": 1,
+          "weight": 1.420557,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2398289767",
+          "rank": 2,
+          "weight": 1.254353,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2153222976",
+          "rank": 3,
+          "weight": 0.859589,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4244044651",
+          "rank": 4,
+          "weight": 0.859589,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2330726269",
+          "rank": 5,
+          "weight": 0.810584,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2142476184",
+          "rank": 6,
+          "weight": 0.686047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2802218215",
+          "rank": 7,
+          "weight": 0.32505,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2012283697",
+          "rank": 8,
+          "weight": 0.32227,
+          "same_cluster": true
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2012283697",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.448563,
+          "weight_b": 0.32227
+        },
+        {
+          "uid": "W2142476184",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.47745,
+          "weight_b": 0.686047
+        },
+        {
+          "uid": "W2153222976",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.598226,
+          "weight_b": 0.859589
+        },
+        {
+          "uid": "W2330726269",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.564121,
+          "weight_b": 0.810584
+        },
+        {
+          "uid": "W2398289767",
+          "rank_a": 4,
+          "rank_b": 2,
+          "delta": -2,
+          "weight_a": 0.581973,
+          "weight_b": 1.254353
+        },
+        {
+          "uid": "W2784333730",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.659085,
+          "weight_b": 1.420557
+        },
+        {
+          "uid": "W2802218215",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.452433,
+          "weight_b": 0.32505
+        },
+        {
+          "uid": "W4244044651",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.598226,
+          "weight_b": 0.859589
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W3116845502",
+      "target_title": "Work function performance of a C12A7 electride surface exposed to low pressure low temperature hydrogen plasmas",
+      "target_year": null,
+      "method_a_cluster_id": 24,
+      "method_b_cluster_id": 24,
+      "method_a_cluster_size": 755,
+      "method_b_cluster_size": 100,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.75,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0938,
+      "neighbors_a": [
+        {
+          "uid": "W2326333717",
+          "rank": 1,
+          "weight": 0.675343,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4400920836",
+          "rank": 2,
+          "weight": 0.652002,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4220924174",
+          "rank": 3,
+          "weight": 0.64772,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2970652691",
+          "rank": 4,
+          "weight": 0.63379,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034235564",
+          "rank": 5,
+          "weight": 0.623046,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2743627735",
+          "rank": 6,
+          "weight": 0.614272,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3112968633",
+          "rank": 7,
+          "weight": 0.610589,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115191326",
+          "rank": 8,
+          "weight": 0.609149,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2326333717",
+          "rank": 1,
+          "weight": 3.611726,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4400920836",
+          "rank": 2,
+          "weight": 1.405289,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2970652691",
+          "rank": 3,
+          "weight": 1.366037,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2743627735",
+          "rank": 4,
+          "weight": 1.323969,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4220924174",
+          "rank": 5,
+          "weight": 0.930707,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034235564",
+          "rank": 6,
+          "weight": 0.895252,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3112968633",
+          "rank": 7,
+          "weight": 0.877354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115191326",
+          "rank": 8,
+          "weight": 0.875284,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2034235564",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.623046,
+          "weight_b": 0.895252
+        },
+        {
+          "uid": "W2326333717",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.675343,
+          "weight_b": 3.611726
+        },
+        {
+          "uid": "W2743627735",
+          "rank_a": 6,
+          "rank_b": 4,
+          "delta": -2,
+          "weight_a": 0.614272,
+          "weight_b": 1.323969
+        },
+        {
+          "uid": "W2970652691",
+          "rank_a": 4,
+          "rank_b": 3,
+          "delta": -1,
+          "weight_a": 0.63379,
+          "weight_b": 1.366037
+        },
+        {
+          "uid": "W3112968633",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.610589,
+          "weight_b": 0.877354
+        },
+        {
+          "uid": "W3115191326",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.609149,
+          "weight_b": 0.875284
+        },
+        {
+          "uid": "W4220924174",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.64772,
+          "weight_b": 0.930707
+        },
+        {
+          "uid": "W4400920836",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.652002,
+          "weight_b": 1.405289
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W3208974998",
+      "target_title": "Near-wall lubricating layer in drag-reduced flows of rigid polymers",
+      "target_year": null,
+      "method_a_cluster_id": 199,
+      "method_b_cluster_id": 199,
+      "method_a_cluster_size": 634,
+      "method_b_cluster_size": 176,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.5,
+      "max_abs_rank_shift": 6,
+      "cluster_changed": false,
+      "shift_score": 0.1875,
+      "neighbors_a": [
+        {
+          "uid": "W2760878369",
+          "rank": 1,
+          "weight": 0.655351,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2750519367",
+          "rank": 2,
+          "weight": 0.626056,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4392926278",
+          "rank": 3,
+          "weight": 0.601743,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2423584040",
+          "rank": 4,
+          "weight": 0.591922,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4294275889",
+          "rank": 5,
+          "weight": 0.576379,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902755477",
+          "rank": 6,
+          "weight": 0.567616,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2098379323",
+          "rank": 7,
+          "weight": 0.47201,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 8,
+          "weight": 0.467132,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2098379323",
+          "rank": 1,
+          "weight": 1.625999,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2760878369",
+          "rank": 2,
+          "weight": 1.412508,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2750519367",
+          "rank": 3,
+          "weight": 1.349368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4392926278",
+          "rank": 4,
+          "weight": 1.296965,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2423584040",
+          "rank": 5,
+          "weight": 0.850531,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4294275889",
+          "rank": 6,
+          "weight": 0.828197,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902755477",
+          "rank": 7,
+          "weight": 0.815606,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 8,
+          "weight": 0.671221,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2098379323",
+          "rank_a": 7,
+          "rank_b": 1,
+          "delta": -6,
+          "weight_a": 0.47201,
+          "weight_b": 1.625999
+        },
+        {
+          "uid": "W2121743594",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.467132,
+          "weight_b": 0.671221
+        },
+        {
+          "uid": "W2423584040",
+          "rank_a": 4,
+          "rank_b": 5,
+          "delta": 1,
+          "weight_a": 0.591922,
+          "weight_b": 0.850531
+        },
+        {
+          "uid": "W2750519367",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.626056,
+          "weight_b": 1.349368
+        },
+        {
+          "uid": "W2760878369",
+          "rank_a": 1,
+          "rank_b": 2,
+          "delta": 1,
+          "weight_a": 0.655351,
+          "weight_b": 1.412508
+        },
+        {
+          "uid": "W2902755477",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.567616,
+          "weight_b": 0.815606
+        },
+        {
+          "uid": "W4294275889",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.576379,
+          "weight_b": 0.828197
+        },
+        {
+          "uid": "W4392926278",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.601743,
+          "weight_b": 1.296965
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    },
+    {
+      "target_uid": "W2052291491",
+      "target_title": "Determination of Activity Coefficients at Infinite Dilution of Solutes in the Ionic Liquid 1-Butyl-3-methylimidazolium Octyl Sulfate Using Gas−Liquid Chromatography at a Temperature of 298.15 K, 313.15 K, or 328.15 K",
+      "target_year": null,
+      "method_a_cluster_id": 67,
+      "method_b_cluster_id": 67,
+      "method_a_cluster_size": 1200,
+      "method_b_cluster_size": 65,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.75,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.2188,
+      "neighbors_a": [
+        {
+          "uid": "W2006441776",
+          "rank": 1,
+          "weight": 1.077271,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1982051571",
+          "rank": 2,
+          "weight": 1.065476,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237546991",
+          "rank": 3,
+          "weight": 0.974223,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964358527",
+          "rank": 4,
+          "weight": 0.915742,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2033914764",
+          "rank": 5,
+          "weight": 0.857927,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4241818728",
+          "rank": 6,
+          "weight": 0.80003,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2798836491",
+          "rank": 7,
+          "weight": 0.77522,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237917564",
+          "rank": 8,
+          "weight": 0.767005,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1982051571",
+          "rank": 1,
+          "weight": 5.964692,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964358527",
+          "rank": 2,
+          "weight": 5.213852,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237546991",
+          "rank": 3,
+          "weight": 5.115024,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2006441776",
+          "rank": 4,
+          "weight": 3.732637,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2798836491",
+          "rank": 5,
+          "weight": 3.72189,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237917564",
+          "rank": 6,
+          "weight": 3.532134,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2033914764",
+          "rank": 7,
+          "weight": 3.257601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4241818728",
+          "rank": 8,
+          "weight": 3.214255,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1964358527",
+          "rank_a": 4,
+          "rank_b": 2,
+          "delta": -2,
+          "weight_a": 0.915742,
+          "weight_b": 5.213852
+        },
+        {
+          "uid": "W1982051571",
+          "rank_a": 2,
+          "rank_b": 1,
+          "delta": -1,
+          "weight_a": 1.065476,
+          "weight_b": 5.964692
+        },
+        {
+          "uid": "W2006441776",
+          "rank_a": 1,
+          "rank_b": 4,
+          "delta": 3,
+          "weight_a": 1.077271,
+          "weight_b": 3.732637
+        },
+        {
+          "uid": "W2033914764",
+          "rank_a": 5,
+          "rank_b": 7,
+          "delta": 2,
+          "weight_a": 0.857927,
+          "weight_b": 3.257601
+        },
+        {
+          "uid": "W2798836491",
+          "rank_a": 7,
+          "rank_b": 5,
+          "delta": -2,
+          "weight_a": 0.77522,
+          "weight_b": 3.72189
+        },
+        {
+          "uid": "W4237546991",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.974223,
+          "weight_b": 5.115024
+        },
+        {
+          "uid": "W4237917564",
+          "rank_a": 8,
+          "rank_b": 6,
+          "delta": -2,
+          "weight_a": 0.767005,
+          "weight_b": 3.532134
+        },
+        {
+          "uid": "W4241818728",
+          "rank_a": 6,
+          "rank_b": 8,
+          "delta": 2,
+          "weight_a": 0.80003,
+          "weight_b": 3.214255
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": []
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W4396540319",
+      "target_title": "Construction of Polycarbonates with Pendant Multifunctional Groups via a One-Step CO<sub>2</sub>/ Diepoxide Copolymerization Approach",
+      "target_year": null,
+      "method_a_cluster_id": 114,
+      "method_b_cluster_id": 114,
+      "method_a_cluster_size": 120,
+      "method_b_cluster_size": 1507,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.5,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0625,
+      "neighbors_a": [
+        {
+          "uid": "W2784333730",
+          "rank": 1,
+          "weight": 0.659085,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2153222976",
+          "rank": 2,
+          "weight": 0.598226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4244044651",
+          "rank": 3,
+          "weight": 0.598226,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2398289767",
+          "rank": 4,
+          "weight": 0.581973,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2330726269",
+          "rank": 5,
+          "weight": 0.564121,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2142476184",
+          "rank": 6,
+          "weight": 0.47745,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2802218215",
+          "rank": 7,
+          "weight": 0.452433,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2012283697",
+          "rank": 8,
+          "weight": 0.448563,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2784333730",
+          "rank": 1,
+          "weight": 1.420557,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2398289767",
+          "rank": 2,
+          "weight": 1.254353,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2153222976",
+          "rank": 3,
+          "weight": 0.859589,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4244044651",
+          "rank": 4,
+          "weight": 0.859589,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2330726269",
+          "rank": 5,
+          "weight": 0.810584,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2142476184",
+          "rank": 6,
+          "weight": 0.686047,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2802218215",
+          "rank": 7,
+          "weight": 0.32505,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2012283697",
+          "rank": 8,
+          "weight": 0.32227,
+          "same_cluster": true
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2012283697",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.448563,
+          "weight_b": 0.32227
+        },
+        {
+          "uid": "W2142476184",
+          "rank_a": 6,
+          "rank_b": 6,
+          "delta": 0,
+          "weight_a": 0.47745,
+          "weight_b": 0.686047
+        },
+        {
+          "uid": "W2153222976",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.598226,
+          "weight_b": 0.859589
+        },
+        {
+          "uid": "W2330726269",
+          "rank_a": 5,
+          "rank_b": 5,
+          "delta": 0,
+          "weight_a": 0.564121,
+          "weight_b": 0.810584
+        },
+        {
+          "uid": "W2398289767",
+          "rank_a": 4,
+          "rank_b": 2,
+          "delta": -2,
+          "weight_a": 0.581973,
+          "weight_b": 1.254353
+        },
+        {
+          "uid": "W2784333730",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.659085,
+          "weight_b": 1.420557
+        },
+        {
+          "uid": "W2802218215",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.452433,
+          "weight_b": 0.32505
+        },
+        {
+          "uid": "W4244044651",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.598226,
+          "weight_b": 0.859589
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "B",
+        "score_a": 3,
+        "score_b": 5,
+        "reasoning": "Both groups contain the same set of highly relevant papers, but the ranking in Group A is significantly better. Group A correctly places the paper on \"one-pot synthesis... via regioselective diepoxide/CO2 copolymerization\" at rank 2, which is an extremely close match to the target's specific methodology. Group B demotes this crucial paper to rank 4, instead prioritizing a more general paper on nanostructures, which is less central to the target's core synthetic contribution.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 3,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_cc",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W3116845502",
+      "target_title": "Work function performance of a C12A7 electride surface exposed to low pressure low temperature hydrogen plasmas",
+      "target_year": null,
+      "method_a_cluster_id": 24,
+      "method_b_cluster_id": 24,
+      "method_a_cluster_size": 755,
+      "method_b_cluster_size": 100,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 0.75,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.0938,
+      "neighbors_a": [
+        {
+          "uid": "W2326333717",
+          "rank": 1,
+          "weight": 0.675343,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4400920836",
+          "rank": 2,
+          "weight": 0.652002,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4220924174",
+          "rank": 3,
+          "weight": 0.64772,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2970652691",
+          "rank": 4,
+          "weight": 0.63379,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034235564",
+          "rank": 5,
+          "weight": 0.623046,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2743627735",
+          "rank": 6,
+          "weight": 0.614272,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3112968633",
+          "rank": 7,
+          "weight": 0.610589,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115191326",
+          "rank": 8,
+          "weight": 0.609149,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2326333717",
+          "rank": 1,
+          "weight": 3.611726,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4400920836",
+          "rank": 2,
+          "weight": 1.405289,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2970652691",
+          "rank": 3,
+          "weight": 1.366037,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2743627735",
+          "rank": 4,
+          "weight": 1.323969,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4220924174",
+          "rank": 5,
+          "weight": 0.930707,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2034235564",
+          "rank": 6,
+          "weight": 0.895252,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3112968633",
+          "rank": 7,
+          "weight": 0.877354,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3115191326",
+          "rank": 8,
+          "weight": 0.875284,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2034235564",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.623046,
+          "weight_b": 0.895252
+        },
+        {
+          "uid": "W2326333717",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.675343,
+          "weight_b": 3.611726
+        },
+        {
+          "uid": "W2743627735",
+          "rank_a": 6,
+          "rank_b": 4,
+          "delta": -2,
+          "weight_a": 0.614272,
+          "weight_b": 1.323969
+        },
+        {
+          "uid": "W2970652691",
+          "rank_a": 4,
+          "rank_b": 3,
+          "delta": -1,
+          "weight_a": 0.63379,
+          "weight_b": 1.366037
+        },
+        {
+          "uid": "W3112968633",
+          "rank_a": 7,
+          "rank_b": 7,
+          "delta": 0,
+          "weight_a": 0.610589,
+          "weight_b": 0.877354
+        },
+        {
+          "uid": "W3115191326",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.609149,
+          "weight_b": 0.875284
+        },
+        {
+          "uid": "W4220924174",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.64772,
+          "weight_b": 0.930707
+        },
+        {
+          "uid": "W4400920836",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 0.652002,
+          "weight_b": 1.405289
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 4,
+        "reasoning": "Both groups identify the same excellent set of papers focused on the C12A7 electride, its surface properties, and its use in ion/electron sources. Group A is slightly better because its ranking more accurately reflects the target's specific focus on performance. Group A correctly ranks the paper on cathode degradation (rank 3) higher than a paper on synthesis (rank 4), which better aligns with the target's investigation of the material's performance in a plasma environment.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 4,
+        "presented_method_a": "sum_minus_cc",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W3208974998",
+      "target_title": "Near-wall lubricating layer in drag-reduced flows of rigid polymers",
+      "target_year": null,
+      "method_a_cluster_id": 199,
+      "method_b_cluster_id": 199,
+      "method_a_cluster_size": 634,
+      "method_b_cluster_size": 176,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.5,
+      "max_abs_rank_shift": 6,
+      "cluster_changed": false,
+      "shift_score": 0.1875,
+      "neighbors_a": [
+        {
+          "uid": "W2760878369",
+          "rank": 1,
+          "weight": 0.655351,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2750519367",
+          "rank": 2,
+          "weight": 0.626056,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4392926278",
+          "rank": 3,
+          "weight": 0.601743,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2423584040",
+          "rank": 4,
+          "weight": 0.591922,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4294275889",
+          "rank": 5,
+          "weight": 0.576379,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902755477",
+          "rank": 6,
+          "weight": 0.567616,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2098379323",
+          "rank": 7,
+          "weight": 0.47201,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 8,
+          "weight": 0.467132,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2098379323",
+          "rank": 1,
+          "weight": 1.625999,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2760878369",
+          "rank": 2,
+          "weight": 1.412508,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2750519367",
+          "rank": 3,
+          "weight": 1.349368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4392926278",
+          "rank": 4,
+          "weight": 1.296965,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2423584040",
+          "rank": 5,
+          "weight": 0.850531,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4294275889",
+          "rank": 6,
+          "weight": 0.828197,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2902755477",
+          "rank": 7,
+          "weight": 0.815606,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2121743594",
+          "rank": 8,
+          "weight": 0.671221,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2098379323",
+          "rank_a": 7,
+          "rank_b": 1,
+          "delta": -6,
+          "weight_a": 0.47201,
+          "weight_b": 1.625999
+        },
+        {
+          "uid": "W2121743594",
+          "rank_a": 8,
+          "rank_b": 8,
+          "delta": 0,
+          "weight_a": 0.467132,
+          "weight_b": 0.671221
+        },
+        {
+          "uid": "W2423584040",
+          "rank_a": 4,
+          "rank_b": 5,
+          "delta": 1,
+          "weight_a": 0.591922,
+          "weight_b": 0.850531
+        },
+        {
+          "uid": "W2750519367",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.626056,
+          "weight_b": 1.349368
+        },
+        {
+          "uid": "W2760878369",
+          "rank_a": 1,
+          "rank_b": 2,
+          "delta": 1,
+          "weight_a": 0.655351,
+          "weight_b": 1.412508
+        },
+        {
+          "uid": "W2902755477",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.567616,
+          "weight_b": 0.815606
+        },
+        {
+          "uid": "W4294275889",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.576379,
+          "weight_b": 0.828197
+        },
+        {
+          "uid": "W4392926278",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.601743,
+          "weight_b": 1.296965
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 3,
+        "reasoning": "Group A provides a much better-ranked neighborhood. Its top-ranked paper is an excellent match, sharing the specific focus on experimental investigation of turbulent flows with rigid polymers. Group B incorrectly places a broad review article at rank 1, which dilutes the target's specific context about a lubricating layer mechanism in inelastic, shear-thinning polymer solutions.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 3,
+        "presented_method_a": "sum_minus_cc",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W2052291491",
+      "target_title": "Determination of Activity Coefficients at Infinite Dilution of Solutes in the Ionic Liquid 1-Butyl-3-methylimidazolium Octyl Sulfate Using Gas−Liquid Chromatography at a Temperature of 298.15 K, 313.15 K, or 328.15 K",
+      "target_year": null,
+      "method_a_cluster_id": 67,
+      "method_b_cluster_id": 67,
+      "method_a_cluster_size": 1200,
+      "method_b_cluster_size": 65,
+      "rank_jaccard": 1.0,
+      "overlap_size": 8,
+      "mean_abs_rank_shift": 1.75,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.2188,
+      "neighbors_a": [
+        {
+          "uid": "W2006441776",
+          "rank": 1,
+          "weight": 1.077271,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1982051571",
+          "rank": 2,
+          "weight": 1.065476,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237546991",
+          "rank": 3,
+          "weight": 0.974223,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964358527",
+          "rank": 4,
+          "weight": 0.915742,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2033914764",
+          "rank": 5,
+          "weight": 0.857927,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4241818728",
+          "rank": 6,
+          "weight": 0.80003,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2798836491",
+          "rank": 7,
+          "weight": 0.77522,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237917564",
+          "rank": 8,
+          "weight": 0.767005,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W1982051571",
+          "rank": 1,
+          "weight": 5.964692,
+          "same_cluster": false
+        },
+        {
+          "uid": "W1964358527",
+          "rank": 2,
+          "weight": 5.213852,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237546991",
+          "rank": 3,
+          "weight": 5.115024,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2006441776",
+          "rank": 4,
+          "weight": 3.732637,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2798836491",
+          "rank": 5,
+          "weight": 3.72189,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4237917564",
+          "rank": 6,
+          "weight": 3.532134,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2033914764",
+          "rank": 7,
+          "weight": 3.257601,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4241818728",
+          "rank": 8,
+          "weight": 3.214255,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W1964358527",
+          "rank_a": 4,
+          "rank_b": 2,
+          "delta": -2,
+          "weight_a": 0.915742,
+          "weight_b": 5.213852
+        },
+        {
+          "uid": "W1982051571",
+          "rank_a": 2,
+          "rank_b": 1,
+          "delta": -1,
+          "weight_a": 1.065476,
+          "weight_b": 5.964692
+        },
+        {
+          "uid": "W2006441776",
+          "rank_a": 1,
+          "rank_b": 4,
+          "delta": 3,
+          "weight_a": 1.077271,
+          "weight_b": 3.732637
+        },
+        {
+          "uid": "W2033914764",
+          "rank_a": 5,
+          "rank_b": 7,
+          "delta": 2,
+          "weight_a": 0.857927,
+          "weight_b": 3.257601
+        },
+        {
+          "uid": "W2798836491",
+          "rank_a": 7,
+          "rank_b": 5,
+          "delta": -2,
+          "weight_a": 0.77522,
+          "weight_b": 3.72189
+        },
+        {
+          "uid": "W4237546991",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 0.974223,
+          "weight_b": 5.115024
+        },
+        {
+          "uid": "W4237917564",
+          "rank_a": 8,
+          "rank_b": 6,
+          "delta": -2,
+          "weight_a": 0.767005,
+          "weight_b": 3.532134
+        },
+        {
+          "uid": "W4241818728",
+          "rank_a": 6,
+          "rank_b": 8,
+          "delta": 2,
+          "weight_a": 0.80003,
+          "weight_b": 3.214255
+        }
+      ],
+      "neighbors_only_a": [],
+      "neighbors_only_b": [],
+      "comparison": {
+        "winner": "B",
+        "score_a": 4,
+        "score_b": 5,
+        "reasoning": "Both groups identify the exact same set of highly relevant papers, which is an excellent local neighborhood. The papers share the same specific topic, methodology, and class of materials. Group A is marginally better due to a slightly more logical ranking, as it places papers studying the same [BMIM] cation and similar polar solutes higher in the list than Group B does.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 4,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_cc",
+        "swapped": true
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 4,
+    "comparison": {
+      "method_a": "sum_minus_cc",
+      "method_b": "consensus_all",
+      "method_a_wins": 2,
+      "method_b_wins": 2,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.5,
+      "method_b_win_rate": 0.5,
+      "score_a_mean": 4.25,
+      "score_b_mean": 4.25,
+      "score_gap_mean": 0.0
+    },
+    "sample_stats": {
+      "shift_score_mean": 0.1406,
+      "rank_jaccard_mean": 1.0,
+      "mean_abs_rank_shift_mean": 1.125,
+      "cluster_changed_rate": 0.0
+    }
+  }
+}

@@ -113,24 +113,18 @@ def _compute_temporal_trend(top_df: pd.DataFrame, recent_fraction: float = 0.4) 
     if "pub_year_series" not in top_df.columns:
         return pd.Series(0.0, index=top_df.index)
 
-    trends = []
-    for _, row in top_df.iterrows():
-        ys = row.get("pub_year_series")
+    def _trend(ys):
         if not isinstance(ys, dict) or not ys:
-            trends.append(0.0)
-            continue
+            return 0.0
         years = sorted(ys.keys())
         if len(years) < 2:
-            trends.append(0.0)
-            continue
+            return 0.0
         split = years[max(1, int(len(years) * (1 - recent_fraction)))]
         early = sum(v for y, v in ys.items() if y < split)
         recent = sum(v for y, v in ys.items() if y >= split)
-        if early == 0:
-            trends.append(float(recent))
-        else:
-            trends.append(recent / early)
-    return pd.Series(trends, index=top_df.index, dtype=float)
+        return float(recent) if early == 0 else recent / early
+
+    return top_df["pub_year_series"].apply(_trend).astype(float)
 
 
 def estimate_depth(

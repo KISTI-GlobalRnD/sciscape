@@ -1,0 +1,262 @@
+[
+  {
+    "uid": "W4296163827",
+    "title": "Silicon Carbamates by CO<sub>2</sub> Fixation: Brønsted Acid Labile Precursor of a Lewis Superacid",
+    "sum_cluster": 33,
+    "sum_size": 253,
+    "boosted_cluster": 180,
+    "boosted_size": 274,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 3,
+      "n_outliers": 2
+    },
+    "outliers_sum": {
+      "n_outliers": 3
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W2269024886",
+    "title": "Ferromagnetic instability of interlayer floating electrons in the quasi-two-dimensional electride<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\"><mml:mrow><mml:msub><mml:mtext>Y</mml:mtext><mml:mn>2</mml:mn></mml:msub><mml:mtext>C</mml:mtext></mml:mrow></mml:math>",
+    "sum_cluster": 134,
+    "sum_size": 280,
+    "boosted_cluster": 115,
+    "boosted_size": 284,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_sum": {
+      "n_outliers": 3
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W1991140523",
+    "title": "Investigations by<sup>13</sup>C NMR Spectroscopy of Ethene-Initiated Catalytic CO Hydrogenation",
+    "sum_cluster": 93,
+    "sum_size": 273,
+    "boosted_cluster": 158,
+    "boosted_size": 168,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 5
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "n_outliers": 1
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W2079699913",
+    "title": "Slip and Flow of Hard-Sphere Colloidal Glasses",
+    "sum_cluster": 146,
+    "sum_size": 336,
+    "boosted_cluster": 200,
+    "boosted_size": 249,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_sum": {
+      "n_outliers": 3
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W2331320673",
+    "title": "Correction to “Solute Diffusion in Ionic Liquids, NMR Measurements and Comparisons to Conventional Solvents”",
+    "sum_cluster": 187,
+    "sum_size": 250,
+    "boosted_cluster": 27,
+    "boosted_size": 425,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "n_outliers": 1
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W4281910303",
+    "title": "Oxidation of two-dimensional electrides: Structural transition and the formation of half-metallic channels protected by oxide layers",
+    "sum_cluster": 134,
+    "sum_size": 280,
+    "boosted_cluster": 115,
+    "boosted_size": 284,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W4400072974",
+    "title": "From Bioreactor to Bulk Rheology: Achieving Scalable Production of Highly Concentrated Circular DNA",
+    "sum_cluster": 103,
+    "sum_size": 154,
+    "boosted_cluster": 83,
+    "boosted_size": 129,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "n_outliers": 1
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "n_outliers": 2
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W3112821300",
+    "title": "Luminescent Ionogels with Excellent Transparency, High Mechanical Strength, and High Conductivity",
+    "sum_cluster": 138,
+    "sum_size": 107,
+    "boosted_cluster": 122,
+    "boosted_size": 166,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "n_outliers": 1
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  },
+  {
+    "uid": "W3094720913",
+    "title": "Selective Conversion of CO<sub>2</sub> into <i>para</i>‐Xylene over a ZnCr<sub>2</sub>O<sub>4</sub>‐ZSM‐5 Catalyst",
+    "sum_cluster": 4,
+    "sum_size": 465,
+    "boosted_cluster": 164,
+    "boosted_size": 354,
+    "belonging": {
+      "winner": "BOOSTED",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 4,
+      "n_outliers": 2
+    },
+    "outliers_boosted": {
+      "n_outliers": 3
+    }
+  },
+  {
+    "uid": "W3091708951",
+    "title": "Stress relaxation of entangled ring polymer chains in a linear matrix",
+    "sum_cluster": 103,
+    "sum_size": 154,
+    "boosted_cluster": 83,
+    "boosted_size": 129,
+    "belonging": {
+      "winner": "SUM",
+      "confidence": 4
+    },
+    "cohesion_sum": {
+      "score": 4,
+      "n_outliers": 1
+    },
+    "outliers_sum": {
+      "n_outliers": 1
+    },
+    "cohesion_boosted": {
+      "score": 5,
+      "n_outliers": 0
+    },
+    "outliers_boosted": {
+      "n_outliers": 1
+    }
+  }
+]

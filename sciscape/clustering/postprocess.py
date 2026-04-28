@@ -10,6 +10,7 @@ import heapq
 from typing import TYPE_CHECKING, Dict, List, Sequence
 
 import igraph as ig
+import numpy as np
 
 if TYPE_CHECKING:
     from .runner import LeidenRunResult, LeidenRunner
@@ -98,14 +99,15 @@ def _compute_cluster_stats(
     membership: Sequence[int],
     node_weights: Sequence[float] | None,
 ) -> tuple[Dict[int, int], Dict[int, float]]:
-    sizes: Dict[int, int] = {}
-    weights: Dict[int, float] = {}
-    for idx, cluster in enumerate(membership):
-        sizes[cluster] = sizes.get(cluster, 0) + 1
-        if node_weights is not None:
-            weights[cluster] = weights.get(cluster, 0.0) + float(node_weights[idx])
-        else:
-            weights[cluster] = weights.get(cluster, 0.0) + 1.0
+    mem = np.asarray(membership)
+    size_arr = np.bincount(mem)
+    sizes = {int(c): int(size_arr[c]) for c in range(len(size_arr)) if size_arr[c] > 0}
+    if node_weights is not None:
+        w = np.asarray(node_weights, dtype=np.float64)
+        weight_arr = np.bincount(mem, weights=w, minlength=len(size_arr))
+    else:
+        weight_arr = size_arr.astype(np.float64)
+    weights = {int(c): float(weight_arr[c]) for c in sizes}
     return sizes, weights
 
 
@@ -113,16 +115,36 @@ def _build_cluster_adjacency(
     graph: ig.Graph,
     membership: Sequence[int],
 ) -> Dict[int, Dict[int, float]]:
+    mem = np.asarray(membership)
+    edges = np.array(graph.get_edgelist())  # (|E|, 2)
+    if edges.size == 0:
+        return {}
+    w = np.array(graph.es["weight"], dtype=np.float64) if "weight" in graph.es.attributes() \
+        else np.ones(edges.shape[0], dtype=np.float64)
+
+    cu = mem[edges[:, 0]]
+    cv = mem[edges[:, 1]]
+    inter_mask = cu != cv
+    cu, cv, w = cu[inter_mask], cv[inter_mask], w[inter_mask]
+
+    # Build sparse cluster adjacency and convert to nested dict
+    if len(cu) == 0:
+        return {}
+    n_clusters = int(max(cu.max(), cv.max())) + 1
+    from scipy.sparse import coo_matrix
+    # Symmetric: add both directions
+    rows = np.concatenate([cu, cv])
+    cols = np.concatenate([cv, cu])
+    data = np.concatenate([w, w])
+    adj = coo_matrix((data, (rows, cols)), shape=(n_clusters, n_clusters)).tocsr()
+
     adjacency: Dict[int, Dict[int, float]] = {}
-    weights = graph.es["weight"] if "weight" in graph.es.attributes() else None
-    for edge_index, (u, v) in enumerate(graph.get_edgelist()):
-        cu = membership[u]
-        cv = membership[v]
-        if cu == cv:
+    csr = adj.tocsr()
+    for i in range(n_clusters):
+        start, end = csr.indptr[i], csr.indptr[i + 1]
+        if start == end:
             continue
-        weight = weights[edge_index] if weights is not None else 1.0
-        adjacency.setdefault(cu, {})[cv] = adjacency.get(cu, {}).get(cv, 0.0) + float(weight)
-        adjacency.setdefault(cv, {})[cu] = adjacency.get(cv, {}).get(cu, 0.0) + float(weight)
+        adjacency[i] = dict(zip(csr.indices[start:end], csr.data[start:end]))
     return adjacency
 
 
@@ -303,18 +325,25 @@ def merge_small_clusters(
                 )
             )
 
-        membership_list = [merge_targets.get(cluster, cluster) for cluster in membership_list]
+        mem_arr = np.array(membership_list)
+        remap = np.arange(mem_arr.max() + 1)
+        for src, tgt in merge_targets.items():
+            remap[src] = tgt
+        membership_list = remap[mem_arr].tolist()
         sizes, weights = _compute_cluster_stats(membership_list, node_weights)
 
-    # Renumber clusters to keep labels compact.
-    mapping: Dict[int, int] = {}
-    next_label = 0
-    for label in membership_list:
-        if label not in mapping:
-            mapping[label] = next_label
-            next_label += 1
-    membership_compact = [mapping[label] for label in membership_list]
+    # Renumber clusters to keep labels compact (vectorized).
+    mem_arr = np.array(membership_list)
+    # unique in order of first appearance
+    _, first_idx, inverse = np.unique(mem_arr, return_index=True, return_inverse=True)
+    # Re-label by order of first appearance (stable)
+    appearance_order = np.argsort(first_idx)
+    compact_remap = np.empty_like(appearance_order)
+    compact_remap[appearance_order] = np.arange(len(appearance_order))
+    membership_compact = compact_remap[inverse].tolist()
 
+    old_labels = np.unique(mem_arr)
+    mapping = {int(old): int(compact_remap[i]) for i, old in enumerate(old_labels)}
     remapped_sizes: Dict[int, int] = {}
     remapped_weights: Dict[int, float] = {}
     for old_label, new_label in mapping.items():
@@ -510,14 +539,20 @@ def resolve_small_clusters(
     # ── Contract: each cluster → supernode ──────────────────────────
     # Renumber cluster IDs to 0..n_clusters-1 for contraction.
     unique_cids = sorted(sizes.keys())
-    cid_to_super: Dict[int, int] = {c: i for i, c in enumerate(unique_cids)}
-    super_to_cid: Dict[int, int] = {i: c for c, i in cid_to_super.items()}
-    contracted_mem = [cid_to_super[c] for c in membership]
+    # Vectorized cid → supernode remap
+    max_cid = max(unique_cids) if unique_cids else 0
+    cid_to_super_arr = np.empty(max_cid + 1, dtype=np.intp)
+    super_to_cid_arr = np.array(unique_cids, dtype=np.intp)
+    for i, c in enumerate(unique_cids):
+        cid_to_super_arr[c] = i
+    cid_to_super: Dict[int, int] = {c: int(cid_to_super_arr[c]) for c in unique_cids}
+    super_to_cid: Dict[int, int] = {i: int(super_to_cid_arr[i]) for i in range(len(unique_cids))}
+    contracted_mem = cid_to_super_arr[np.array(membership)].tolist()
 
     contracted = runner.contract(contracted_mem, combine_weights="sum",
                                  keep_loops=True)
     n_supers = len(unique_cids)
-    node_sizes_list = [sizes[super_to_cid[i]] for i in range(n_supers)]
+    node_sizes_list = [sizes[int(super_to_cid_arr[i])] for i in range(n_supers)]
 
     contracted_runner = runner.clone_for_graph(contracted)
 
@@ -897,8 +932,9 @@ def split_large_clusters(
     n_new_clusters = 0
     split_gammas: Dict[int, float] = {}
 
+    mem_arr = np.array(membership)
     for cid in oversized:
-        nodes = [i for i, c in enumerate(membership) if c == cid]
+        nodes = np.where(mem_arr == cid)[0].tolist()
 
         subgraph = graph.induced_subgraph(nodes)
         sub_runner = runner.clone_for_graph(subgraph)
@@ -1051,22 +1087,26 @@ def cpm_quality(
     float
         Total CPM quality.  Higher is better.
     """
-    sizes = Counter(membership)
-    weights = graph.es["weight"] if "weight" in graph.es.attributes() else None
+    mem = np.asarray(membership)
+    edges = np.array(graph.get_edgelist())  # (|E|, 2)
+    if edges.size == 0:
+        # No edges: quality is purely the penalty term
+        sizes = np.bincount(mem)
+        return -gamma * float(np.sum(sizes * (sizes - 1) / 2))
 
-    # Sum internal edge weights per cluster.
-    internal: Dict[int, float] = {}
-    for eid, (u, v) in enumerate(graph.get_edgelist()):
-        cu, cv = membership[u], membership[v]
-        if cu == cv:
-            w = weights[eid] if weights is not None else 1.0
-            internal[cu] = internal.get(cu, 0.0) + float(w)
+    w = np.array(graph.es["weight"], dtype=np.float64) if "weight" in graph.es.attributes() \
+        else np.ones(edges.shape[0], dtype=np.float64)
 
-    total = 0.0
-    for cid, n_c in sizes.items():
-        e_c = internal.get(cid, 0.0)
-        total += e_c - gamma * n_c * (n_c - 1) / 2
-    return total
+    cu = mem[edges[:, 0]]
+    cv = mem[edges[:, 1]]
+    internal_mask = cu == cv
+    # Sum internal weights per cluster
+    internal = np.bincount(cu[internal_mask], weights=w[internal_mask],
+                           minlength=mem.max() + 1)
+    # Cluster sizes
+    sizes = np.bincount(mem, minlength=mem.max() + 1).astype(np.float64)
+    # CPM quality: Σ_c [ e_c - γ * n_c * (n_c - 1) / 2 ]
+    return float(np.sum(internal - gamma * sizes * (sizes - 1) / 2))
 
 
 __all__ = [

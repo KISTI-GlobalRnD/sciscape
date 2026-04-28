@@ -5,7 +5,7 @@
 - `sos/` is a compatibility shim only.
 
 ## Testing
-- Run `pytest -q` at repo root (327 tests).
+- Run `pytest -q` at repo root (818+ tests).
 
 ## Style
 - Keep changes minimal and consistent with existing patterns.

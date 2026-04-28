@@ -1,0 +1,21 @@
+{
+  "field": "field_15_pilot",
+  "method": "leiden_merge",
+  "edge_path": "research/pilot_data/field_15_subset/edges/dc_fractional.parquet",
+  "gamma": 5.84059666387966e-05,
+  "n_clusters": 2862,
+  "max_pct": 2.61,
+  "min_size": 30,
+  "target_pct": 3.0,
+  "top5": [
+    460,
+    452,
+    401,
+    399,
+    292
+  ],
+  "ami_mean": 0.8186727341608855,
+  "ami_std": 0.006072373157608919,
+  "ari_mean": 0.6115849444358161,
+  "singleton_pct": 3.2
+}

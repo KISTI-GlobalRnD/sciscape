@@ -46,9 +46,11 @@ class LandscapeConfig:
     leiden_objective: str = "cpm"
     leiden_iterations: int = 50
 
-    # Block-init mode: high-γ blocks → contraction → cascade hot start
+    # Pre-partition mode: high-γ parts → contraction → cascade hot start
     # "auto" → 10 × gamma_range[1]; None → disabled; float → explicit value
-    gamma_block: Optional[float] = "auto"  # type: ignore[assignment]
+    gamma_pre: Optional[float] = "auto"  # type: ignore[assignment]
+    gamma_pre_margin: float = 0.9  # multiplier for gamma_pre upper bound in cascade
+    gamma_log_step: float = 0.3      # log10-step size for cascade gamma spacing
 
     # Keyword extraction
     top_n_unigrams: int = 200
@@ -63,6 +65,16 @@ class LandscapeConfig:
     term_network_enabled: bool = True
     depth_enabled: bool = True
     n_jobs: int = -1
+
+    # Multi-layer combination
+    layer_paths: Dict[str, Path] | None = None  # {"bc": path, "cc": path, ...}
+    combine_strategy: str = "consensus"
+    combine_top_k: int | str = "auto"
+    auto_gamma: bool = False
+    auto_gamma_target: float = 3.0
+
+    # Callbacks
+    progress: Any = None  # callable(str) for progress messages
 
     # Report
     report_title: str = "SciScape Landscape"
@@ -94,20 +106,26 @@ def _load_and_subsample(
     col_map = {}
     cols = set(edges.columns)
     if "uid1" not in cols:
-        for alias in ("src", "source", "node1", "from"):
-            if alias in cols:
-                col_map[alias] = "uid1"
-                break
+        matches = [a for a in ("src", "source", "node1", "from") if a in cols]
+        if matches:
+            if len(matches) > 1:
+                log.warning("Ambiguous uid1 mapping: columns %s all match; using %r",
+                            matches, matches[0])
+            col_map[matches[0]] = "uid1"
     if "uid2" not in cols:
-        for alias in ("dst", "target", "node2", "to"):
-            if alias in cols:
-                col_map[alias] = "uid2"
-                break
+        matches = [a for a in ("dst", "target", "node2", "to") if a in cols]
+        if matches:
+            if len(matches) > 1:
+                log.warning("Ambiguous uid2 mapping: columns %s all match; using %r",
+                            matches, matches[0])
+            col_map[matches[0]] = "uid2"
     if "rel_sum2" not in cols:
-        for alias in ("weight", "w", "value"):
-            if alias in cols:
-                col_map[alias] = "rel_sum2"
-                break
+        matches = [a for a in ("weight", "w", "value") if a in cols]
+        if matches:
+            if len(matches) > 1:
+                log.warning("Ambiguous rel_sum2 mapping: columns %s all match; using %r",
+                            matches, matches[0])
+            col_map[matches[0]] = "rel_sum2"
     if col_map:
         log.info("Column mapping: %s", col_map)
         edges = edges.rename(col_map)
@@ -159,287 +177,21 @@ def _all_levels_cached(membership_path: Path, cfg: "LandscapeConfig") -> bool:
     import pyarrow.parquet as pq
     schema = pq.read_schema(membership_path)
     existing = {f.name.removeprefix("cluster_") for f in schema if f.name.startswith("cluster_")}
-    required = {"nano", "micro"}
-    required = set(["nano", "micro"][:cfg.n_hierarchy_levels])
+    level_names = ["nano", "micro", "meso", "macro", "mega"]
+    required = set(level_names[:cfg.n_hierarchy_levels])
     return required.issubset(existing)
 
 
+def _legacy_cluster(edge_path: Path, cfg: "LandscapeConfig", output_dir: Path):
+    """Run legacy igraph-based clustering (subsample + Leiden + merge)."""
+    edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
+    return _run_clustering(edges, cfg, output_dir)
+
+
 # ---------------------------------------------------------------------------
-# Step 2: Hierarchical clustering
+# Step 2: Hierarchical clustering (legacy path — extracted to own module)
 # ---------------------------------------------------------------------------
-def _run_clustering(
-    edges: "pl.DataFrame",
-    cfg: LandscapeConfig,
-    output_dir: Path,
-) -> "pl.DataFrame":
-    """Run hierarchical Leiden level-by-level with per-level caching.
-
-    **Nano level**: Searches for the highest γ that, after merging clusters
-    below ``min_docs_per_cluster``, still maximises the number of clusters.
-    **Upper levels**: Run on contracted graph with γ=1.0.
-
-    Each level is saved to ``membership.parquet`` after completion.
-    """
-    import polars as pl
-    from collections import Counter
-    from .clustering import (
-        build_graph,
-        giant_component,
-    )
-    from .clustering.runner import LeidenRunner
-    from .clustering.postprocess import refine_clusters, gamma_search
-
-    membership_path = output_dir / "membership.parquet"
-    level_names = ["nano", "micro"][:cfg.n_hierarchy_levels]
-
-    # Check which levels are already done
-    existing_levels: set = set()
-    if not cfg.force and membership_path.exists():
-        existing_df = pl.read_parquet(membership_path)
-        for col in existing_df.columns:
-            if col.startswith("cluster_"):
-                existing_levels.add(col.removeprefix("cluster_"))
-
-    if all(name in existing_levels for name in level_names):
-        log.info("All %d hierarchy levels cached, skipping clustering",
-                 len(level_names))
-        return pl.read_parquet(membership_path)
-
-    # Build graph
-    log.info("Building graph...")
-    t0 = time.perf_counter()
-    graph = build_graph(edges)
-    log.info("Graph: %d vertices, %d edges (%.1fs)",
-             graph.vcount(), graph.ecount(), time.perf_counter() - t0)
-
-    log.info("Extracting giant component...")
-    giant = giant_component(graph)
-    log.info("Giant component: %d vertices, %d edges",
-             giant.vcount(), giant.ecount())
-    uids = list(giant.vs["uid"])
-    min_docs = cfg.min_docs_per_cluster
-
-    # ------------------------------------------------------------------
-    # Nano: auto-search γ to maximise clusters with min_docs constraint
-    # ------------------------------------------------------------------
-    if "nano" not in existing_levels:
-        runner = LeidenRunner(
-            giant, objective=cfg.leiden_objective,
-            default_seed=cfg.seed, default_iterations=cfg.leiden_iterations,
-        )
-        t0_search = time.perf_counter()
-
-        # Resolve gamma_block: "auto" → 10 × gamma_range[1]
-        gamma_block = cfg.gamma_block
-        if gamma_block == "auto":
-            gamma_block = 10.0 * cfg.gamma_range[1]
-
-        if gamma_block is not None:
-            # ── Block-init mode: blocks → contraction → cascade ──
-            import math as _math
-            from .clustering.block_init import (
-                block_init as _block_init,
-                cascade_search as _cascade_search,
-                save_blocks, load_blocks, is_cache_valid,
-                contract_graph,
-            )
-
-            blocks_path = output_dir / "blocks.parquet"
-
-            if not cfg.force and is_cache_valid(
-                blocks_path, gamma_block, giant.vcount()
-            ):
-                log.info("Loading cached blocks from %s", blocks_path)
-                blocks = load_blocks(blocks_path)
-            else:
-                log.info("Block init: γ_block=%.2e...", gamma_block)
-                blocks = _block_init(runner, gamma_block, seed=cfg.seed)
-                save_blocks(blocks, blocks_path, uids)
-
-            # Singleton warning
-            singleton_frac = blocks.n_singletons / blocks.n_nodes
-            if singleton_frac > 0.8:
-                log.warning(
-                    "Block init: %.0f%% singletons (%d/%d). "
-                    "Consider lowering gamma_block (currently %.2e).",
-                    singleton_frac * 100,
-                    blocks.n_singletons, blocks.n_nodes, gamma_block,
-                )
-
-            contracted, contracted_runner = contract_graph(runner, blocks)
-            node_sizes = blocks.node_sizes_list
-            contraction_ratio = giant.vcount() / max(contracted.vcount(), 1)
-            log.info("Contracted: %d → %d supernodes (%.1fx reduction)",
-                     giant.vcount(), contracted.vcount(), contraction_ratio)
-
-            # γ search on contracted graph (weighted sizes)
-            log.info("Searching optimal γ on contracted graph (min_docs=%d)...",
-                     min_docs)
-            search_result = gamma_search(
-                contracted_runner,
-                gamma_range=cfg.gamma_range,
-                min_size=min_docs,
-                search_iterations=10,
-                node_sizes=node_sizes,
-            )
-            best_gamma = search_result.best_gamma
-
-            # Cascade targets: log-spaced from best_gamma up to near γ_block
-            lo_g = _math.log10(best_gamma)
-            hi_g = _math.log10(gamma_block * 0.9)
-            if hi_g > lo_g:
-                n_steps = min(5, max(2, int((hi_g - lo_g) / 0.3) + 1))
-                cascade_gammas = [
-                    10 ** (lo_g + i * (hi_g - lo_g) / (n_steps - 1))
-                    for i in range(n_steps)
-                ]
-            else:
-                cascade_gammas = [best_gamma]
-
-            cascade_result = _cascade_search(
-                runner, blocks,
-                gamma_targets=cascade_gammas,
-                seed=cfg.seed,
-                hot_start=True,
-            )
-            raw_membership = list(cascade_result.membership)
-            search_elapsed = time.perf_counter() - t0_search
-            log.info("  Block-init + cascade: %.1fs (γ=%.4e, %d clusters)",
-                     search_elapsed, best_gamma, cascade_result.n_clusters)
-
-        else:
-            # ── Standard mode (no block-init) ────────────────────
-            log.info("Searching optimal γ for nano (min_docs=%d)...", min_docs)
-            search_result = gamma_search(
-                runner,
-                gamma_range=cfg.gamma_range,
-                min_size=min_docs,
-                search_iterations=10,
-            )
-            best_gamma = search_result.best_gamma
-
-            log.info("  Running final Leiden at γ=%.4f (full iterations)...",
-                     best_gamma)
-            final_result = runner.run(best_gamma)
-            raw_membership = list(final_result.membership)
-            search_elapsed = time.perf_counter() - t0_search
-            log.info("  γ search + final: %.1fs (%d search evals + 1 final)",
-                     search_elapsed, search_result.n_evals)
-
-        # Common refinement + save path
-        refinement_result = refine_clusters(
-            runner, raw_membership, best_gamma, min_size=min_docs,
-        )
-        nano_membership = list(refinement_result.membership)
-
-        # Mark remaining singletons as undetermined (-1) in saved output only.
-        sizes_final = Counter(nano_membership)
-        undetermined_nodes: set[int] = {
-            i for i, c in enumerate(nano_membership) if sizes_final[c] == 1
-        }
-
-        nano_for_save = list(nano_membership)
-        for i in undetermined_nodes:
-            nano_for_save[i] = -1
-
-        n_clusters = len(sizes_final)
-        n_undetermined = len(undetermined_nodes)
-        log.info("  → Final: %d clusters, %d undetermined (%.3f%%)",
-                 n_clusters, n_undetermined,
-                 n_undetermined / len(nano_membership) * 100 if nano_membership else 0)
-
-        # Save nano
-        cols: Dict[str, Any] = {"uid": uids, "cluster_nano": nano_for_save}
-        pl.DataFrame(cols).write_parquet(membership_path)
-        log.info("  nano membership saved")
-    else:
-        log.info("Nano cached, loading...")
-        existing_df = pl.read_parquet(membership_path)
-        nano_for_save = existing_df["cluster_nano"].to_list()
-        # For contraction, replace -1 (undetermined) with a valid cluster ID.
-        nano_membership = list(nano_for_save)
-        has_undetermined = any(c < 0 for c in nano_membership)
-        if has_undetermined:
-            next_cid = max((c for c in nano_membership if c >= 0), default=0) + 1
-            for i in range(len(nano_membership)):
-                if nano_membership[i] < 0:
-                    nano_membership[i] = next_cid
-
-    # ------------------------------------------------------------------
-    # Upper levels: dendrogram on contracted graph + constrained cut
-    # ------------------------------------------------------------------
-    if cfg.n_hierarchy_levels >= 2 and "micro" not in existing_levels:
-        from .clustering.dendrogram import build_dendrogram
-        from .clustering.constrained_cut import constrained_cut
-
-        runner = LeidenRunner(
-            giant, objective=cfg.leiden_objective,
-            default_seed=cfg.seed, default_iterations=cfg.leiden_iterations,
-        )
-
-        # Compact membership IDs to 0..K-1 so igraph.contract_vertices
-        # produces exactly K supernodes (no empty-cluster gaps).
-        unique_ids = sorted(set(nano_membership))
-        id_remap = {old: new for new, old in enumerate(unique_ids)}
-        compact_membership = [id_remap[c] for c in nano_membership]
-
-        contracted = runner.contract(compact_membership, combine_weights="sum", keep_loops=True)
-        n_contracted = contracted.vcount()
-
-        # Compute nano cluster sizes for node_sizes parameter.
-        nano_sizes = Counter(compact_membership)
-        nano_size_arr = np.array(
-            [nano_sizes[i] for i in range(n_contracted)], dtype=np.uint64,
-        )
-
-        log.info("Building CPM dendrogram on contracted %d-node graph...",
-                 n_contracted)
-        t0 = time.perf_counter()
-        linkage = build_dendrogram(contracted, mode="cpm", node_sizes=nano_size_arr)
-        log.info("  Dendrogram: %d merges, height range [%.6f, %.6f] (%.2fs)",
-                 len(linkage),
-                 linkage[-1, 2] if len(linkage) > 0 else 0,
-                 linkage[0, 2] if len(linkage) > 0 else 0,
-                 time.perf_counter() - t0)
-
-        # Constrained cut: min_size in original-node terms.
-        # Use a fraction of total nodes as micro min_size (same cluster
-        # count maximisation objective, just at a coarser scale).
-        len(nano_membership)
-        micro_min_size = max(
-            int(nano_size_arr.sum()) // 20,  # ~5% of total
-            int(nano_size_arr.max()) + 1,     # larger than biggest nano
-        )
-        cut_result = constrained_cut(
-            linkage, min_size=micro_min_size,
-            leaf_sizes=nano_size_arr,
-        )
-
-        if not cut_result.feasible or cut_result.n_clusters <= 1:
-            log.warning("  micro cut infeasible or trivial (%d clusters), "
-                        "falling back to 1 cluster", cut_result.n_clusters)
-            micro_mem_contracted = [0] * n_contracted
-            n_micro = 1
-        else:
-            micro_mem_contracted = list(cut_result.membership)
-            n_micro = cut_result.n_clusters
-
-        log.info("  → micro: %d clusters (min_size=%d)", n_micro, micro_min_size)
-
-        # Map back to original nodes (use compact IDs as contracted-graph indices)
-        micro_membership = [micro_mem_contracted[compact_membership[i]]
-                            for i in range(len(nano_membership))]
-
-        # Save both levels (nano uses -1 for undetermined, micro keeps valid IDs)
-        cols = {
-            "uid": uids,
-            "cluster_nano": nano_for_save,
-            "cluster_micro": micro_membership,
-        }
-        pl.DataFrame(cols).write_parquet(membership_path)
-        log.info("  membership saved (nano + micro)")
-
-    return pl.read_parquet(membership_path)
+from .clustering.landscape_clustering import _run_clustering  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -589,8 +341,36 @@ def run_landscape(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # ── Multi-layer combination (if configured) ──────────────
+    if cfg.layer_paths:
+        from .linkage.combine import combine_edge_layers
+        log.info("Multi-layer combination: %d layers, strategy=%s, top_k=%s",
+                 len(cfg.layer_paths), cfg.combine_strategy, cfg.combine_top_k)
+        layers = {}
+        for name, path in cfg.layer_paths.items():
+            path = Path(path)
+            if path.exists():
+                layers[name] = pl.read_parquet(path)
+                log.info("  %s: %d edges", name, layers[name].height)
+            else:
+                log.warning("  %s: file not found: %s", name, path)
+        if layers:
+            combined = combine_edge_layers(
+                layers,
+                strategy=cfg.combine_strategy,
+                gcc=True,
+                top_k=cfg.combine_top_k,
+            )
+            combined_path = output_dir / "combined_edges.parquet"
+            combined.write_parquet(combined_path)
+            edge_path = combined_path
+            log.info("Combined: %d edges → %s", combined.height, combined_path)
+
+    # Auto-gamma is handled inside build_hierarchy (new path) or
+    # _run_clustering (legacy path). No pre-processing needed here.
+
     # ── Input validation ──────────────────────────────────────
-    if not edge_path.exists():
+    if not edge_path.exists() and not cfg.layer_paths:
         raise FileNotFoundError(f"Edge file not found: {edge_path}")
     if not abstract_path.exists():
         raise FileNotFoundError(f"Abstract file not found: {abstract_path}")
@@ -627,9 +407,47 @@ def run_landscape(
     if all_cached and not cfg.force:
         log.info("All hierarchy levels cached, skipping edge load + clustering")
         membership_df = pl.read_parquet(membership_path)
+    elif cfg.layer_paths or cfg.auto_gamma:
+        # ── New path: build_hierarchy (Rust + consensus + auto-γ per level) ──
+        from .clustering.hierarchical import build_hierarchy
+        from .clustering.leiden_rust import RUST_AVAILABLE
+
+        if RUST_AVAILABLE:
+            log.info("Using build_hierarchy (Rust + consensus + auto-gamma)")
+            hier_result = build_hierarchy(
+                edges=pl.read_parquet(edge_path) if edge_path.exists() else None,
+                layer_paths=cfg.layer_paths,
+                n_levels=cfg.n_hierarchy_levels,
+                combine_strategy=cfg.combine_strategy,
+                combine_top_k=cfg.combine_top_k,
+                seed=cfg.seed,
+                cache_dir=output_dir,
+                progress=cfg.progress,
+            )
+            # Build membership DataFrame from hierarchy result
+            # Use authoritative UID list from integer_remap (NOT sorted set)
+            uids = hier_result.uids
+            if uids and hier_result.levels:
+                membership_df = hier_result.to_dataframe(uids)
+            elif hier_result.levels:
+                # Fallback: use integer indices
+                data = {"uid": [str(i) for i in range(hier_result.n_nodes)]}
+                for level in hier_result.levels:
+                    data[f"cluster_{level.name}"] = level.membership.tolist()
+                membership_df = pl.DataFrame(data)
+
+            if hier_result.levels:
+                membership_df.write_parquet(membership_path)
+                log.info("Hierarchy: %d levels, saved → %s",
+                         len(hier_result.levels), membership_path)
+            else:
+                log.warning("build_hierarchy returned no levels, falling back")
+                membership_df = _legacy_cluster(edge_path, cfg, output_dir)
+        else:
+            log.info("Rust not available, using legacy clustering")
+            membership_df = _legacy_cluster(edge_path, cfg, output_dir)
     else:
-        edges = _load_and_subsample(edge_path, cfg.n_target_nodes, cfg.seed)
-        membership_df = _run_clustering(edges, cfg, output_dir)
+        membership_df = _legacy_cluster(edge_path, cfg, output_dir)
 
     # ------------------------------------------------------------------
     # Step 3: Keyword extraction (skip if keywords exist)
@@ -647,16 +465,18 @@ def run_landscape(
         log.info("Step 3: Keyword extraction (finest level)")
         log.info("=" * 60)
 
-        member_uids = set(membership_df["uid"].to_list())
-        log.info("Loading abstracts for %s nodes...", f"{len(member_uids):,}")
+        member_uids = membership_df["uid"]
+        log.info("Loading abstracts for %s nodes...", f"{member_uids.len():,}")
 
-        abstract_df = pl.read_parquet(
-            abstract_path,
-            columns=["uid", "title", "abstract", "pubyear"],
-        ).filter(pl.col("uid").is_in(member_uids))
+        abstract_df = (
+            pl.scan_parquet(abstract_path)
+            .select("uid", "title", "abstract", "pubyear")
+            .filter(pl.col("uid").is_in(member_uids))
+            .collect()
+        )
         log.info("Matched abstracts: %s", f"{len(abstract_df):,}")
 
-        abstract_df.write_parquet(abstract_subset_path)
+        abstract_df.write_parquet(abstract_subset_path, compression="zstd")
 
         keywords_df, viz_data = _run_keywords(membership_path, abstract_subset_path, cfg)
 

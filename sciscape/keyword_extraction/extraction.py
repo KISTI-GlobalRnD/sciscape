@@ -304,7 +304,7 @@ class _DataSource:
         df = df.drop_duplicates(subset=[cfg.uid_col], keep="last")
         series = df.set_index(cfg.uid_col)[cluster_level]
         self._membership = series
-        self._clusters_sorted = np.array(sorted(series.unique().tolist()), dtype=int)
+        self._clusters_sorted = np.sort(series.unique().astype(int))
         return series
 
     def cluster_ids_sorted(self) -> np.ndarray:

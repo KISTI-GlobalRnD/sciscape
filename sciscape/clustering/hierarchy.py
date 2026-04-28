@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, Iterable, Mapping
 
+import numpy as np
 import polars as pl
 
 from .config import ClusterTables
+
+log = logging.getLogger(__name__)
 
 
 def get_cluster_hierarchy(
@@ -38,10 +42,10 @@ def get_cluster_hierarchy(
     counts_per_level: Dict[str, Dict[int, int]] = {}
     for col, level in zip(ordered_cols, level_names):
         counts_df = df.group_by(col).agg(pl.len().alias("size"))
-        counts_per_level[level] = {
-            row[col]: int(row["size"])
-            for row in counts_df.iter_rows(named=True)
-        }
+        counts_per_level[level] = dict(zip(
+            counts_df[col].to_list(),
+            counts_df["size"].cast(int).to_list(),
+        ))
 
     transition_counts: Dict[tuple[str, str], Dict[int, Dict[int, int]]] = {}
     for parent_col, child_col in zip(ordered_cols, ordered_cols[1:]):
@@ -49,10 +53,12 @@ def get_cluster_hierarchy(
         child_level = child_col.removeprefix("cluster_")
         pairs = df.group_by([parent_col, child_col]).agg(pl.len().alias("size"))
         mapping: Dict[int, Dict[int, int]] = {}
-        for row in pairs.iter_rows(named=True):
-            parent = row[parent_col]
-            child = row[child_col]
-            mapping.setdefault(parent, {})[child] = int(row["size"])
+        for p, c, s in zip(
+            pairs[parent_col].to_list(),
+            pairs[child_col].to_list(),
+            pairs["size"].cast(int).to_list(),
+        ):
+            mapping.setdefault(p, {})[c] = s
         transition_counts[(parent_level, child_level)] = mapping
 
     nodes: Dict[str, Dict[int, Dict[str, object]]] = {
@@ -110,35 +116,17 @@ def build_cluster_tables(
     if missing:
         raise ValueError(f"Membership table missing columns: {missing}")
 
-    base = df
-    membership = df
+    index_exprs = _rust_hierarchy_index_series(df, level_sequence, cluster_cols)
+    if index_exprs is None:
+        index_exprs = []
+        for idx, (level_name, cluster_col) in enumerate(zip(level_sequence, cluster_cols)):
+            if idx == 0:
+                expr = pl.col(cluster_col).rank("dense")
+            else:
+                expr = pl.col(cluster_col).rank("dense").over(cluster_cols[:idx])
+            index_exprs.append(expr.cast(pl.Int64).alias(level_name))
 
-    for idx, (level_name, cluster_col) in enumerate(zip(level_sequence, cluster_cols)):
-        if idx == 0:
-            mapping = (
-                base.select(cluster_col)
-                .unique()
-                .sort(cluster_col)
-                .with_row_index(name=level_name, offset=1)
-                .with_columns(pl.col(level_name).cast(pl.Int64))
-                .select([cluster_col, level_name])
-            )
-            membership = membership.join(mapping, on=[cluster_col], how="left")
-        else:
-            parent_cluster_cols = cluster_cols[:idx]
-            join_cols = parent_cluster_cols + [cluster_col]
-            mapping = (
-                base.select(join_cols)
-                .unique()
-                .sort(join_cols)
-                .with_columns(
-                    (pl.row_index().over(parent_cluster_cols) + 1)
-                    .cast(pl.Int64)
-                    .alias(level_name)
-                )
-                .select(join_cols + [level_name])
-            )
-            membership = membership.join(mapping, on=join_cols, how="left")
+    membership = df.with_columns(index_exprs)
 
     index_columns = list(level_sequence)
     membership = membership.with_columns(
@@ -172,6 +160,45 @@ def build_cluster_tables(
         resolutions=dict(resolutions) if resolutions is not None else None,
         qualities=dict(qualities) if qualities is not None else None,
     )
+
+
+def _rust_hierarchy_index_series(
+    df: pl.DataFrame,
+    level_sequence: tuple[str, ...],
+    cluster_cols: list[str],
+) -> list[pl.Series] | None:
+    """Compute dense hierarchy indices in Rust for compact u32 cluster columns."""
+    if any(df[col].dtype != pl.UInt32 for col in cluster_cols):
+        return None
+
+    try:
+        import sciscape_leiden as _rust
+    except ImportError:
+        return None
+
+    index_fn = getattr(_rust, "rust_hierarchy_indices_u32", None)
+    if index_fn is None:
+        return None
+
+    arrays = []
+    for col in cluster_cols:
+        series = df[col].rechunk()
+        try:
+            arr = series.to_numpy(allow_copy=False)
+        except RuntimeError:
+            arr = series.to_numpy(allow_copy=True)
+        arrays.append(np.ascontiguousarray(arr, dtype=np.uint32))
+
+    try:
+        index_arrays = index_fn(arrays)
+    except Exception as exc:  # pragma: no cover - fallback preserves behavior
+        log.warning("rust hierarchy index computation failed; falling back to Polars: %s", exc)
+        return None
+
+    return [
+        pl.Series(level_name, np.asarray(index_array, dtype=np.uint32))
+        for level_name, index_array in zip(level_sequence, index_arrays)
+    ]
 
 
 __all__ = ["get_cluster_hierarchy", "build_cluster_tables"]

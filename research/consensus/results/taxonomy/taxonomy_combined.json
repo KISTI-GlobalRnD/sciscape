@@ -1,0 +1,497 @@
+{
+  "model_used": "env/default",
+  "classifier": "heuristic",
+  "n_review_files": 3,
+  "n_classified_cases": 144,
+  "per_file": [
+    {
+      "review_json": "research/consensus/results/case_banks/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_rank_shift_review.json",
+      "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+      "top_k": 6,
+      "label_a": "sum_minus_emb",
+      "label_b": "consensus_all",
+      "n_cases": 48,
+      "label_counts": {
+        "material_family_coherence": 19,
+        "method_family_coherence": 10,
+        "broad_context_noise": 7,
+        "single_cue_specificity": 2,
+        "over_regularized_consensus": 4,
+        "coherent_refinement": 2,
+        "application_umbrella_noise": 4
+      },
+      "winner_counts": {
+        "sum_minus_emb": 19,
+        "consensus_all": 29
+      },
+      "label_by_winner": {
+        "consensus_all": {
+          "method_family_coherence": 6,
+          "material_family_coherence": 13,
+          "broad_context_noise": 5,
+          "single_cue_specificity": 1,
+          "coherent_refinement": 2,
+          "application_umbrella_noise": 2
+        },
+        "sum_minus_emb": {
+          "material_family_coherence": 6,
+          "method_family_coherence": 4,
+          "over_regularized_consensus": 4,
+          "application_umbrella_noise": 2,
+          "single_cue_specificity": 1,
+          "broad_context_noise": 2
+        }
+      }
+    },
+    {
+      "review_json": "research/consensus/results/case_banks/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_rank_shift_review.json",
+      "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+      "top_k": 30,
+      "label_a": "sum_minus_cc",
+      "label_b": "consensus_all",
+      "n_cases": 48,
+      "label_counts": {
+        "broad_context_noise": 19,
+        "material_family_coherence": 18,
+        "over_regularized_consensus": 5,
+        "single_cue_specificity": 4,
+        "application_umbrella_noise": 2
+      },
+      "winner_counts": {
+        "consensus_all": 35,
+        "sum_minus_cc": 13
+      },
+      "label_by_winner": {
+        "consensus_all": {
+          "broad_context_noise": 18,
+          "material_family_coherence": 15,
+          "single_cue_specificity": 1,
+          "application_umbrella_noise": 1
+        },
+        "sum_minus_cc": {
+          "over_regularized_consensus": 5,
+          "single_cue_specificity": 3,
+          "material_family_coherence": 3,
+          "application_umbrella_noise": 1,
+          "broad_context_noise": 1
+        }
+      }
+    },
+    {
+      "review_json": "research/consensus/results/case_banks/field_12_k06_sum_minus_emb_vs_consensus_bank_n48_rank_shift_review.json",
+      "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+      "top_k": 6,
+      "label_a": "sum_minus_emb",
+      "label_b": "consensus_all",
+      "n_cases": 48,
+      "label_counts": {
+        "method_family_coherence": 12,
+        "broad_context_noise": 24,
+        "over_regularized_consensus": 7,
+        "semantic_drift": 4,
+        "coherent_refinement": 1
+      },
+      "winner_counts": {
+        "consensus_all": 37,
+        "sum_minus_emb": 11
+      },
+      "label_by_winner": {
+        "consensus_all": {
+          "method_family_coherence": 8,
+          "broad_context_noise": 24,
+          "semantic_drift": 4,
+          "coherent_refinement": 1
+        },
+        "sum_minus_emb": {
+          "over_regularized_consensus": 7,
+          "method_family_coherence": 4
+        }
+      }
+    }
+  ],
+  "label_counts": {
+    "material_family_coherence": 37,
+    "method_family_coherence": 22,
+    "broad_context_noise": 50,
+    "single_cue_specificity": 6,
+    "over_regularized_consensus": 16,
+    "coherent_refinement": 3,
+    "application_umbrella_noise": 6,
+    "semantic_drift": 4
+  },
+  "winner_counts": {
+    "sum_minus_emb": 30,
+    "consensus_all": 101,
+    "sum_minus_cc": 13
+  },
+  "label_by_winner": {
+    "consensus_all": {
+      "method_family_coherence": 14,
+      "material_family_coherence": 28,
+      "broad_context_noise": 47,
+      "single_cue_specificity": 2,
+      "coherent_refinement": 3,
+      "application_umbrella_noise": 3,
+      "semantic_drift": 4
+    },
+    "sum_minus_cc": {
+      "over_regularized_consensus": 5,
+      "single_cue_specificity": 3,
+      "material_family_coherence": 3,
+      "application_umbrella_noise": 1,
+      "broad_context_noise": 1
+    },
+    "sum_minus_emb": {
+      "material_family_coherence": 6,
+      "method_family_coherence": 8,
+      "over_regularized_consensus": 11,
+      "application_umbrella_noise": 2,
+      "single_cue_specificity": 1,
+      "broad_context_noise": 2
+    }
+  },
+  "winner_by_k": {
+    "6": {
+      "sum_minus_emb": 30,
+      "consensus_all": 66
+    },
+    "30": {
+      "consensus_all": 35,
+      "sum_minus_cc": 13
+    }
+  },
+  "representative_by_label": {
+    "application_umbrella_noise": [
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "consensus_all",
+        "target_uid": "W2604609627",
+        "target_title": "Heterogeneous Catalysis for Oxazolidinone Synthesis from Aziridines and CO2",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides an excellent local neighborhood that perfectly captures the target's specific research topic: the synthesis of oxazolidinones from aziridines and CO2. Several papers in Group A discuss this exact reaction, including different catalytic and mechanistic aspects. Group B is completely incorrect, as it exclusively contains papers on the reaction of CO2 with epoxides to form cyclic carbonates, which is a different, though related, field.",
+        "loser_failure_mode": "Group A provides an excellent local neighborhood that perfectly captures the target's specific research topic: the synthesis of oxazolidinones from aziridines and CO2. Several papers in Group A discuss this exact reaction, including different catalytic and mechanistic aspects. Group B is completely incorrect, as it exclusively contains papers on the reaction of CO2 with epoxides to form cyclic carbonates, which is a different, though related, field.",
+        "review_reasoning": "Group A provides an excellent local neighborhood that perfectly captures the target's specific research topic: the synthesis of oxazolidinones from aziridines and CO2. Several papers in Group A discuss this exact reaction, including different catalytic and mechanistic aspects. Group B is completely incorrect, as it exclusively contains papers on the reaction of CO2 with epoxides to form cyclic carbonates, which is a different, though related, field."
+      },
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "sum_minus_emb",
+        "target_uid": "W2766569351",
+        "target_title": "The reactions of dimethyl carbonate and its derivatives",
+        "score_gap": 2.0,
+        "winner_advantage": "Group B provides a perfectly coherent neighborhood focused on the reactions and applications of dimethyl carbonate (DMC), which directly matches the target paper's topic. Group A is also strong at the top, but it becomes noisy by including papers on the synthesis of DMC and a different compound (diethyl carbonate), which are less central to the target's immediate context.",
+        "loser_failure_mode": "Group B provides a perfectly coherent neighborhood focused on the reactions and applications of dimethyl carbonate (DMC), which directly matches the target paper's topic. Group A is also strong at the top, but it becomes noisy by including papers on the synthesis of DMC and a different compound (diethyl carbonate), which are less central to the target's immediate context.",
+        "review_reasoning": "Group B provides a perfectly coherent neighborhood focused on the reactions and applications of dimethyl carbonate (DMC), which directly matches the target paper's topic. Group A is also strong at the top, but it becomes noisy by including papers on the synthesis of DMC and a different compound (diethyl carbonate), which are less central to the target's immediate context."
+      }
+    ],
+    "broad_context_noise": [
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "consensus_all",
+        "target_uid": "W2012804551",
+        "target_title": "Application of Poly(ethylene glycol)-based Aqueous Biphasic Systems as Reaction and Reactive Extraction Media",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides an excellent local neighborhood. The top-ranked papers focus specifically on the partitioning and phase diagrams of Poly(ethylene glycol)-based Aqueous Biphasic Systems (PEG-ABS), which is the exact system studied in the target paper.",
+        "loser_failure_mode": "Group B is almost entirely focused on a different class of solvents, Deep Eutectic Solvents (DES), and fails to capture the target's core topic of ABS, making it a poor representation of the immediate research context.",
+        "review_reasoning": "Group A provides an excellent local neighborhood. The top-ranked papers focus specifically on the partitioning and phase diagrams of Poly(ethylene glycol)-based Aqueous Biphasic Systems (PEG-ABS), which is the exact system studied in the target paper. In contrast, Group B is almost entirely focused on a different class of solvents, Deep Eutectic Solvents (DES), and fails to capture the target's core topic of ABS, making it a poor representation of the immediate research context."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "consensus_all",
+        "target_uid": "W2067783257",
+        "target_title": "The Catalytic Use of Onion-Like Carbon Materials for Styrene Synthesis by Oxidative Dehydrogenation of Ethylbenzene",
+        "score_gap": 4.0,
+        "winner_advantage": "Group B provides an excellent and highly coherent neighborhood. Nearly every paper discusses the exact research topic of the target: using nanocarbon materials as catalysts for oxidative dehydrogenation, often specifically for the ethylbenzene to styrene reaction.",
+        "loser_failure_mode": "Group A is a very poor collection of papers broadly related to catalysis but with no specific connection to the target's catalyst type, reaction, or substrate, making it noisy and uninformative.",
+        "review_reasoning": "Group B provides an excellent and highly coherent neighborhood. Nearly every paper discusses the exact research topic of the target: using nanocarbon materials as catalysts for oxidative dehydrogenation, often specifically for the ethylbenzene to styrene reaction. In contrast, Group A is a very poor collection of papers broadly related to catalysis but with no specific connection to the target's catalyst type, reaction, or substrate, making it noisy and uninformative."
+      }
+    ],
+    "coherent_refinement": [
+      {
+        "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "consensus_all",
+        "target_uid": "W2505965475",
+        "target_title": "The Influence of Affective Variables on the Complexity, Accuracy, and Fluency in L2 Oral Production: The Contribution of Task Repetition",
+        "score_gap": 2.0,
+        "winner_advantage": "Group A provides an excellent, coherent neighborhood that precisely mirrors the target paper's research question, which is the intersection of affective variables (like anxiety), task repetition, and CAF measures in L2 oral production.",
+        "loser_failure_mode": "Group B is less focused; it includes papers on task repetition and CAF, and separate papers on affective variables, but fails to capture the crucial link between these components that defines the target's contribution.",
+        "review_reasoning": "Group A provides an excellent, coherent neighborhood that precisely mirrors the target paper's research question, which is the intersection of affective variables (like anxiety), task repetition, and CAF measures in L2 oral production. In contrast, Group B is less focused; it includes papers on task repetition and CAF, and separate papers on affective variables, but fails to capture the crucial link between these components that defines the target's contribution."
+      },
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "consensus_all",
+        "target_uid": "W2017076541",
+        "target_title": "Hierarchical structured α-Al<sub>2</sub>O<sub>3</sub> supported S-promoted Fe catalysts for direct conversion of syngas to lower olefins",
+        "score_gap": 1.0,
+        "winner_advantage": "Both groups provide excellent neighborhoods focused on iron-based Fischer-Tropsch catalysts for lower olefins.",
+        "loser_failure_mode": "Group A is slightly better because it includes a paper (rank 7) that specifically investigates sulfur promoters, a key component of the target paper's catalyst. This makes the local context in Group A slightly more specific and directly relevant to the target's contribution.",
+        "review_reasoning": "Both groups provide excellent neighborhoods focused on iron-based Fischer-Tropsch catalysts for lower olefins. However, Group A is slightly better because it includes a paper (rank 7) that specifically investigates sulfur promoters, a key component of the target paper's catalyst. This makes the local context in Group A slightly more specific and directly relevant to the target's contribution."
+      }
+    ],
+    "material_family_coherence": [
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "consensus_all",
+        "target_uid": "W2021514999",
+        "target_title": "Tunable thermomorphism and applications of ionic liquid analogues of Girard's reagents",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides an excellent and highly coherent neighborhood focused on the target's specific topic: using ionic liquids that exhibit temperature-dependent phase behavior (thermomorphism, LCST/UCST) for homogeneous liquid-liquid extraction.",
+        "loser_failure_mode": "Group B is a very broad and noisy collection of papers generally related to 'ionic liquids' but covering disparate applications like crystallization, electrolytes, and general synthesis, completely missing the target's specific context.",
+        "review_reasoning": "Group A provides an excellent and highly coherent neighborhood focused on the target's specific topic: using ionic liquids that exhibit temperature-dependent phase behavior (thermomorphism, LCST/UCST) for homogeneous liquid-liquid extraction. In contrast, Group B is a very broad and noisy collection of papers generally related to 'ionic liquids' but covering disparate applications like crystallization, electrolytes, and general synthesis, completely missing the target's specific context."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "consensus_all",
+        "target_uid": "W2024795243",
+        "target_title": "Chemical Absorption of Sulfur Dioxide in Room-Temperature Ionic Liquids",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides a perfectly coherent local neighborhood where every paper is directly about the target's specific topic: SO2 absorption in ionic liquids. Group B is extremely weak; after the first paper, it diverges into papers about different gases (CO2, H2S) or the general properties of ionic liquids, completely missing the target's core research problem.",
+        "loser_failure_mode": "Group A provides a perfectly coherent local neighborhood where every paper is directly about the target's specific topic: SO2 absorption in ionic liquids. Group B is extremely weak; after the first paper, it diverges into papers about different gases (CO2, H2S) or the general properties of ionic liquids, completely missing the target's core research problem.",
+        "review_reasoning": "Group A provides a perfectly coherent local neighborhood where every paper is directly about the target's specific topic: SO2 absorption in ionic liquids. Group B is extremely weak; after the first paper, it diverges into papers about different gases (CO2, H2S) or the general properties of ionic liquids, completely missing the target's core research problem."
+      }
+    ],
+    "method_family_coherence": [
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "sum_minus_emb",
+        "target_uid": "W2033302412",
+        "target_title": "Combinatorial Rheology of Branched Polymer Melts",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent, coherent neighborhood. Its top-ranked papers focus on the same core problem as the target: developing general algorithms and computational models to predict the linear rheology of complex branched polymers. The lower-ranked papers in A provide relevant context by focusing on specific architectures like comb and star polymers, which the target paper explicitly mentions. Group B is significantly weaker, as it buries the most relevant papers at the bottom of its ranking and includes a clear topical mismatch (rank 6, polymer film surface dynamics) which is distinct from the target's focus on bulk melts.",
+        "loser_failure_mode": "Group A provides an excellent, coherent neighborhood. Its top-ranked papers focus on the same core problem as the target: developing general algorithms and computational models to predict the linear rheology of complex branched polymers. The lower-ranked papers in A provide relevant context by focusing on specific architectures like comb and star polymers, which the target paper explicitly mentions. Group B is significantly weaker, as it buries the most relevant papers at the bottom of its ranking and includes a clear topical mismatch (rank 6, polymer film surface dynamics) which is distinct from the target's focus on bulk melts.",
+        "review_reasoning": "Group A provides an excellent, coherent neighborhood. Its top-ranked papers focus on the same core problem as the target: developing general algorithms and computational models to predict the linear rheology of complex branched polymers. The lower-ranked papers in A provide relevant context by focusing on specific architectures like comb and star polymers, which the target paper explicitly mentions. Group B is significantly weaker, as it buries the most relevant papers at the bottom of its ranking and includes a clear topical mismatch (rank 6, polymer film surface dynamics) which is distinct from the target's focus on bulk melts."
+      },
+      {
+        "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "consensus_all",
+        "target_uid": "W1510246799",
+        "target_title": "Estimation of Age Using Alveolar Bone Loss: Forensic and Anthropological Applications",
+        "score_gap": 2.0,
+        "winner_advantage": "Group B provides a much more coherent and specific local neighborhood. Nearly all its papers focus on dental age estimation methods, which is the precise topic of the target paper. Group A is much broader, mixing in many papers on skeletal age estimation (e.g., from the pubic bone or ilium) and ranking a purely skeletal paper first, which dilutes the target's specific odontological context.",
+        "loser_failure_mode": "Group B provides a much more coherent and specific local neighborhood. Nearly all its papers focus on dental age estimation methods, which is the precise topic of the target paper. Group A is much broader, mixing in many papers on skeletal age estimation (e.g., from the pubic bone or ilium) and ranking a purely skeletal paper first, which dilutes the target's specific odontological context.",
+        "review_reasoning": "Group B provides a much more coherent and specific local neighborhood. Nearly all its papers focus on dental age estimation methods, which is the precise topic of the target paper. Group A is much broader, mixing in many papers on skeletal age estimation (e.g., from the pubic bone or ilium) and ranking a purely skeletal paper first, which dilutes the target's specific odontological context."
+      }
+    ],
+    "over_regularized_consensus": [
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "sum_minus_emb",
+        "target_uid": "W1968106432",
+        "target_title": "Binuclear chromium–salan complex catalyzed alternating copolymerization of epoxides and cyclic anhydrides",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent neighborhood by immediately focusing on the correct reaction (epoxide/anhydride copolymerization) with the correct catalyst family (chromium-salen complexes).",
+        "loser_failure_mode": "Group B's top-ranked papers are significant mismatches, focusing on catalysts with different metals (Mg, Zn, Mn), which dilutes the target's specific context. Although Group B contains a highly relevant paper on dinuclear chromium catalysts at rank 5, its poor ranking and the noise at the top make it a much weaker neighborhood overall.",
+        "review_reasoning": "Group A provides an excellent neighborhood by immediately focusing on the correct reaction (epoxide/anhydride copolymerization) with the correct catalyst family (chromium-salen complexes). In contrast, Group B's top-ranked papers are significant mismatches, focusing on catalysts with different metals (Mg, Zn, Mn), which dilutes the target's specific context. Although Group B contains a highly relevant paper on dinuclear chromium catalysts at rank 5, its poor ranking and the noise at the top make it a much weaker neighborhood overall."
+      },
+      {
+        "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "sum_minus_emb",
+        "target_uid": "W2503430913",
+        "target_title": "A Vygotskian sociocultural perspective on immersion education",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent, highly coherent neighborhood focused on the target's specific topic: the use of L1 in L2 learning from a sociocultural perspective. Its top-ranked papers are directly relevant, and it even includes a paper on the target's specific application context of 'immersion education'.",
+        "loser_failure_mode": "Group B is much broader and more diffuse, focusing on the general sociocultural theory in second language acquisition rather than the target's specific research question, and it completely misses the immersion education context.",
+        "review_reasoning": "Group A provides an excellent, highly coherent neighborhood focused on the target's specific topic: the use of L1 in L2 learning from a sociocultural perspective. Its top-ranked papers are directly relevant, and it even includes a paper on the target's specific application context of 'immersion education'. In contrast, Group B is much broader and more diffuse, focusing on the general sociocultural theory in second language acquisition rather than the target's specific research question, and it completely misses the immersion education context."
+      }
+    ],
+    "semantic_drift": [
+      {
+        "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "consensus_all",
+        "target_uid": "W2747960663",
+        "target_title": "The phenomenology of performance: exploring musicians' perceptions and experiences",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent neighborhood that directly matches the target's focus on the phenomenology and subjective experience of musical performance. Its top-ranked papers explore musicians' thoughts, perceptions, and anxieties using similar qualitative approaches. Group B is significantly weaker, as it shifts the focus to quantitative studies on interventions, self-efficacy, and exam outcomes, which is a different research paradigm from the target's exploratory investigation.",
+        "loser_failure_mode": "Group A provides an excellent neighborhood that directly matches the target's focus on the phenomenology and subjective experience of musical performance. Its top-ranked papers explore musicians' thoughts, perceptions, and anxieties using similar qualitative approaches. Group B is significantly weaker, as it shifts the focus to quantitative studies on interventions, self-efficacy, and exam outcomes, which is a different research paradigm from the target's exploratory investigation.",
+        "review_reasoning": "Group A provides an excellent neighborhood that directly matches the target's focus on the phenomenology and subjective experience of musical performance. Its top-ranked papers explore musicians' thoughts, perceptions, and anxieties using similar qualitative approaches. Group B is significantly weaker, as it shifts the focus to quantitative studies on interventions, self-efficacy, and exam outcomes, which is a different research paradigm from the target's exploratory investigation."
+      },
+      {
+        "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "winner_method": "consensus_all",
+        "target_uid": "W3022226786",
+        "target_title": "PARASOCIAL MEDIA EFFECTS",
+        "score_gap": 2.0,
+        "winner_advantage": "Group A is an excellent neighborhood, with every paper directly addressing the core concepts of parasocial interaction and relationships, just like the target paper. The top-ranked papers in A are theoretical reviews and meta-analyses, which perfectly match the target's described focus. Group B is much weaker; its top-ranked paper is a niche case study on the 'Twilight' phenomenon, which is a poor starting point for a theoretical overview, and the group is generally noisier and less focused than A.",
+        "loser_failure_mode": "Group A is an excellent neighborhood, with every paper directly addressing the core concepts of parasocial interaction and relationships, just like the target paper. The top-ranked papers in A are theoretical reviews and meta-analyses, which perfectly match the target's described focus. Group B is much weaker; its top-ranked paper is a niche case study on the 'Twilight' phenomenon, which is a poor starting point for a theoretical overview, and the group is generally noisier and less focused than A.",
+        "review_reasoning": "Group A is an excellent neighborhood, with every paper directly addressing the core concepts of parasocial interaction and relationships, just like the target paper. The top-ranked papers in A are theoretical reviews and meta-analyses, which perfectly match the target's described focus. Group B is much weaker; its top-ranked paper is a niche case study on the 'Twilight' phenomenon, which is a poor starting point for a theoretical overview, and the group is generally noisier and less focused than A."
+      }
+    ],
+    "single_cue_specificity": [
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "sum_minus_cc",
+        "target_uid": "W2060442727",
+        "target_title": "Carbon Paste Electrode Modified with Functionalized Nanoporous Silica Gel as a New Sensor for Determination of Silver Ion",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent and highly coherent neighborhood. Its top-ranked papers are directly relevant, focusing on either the same method (modified carbon paste electrodes) or the same target analyte (silver ion).",
+        "loser_failure_mode": "Group B is much broader and noisier, with many of its top-ranked papers focusing on the determination of organic drug molecules, which is a different application area from the target's focus on metal ion sensing.",
+        "review_reasoning": "Group A provides an excellent and highly coherent neighborhood. Its top-ranked papers are directly relevant, focusing on either the same method (modified carbon paste electrodes) or the same target analyte (silver ion). In contrast, Group B is much broader and noisier, with many of its top-ranked papers focusing on the determination of organic drug molecules, which is a different application area from the target's focus on metal ion sensing."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "winner_method": "sum_minus_cc",
+        "target_uid": "W2112002317",
+        "target_title": "A single-site hydroxyapatite-bound zinc catalyst for highly efficient chemical fixation of carbon dioxide with epoxides",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent local neighborhood by correctly identifying both the target's specific chemical reaction (CO2 fixation with epoxides) and the specific catalyst family (zinc-based catalysts).",
+        "loser_failure_mode": "Group B identifies the general reaction but completely misses the crucial zinc catalyst aspect, instead providing a diverse and less relevant set of catalysts (Ni, Ru, Cr, organocatalysts) and even including mismatched papers about polymerization.",
+        "review_reasoning": "Group A provides an excellent local neighborhood by correctly identifying both the target's specific chemical reaction (CO2 fixation with epoxides) and the specific catalyst family (zinc-based catalysts). In contrast, Group B identifies the general reaction but completely misses the crucial zinc catalyst aspect, instead providing a diverse and less relevant set of catalysts (Ni, Ru, Cr, organocatalysts) and even including mismatched papers about polymerization."
+      }
+    ]
+  },
+  "representative_examples_by_winner": {
+    "consensus_all": [
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "broad_context_noise",
+        "target_uid": "W2012804551",
+        "target_title": "Application of Poly(ethylene glycol)-based Aqueous Biphasic Systems as Reaction and Reactive Extraction Media",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides an excellent local neighborhood. The top-ranked papers focus specifically on the partitioning and phase diagrams of Poly(ethylene glycol)-based Aqueous Biphasic Systems (PEG-ABS), which is the exact system studied in the target paper.",
+        "loser_failure_mode": "Group B is almost entirely focused on a different class of solvents, Deep Eutectic Solvents (DES), and fails to capture the target's core topic of ABS, making it a poor representation of the immediate research context.",
+        "review_reasoning": "Group A provides an excellent local neighborhood. The top-ranked papers focus specifically on the partitioning and phase diagrams of Poly(ethylene glycol)-based Aqueous Biphasic Systems (PEG-ABS), which is the exact system studied in the target paper. In contrast, Group B is almost entirely focused on a different class of solvents, Deep Eutectic Solvents (DES), and fails to capture the target's core topic of ABS, making it a poor representation of the immediate research context."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "material_family_coherence",
+        "target_uid": "W2021514999",
+        "target_title": "Tunable thermomorphism and applications of ionic liquid analogues of Girard's reagents",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides an excellent and highly coherent neighborhood focused on the target's specific topic: using ionic liquids that exhibit temperature-dependent phase behavior (thermomorphism, LCST/UCST) for homogeneous liquid-liquid extraction.",
+        "loser_failure_mode": "Group B is a very broad and noisy collection of papers generally related to 'ionic liquids' but covering disparate applications like crystallization, electrolytes, and general synthesis, completely missing the target's specific context.",
+        "review_reasoning": "Group A provides an excellent and highly coherent neighborhood focused on the target's specific topic: using ionic liquids that exhibit temperature-dependent phase behavior (thermomorphism, LCST/UCST) for homogeneous liquid-liquid extraction. In contrast, Group B is a very broad and noisy collection of papers generally related to 'ionic liquids' but covering disparate applications like crystallization, electrolytes, and general synthesis, completely missing the target's specific context."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "material_family_coherence",
+        "target_uid": "W2024795243",
+        "target_title": "Chemical Absorption of Sulfur Dioxide in Room-Temperature Ionic Liquids",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides a perfectly coherent local neighborhood where every paper is directly about the target's specific topic: SO2 absorption in ionic liquids. Group B is extremely weak; after the first paper, it diverges into papers about different gases (CO2, H2S) or the general properties of ionic liquids, completely missing the target's core research problem.",
+        "loser_failure_mode": "Group A provides a perfectly coherent local neighborhood where every paper is directly about the target's specific topic: SO2 absorption in ionic liquids. Group B is extremely weak; after the first paper, it diverges into papers about different gases (CO2, H2S) or the general properties of ionic liquids, completely missing the target's core research problem.",
+        "review_reasoning": "Group A provides a perfectly coherent local neighborhood where every paper is directly about the target's specific topic: SO2 absorption in ionic liquids. Group B is extremely weak; after the first paper, it diverges into papers about different gases (CO2, H2S) or the general properties of ionic liquids, completely missing the target's core research problem."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "material_family_coherence",
+        "target_uid": "W2043931076",
+        "target_title": "A New Category of Liquid Salt--Liquid Ionic Phosphates (LIPs)",
+        "score_gap": 4.0,
+        "winner_advantage": "Group A provides an exceptional local neighborhood. Its top-ranked paper is a direct continuation or companion paper to the target, sharing the key term \"LIPs\" (Liquid Ionic Phosphates) and focusing on polyammonium salts. The subsequent papers cohere tightly around the theme of dicationic/polycationic ionic liquids, which is the central structural motif of the target paper.",
+        "loser_failure_mode": "Group B is a very broad and unfocused collection of general reviews and disparate specific studies on ionic liquids, failing entirely to capture the target's specific contribution to the field.",
+        "review_reasoning": "Group A provides an exceptional local neighborhood. Its top-ranked paper is a direct continuation or companion paper to the target, sharing the key term \"LIPs\" (Liquid Ionic Phosphates) and focusing on polyammonium salts. The subsequent papers cohere tightly around the theme of dicationic/polycationic ionic liquids, which is the central structural motif of the target paper. In contrast, Group B is a very broad and unfocused collection of general reviews and disparate specific studies on ionic liquids, failing entirely to capture the target's specific contribution to the field."
+      }
+    ],
+    "sum_minus_cc": [
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "single_cue_specificity",
+        "target_uid": "W2060442727",
+        "target_title": "Carbon Paste Electrode Modified with Functionalized Nanoporous Silica Gel as a New Sensor for Determination of Silver Ion",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent and highly coherent neighborhood. Its top-ranked papers are directly relevant, focusing on either the same method (modified carbon paste electrodes) or the same target analyte (silver ion).",
+        "loser_failure_mode": "Group B is much broader and noisier, with many of its top-ranked papers focusing on the determination of organic drug molecules, which is a different application area from the target's focus on metal ion sensing.",
+        "review_reasoning": "Group A provides an excellent and highly coherent neighborhood. Its top-ranked papers are directly relevant, focusing on either the same method (modified carbon paste electrodes) or the same target analyte (silver ion). In contrast, Group B is much broader and noisier, with many of its top-ranked papers focusing on the determination of organic drug molecules, which is a different application area from the target's focus on metal ion sensing."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "single_cue_specificity",
+        "target_uid": "W2112002317",
+        "target_title": "A single-site hydroxyapatite-bound zinc catalyst for highly efficient chemical fixation of carbon dioxide with epoxides",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent local neighborhood by correctly identifying both the target's specific chemical reaction (CO2 fixation with epoxides) and the specific catalyst family (zinc-based catalysts).",
+        "loser_failure_mode": "Group B identifies the general reaction but completely misses the crucial zinc catalyst aspect, instead providing a diverse and less relevant set of catalysts (Ni, Ru, Cr, organocatalysts) and even including mismatched papers about polymerization.",
+        "review_reasoning": "Group A provides an excellent local neighborhood by correctly identifying both the target's specific chemical reaction (CO2 fixation with epoxides) and the specific catalyst family (zinc-based catalysts). In contrast, Group B identifies the general reaction but completely misses the crucial zinc catalyst aspect, instead providing a diverse and less relevant set of catalysts (Ni, Ru, Cr, organocatalysts) and even including mismatched papers about polymerization."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "material_family_coherence",
+        "target_uid": "W2042746129",
+        "target_title": "Preparation and Characterization of New Room Temperature Ionic Liquids",
+        "score_gap": 2.0,
+        "winner_advantage": "Group A provides a more coherent and focused neighborhood. Its top-ranked papers are all centered on the synthesis and characterization of imidazolium-based ionic liquids, which directly matches the target's scope.",
+        "loser_failure_mode": "Group B is noisier, including papers on different cation types (guanidinium and pyridinium) that are less relevant to the target's specific chemistry, thereby diluting the immediate research context.",
+        "review_reasoning": "Group A provides a more coherent and focused neighborhood. Its top-ranked papers are all centered on the synthesis and characterization of imidazolium-based ionic liquids, which directly matches the target's scope. In contrast, Group B is noisier, including papers on different cation types (guanidinium and pyridinium) that are less relevant to the target's specific chemistry, thereby diluting the immediate research context."
+      },
+      {
+        "field": "field_15_k30_sum_minus_cc_vs_consensus_bank_n48",
+        "top_k": 30,
+        "primary_label": "material_family_coherence",
+        "target_uid": "W2326758683",
+        "target_title": "Surface Analysis of Ionic Liquids with and without Lithium Salt Using X-ray Photoelectron Spectroscopy",
+        "score_gap": 2.0,
+        "winner_advantage": "Group B provides a much more specific and relevant neighborhood for the target paper. It includes multiple papers studying the exact same ionic liquid ([EMIM][Tf2N]) and, critically, several papers investigating the interaction of this class of ionic liquids with lithium, which is the central perturbation in the target study. Group A is plausible, as it focuses on the correct technique (XPS) and general problem (ionic liquid surfaces with dissolved salts), but its focus on platinum and palladium complexes makes it less directly relevant than Group B's focus on lithium.",
+        "loser_failure_mode": "Group B provides a much more specific and relevant neighborhood for the target paper. It includes multiple papers studying the exact same ionic liquid ([EMIM][Tf2N]) and, critically, several papers investigating the interaction of this class of ionic liquids with lithium, which is the central perturbation in the target study. Group A is plausible, as it focuses on the correct technique (XPS) and general problem (ionic liquid surfaces with dissolved salts), but its focus on platinum and palladium complexes makes it less directly relevant than Group B's focus on lithium.",
+        "review_reasoning": "Group B provides a much more specific and relevant neighborhood for the target paper. It includes multiple papers studying the exact same ionic liquid ([EMIM][Tf2N]) and, critically, several papers investigating the interaction of this class of ionic liquids with lithium, which is the central perturbation in the target study. Group A is plausible, as it focuses on the correct technique (XPS) and general problem (ionic liquid surfaces with dissolved salts), but its focus on platinum and palladium complexes makes it less directly relevant than Group B's focus on lithium."
+      }
+    ],
+    "sum_minus_emb": [
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "primary_label": "material_family_coherence",
+        "target_uid": "W2001501144",
+        "target_title": "Impact of Ionic Liquid Physical Properties on Lipase Activity and Stability",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides a much better local neighborhood. Its top-ranked papers are directly about lipase or other enzymes in ionic liquids, which is the core topic of the target paper. Group B is extremely poor, with its top-ranked papers focusing on an entirely different application of ionic liquids (metal ion extraction), demonstrating a fundamental misunderstanding of the target's research context.",
+        "loser_failure_mode": "Group A provides a much better local neighborhood. Its top-ranked papers are directly about lipase or other enzymes in ionic liquids, which is the core topic of the target paper. Group B is extremely poor, with its top-ranked papers focusing on an entirely different application of ionic liquids (metal ion extraction), demonstrating a fundamental misunderstanding of the target's research context.",
+        "review_reasoning": "Group A provides a much better local neighborhood. Its top-ranked papers are directly about lipase or other enzymes in ionic liquids, which is the core topic of the target paper. Group B is extremely poor, with its top-ranked papers focusing on an entirely different application of ionic liquids (metal ion extraction), demonstrating a fundamental misunderstanding of the target's research context."
+      },
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "primary_label": "method_family_coherence",
+        "target_uid": "W2033302412",
+        "target_title": "Combinatorial Rheology of Branched Polymer Melts",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent, coherent neighborhood. Its top-ranked papers focus on the same core problem as the target: developing general algorithms and computational models to predict the linear rheology of complex branched polymers. The lower-ranked papers in A provide relevant context by focusing on specific architectures like comb and star polymers, which the target paper explicitly mentions. Group B is significantly weaker, as it buries the most relevant papers at the bottom of its ranking and includes a clear topical mismatch (rank 6, polymer film surface dynamics) which is distinct from the target's focus on bulk melts.",
+        "loser_failure_mode": "Group A provides an excellent, coherent neighborhood. Its top-ranked papers focus on the same core problem as the target: developing general algorithms and computational models to predict the linear rheology of complex branched polymers. The lower-ranked papers in A provide relevant context by focusing on specific architectures like comb and star polymers, which the target paper explicitly mentions. Group B is significantly weaker, as it buries the most relevant papers at the bottom of its ranking and includes a clear topical mismatch (rank 6, polymer film surface dynamics) which is distinct from the target's focus on bulk melts.",
+        "review_reasoning": "Group A provides an excellent, coherent neighborhood. Its top-ranked papers focus on the same core problem as the target: developing general algorithms and computational models to predict the linear rheology of complex branched polymers. The lower-ranked papers in A provide relevant context by focusing on specific architectures like comb and star polymers, which the target paper explicitly mentions. Group B is significantly weaker, as it buries the most relevant papers at the bottom of its ranking and includes a clear topical mismatch (rank 6, polymer film surface dynamics) which is distinct from the target's focus on bulk melts."
+      },
+      {
+        "field": "field_15_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "primary_label": "over_regularized_consensus",
+        "target_uid": "W1968106432",
+        "target_title": "Binuclear chromium–salan complex catalyzed alternating copolymerization of epoxides and cyclic anhydrides",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent neighborhood by immediately focusing on the correct reaction (epoxide/anhydride copolymerization) with the correct catalyst family (chromium-salen complexes).",
+        "loser_failure_mode": "Group B's top-ranked papers are significant mismatches, focusing on catalysts with different metals (Mg, Zn, Mn), which dilutes the target's specific context. Although Group B contains a highly relevant paper on dinuclear chromium catalysts at rank 5, its poor ranking and the noise at the top make it a much weaker neighborhood overall.",
+        "review_reasoning": "Group A provides an excellent neighborhood by immediately focusing on the correct reaction (epoxide/anhydride copolymerization) with the correct catalyst family (chromium-salen complexes). In contrast, Group B's top-ranked papers are significant mismatches, focusing on catalysts with different metals (Mg, Zn, Mn), which dilutes the target's specific context. Although Group B contains a highly relevant paper on dinuclear chromium catalysts at rank 5, its poor ranking and the noise at the top make it a much weaker neighborhood overall."
+      },
+      {
+        "field": "field_12_k06_sum_minus_emb_vs_consensus_bank_n48",
+        "top_k": 6,
+        "primary_label": "over_regularized_consensus",
+        "target_uid": "W2503430913",
+        "target_title": "A Vygotskian sociocultural perspective on immersion education",
+        "score_gap": 3.0,
+        "winner_advantage": "Group A provides an excellent, highly coherent neighborhood focused on the target's specific topic: the use of L1 in L2 learning from a sociocultural perspective. Its top-ranked papers are directly relevant, and it even includes a paper on the target's specific application context of 'immersion education'.",
+        "loser_failure_mode": "Group B is much broader and more diffuse, focusing on the general sociocultural theory in second language acquisition rather than the target's specific research question, and it completely misses the immersion education context.",
+        "review_reasoning": "Group A provides an excellent, highly coherent neighborhood focused on the target's specific topic: the use of L1 in L2 learning from a sociocultural perspective. Its top-ranked papers are directly relevant, and it even includes a paper on the target's specific application context of 'immersion education'. In contrast, Group B is much broader and more diffuse, focusing on the general sociocultural theory in second language acquisition rather than the target's specific research question, and it completely misses the immersion education context."
+      }
+    ]
+  }
+}

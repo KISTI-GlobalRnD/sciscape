@@ -1,0 +1,537 @@
+{
+  "field": "field_15_ek30_cc_vs_citation_boundary_coverage_v2_live_smoke",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "protocol": "candidate_budget_matched_boundary_coverage_v2",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "rank",
+  "method_b": "consensus",
+  "label_a": "cc_only",
+  "label_b": "citation_consensus",
+  "layers_a": [
+    "cc_cosine"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional"
+  ],
+  "budget_mode": "effective_k",
+  "effective_k": 30,
+  "target_pct": 3.0,
+  "top_k": 30,
+  "top_k_a": 30,
+  "top_k_b": {
+    "bc_cosine": 10,
+    "cc_cosine": 10,
+    "dc_fractional": 10
+  },
+  "gamma_a": 1e-08,
+  "gamma_b": 7.800915716428808e-07,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_neighbors": 8,
+  "sample_mode": "population",
+  "n_population_cases": 3,
+  "n_diagnostic_per_stratum": 0,
+  "max_group_jaccard": 0.5,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 521873,
+    "gamma": 1e-08,
+    "n_clusters": 1215,
+    "max_pct": 1.39
+  },
+  "method_b_run": {
+    "n_edges": 1250376,
+    "gamma": 7.800915716428808e-07,
+    "n_clusters": 2593,
+    "max_pct": 1.32
+  },
+  "n_nodes": 115290,
+  "n_target_universe": 3,
+  "coverage_state_counts": {
+    "A_only_reviewable": 0,
+    "B_only_reviewable": 1,
+    "both_reviewable": 2,
+    "neither_reviewable": 0
+  },
+  "population_cases": [
+    {
+      "target_uid": "W1578932400",
+      "coverage_state": "both_reviewable",
+      "method_a_reviewable": true,
+      "method_b_reviewable": true,
+      "method_a_cluster_id": 40,
+      "method_b_cluster_id": 2111,
+      "method_a_cluster_size": 654,
+      "method_b_cluster_size": 82,
+      "method_a_cross_cluster_ratio": 0.9539,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2916408555",
+        "W2990527982",
+        "W2610748134",
+        "W2135822182",
+        "W1497558193",
+        "W2993305940",
+        "W2086642764",
+        "W1979325538"
+      ],
+      "group_b_uids": [
+        "W1989863369",
+        "W2128227320",
+        "W2130629250",
+        "W2151631899",
+        "W2610609138",
+        "W2756965525",
+        "W2800298726",
+        "W2895354615"
+      ],
+      "group_a_doc_count": 8,
+      "group_b_doc_count": 8,
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "cluster_size_ratio": 7.9756,
+      "method_a_total_degree": 30,
+      "method_b_total_degree": 30,
+      "method_a_intra_degree": 1,
+      "method_b_intra_degree": 0,
+      "method_a_cross_degree": 29,
+      "method_b_cross_degree": 30,
+      "method_a_group_fill_rate": 1.0,
+      "method_b_group_fill_rate": 1.0,
+      "diagnostic_strata": [
+        "both_reviewable",
+        "high_disagreement_both_dense"
+      ],
+      "target_title": "Ionic liquids based on the bis(trifluoromethylsulfonyl)imide anion for high‐pressure Raman spectroscopy measurements",
+      "target_year": null
+    },
+    {
+      "target_uid": "W1968187140",
+      "coverage_state": "both_reviewable",
+      "method_a_reviewable": true,
+      "method_b_reviewable": true,
+      "method_a_cluster_id": 165,
+      "method_b_cluster_id": 1728,
+      "method_a_cluster_size": 58,
+      "method_b_cluster_size": 46,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2329989147",
+        "W2789332983",
+        "W1485396514",
+        "W1966000221",
+        "W1971222787",
+        "W1999907948",
+        "W2033609547",
+        "W2064689927"
+      ],
+      "group_b_uids": [
+        "W1972742805",
+        "W1999943753",
+        "W2022185760",
+        "W2035081975",
+        "W2056608431",
+        "W2076909811",
+        "W2129905245",
+        "W2131078547"
+      ],
+      "group_a_doc_count": 8,
+      "group_b_doc_count": 8,
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "cluster_size_ratio": 1.2609,
+      "method_a_total_degree": 36,
+      "method_b_total_degree": 33,
+      "method_a_intra_degree": 0,
+      "method_b_intra_degree": 0,
+      "method_a_cross_degree": 36,
+      "method_b_cross_degree": 33,
+      "method_a_group_fill_rate": 1.0,
+      "method_b_group_fill_rate": 1.0,
+      "diagnostic_strata": [
+        "both_reviewable",
+        "high_disagreement_both_dense"
+      ],
+      "target_title": "Airborne chemical compounds on dairy farms",
+      "target_year": null
+    },
+    {
+      "target_uid": "W1837403718",
+      "coverage_state": "B_only_reviewable",
+      "method_a_reviewable": false,
+      "method_b_reviewable": true,
+      "method_a_cluster_id": null,
+      "method_b_cluster_id": 1805,
+      "method_a_cluster_size": 0,
+      "method_b_cluster_size": 190,
+      "method_a_cross_cluster_ratio": 0.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [],
+      "group_b_uids": [
+        "W3007493210",
+        "W4225674630",
+        "W1595419249",
+        "W1982979661",
+        "W2007000391",
+        "W2045199862",
+        "W2050168069",
+        "W2050794244"
+      ],
+      "group_a_doc_count": 0,
+      "group_b_doc_count": 8,
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "cluster_size_ratio": null,
+      "method_a_total_degree": 0,
+      "method_b_total_degree": 21,
+      "method_a_intra_degree": 0,
+      "method_b_intra_degree": 0,
+      "method_a_cross_degree": 0,
+      "method_b_cross_degree": 21,
+      "method_a_group_fill_rate": 0.0,
+      "method_b_group_fill_rate": 1.0,
+      "diagnostic_strata": [
+        "B_only_reviewable",
+        "A_sparse_B_dense"
+      ],
+      "target_title": "A magnetic nanoparticle catalyzed eco-friendly synthesis of cyanohydrins in a deep eutectic solvent",
+      "target_year": null
+    }
+  ],
+  "diagnostic_cases": [],
+  "reviewed_cases": [
+    {
+      "target_uid": "W1578932400",
+      "coverage_state": "both_reviewable",
+      "method_a_reviewable": true,
+      "method_b_reviewable": true,
+      "method_a_cluster_id": 40,
+      "method_b_cluster_id": 2111,
+      "method_a_cluster_size": 654,
+      "method_b_cluster_size": 82,
+      "method_a_cross_cluster_ratio": 0.9539,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2916408555",
+        "W2990527982",
+        "W2610748134",
+        "W2135822182",
+        "W1497558193",
+        "W2993305940",
+        "W2086642764",
+        "W1979325538"
+      ],
+      "group_b_uids": [
+        "W1989863369",
+        "W2128227320",
+        "W2130629250",
+        "W2151631899",
+        "W2610609138",
+        "W2756965525",
+        "W2800298726",
+        "W2895354615"
+      ],
+      "group_a_doc_count": 8,
+      "group_b_doc_count": 8,
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "cluster_size_ratio": 7.9756,
+      "method_a_total_degree": 30,
+      "method_b_total_degree": 30,
+      "method_a_intra_degree": 1,
+      "method_b_intra_degree": 0,
+      "method_a_cross_degree": 29,
+      "method_b_cross_degree": 30,
+      "method_a_group_fill_rate": 1.0,
+      "method_b_group_fill_rate": 1.0,
+      "diagnostic_strata": [
+        "both_reviewable",
+        "high_disagreement_both_dense"
+      ],
+      "target_title": "Ionic liquids based on the bis(trifluoromethylsulfonyl)imide anion for high‐pressure Raman spectroscopy measurements",
+      "target_year": null,
+      "gold": {
+        "decision": "B_ONLY",
+        "belongs_with_a": false,
+        "belongs_with_b": true,
+        "confidence": 5,
+        "reasoning": "Group A is a very poor match for the target. Only two of the eight papers mention ionic liquids, and the rest cover disparate topics like diesel engines and ammonia synthesis. In contrast, Group B is strongly coherent around the theme of ionic liquids, their properties, and their applications as solvents or electrolytes. Several papers in Group B discuss ionic liquids containing the same bis(trifluoromethylsulfonyl)imide anion as the target paper, making it a highly relevant local neighborhood.",
+        "presented_decision": "B_ONLY",
+        "presented_belongs_with_a": false,
+        "presented_belongs_with_b": true,
+        "presented_method_a": "cc_only",
+        "presented_method_b": "citation_consensus",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W1968187140",
+      "coverage_state": "both_reviewable",
+      "method_a_reviewable": true,
+      "method_b_reviewable": true,
+      "method_a_cluster_id": 165,
+      "method_b_cluster_id": 1728,
+      "method_a_cluster_size": 58,
+      "method_b_cluster_size": 46,
+      "method_a_cross_cluster_ratio": 1.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [
+        "W2329989147",
+        "W2789332983",
+        "W1485396514",
+        "W1966000221",
+        "W1971222787",
+        "W1999907948",
+        "W2033609547",
+        "W2064689927"
+      ],
+      "group_b_uids": [
+        "W1972742805",
+        "W1999943753",
+        "W2022185760",
+        "W2035081975",
+        "W2056608431",
+        "W2076909811",
+        "W2129905245",
+        "W2131078547"
+      ],
+      "group_a_doc_count": 8,
+      "group_b_doc_count": 8,
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "cluster_size_ratio": 1.2609,
+      "method_a_total_degree": 36,
+      "method_b_total_degree": 33,
+      "method_a_intra_degree": 0,
+      "method_b_intra_degree": 0,
+      "method_a_cross_degree": 36,
+      "method_b_cross_degree": 33,
+      "method_a_group_fill_rate": 1.0,
+      "method_b_group_fill_rate": 1.0,
+      "diagnostic_strata": [
+        "both_reviewable",
+        "high_disagreement_both_dense"
+      ],
+      "target_title": "Airborne chemical compounds on dairy farms",
+      "target_year": null,
+      "gold": {
+        "decision": "NEITHER",
+        "belongs_with_a": false,
+        "belongs_with_b": false,
+        "confidence": 5,
+        "reasoning": "The target paper is an environmental and occupational health study that analyzes airborne chemicals on dairy farms. Both Group A and Group B are very broad and disparate collections of papers from various fields of chemistry and chemical engineering, including catalysis, combustion, and materials science. Neither group captures the target's specific application of analytical chemistry to agricultural air quality, making them both poor and irrelevant local neighborhoods.",
+        "presented_decision": "NEITHER",
+        "presented_belongs_with_a": false,
+        "presented_belongs_with_b": false,
+        "presented_method_a": "citation_consensus",
+        "presented_method_b": "cc_only",
+        "swapped": true
+      }
+    },
+    {
+      "target_uid": "W1837403718",
+      "coverage_state": "B_only_reviewable",
+      "method_a_reviewable": false,
+      "method_b_reviewable": true,
+      "method_a_cluster_id": null,
+      "method_b_cluster_id": 1805,
+      "method_a_cluster_size": 0,
+      "method_b_cluster_size": 190,
+      "method_a_cross_cluster_ratio": 0.0,
+      "method_b_cross_cluster_ratio": 1.0,
+      "group_a_uids": [],
+      "group_b_uids": [
+        "W3007493210",
+        "W4225674630",
+        "W1595419249",
+        "W1982979661",
+        "W2007000391",
+        "W2045199862",
+        "W2050168069",
+        "W2050794244"
+      ],
+      "group_a_doc_count": 0,
+      "group_b_doc_count": 8,
+      "overlap_size": 0,
+      "jaccard": 0.0,
+      "cluster_size_ratio": null,
+      "method_a_total_degree": 0,
+      "method_b_total_degree": 21,
+      "method_a_intra_degree": 0,
+      "method_b_intra_degree": 0,
+      "method_a_cross_degree": 0,
+      "method_b_cross_degree": 21,
+      "method_a_group_fill_rate": 0.0,
+      "method_b_group_fill_rate": 1.0,
+      "diagnostic_strata": [
+        "B_only_reviewable",
+        "A_sparse_B_dense"
+      ],
+      "target_title": "A magnetic nanoparticle catalyzed eco-friendly synthesis of cyanohydrins in a deep eutectic solvent",
+      "target_year": null,
+      "unary_review_b": {
+        "decision": "NOT_PLAUSIBLE",
+        "confidence": 5,
+        "reasoning": "The candidate group is incoherent and topically unrelated to the target paper. The target focuses on a specific organic synthesis using magnetic nanoparticles in a deep eutectic solvent. In contrast, the candidate papers cover a disparate range of topics, including the physical chemistry of ionic liquids, engine combustion, and other unrelated catalytic reactions, none of which share the target's specific focus on cyanohydrin synthesis or nanoparticle catalysis in green solvents.",
+        "method": "citation_consensus"
+      }
+    }
+  ],
+  "review_progress": {
+    "population_complete": 3,
+    "population_total": 3,
+    "diagnostic_complete": 0,
+    "diagnostic_total": 0,
+    "reviewed_unique_cases": 3
+  },
+  "summary": {
+    "population": {
+      "n_cases": 3,
+      "coverage_state_counts": {
+        "A_only_reviewable": 0,
+        "B_only_reviewable": 1,
+        "both_reviewable": 2,
+        "neither_reviewable": 0
+      },
+      "coverage_rate": {
+        "cc_only": 0.6667,
+        "citation_consensus": 1.0
+      },
+      "reviewable_rate": {
+        "any_reviewable": 1.0,
+        "both_reviewable": 0.6667
+      },
+      "plausible_coverage_rate": {
+        "including_unclear_as_zero": {
+          "cc_only": 0.0,
+          "citation_consensus": 0.3333
+        },
+        "excluding_unclear": {
+          "cc_only": 0.0,
+          "citation_consensus": 0.3333
+        }
+      },
+      "overall_boundary_utility": {
+        "including_unclear_as_zero": {
+          "cc_only": 0.0,
+          "citation_consensus": 0.3333
+        },
+        "excluding_unclear": {
+          "cc_only": 0.0,
+          "citation_consensus": 0.3333
+        }
+      },
+      "conditional_boundary_accuracy": {
+        "full": {
+          "n_reviewed_cases": 2,
+          "n_scored_cases": 2,
+          "n_unclear_cases": 0,
+          "decision_counts": {
+            "A_ONLY": 0,
+            "B_ONLY": 1,
+            "BOTH": 0,
+            "NEITHER": 1,
+            "UNCLEAR": 0
+          },
+          "accuracy": {
+            "method_a": "cc_only",
+            "method_b": "citation_consensus",
+            "method_a_accuracy": 0.0,
+            "method_b_accuracy": 0.5,
+            "method_a_correct": 0,
+            "method_b_correct": 1,
+            "method_a_advantage_cases": 0,
+            "method_b_advantage_cases": 1,
+            "both_correct_cases": 0,
+            "both_wrong_cases": 1,
+            "net_accuracy_gap": -0.5
+          }
+        },
+        "excluding_neither": {
+          "n_reviewed_cases": 1,
+          "n_scored_cases": 1,
+          "n_unclear_cases": 0,
+          "decision_counts": {
+            "A_ONLY": 0,
+            "B_ONLY": 1,
+            "BOTH": 0,
+            "NEITHER": 0,
+            "UNCLEAR": 0
+          },
+          "accuracy": {
+            "method_a": "cc_only",
+            "method_b": "citation_consensus",
+            "method_a_accuracy": 0.0,
+            "method_b_accuracy": 1.0,
+            "method_a_correct": 0,
+            "method_b_correct": 1,
+            "method_a_advantage_cases": 0,
+            "method_b_advantage_cases": 1,
+            "both_correct_cases": 0,
+            "both_wrong_cases": 0,
+            "net_accuracy_gap": -1.0
+          }
+        },
+        "excluding_neither_unclear": {
+          "n_reviewed_cases": 1,
+          "n_scored_cases": 1,
+          "n_unclear_cases": 0,
+          "decision_counts": {
+            "A_ONLY": 0,
+            "B_ONLY": 1,
+            "BOTH": 0,
+            "NEITHER": 0,
+            "UNCLEAR": 0
+          },
+          "accuracy": {
+            "method_a": "cc_only",
+            "method_b": "citation_consensus",
+            "method_a_accuracy": 0.0,
+            "method_b_accuracy": 1.0,
+            "method_a_correct": 0,
+            "method_b_correct": 1,
+            "method_a_advantage_cases": 0,
+            "method_b_advantage_cases": 1,
+            "both_correct_cases": 0,
+            "both_wrong_cases": 0,
+            "net_accuracy_gap": -1.0
+          }
+        },
+        "discriminative_A_ONLY_B_ONLY": {
+          "n_reviewed_cases": 1,
+          "n_scored_cases": 1,
+          "n_unclear_cases": 0,
+          "decision_counts": {
+            "A_ONLY": 0,
+            "B_ONLY": 1,
+            "BOTH": 0,
+            "NEITHER": 0,
+            "UNCLEAR": 0
+          },
+          "accuracy": {
+            "method_a": "cc_only",
+            "method_b": "citation_consensus",
+            "method_a_accuracy": 0.0,
+            "method_b_accuracy": 1.0,
+            "method_a_correct": 0,
+            "method_b_correct": 1,
+            "method_a_advantage_cases": 0,
+            "method_b_advantage_cases": 1,
+            "both_correct_cases": 0,
+            "both_wrong_cases": 0,
+            "net_accuracy_gap": -1.0
+          }
+        }
+      },
+      "neither_rate": 0.5,
+      "unclear_rate": 0.0,
+      "unary_decision_counts": {
+        "B_NOT_PLAUSIBLE": 1
+      }
+    },
+    "diagnostic": null
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_30_textfilt_txt20_abs20_reqabs\", \"layers\": [\"cc_cosine\"], \"min_size\": 10, \"strategy\": \"rank\", \"target_pct\": 3.0, \"top_k\": 30}": {
+    "gamma": 1e-08,
+    "n_clusters": 1184,
+    "max_pct": 1.75,
+    "top5": [
+      853,
+      689,
+      583,
+      533,
+      441
+    ],
+    "field": "field_30_ek30_cc_vs_citation_consensus",
+    "label": "cc_cosine_only"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_30_textfilt_txt20_abs20_reqabs\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\"], \"min_size\": 10, \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": 30}": {
+    "gamma": 1.5581409609076065e-06,
+    "n_clusters": 8529,
+    "max_pct": 2.96,
+    "top5": [
+      4188,
+      2580,
+      2539,
+      2475,
+      2393
+    ],
+    "field": "field_30_k30_cc_vs_citation_consensus",
+    "label": "citation_consensus"
+  },
+  "{\"edge_dir\": \"data/linktype_edges_gcc/field_30_textfilt_txt20_abs20_reqabs\", \"layers\": [\"bc_cosine\", \"cc_cosine\", \"dc_fractional\"], \"min_size\": 10, \"strategy\": \"consensus\", \"target_pct\": 3.0, \"top_k\": {\"bc_cosine\": 10, \"cc_cosine\": 10, \"dc_fractional\": 10}}": {
+    "gamma": 7.806156229117802e-06,
+    "n_clusters": 11866,
+    "max_pct": 2.47,
+    "top5": [
+      3498,
+      2871,
+      1792,
+      1765,
+      1733
+    ],
+    "field": "field_30_ek30_cc_vs_citation_consensus",
+    "label": "citation_consensus"
+  }
+}

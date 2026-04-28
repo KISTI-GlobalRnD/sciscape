@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SciScape</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --ink: #0a0f1a;
+  --slate: #1b2438;
+  --graphite: #2d3a52;
+  --steel: #4a5976;
+  --silver: #8899b3;
+  --fog: #c5cfe0;
+  --paper: #eef1f6;
+  --white: #f8f9fc;
+  --cream: #fefcf9;
+  --amber: #e8a838;
+  --amber-dim: #c48a20;
+  --amber-glow: rgba(232, 168, 56, 0.12);
+  --teal: #2ba89c;
+  --teal-dim: #1e7a72;
+  --coral: #d85a4a;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Source Sans 3', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  --radius: 6px;
+  --shadow-sm: 0 1px 3px rgba(10,15,26,0.06);
+  --shadow-md: 0 4px 16px rgba(10,15,26,0.08);
+  --shadow-lg: 0 8px 32px rgba(10,15,26,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--white);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ────────────────────────────────────────────── */
+.site-header {
+  background: var(--ink);
+  color: var(--fog);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(200,210,230,0.08);
+}
+.site-header .logo {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--cream);
+  letter-spacing: -0.01em;
+}
+.site-header .logo span { color: var(--amber); }
+.site-header .divider {
+  width: 1px;
+  height: 20px;
+  background: var(--graphite);
+}
+.site-header .tagline {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--silver);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.site-header .nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.site-header .nav-link {
+  font-size: 0.8rem;
+  color: var(--silver);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.site-header .nav-link:hover { color: var(--cream); }
+
+/* ── LAYOUT ────────────────────────────────────────────── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: calc(100vh - 56px);
+}
+.main-col {
+  padding: 2rem 2.5rem;
+  max-width: 960px;
+}
+.side-col {
+  background: var(--paper);
+  border-left: 1px solid var(--fog);
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+  .app-layout { grid-template-columns: 1fr; }
+  .side-col { border-left: none; border-top: 1px solid var(--fog); }
+}
+
+/* ── SECTION LABELS ────────────────────────────────────── */
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--steel);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--fog);
+}
+
+/* ── QUERY FORM ────────────────────────────────────────── */
+.query-card {
+  background: var(--cream);
+  border: 1px solid #e5dfd6;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.query-main-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 400;
+  padding: 0.7rem 0;
+  border: none;
+  border-bottom: 2px solid var(--fog);
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.25s;
+  margin-bottom: 1rem;
+}
+.query-main-input::placeholder { color: var(--silver); font-weight: 300; }
+.query-main-input:focus { border-color: var(--amber); }
+
+.query-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+}
+.field-group label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+  margin-bottom: 0.25rem;
+}
+.field-group input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field-group input:focus { border-color: var(--amber-dim); }
+
+.query-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.btn-analyze {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.55rem 1.6rem;
+  background: var(--slate);
+  color: var(--cream);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-analyze:hover { background: var(--graphite); }
+.btn-analyze:active { transform: scale(0.98); }
+.btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-analyze.running {
+  background: var(--amber-dim);
+  color: var(--ink);
+}
+.btn-analyze.running::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { to { left: 100%; } }
+
+.query-hint {
+  font-size: 0.75rem;
+  color: var(--silver);
+}
+
+/* ── PROGRESS TERMINAL ─────────────────────────────────── */
+.terminal {
+  background: var(--ink);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.7;
+  color: var(--silver);
+  max-height: 280px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+.terminal.active { display: block; animation: slideDown 0.3s ease-out; }
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.terminal .line { padding: 1px 0; }
+.terminal .line::before {
+  content: '>';
+  color: var(--steel);
+  margin-right: 0.5rem;
+}
+.terminal .line.ok { color: var(--teal); }
+.terminal .line.ok::before { content: '\2713'; color: var(--teal); }
+.terminal .line.err { color: var(--coral); }
+.terminal .line.err::before { content: '!'; color: var(--coral); }
+.terminal .cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--amber);
+  animation: blink 1s steps(1) infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── RESULTS PANEL ─────────────────────────────────────── */
+.results-panel {
+  display: none;
+  animation: fadeIn 0.4s ease-out;
+}
+.results-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.stat-pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  background: var(--paper);
+  border: 1px solid var(--fog);
+  color: var(--graphite);
+}
+.stat-pill strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.stat-pill.accent {
+  background: var(--amber-glow);
+  border-color: var(--amber);
+  color: var(--amber-dim);
+}
+
+/* ── TABS ──────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--fog);
+  margin-bottom: 1.2rem;
+  gap: 0;
+}
+.tab-btn {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.6rem 1.2rem;
+  background: none;
+  border: none;
+  color: var(--steel);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active {
+  color: var(--ink);
+  border-bottom-color: var(--amber);
+  font-weight: 600;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.25s ease-out; }
+
+/* ── TABLES ────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.data-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--steel);
+  padding: 0.5rem 0.8rem;
+  border-bottom: 2px solid var(--fog);
+}
+.data-table td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--paper);
+  color: var(--graphite);
+}
+.data-table tr:hover td { background: var(--paper); }
+.data-table .num {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+/* ── DOWNLOAD LINKS ────────────────────────────────────── */
+.dl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.dl-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  background: var(--paper);
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink);
+  transition: all 0.2s;
+}
+.dl-card:hover {
+  border-color: var(--amber);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.dl-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--slate);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.dl-info .dl-name { font-weight: 600; font-size: 0.85rem; }
+.dl-info .dl-desc { font-size: 0.72rem; color: var(--steel); }
+
+/* ── OVERVIEW IFRAME ───────────────────────────────────── */
+.viz-frame {
+  width: 100%;
+  height: 500px;
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+.viz-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  background: var(--paper);
+  border: 1px dashed var(--fog);
+  border-radius: var(--radius);
+  color: var(--silver);
+  font-size: 0.85rem;
+}
+
+/* ── SIDEBAR: JOB HISTORY ──────────────────────────────── */
+.history-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--slate);
+}
+.job-list { list-style: none; }
+.job-item {
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius);
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.job-item:hover { background: var(--white); border-color: var(--fog); }
+.job-item.active { background: var(--white); border-color: var(--amber); }
+.job-query {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.job-meta {
+  font-size: 0.7rem;
+  color: var(--silver);
+  margin-top: 2px;
+  display: flex;
+  gap: 0.6rem;
+}
+.job-status {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.job-status.done { background: var(--teal); }
+.job-status.running { background: var(--amber); animation: blink 1s steps(1) infinite; }
+.job-status.error { background: var(--coral); }
+.job-status.pending { background: var(--fog); }
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--silver);
+  font-size: 0.82rem;
+}
+.empty-state .empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.4;
+}
+
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--fog); border-radius: 3px; }
+.terminal::-webkit-scrollbar-thumb { background: var(--graphite); }
+
+/* ── NETWORK CONTROLS ──────────────────────────────────── */
+.net-controls { padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--fog); background: var(--paper); }
+.net-ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.net-ctrl-group { display: flex; align-items: center; gap: 0.3rem; }
+.net-ctrl-label {
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--steel); margin-right: 0.3rem;
+}
+.net-chip {
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500;
+  padding: 0.2rem 0.6rem; border-radius: 3px; border: 1px solid var(--fog);
+  background: var(--white); color: var(--steel); cursor: pointer; transition: all 0.15s;
+}
+.net-chip:hover { border-color: var(--silver); color: var(--ink); }
+.net-chip.active { background: var(--slate); color: var(--cream); border-color: var(--slate); }
+.net-chip.layer-chip[data-layer="dc"].active { background: #2563eb; border-color: #2563eb; }
+.net-chip.layer-chip[data-layer="bc"].active { background: #dc2626; border-color: #dc2626; }
+.net-chip.layer-chip[data-layer="cc"].active { background: #059669; border-color: #059669; }
+.net-chip.layer-chip[data-layer="combined"].active { background: var(--slate); border-color: var(--slate); }
+
+/* ── DETAIL PANEL ──────────────────────────────────────── */
+.net-detail {
+  width: 280px; background: var(--white); border-left: 1px solid var(--fog);
+  padding: 1rem; overflow-y: auto; font-size: 0.82rem;
+}
+.net-detail-header { margin-bottom: 0.6rem; font-size: 0.9rem; }
+.net-detail-stats { margin-bottom: 0.8rem; }
+.net-paper { padding: 0.5rem 0; border-bottom: 1px solid var(--paper); }
+.net-paper-title { font-weight: 500; color: var(--ink); line-height: 1.3; }
+.net-paper-meta { font-size: 0.72rem; color: var(--silver); margin-top: 2px; }
+
+/* ── DENSITY OVERLAY ───────────────────────────────────── */
+.density-overlay { mix-blend-mode: screen; }
+
+/* ── SLIDERS ───────────────────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none; height: 4px; background: var(--fog);
+  border-radius: 2px; outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  background: var(--slate); border-radius: 50%; cursor: pointer;
+}
+
+/* ── MERGE CHECKBOX ────────────────────────────────────── */
+.merge-cb { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="logo">Sci<span>Scape</span></div>
+  <div class="divider"></div>
+  <div class="tagline">Scientific Landscape Analysis</div>
+  <nav class="nav-right">
+    <a href="/docs" class="nav-link">API Docs</a>
+  </nav>
+</header>
+
+<!-- APP LAYOUT -->
+<div class="app-layout">
+
+  <!-- MAIN COLUMN -->
+  <div class="main-col">
+
+    <!-- QUERY -->
+    <div class="section-label">Query OpenAlex</div>
+    <div class="query-card">
+      <input type="text" class="query-main-input" id="q-search"
+             placeholder="Search terms, e.g. &quot;topological insulator&quot; OR &quot;quantum spin Hall&quot;" />
+      <div class="query-fields">
+        <div class="field-group">
+          <label>Year range</label>
+          <input type="text" id="q-years" placeholder="2020-2024" />
+        </div>
+        <div class="field-group">
+          <label>Max works</label>
+          <input type="number" id="q-max" value="5000" />
+        </div>
+        <div class="field-group">
+          <label>Email (optional)</label>
+          <input type="email" id="q-email" placeholder="you@univ.edu" />
+        </div>
+        <div class="field-group">
+          <label>Edge types</label>
+          <input type="text" id="q-edges" value="dc,bc,cc" />
+        </div>
+      </div>
+      <div class="query-actions">
+        <button class="btn-analyze" id="btn-go" onclick="submitQuery()">Analyze</button>
+        <span class="query-hint" id="hint"></span>
+      </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="terminal" id="terminal">
+      <div id="term-lines"></div>
+      <span class="cursor" id="term-cursor"></span>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-panel" id="results">
+      <div class="section-label">Results</div>
+      <div class="stats-row" id="stats-row"></div>
+
+      <div class="tab-bar" id="tab-bar">
+        <button class="tab-btn active" data-tab="overview">Network</button>
+        <button class="tab-btn" data-tab="hierarchy">Hierarchy</button>
+        <button class="tab-btn" data-tab="temporal">Temporal</button>
+        <button class="tab-btn" data-tab="clusters">Clusters</button>
+        <button class="tab-btn" data-tab="keywords">Keywords</button>
+        <button class="tab-btn" data-tab="whatif">What-if</button>
+        <button class="tab-btn" data-tab="quality">Quality</button>
+        <button class="tab-btn" data-tab="downloads">Download</button>
+      </div>
+
+      <div class="tab-content active" id="tab-overview">
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">
+          <button class="net-chip active" id="btn-cluster-net" onclick="switchNetMode('cluster')">Cluster Network</button>
+          <button class="net-chip" id="btn-term-net" onclick="switchNetMode('term')">Term Co-occurrence</button>
+        </div>
+        <div id="network-container" style="width:100%;height:520px;background:var(--white);border:1px solid var(--fog);border-radius:var(--radius);overflow:hidden;position:relative;">
+          <div class="viz-placeholder" id="viz-placeholder">
+            Network visualization will appear here after analysis completes.
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-hierarchy">
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">
+          <button class="net-chip active" id="btn-treemap" onclick="loadHierarchy('treemap')">Treemap</button>
+          <button class="net-chip" id="btn-sunburst" onclick="loadHierarchy('sunburst')">Sunburst</button>
+        </div>
+        <div id="hierarchy-chart" style="width:100%;height:650px;"></div>
+      </div>
+
+      <div class="tab-content" id="tab-temporal">
+        <div id="temporal-activity" style="width:100%;height:350px;"></div>
+        <div id="temporal-growth" style="width:100%;height:400px;margin-top:1rem;"></div>
+        <div id="temporal-emerging" style="margin-top:1rem;"></div>
+      </div>
+
+      <div class="tab-content" id="tab-clusters">
+        <table class="data-table" id="cluster-table">
+          <thead><tr><th>Cluster</th><th>Size</th><th class="num">% of total</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-keywords">
+        <div style="margin-bottom:1rem;">
+          <button class="net-chip" onclick="loadMergeCandidates()">Label Cleansing</button>
+          <span id="merge-status" style="font-size:0.8rem;color:var(--silver);margin-left:0.5rem;"></span>
+        </div>
+        <div id="merge-panel" style="display:none;background:var(--paper);border:1px solid var(--fog);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+          <div style="font-weight:600;margin-bottom:0.5rem;">Suggested Label Merges</div>
+          <div id="merge-list" style="max-height:300px;overflow-y:auto;"></div>
+          <div style="margin-top:0.8rem;">
+            <button class="btn-analyze" onclick="applyMerges()" style="width:auto;padding:0.4rem 1rem;">Apply Selected</button>
+            <button class="net-chip" onclick="document.getElementById('merge-panel').style.display='none'">Close</button>
+          </div>
+        </div>
+        <table class="data-table" id="keyword-table">
+          <thead><tr><th>Cluster</th><th>Top Keywords</th><th class="num">Score</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- What-if Tab -->
+      <div class="tab-content" id="tab-whatif">
+        <div class="section-label">Gamma What-if Analysis</div>
+        <p style="color:var(--silver);font-size:0.85rem;margin-bottom:1rem;">
+          Adjust gamma to explore how resolution affects clustering without re-running the full pipeline.
+        </p>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <label style="font-weight:600;min-width:80px;">Gamma:</label>
+          <input type="range" id="whatif-gamma" min="-6" max="0" step="0.1" value="-3"
+                 style="flex:1;" oninput="updateGammaLabel()">
+          <span id="whatif-gamma-label" style="font-family:var(--font-mono);min-width:80px;">1.00e-03</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <label style="font-weight:600;min-width:80px;">Min size:</label>
+          <input type="number" id="whatif-minsize" value="10" min="1" max="1000"
+                 style="width:80px;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+          <button class="net-chip active" onclick="runWhatIf()">Run</button>
+        </div>
+        <div id="whatif-result" style="margin-top:1rem;"></div>
+        <div id="whatif-history" style="margin-top:1.5rem;">
+          <div class="section-label">History</div>
+          <table class="cl-table" id="whatif-table">
+            <thead><tr><th>Gamma</th><th>Clusters</th><th>Max %</th><th>Top-3 sizes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quality Tab -->
+      <div class="tab-content" id="tab-quality">
+        <div class="section-label">Quality Report</div>
+        <div id="quality-content" style="color:var(--silver);">Click "Load" to compute quality metrics.</div>
+        <button class="net-chip active" onclick="loadQuality()" style="margin-top:0.5rem;">Load Quality Report</button>
+        <div style="margin-top:1.5rem;">
+          <div class="section-label">Export Network</div>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="net-chip" onclick="exportNetwork('gexf')">Export GEXF (Gephi)</button>
+            <button class="net-chip" onclick="exportNetwork('graphml')">Export GraphML (Cytoscape)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-downloads">
+        <div class="section-label">Analysis Results</div>
+        <div class="dl-grid" id="dl-grid"></div>
+        <div class="section-label" style="margin-top:1.5rem;">Export</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="net-chip" onclick="exportAllJSON()">Export All (JSON)</button>
+          <button class="net-chip" onclick="copyShareLink()">Copy Share Link</button>
+        </div>
+        <div id="export-status" style="font-size:0.8rem;color:var(--silver);margin-top:0.5rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="side-col">
+    <div class="history-title">Settings</div>
+    <div style="margin-bottom:1.2rem;font-size:0.82rem;">
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Combine strategy</label>
+        <select id="cfg-strategy" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;font-size:0.82rem;">
+          <option value="consensus" selected>Consensus (recommended)</option>
+          <option value="sum">Sum</option>
+          <option value="max">Max</option>
+          <option value="vote">Vote</option>
+        </select>
+      </div>
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Top-k per node</label>
+        <input type="number" id="cfg-topk" value="30" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+      </div>
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Auto-gamma target (%)</label>
+        <input type="number" id="cfg-gamma-target" value="3.0" step="0.5" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+      </div>
+      <div class="field-group" style="margin-bottom:0.5rem;">
+        <label>Hierarchy levels</label>
+        <input type="number" id="cfg-levels" value="4" min="1" max="5" style="width:100%;padding:0.3rem;border:1px solid var(--fog);border-radius:4px;">
+      </div>
+    </div>
+
+    <div class="history-title">Analysis History</div>
+    <ul class="job-list" id="job-list">
+      <li class="empty-state">
+        <div class="empty-icon">&#9878;</div>
+        No analyses yet.<br>Submit a query to begin.
+      </li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+/* ── STATE ─────────────────────────────────────────────── */
+let currentJobId = null;
+let evtSource = null;
+
+/* ── SUBMIT ────────────────────────────────────────────── */
+async function submitQuery() {
+  const btn = document.getElementById('btn-go');
+  const term = document.getElementById('terminal');
+  const lines = document.getElementById('term-lines');
+  const results = document.getElementById('results');
+
+  const query = document.getElementById('q-search').value.trim();
+  if (!query) { document.getElementById('q-search').focus(); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  btn.classList.add('running');
+  term.classList.add('active');
+  lines.innerHTML = '';
+  results.classList.remove('active');
+  document.getElementById('hint').textContent = '';
+
+  const body = {
+    query,
+    years: document.getElementById('q-years').value || null,
+    max_works: parseInt(document.getElementById('q-max').value) || 5000,
+    email: document.getElementById('q-email').value || null,
+    edge_types: document.getElementById('q-edges').value || 'dc,bc,cc',
+    run_landscape: true,
+    combine_strategy: document.getElementById('cfg-strategy')?.value || 'consensus',
+    combine_top_k: parseInt(document.getElementById('cfg-topk')?.value) || 30,
+    auto_gamma: true,
+    auto_gamma_target: parseFloat(document.getElementById('cfg-gamma-target')?.value) || 3.0,
+    n_levels: parseInt(document.getElementById('cfg-levels')?.value) || 4,
+  };
+
+  try {
+    const r = await fetch('/api/query', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    currentJobId = data.job_id;
+    addLine('Job ' + data.job_id + ' submitted');
+    streamProgress(data.job_id);
+    refreshHistory();
+  } catch (e) {
+    addLine('Submit failed: ' + e.message, 'err');
+    resetBtn();
+  }
+}
+
+/* ── PROGRESS STREAMING ────────────────────────────────── */
+function streamProgress(jobId) {
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource('/api/jobs/' + jobId + '/stream');
+
+  evtSource.onmessage = function(ev) {
+    const d = JSON.parse(ev.data);
+    if (d.message) addLine(d.message);
+    if (d.status === 'done') {
+      evtSource.close();
+      addLine('Pipeline complete.', 'ok');
+      document.getElementById('term-cursor').style.display = 'none';
+      showResults(d.result);
+      resetBtn();
+      refreshHistory();
+    }
+    if (d.status === 'error') {
+      evtSource.close();
+      addLine('Pipeline failed.', 'err');
+      document.getElementById('term-cursor').style.display = 'none';
+      resetBtn();
+      refreshHistory();
+    }
+  };
+  evtSource.onerror = function() { evtSource.close(); resetBtn(); };
+}
+
+function addLine(text, cls) {
+  const el = document.createElement('div');
+  el.className = 'line' + (cls ? ' ' + cls : '');
+  el.textContent = text;
+  const container = document.getElementById('term-lines');
+  container.appendChild(el);
+  const term = document.getElementById('terminal');
+  term.scrollTop = term.scrollHeight;
+}
+
+function resetBtn() {
+  const btn = document.getElementById('btn-go');
+  btn.disabled = false;
+  btn.textContent = 'Analyze';
+  btn.classList.remove('running');
+}
+
+/* ── RESULTS ───────────────────────────────────────────── */
+function showResults(result) {
+  if (!result) return;
+  const panel = document.getElementById('results');
+  panel.classList.add('active');
+
+  // Stats
+  const row = document.getElementById('stats-row');
+  let html = '';
+  if (result.n_works) html += pill(result.n_works + ' works', true);
+  if (result.n_edges) {
+    for (const [k, v] of Object.entries(result.n_edges)) {
+      html += pill(k.toUpperCase() + ': ' + v + ' edges');
+    }
+  }
+  row.innerHTML = html;
+
+  // Downloads
+  const grid = document.getElementById('dl-grid');
+  grid.innerHTML = '';
+  if (result.abstracts_path)
+    grid.innerHTML += dlCard('abstracts.parquet', 'Paper metadata', 'ABS', currentJobId);
+  if (result.edges_path)
+    grid.innerHTML += dlCard('edges.parquet', 'Citation edges', 'EDG', currentJobId);
+
+  // Load all tabs
+  loadNetwork(currentJobId);
+  loadHierarchy('treemap');
+  loadTemporal();
+  loadClusterTable();
+  loadKeywordTable();
+  updateDownloads(result);
+
+  // Tabs: activate overview
+  switchTab('overview');
+}
+
+function pill(text, accent) {
+  return '<span class="stat-pill' + (accent ? ' accent' : '') + '">' + esc(text) + '</span>';
+}
+
+function dlCard(filename, desc, icon, jobId) {
+  return '<a class="dl-card" href="/api/jobs/' + jobId + '/download/' + filename + '">' +
+    '<div class="dl-icon">' + icon + '</div>' +
+    '<div class="dl-info"><div class="dl-name">' + esc(filename) + '</div>' +
+    '<div class="dl-desc">' + esc(desc) + '</div></div></a>';
+}
+
+/* ── TABS ──────────────────────────────────────────────── */
+document.getElementById('tab-bar').addEventListener('click', function(e) {
+  if (e.target.classList.contains('tab-btn')) switchTab(e.target.dataset.tab);
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+}
+
+/* ── JOB HISTORY ───────────────────────────────────────── */
+async function refreshHistory() {
+  try {
+    const r = await fetch('/api/jobs');
+    const jobs = await r.json();
+    const list = document.getElementById('job-list');
+    if (!jobs.length) {
+      list.innerHTML = '<li class="empty-state"><div class="empty-icon">&#9878;</div>No analyses yet.</li>';
+      return;
+    }
+    list.innerHTML = jobs.map(j =>
+      '<li class="job-item' + (j.job_id === currentJobId ? ' active' : '') + '" onclick="loadJob(\'' + j.job_id + '\')">' +
+      '<div class="job-query"><span class="job-status ' + j.status + '"></span>' + esc(j.query || '(untitled)') + '</div>' +
+      '<div class="job-meta"><span>' + j.job_id + '</span><span>' + j.status + '</span></div></li>'
+    ).join('');
+  } catch (e) { /* ignore */ }
+}
+
+async function loadJob(jobId) {
+  try {
+    const r = await fetch('/api/jobs/' + jobId);
+    const job = await r.json();
+    currentJobId = jobId;
+
+    // Show progress
+    const term = document.getElementById('terminal');
+    const lines = document.getElementById('term-lines');
+    term.classList.add('active');
+    lines.innerHTML = '';
+    (job.progress || []).forEach(m => addLine(m, job.status === 'error' && m.startsWith('ERROR') ? 'err' : ''));
+    if (job.status === 'done') {
+      addLine('Pipeline complete.', 'ok');
+      document.getElementById('term-cursor').style.display = 'none';
+      showResults(job.result);
+    }
+    refreshHistory();
+  } catch (e) { /* ignore */ }
+}
+
+/* ── UTILS ─────────────────────────────────────────────── */
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* ── NETWORK VIZ ───────────────────────────────────────── */
+let networkViz = null;
+let termNetViz = null;
+let currentNetMode = 'cluster';
+
+async function loadNetwork(jobId) {
+  if (!window.ClusterNetwork) return;
+  document.getElementById('viz-placeholder').style.display = 'none';
+  networkViz = new ClusterNetwork('network-container');
+  await networkViz.load(jobId);
+}
+
+async function switchNetMode(mode) {
+  currentNetMode = mode;
+  document.getElementById('btn-cluster-net').classList.toggle('active', mode === 'cluster');
+  document.getElementById('btn-term-net').classList.toggle('active', mode === 'term');
+  if (mode === 'cluster' && currentJobId) {
+    loadNetwork(currentJobId);
+  } else if (mode === 'term' && currentJobId) {
+    loadTermNetwork(currentJobId);
+  }
+}
+
+async function loadTermNetwork(jobId) {
+  if (!window.TermCooccurrenceNetwork) return;
+  document.getElementById('viz-placeholder').style.display = 'none';
+  termNetViz = new TermCooccurrenceNetwork('network-container');
+  await termNetViz.load(jobId);
+}
+
+/* ── CLUSTER TABLE ──────────────────────────────────────── */
+async function loadClusterTable() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/labels?strategy=tfidf_distinct&top_k=3`);
+    const data = await r.json();
+    const tbody = document.querySelector('#cluster-table tbody');
+    if (data.labels) {
+      const entries = Object.entries(data.labels).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+      tbody.innerHTML = entries.map(([cid, label]) =>
+        `<tr><td>C${cid}</td><td>${esc(label)}</td><td class="num">—</td></tr>`
+      ).join('');
+    }
+  } catch(e) {}
+}
+
+/* ── KEYWORD TABLE ─────────────────────────────────────── */
+async function loadKeywordTable() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/labels?strategy=tfidf_distinct&top_k=5`);
+    const data = await r.json();
+    const tbody = document.querySelector('#keyword-table tbody');
+    if (data.labels) {
+      const entries = Object.entries(data.labels).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+      tbody.innerHTML = entries.map(([cid, label]) => {
+        const kws = label.split(', ').map(k => `<span class="stat-pill" style="font-size:0.72rem;">${esc(k)}</span>`).join(' ');
+        return `<tr><td>C${cid}</td><td>${kws}</td><td class="num">—</td></tr>`;
+      }).join('');
+    }
+  } catch(e) {}
+}
+
+/* ── DOWNLOADS UPDATE ──────────────────────────────────── */
+function updateDownloads(result) {
+  const grid = document.getElementById('dl-grid');
+  grid.innerHTML = '';
+  const files = [
+    ['abstracts.parquet', 'Paper metadata', 'ABS'],
+    ['edges.parquet', 'Citation edges', 'EDG'],
+    ['edges_dc.parquet', 'Direct citation', 'DC'],
+    ['edges_bc.parquet', 'Bibliographic coupling', 'BC'],
+    ['edges_cc.parquet', 'Co-citation', 'CC'],
+  ];
+  for (const [fname, desc, icon] of files) {
+    grid.innerHTML += dlCard(fname, desc, icon, currentJobId);
+  }
+  if (result.landscape_dir) {
+    grid.innerHTML += dlCard('landscape/membership.parquet', 'Cluster membership', 'MEM', currentJobId);
+    grid.innerHTML += dlCard('landscape/keywords.parquet', 'Keywords', 'KW', currentJobId);
+  }
+}
+
+/* ── EXPORT ─────────────────────────────────────────────── */
+async function exportAllJSON() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}`);
+    const job = await r.json();
+    const blob = new Blob([JSON.stringify(job, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `sciscape_${currentJobId}.json`;
+    a.click();
+    document.getElementById('export-status').textContent = 'Exported!';
+  } catch(e) {
+    document.getElementById('export-status').textContent = 'Error: ' + e.message;
+  }
+}
+
+function copyShareLink() {
+  if (!currentJobId) return;
+  const url = `${window.location.origin}/?job=${currentJobId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    document.getElementById('export-status').textContent = 'Link copied!';
+  });
+}
+
+/* ── TEMPORAL TRACKING ──────────────────────────────────── */
+async function loadTemporal() {
+  if (!currentJobId) return;
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/temporal-tracking?window=5&step=1`);
+    const data = await r.json();
+    if (data.error) return;
+    if (data.figures?.activity) Plotly.newPlot('temporal-activity', data.figures.activity.data, data.figures.activity.layout);
+    if (data.figures?.growth_curves) Plotly.newPlot('temporal-growth', data.figures.growth_curves.data, data.figures.growth_curves.layout);
+    if (data.emerging?.length) {
+      document.getElementById('temporal-emerging').innerHTML =
+        '<div class="section-label">Emerging Clusters</div>' +
+        data.emerging.map(e =>
+          `<span class="stat-pill">C${e.cluster}: ${e.growth_rate}x growth (${e.first_count}→${e.last_count})</span>`
+        ).join(' ');
+    }
+  } catch(e) {}
+}
+
+/* ── HIERARCHY VIZ ─────────────────────────────────────── */
+async function loadHierarchy(mode) {
+  if (!currentJobId) return;
+  document.getElementById('btn-treemap').classList.toggle('active', mode === 'treemap');
+  document.getElementById('btn-sunburst').classList.toggle('active', mode === 'sunburst');
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/treemap?mode=${mode}`);
+    const fig = await r.json();
+    if (fig.error) { document.getElementById('hierarchy-chart').textContent = fig.error; return; }
+    Plotly.newPlot('hierarchy-chart', fig.data, fig.layout);
+  } catch(e) {
+    document.getElementById('hierarchy-chart').textContent = 'Error: ' + e.message;
+  }
+}
+
+/* ── LABEL MERGE UI ────────────────────────────────────── */
+let mergeCandidates = [];
+
+async function loadMergeCandidates() {
+  if (!currentJobId) return;
+  const status = document.getElementById('merge-status');
+  status.textContent = 'Loading...';
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/label-merges/nano?min_sim=0.4`);
+    const data = await r.json();
+    if (data.error) { status.textContent = data.error; return; }
+    mergeCandidates = data.candidates || [];
+    const panel = document.getElementById('merge-panel');
+    const list = document.getElementById('merge-list');
+    panel.style.display = 'block';
+    status.textContent = `${mergeCandidates.length} candidates`;
+
+    if (!mergeCandidates.length) {
+      list.innerHTML = '<div style="color:var(--silver);">No similar labels found.</div>';
+      return;
+    }
+
+    list.innerHTML = mergeCandidates.map((c, i) =>
+      `<label style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;border-bottom:1px solid var(--paper);cursor:pointer;">
+        <input type="checkbox" checked data-idx="${i}" class="merge-cb">
+        <span style="flex:1;">
+          <span style="color:var(--coral);text-decoration:line-through;">${esc(c.source)}</span>
+          <span style="color:var(--silver);margin:0 0.3rem;">→</span>
+          <span style="color:var(--teal);font-weight:500;">${esc(c.target)}</span>
+        </span>
+        <span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--silver);">${c.similarity}</span>
+        <span style="font-size:0.72rem;color:var(--silver);">${c.source_papers}→${c.target_papers}</span>
+      </label>`
+    ).join('');
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function applyMerges() {
+  if (!currentJobId || !mergeCandidates.length) return;
+  const cbs = document.querySelectorAll('.merge-cb:checked');
+  const mergeMap = {};
+  cbs.forEach(cb => {
+    const c = mergeCandidates[parseInt(cb.dataset.idx)];
+    mergeMap[c.source] = c.target;
+  });
+  if (!Object.keys(mergeMap).length) return;
+
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/label-merges/apply`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({merge_map: mergeMap, level: 'nano'}),
+    });
+    const data = await r.json();
+    document.getElementById('merge-status').textContent = `Applied ${Object.keys(mergeMap).length} merges`;
+    document.getElementById('merge-panel').style.display = 'none';
+  } catch(e) {
+    document.getElementById('merge-status').textContent = 'Error: ' + e.message;
+  }
+}
+
+/* ── WHAT-IF GAMMA ─────────────────────────────────────── */
+let whatifHistory = [];
+
+function updateGammaLabel() {
+  const logVal = parseFloat(document.getElementById('whatif-gamma').value);
+  const gamma = Math.pow(10, logVal);
+  document.getElementById('whatif-gamma-label').textContent = gamma.toExponential(2);
+}
+
+async function runWhatIf() {
+  if (!window._currentJobId) return;
+  const logVal = parseFloat(document.getElementById('whatif-gamma').value);
+  const gamma = Math.pow(10, logVal);
+  const minSize = parseInt(document.getElementById('whatif-minsize').value) || 10;
+  const el = document.getElementById('whatif-result');
+  el.innerHTML = '<span style="color:var(--amber);">Running...</span>';
+
+  try {
+    const r = await fetch(`/api/jobs/${window._currentJobId}/what-if?gamma=${gamma}&min_size=${minSize}`, {method:'POST'});
+    const d = await r.json();
+    if (d.error) { el.innerHTML = `<span style="color:var(--coral);">${d.error}</span>`; return; }
+    el.innerHTML = `
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+        <div class="stat-pill">${d.n_clusters} clusters</div>
+        <div class="stat-pill">max ${d.max_pct}%</div>
+        <div class="stat-pill">${d.n_nodes.toLocaleString()} nodes</div>
+      </div>
+      <div style="margin-top:0.5rem;font-size:0.85rem;color:var(--silver);">
+        Top sizes: ${d.top10.join(', ')}
+      </div>`;
+    whatifHistory.unshift(d);
+    renderWhatifTable();
+  } catch(e) { el.innerHTML = `<span style="color:var(--coral);">${e.message}</span>`; }
+}
+
+function renderWhatifTable() {
+  const tbody = document.querySelector('#whatif-table tbody');
+  tbody.innerHTML = whatifHistory.slice(0, 20).map(d => `
+    <tr>
+      <td style="font-family:var(--font-mono);">${d.gamma.toExponential(2)}</td>
+      <td>${d.n_clusters}</td>
+      <td>${d.max_pct}%</td>
+      <td>${d.top10.slice(0,3).join(', ')}</td>
+    </tr>`).join('');
+}
+
+/* ── QUALITY REPORT ───────────────────────────────────── */
+async function loadQuality() {
+  if (!window._currentJobId) return;
+  const el = document.getElementById('quality-content');
+  el.innerHTML = '<span style="color:var(--amber);">Loading...</span>';
+  try {
+    const r = await fetch(`/api/jobs/${window._currentJobId}/quality`);
+    const d = await r.json();
+    if (d.error) { el.innerHTML = `<span style="color:var(--coral);">${d.error}</span>`; return; }
+    let html = `
+      <table class="cl-table">
+        <tr><td style="font-weight:600;">Nodes</td><td>${d.n_nodes.toLocaleString()}</td></tr>
+        <tr><td style="font-weight:600;">Edges</td><td>${d.n_edges.toLocaleString()}</td></tr>
+        <tr><td style="font-weight:600;">Clusters</td><td>${d.n_clusters}</td></tr>
+        <tr><td style="font-weight:600;">Max cluster</td><td>${d.max_pct}%</td></tr>
+        <tr><td style="font-weight:600;">Singletons</td><td>${d.singleton_pct}%</td></tr>
+        <tr><td style="font-weight:600;">Top-5 sizes</td><td>${d.top5.join(', ')}</td></tr>
+      </table>`;
+    if (d.consensus_edges && Object.keys(d.consensus_edges).length > 0) {
+      html += '<div class="section-label" style="margin-top:1rem;">Consensus Edge Distribution</div>';
+      html += '<table class="cl-table"><thead><tr><th>Layers</th><th>% of edges</th></tr></thead><tbody>';
+      for (const [nl, pct] of Object.entries(d.consensus_edges).sort((a,b) => a[0]-b[0])) {
+        html += `<tr><td>${nl}-layer</td><td>${pct}%</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<span style="color:var(--coral);">${e.message}</span>`; }
+}
+
+async function exportNetwork(fmt) {
+  if (!window._currentJobId) return;
+  window.open(`/api/jobs/${window._currentJobId}/export/${fmt}`, '_blank');
+}
+
+/* ── INIT ──────────────────────────────────────────────── */
+refreshHistory();
+
+/* Enter key submits */
+document.getElementById('q-search').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitQuery();
+});
+</script>
+<script src="/static/network.js"></script>
+</body>
+</html>

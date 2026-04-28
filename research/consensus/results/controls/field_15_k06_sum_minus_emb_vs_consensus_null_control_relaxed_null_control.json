@@ -1,0 +1,1240 @@
+{
+  "field": "field_15_k06_sum_minus_emb_vs_consensus_null_control_relaxed",
+  "edge_dir": "data/linktype_edges_gcc/field_15",
+  "abstract_path": "data/openalex_metadata/field_15/works_text.parquet",
+  "method_a": "sum",
+  "method_b": "consensus",
+  "label_a": "sum_minus_emb",
+  "label_b": "consensus_all",
+  "layers_a": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional"
+  ],
+  "layers_b": [
+    "bc_cosine",
+    "cc_cosine",
+    "dc_fractional",
+    "emb_knn"
+  ],
+  "target_pct": 3.0,
+  "top_k": 6,
+  "min_size": 10,
+  "n_seeds": 5,
+  "n_cases": 12,
+  "n_neighbors": 8,
+  "min_rank_jaccard": 0.6,
+  "min_shift_score": 0.05,
+  "max_shift_score": 0.8,
+  "allow_cluster_change": false,
+  "sample_only": false,
+  "method_a_run": {
+    "n_edges": 866866,
+    "gamma": 8.441308158271217e-07,
+    "n_clusters": 2932,
+    "max_pct": 1.38
+  },
+  "method_b_run": {
+    "n_edges": 1344540,
+    "gamma": 0.0002846448567410888,
+    "n_clusters": 2583,
+    "max_pct": 2.71
+  },
+  "n_eligible_nodes": 38145,
+  "n_candidate_cases": 3,
+  "selected_cases": [
+    {
+      "target_uid": "W2897508566",
+      "target_title": "Solvent and Substituent Effects on the Phosphine + CO2 Reaction",
+      "target_year": null,
+      "method_a_cluster_id": 6,
+      "method_b_cluster_id": 6,
+      "method_a_cluster_size": 86,
+      "method_b_cluster_size": 22,
+      "rank_jaccard": 0.7778,
+      "overlap_size": 7,
+      "mean_abs_rank_shift": 0.5714,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.2936,
+      "neighbors_a": [
+        {
+          "uid": "W3192050128",
+          "rank": 1,
+          "weight": 1.471654,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4309048040",
+          "rank": 2,
+          "weight": 1.084137,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2591336004",
+          "rank": 3,
+          "weight": 1.028503,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3214591103",
+          "rank": 4,
+          "weight": 1.003716,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3045337548",
+          "rank": 5,
+          "weight": 0.894368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3196981483",
+          "rank": 6,
+          "weight": 0.885194,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2272274264",
+          "rank": 7,
+          "weight": 0.489194,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4319925446",
+          "rank": 8,
+          "weight": 0.096955,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3192050128",
+          "rank": 1,
+          "weight": 5.058295,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4309048040",
+          "rank": 2,
+          "weight": 1.242114,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2591336004",
+          "rank": 3,
+          "weight": 1.178373,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3214591103",
+          "rank": 4,
+          "weight": 1.149974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2272274264",
+          "rank": 5,
+          "weight": 1.120956,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3045337548",
+          "rank": 6,
+          "weight": 1.024692,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3196981483",
+          "rank": 7,
+          "weight": 1.014182,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3192118715",
+          "rank": 8,
+          "weight": 0.527544,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2272274264",
+          "rank_a": 7,
+          "rank_b": 5,
+          "delta": -2,
+          "weight_a": 0.489194,
+          "weight_b": 1.120956
+        },
+        {
+          "uid": "W2591336004",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.028503,
+          "weight_b": 1.178373
+        },
+        {
+          "uid": "W3045337548",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.894368,
+          "weight_b": 1.024692
+        },
+        {
+          "uid": "W3192050128",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.471654,
+          "weight_b": 5.058295
+        },
+        {
+          "uid": "W3196981483",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.885194,
+          "weight_b": 1.014182
+        },
+        {
+          "uid": "W3214591103",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 1.003716,
+          "weight_b": 1.149974
+        },
+        {
+          "uid": "W4309048040",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.084137,
+          "weight_b": 1.242114
+        }
+      ],
+      "neighbors_only_a": [
+        {
+          "uid": "W4319925446",
+          "rank": 8,
+          "weight": 0.096955,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_only_b": [
+        {
+          "uid": "W3192118715",
+          "rank": 8,
+          "weight": 0.527544,
+          "same_cluster": false
+        }
+      ]
+    },
+    {
+      "target_uid": "W4214704737",
+      "target_title": "Amorphous Boron Carbide on Titanium Dioxide Nanobelt Arrays for High‐Efficiency Electrocatalytic NO Reduction to NH<sub>3</sub>",
+      "target_year": null,
+      "method_a_cluster_id": 555,
+      "method_b_cluster_id": 555,
+      "method_a_cluster_size": 38,
+      "method_b_cluster_size": 17,
+      "rank_jaccard": 0.7778,
+      "overlap_size": 7,
+      "mean_abs_rank_shift": 1.1429,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.3651,
+      "neighbors_a": [
+        {
+          "uid": "W4214574417",
+          "rank": 1,
+          "weight": 1.060843,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4210872772",
+          "rank": 2,
+          "weight": 0.856028,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213415641",
+          "rank": 3,
+          "weight": 0.827442,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4214648408",
+          "rank": 4,
+          "weight": 0.762816,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280490490",
+          "rank": 5,
+          "weight": 0.731743,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4226136156",
+          "rank": 6,
+          "weight": 0.579452,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4311923520",
+          "rank": 7,
+          "weight": 0.556526,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3010719489",
+          "rank": 8,
+          "weight": 0.55155,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4214574417",
+          "rank": 1,
+          "weight": 5.334828,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280490490",
+          "rank": 2,
+          "weight": 2.515112,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4210872772",
+          "rank": 3,
+          "weight": 1.961532,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213415641",
+          "rank": 4,
+          "weight": 1.896029,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4214648408",
+          "rank": 5,
+          "weight": 1.747942,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4328049162",
+          "rank": 6,
+          "weight": 0.908046,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4226136156",
+          "rank": 7,
+          "weight": 0.663888,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4311923520",
+          "rank": 8,
+          "weight": 0.637622,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W4210872772",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.856028,
+          "weight_b": 1.961532
+        },
+        {
+          "uid": "W4213415641",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.827442,
+          "weight_b": 1.896029
+        },
+        {
+          "uid": "W4214574417",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.060843,
+          "weight_b": 5.334828
+        },
+        {
+          "uid": "W4214648408",
+          "rank_a": 4,
+          "rank_b": 5,
+          "delta": 1,
+          "weight_a": 0.762816,
+          "weight_b": 1.747942
+        },
+        {
+          "uid": "W4226136156",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.579452,
+          "weight_b": 0.663888
+        },
+        {
+          "uid": "W4280490490",
+          "rank_a": 5,
+          "rank_b": 2,
+          "delta": -3,
+          "weight_a": 0.731743,
+          "weight_b": 2.515112
+        },
+        {
+          "uid": "W4311923520",
+          "rank_a": 7,
+          "rank_b": 8,
+          "delta": 1,
+          "weight_a": 0.556526,
+          "weight_b": 0.637622
+        }
+      ],
+      "neighbors_only_a": [
+        {
+          "uid": "W3010719489",
+          "rank": 8,
+          "weight": 0.55155,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_only_b": [
+        {
+          "uid": "W4328049162",
+          "rank": 6,
+          "weight": 0.908046,
+          "same_cluster": false
+        }
+      ]
+    },
+    {
+      "target_uid": "W3126680881",
+      "target_title": "Ionic Liquid-Induced Phase-Separated Domains in Lipid Multilayers Probed by X-ray Scattering Studies",
+      "target_year": null,
+      "method_a_cluster_id": 922,
+      "method_b_cluster_id": 922,
+      "method_a_cluster_size": 1151,
+      "method_b_cluster_size": 159,
+      "rank_jaccard": 0.7778,
+      "overlap_size": 7,
+      "mean_abs_rank_shift": 2.1429,
+      "max_abs_rank_shift": 4,
+      "cluster_changed": false,
+      "shift_score": 0.4901,
+      "neighbors_a": [
+        {
+          "uid": "W2997860313",
+          "rank": 1,
+          "weight": 0.940251,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3184160182",
+          "rank": 2,
+          "weight": 0.887944,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2767642911",
+          "rank": 3,
+          "weight": 0.572206,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2900383612",
+          "rank": 4,
+          "weight": 0.539481,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2806859959",
+          "rank": 5,
+          "weight": 0.475778,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2948711534",
+          "rank": 6,
+          "weight": 0.451362,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2955793470",
+          "rank": 7,
+          "weight": 0.395871,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3096131222",
+          "rank": 8,
+          "weight": 0.138836,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2997860313",
+          "rank": 1,
+          "weight": 6.395578,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2948711534",
+          "rank": 2,
+          "weight": 2.083389,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3184160182",
+          "rank": 3,
+          "weight": 2.034665,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3096131222",
+          "rank": 4,
+          "weight": 1.369584,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2767642911",
+          "rank": 5,
+          "weight": 0.655586,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2900383612",
+          "rank": 6,
+          "weight": 0.618093,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2806859959",
+          "rank": 7,
+          "weight": 0.545106,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3096215405",
+          "rank": 8,
+          "weight": 0.524025,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2767642911",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.572206,
+          "weight_b": 0.655586
+        },
+        {
+          "uid": "W2806859959",
+          "rank_a": 5,
+          "rank_b": 7,
+          "delta": 2,
+          "weight_a": 0.475778,
+          "weight_b": 0.545106
+        },
+        {
+          "uid": "W2900383612",
+          "rank_a": 4,
+          "rank_b": 6,
+          "delta": 2,
+          "weight_a": 0.539481,
+          "weight_b": 0.618093
+        },
+        {
+          "uid": "W2948711534",
+          "rank_a": 6,
+          "rank_b": 2,
+          "delta": -4,
+          "weight_a": 0.451362,
+          "weight_b": 2.083389
+        },
+        {
+          "uid": "W2997860313",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.940251,
+          "weight_b": 6.395578
+        },
+        {
+          "uid": "W3096131222",
+          "rank_a": 8,
+          "rank_b": 4,
+          "delta": -4,
+          "weight_a": 0.138836,
+          "weight_b": 1.369584
+        },
+        {
+          "uid": "W3184160182",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.887944,
+          "weight_b": 2.034665
+        }
+      ],
+      "neighbors_only_a": [
+        {
+          "uid": "W2955793470",
+          "rank": 7,
+          "weight": 0.395871,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_only_b": [
+        {
+          "uid": "W3096215405",
+          "rank": 8,
+          "weight": 0.524025,
+          "same_cluster": false
+        }
+      ]
+    }
+  ],
+  "reviewed_cases": [
+    {
+      "target_uid": "W2897508566",
+      "target_title": "Solvent and Substituent Effects on the Phosphine + CO2 Reaction",
+      "target_year": null,
+      "method_a_cluster_id": 6,
+      "method_b_cluster_id": 6,
+      "method_a_cluster_size": 86,
+      "method_b_cluster_size": 22,
+      "rank_jaccard": 0.7778,
+      "overlap_size": 7,
+      "mean_abs_rank_shift": 0.5714,
+      "max_abs_rank_shift": 2,
+      "cluster_changed": false,
+      "shift_score": 0.2936,
+      "neighbors_a": [
+        {
+          "uid": "W3192050128",
+          "rank": 1,
+          "weight": 1.471654,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4309048040",
+          "rank": 2,
+          "weight": 1.084137,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2591336004",
+          "rank": 3,
+          "weight": 1.028503,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3214591103",
+          "rank": 4,
+          "weight": 1.003716,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3045337548",
+          "rank": 5,
+          "weight": 0.894368,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3196981483",
+          "rank": 6,
+          "weight": 0.885194,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2272274264",
+          "rank": 7,
+          "weight": 0.489194,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4319925446",
+          "rank": 8,
+          "weight": 0.096955,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W3192050128",
+          "rank": 1,
+          "weight": 5.058295,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4309048040",
+          "rank": 2,
+          "weight": 1.242114,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2591336004",
+          "rank": 3,
+          "weight": 1.178373,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3214591103",
+          "rank": 4,
+          "weight": 1.149974,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2272274264",
+          "rank": 5,
+          "weight": 1.120956,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3045337548",
+          "rank": 6,
+          "weight": 1.024692,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3196981483",
+          "rank": 7,
+          "weight": 1.014182,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3192118715",
+          "rank": 8,
+          "weight": 0.527544,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2272274264",
+          "rank_a": 7,
+          "rank_b": 5,
+          "delta": -2,
+          "weight_a": 0.489194,
+          "weight_b": 1.120956
+        },
+        {
+          "uid": "W2591336004",
+          "rank_a": 3,
+          "rank_b": 3,
+          "delta": 0,
+          "weight_a": 1.028503,
+          "weight_b": 1.178373
+        },
+        {
+          "uid": "W3045337548",
+          "rank_a": 5,
+          "rank_b": 6,
+          "delta": 1,
+          "weight_a": 0.894368,
+          "weight_b": 1.024692
+        },
+        {
+          "uid": "W3192050128",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.471654,
+          "weight_b": 5.058295
+        },
+        {
+          "uid": "W3196981483",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.885194,
+          "weight_b": 1.014182
+        },
+        {
+          "uid": "W3214591103",
+          "rank_a": 4,
+          "rank_b": 4,
+          "delta": 0,
+          "weight_a": 1.003716,
+          "weight_b": 1.149974
+        },
+        {
+          "uid": "W4309048040",
+          "rank_a": 2,
+          "rank_b": 2,
+          "delta": 0,
+          "weight_a": 1.084137,
+          "weight_b": 1.242114
+        }
+      ],
+      "neighbors_only_a": [
+        {
+          "uid": "W4319925446",
+          "rank": 8,
+          "weight": 0.096955,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_only_b": [
+        {
+          "uid": "W3192118715",
+          "rank": 8,
+          "weight": 0.527544,
+          "same_cluster": false
+        }
+      ],
+      "comparison": {
+        "winner": "B",
+        "score_a": 3,
+        "score_b": 4,
+        "reasoning": "Both groups correctly identify the general topic of CO2 activation by Lewis bases. However, Group B provides a better-ranked neighborhood because it places the most relevant paper, \"Reversible Carbon Dioxide Binding by Simple Lewis Base Adducts with Electron-Rich Phosphines,\" at rank 5. This paper is a direct match for the target's specific focus on phosphines and CO2. Group A buries this same crucial paper at rank 7, making its neighborhood slightly less focused on the target's immediate context.",
+        "presented_winner": "B",
+        "presented_score_a": 3,
+        "presented_score_b": 4,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W4214704737",
+      "target_title": "Amorphous Boron Carbide on Titanium Dioxide Nanobelt Arrays for High‐Efficiency Electrocatalytic NO Reduction to NH<sub>3</sub>",
+      "target_year": null,
+      "method_a_cluster_id": 555,
+      "method_b_cluster_id": 555,
+      "method_a_cluster_size": 38,
+      "method_b_cluster_size": 17,
+      "rank_jaccard": 0.7778,
+      "overlap_size": 7,
+      "mean_abs_rank_shift": 1.1429,
+      "max_abs_rank_shift": 3,
+      "cluster_changed": false,
+      "shift_score": 0.3651,
+      "neighbors_a": [
+        {
+          "uid": "W4214574417",
+          "rank": 1,
+          "weight": 1.060843,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4210872772",
+          "rank": 2,
+          "weight": 0.856028,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213415641",
+          "rank": 3,
+          "weight": 0.827442,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4214648408",
+          "rank": 4,
+          "weight": 0.762816,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280490490",
+          "rank": 5,
+          "weight": 0.731743,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4226136156",
+          "rank": 6,
+          "weight": 0.579452,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4311923520",
+          "rank": 7,
+          "weight": 0.556526,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3010719489",
+          "rank": 8,
+          "weight": 0.55155,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W4214574417",
+          "rank": 1,
+          "weight": 5.334828,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4280490490",
+          "rank": 2,
+          "weight": 2.515112,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4210872772",
+          "rank": 3,
+          "weight": 1.961532,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4213415641",
+          "rank": 4,
+          "weight": 1.896029,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4214648408",
+          "rank": 5,
+          "weight": 1.747942,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4328049162",
+          "rank": 6,
+          "weight": 0.908046,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4226136156",
+          "rank": 7,
+          "weight": 0.663888,
+          "same_cluster": false
+        },
+        {
+          "uid": "W4311923520",
+          "rank": 8,
+          "weight": 0.637622,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W4210872772",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.856028,
+          "weight_b": 1.961532
+        },
+        {
+          "uid": "W4213415641",
+          "rank_a": 3,
+          "rank_b": 4,
+          "delta": 1,
+          "weight_a": 0.827442,
+          "weight_b": 1.896029
+        },
+        {
+          "uid": "W4214574417",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 1.060843,
+          "weight_b": 5.334828
+        },
+        {
+          "uid": "W4214648408",
+          "rank_a": 4,
+          "rank_b": 5,
+          "delta": 1,
+          "weight_a": 0.762816,
+          "weight_b": 1.747942
+        },
+        {
+          "uid": "W4226136156",
+          "rank_a": 6,
+          "rank_b": 7,
+          "delta": 1,
+          "weight_a": 0.579452,
+          "weight_b": 0.663888
+        },
+        {
+          "uid": "W4280490490",
+          "rank_a": 5,
+          "rank_b": 2,
+          "delta": -3,
+          "weight_a": 0.731743,
+          "weight_b": 2.515112
+        },
+        {
+          "uid": "W4311923520",
+          "rank_a": 7,
+          "rank_b": 8,
+          "delta": 1,
+          "weight_a": 0.556526,
+          "weight_b": 0.637622
+        }
+      ],
+      "neighbors_only_a": [
+        {
+          "uid": "W3010719489",
+          "rank": 8,
+          "weight": 0.55155,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_only_b": [
+        {
+          "uid": "W4328049162",
+          "rank": 6,
+          "weight": 0.908046,
+          "same_cluster": false
+        }
+      ],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 4,
+        "reasoning": "Group A provides an excellent and perfectly coherent neighborhood, where every paper focuses on the electrocatalytic reduction of nitric oxide (NO) to ammonia (NH3), exactly matching the target paper's topic and method. Group B is also very good but is slightly less focused, as it includes a paper on photoreduction (rank 6), which is a different catalytic methodology. Therefore, Group A better represents the target's immediate research context.",
+        "presented_winner": "A",
+        "presented_score_a": 5,
+        "presented_score_b": 4,
+        "presented_method_a": "sum_minus_emb",
+        "presented_method_b": "consensus_all",
+        "swapped": false
+      }
+    },
+    {
+      "target_uid": "W3126680881",
+      "target_title": "Ionic Liquid-Induced Phase-Separated Domains in Lipid Multilayers Probed by X-ray Scattering Studies",
+      "target_year": null,
+      "method_a_cluster_id": 922,
+      "method_b_cluster_id": 922,
+      "method_a_cluster_size": 1151,
+      "method_b_cluster_size": 159,
+      "rank_jaccard": 0.7778,
+      "overlap_size": 7,
+      "mean_abs_rank_shift": 2.1429,
+      "max_abs_rank_shift": 4,
+      "cluster_changed": false,
+      "shift_score": 0.4901,
+      "neighbors_a": [
+        {
+          "uid": "W2997860313",
+          "rank": 1,
+          "weight": 0.940251,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3184160182",
+          "rank": 2,
+          "weight": 0.887944,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2767642911",
+          "rank": 3,
+          "weight": 0.572206,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2900383612",
+          "rank": 4,
+          "weight": 0.539481,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2806859959",
+          "rank": 5,
+          "weight": 0.475778,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2948711534",
+          "rank": 6,
+          "weight": 0.451362,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2955793470",
+          "rank": 7,
+          "weight": 0.395871,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3096131222",
+          "rank": 8,
+          "weight": 0.138836,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_b": [
+        {
+          "uid": "W2997860313",
+          "rank": 1,
+          "weight": 6.395578,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2948711534",
+          "rank": 2,
+          "weight": 2.083389,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3184160182",
+          "rank": 3,
+          "weight": 2.034665,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3096131222",
+          "rank": 4,
+          "weight": 1.369584,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2767642911",
+          "rank": 5,
+          "weight": 0.655586,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2900383612",
+          "rank": 6,
+          "weight": 0.618093,
+          "same_cluster": false
+        },
+        {
+          "uid": "W2806859959",
+          "rank": 7,
+          "weight": 0.545106,
+          "same_cluster": false
+        },
+        {
+          "uid": "W3096215405",
+          "rank": 8,
+          "weight": 0.524025,
+          "same_cluster": false
+        }
+      ],
+      "shared_neighbors": [
+        {
+          "uid": "W2767642911",
+          "rank_a": 3,
+          "rank_b": 5,
+          "delta": 2,
+          "weight_a": 0.572206,
+          "weight_b": 0.655586
+        },
+        {
+          "uid": "W2806859959",
+          "rank_a": 5,
+          "rank_b": 7,
+          "delta": 2,
+          "weight_a": 0.475778,
+          "weight_b": 0.545106
+        },
+        {
+          "uid": "W2900383612",
+          "rank_a": 4,
+          "rank_b": 6,
+          "delta": 2,
+          "weight_a": 0.539481,
+          "weight_b": 0.618093
+        },
+        {
+          "uid": "W2948711534",
+          "rank_a": 6,
+          "rank_b": 2,
+          "delta": -4,
+          "weight_a": 0.451362,
+          "weight_b": 2.083389
+        },
+        {
+          "uid": "W2997860313",
+          "rank_a": 1,
+          "rank_b": 1,
+          "delta": 0,
+          "weight_a": 0.940251,
+          "weight_b": 6.395578
+        },
+        {
+          "uid": "W3096131222",
+          "rank_a": 8,
+          "rank_b": 4,
+          "delta": -4,
+          "weight_a": 0.138836,
+          "weight_b": 1.369584
+        },
+        {
+          "uid": "W3184160182",
+          "rank_a": 2,
+          "rank_b": 3,
+          "delta": 1,
+          "weight_a": 0.887944,
+          "weight_b": 2.034665
+        }
+      ],
+      "neighbors_only_a": [
+        {
+          "uid": "W2955793470",
+          "rank": 7,
+          "weight": 0.395871,
+          "same_cluster": false
+        }
+      ],
+      "neighbors_only_b": [
+        {
+          "uid": "W3096215405",
+          "rank": 8,
+          "weight": 0.524025,
+          "same_cluster": false
+        }
+      ],
+      "comparison": {
+        "winner": "A",
+        "score_a": 5,
+        "score_b": 4,
+        "reasoning": "Both groups provide a strong set of neighbors focused on the interaction between ionic liquids and lipid membranes. However, Group A includes a paper on the electrical double layer of ionic liquids for capacitors, which is topically distant despite a shared methodology (X-ray scattering). Group B is superior because its neighborhood is more thematically coherent, with all papers directly addressing the biophysical problem of ILs interacting with lipid membranes, making it a more focused and relevant local context.",
+        "presented_winner": "B",
+        "presented_score_a": 4,
+        "presented_score_b": 5,
+        "presented_method_a": "consensus_all",
+        "presented_method_b": "sum_minus_emb",
+        "swapped": true
+      }
+    }
+  ],
+  "summary": {
+    "n_reviewed_cases": 3,
+    "comparison": {
+      "method_a": "sum_minus_emb",
+      "method_b": "consensus_all",
+      "method_a_wins": 2,
+      "method_b_wins": 1,
+      "ties_or_invalid": 0,
+      "method_a_win_rate": 0.6667,
+      "method_b_win_rate": 0.3333,
+      "score_a_mean": 4.3333,
+      "score_b_mean": 4.0,
+      "score_gap_mean": 0.3333
+    },
+    "sample_stats": {
+      "shift_score_mean": 0.3829,
+      "rank_jaccard_mean": 0.7778,
+      "mean_abs_rank_shift_mean": 1.2857,
+      "cluster_changed_rate": 0.0
+    }
+  }
+}
