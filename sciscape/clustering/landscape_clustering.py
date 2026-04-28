@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any, Dict
 import numpy as np
 
 if TYPE_CHECKING:
+    import polars as pl
+
     from ..landscape import LandscapeConfig
 
 log = logging.getLogger(__name__)
@@ -291,4 +293,3 @@ def _run_clustering(
         log.info("  membership saved (nano + micro)")
 
     return pl.read_parquet(membership_path)
-

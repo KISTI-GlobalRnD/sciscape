@@ -350,8 +350,8 @@ def build_term_network_json(
 
     # Select top terms by score
     sorted_terms = sorted(term_scores.keys(), key=lambda t: -term_scores[t])[:max_terms]
-    term_set = set(sorted_terms)
     term_to_idx = {t: i for i, t in enumerate(sorted_terms)}
+    cluster_ids = sorted({cid for term in sorted_terms for cid in term_clusters.get(term, [])})
 
     # Build nodes
     nodes = []

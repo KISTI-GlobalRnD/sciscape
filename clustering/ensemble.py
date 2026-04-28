@@ -198,7 +198,7 @@ class EnsembleResult:
                 quality_map = {int(s): v[1] for s, v in gamma_map[gamma].items()}
                 long = long.with_columns(
                     pl.col("seed")
-                    .map_elements(lambda s: counts_map.get(int(s), None), return_dtype=pl.Float64)
+                    .map_elements(lambda s: counts_map.get(int(s), None), return_dtype=pl.Int64)
                     .alias("cluster_count"),
                     pl.col("seed")
                     .map_elements(lambda s: quality_map.get(int(s), None), return_dtype=pl.Float64)

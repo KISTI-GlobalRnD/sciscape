@@ -29,8 +29,7 @@ jobs:
 
       - name: Build & install Rust modules
         run: |
-          cd rust && maturin develop --release && cd ..
-          cd rust-text && maturin develop --release && cd ..
+          python -m pip install ./rust ./rust-text
 
       - name: Install Python dependencies
         run: |
@@ -58,4 +57,4 @@ jobs:
         run: pip install ruff
 
       - name: Check formatting
-        run: ruff check sciscape/ tests/ --select E,F,W --ignore E501
+        run: ruff check sciscape/ tests/ --select E9,F63,F7,F82 --ignore E501

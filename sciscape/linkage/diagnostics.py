@@ -152,6 +152,16 @@ def _canonical_pairs(
     ).unique()
 
 
+def _edge_set(
+    df: pl.DataFrame,
+    uid1_col: str = "uid1",
+    uid2_col: str = "uid2",
+) -> set[tuple[str, str]]:
+    """Extract canonical edge pairs as a Python set."""
+    pairs = _canonical_pairs(df, uid1_col, uid2_col)
+    return set(zip(pairs["_a"].to_list(), pairs["_b"].to_list()))
+
+
 def edge_overlap(
     edges_a: pl.DataFrame,
     edges_b: pl.DataFrame,
