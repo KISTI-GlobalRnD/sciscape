@@ -4,6 +4,7 @@
 
 use crate::clustering::Clustering;
 use crate::graph::Graph;
+use crate::trace;
 use crate::workspace::Workspace;
 use rayon::prelude::*;
 use std::sync::OnceLock;
@@ -37,23 +38,8 @@ fn parallel_contraction_min_directed_edges() -> usize {
     })
 }
 
-fn trace_setting() -> &'static str {
-    static TRACE: OnceLock<String> = OnceLock::new();
-    TRACE
-        .get_or_init(|| std::env::var("SCISCAPE_LEIDEN_TRACE").unwrap_or_default())
-        .as_str()
-}
-
-fn trace_enabled() -> bool {
-    !matches!(trace_setting(), "" | "0" | "false" | "False" | "FALSE")
-}
-
-fn trace_verbose() -> bool {
-    matches!(trace_setting(), "verbose" | "1" | "true" | "True" | "TRUE")
-}
-
 fn should_trace_contraction(input_edges: usize) -> bool {
-    trace_enabled() && (trace_verbose() || input_edges >= 1_000_000)
+    trace::should_trace_edges(input_edges)
 }
 
 fn reduced_edge_capacity_bound(input_edges: usize, n_clusters: usize) -> usize {
@@ -145,40 +131,7 @@ fn create_reduced_network_sequential(
     keep_self_loops: bool,
     ws: &mut Workspace,
 ) -> Graph {
-    let n_clusters = clustering.n_clusters;
-    let n_nodes = graph.n_nodes;
-    let clusters = clustering.clusters.as_slice();
-
-    ws.ensure_capacity(n_nodes.max(n_clusters));
-
-    // Build nodes_per_cluster. The grouped contraction core accumulates
-    // node/self-loop weights while it scans each source cluster.
-    let npc_count = &mut ws.npc[..n_clusters];
-    npc_count.fill(0);
-
-    for node in 0..n_nodes {
-        let c = unsafe { *clusters.get_unchecked(node) } as usize;
-        npc_count[c] += 1;
-    }
-
-    // Prefix sum for npc_starts
-    let npc_starts = &mut ws.npc_starts[..n_clusters + 1];
-    npc_starts[0] = 0;
-    for c in 0..n_clusters {
-        npc_starts[c + 1] = npc_starts[c] + npc_count[c];
-    }
-
-    // Fill npc_nodes
-    let npc_nodes = &mut ws.npc_nodes[..n_nodes];
-    let npc_off = &mut ws.npc_off[..n_clusters];
-    npc_off.copy_from_slice(&npc_starts[..n_clusters]);
-    for node in 0..n_nodes {
-        let c = unsafe { *clusters.get_unchecked(node) } as usize;
-        let pos = npc_off[c] as usize;
-        npc_nodes[pos] = node as u32;
-        npc_off[c] += 1;
-    }
-
+    clustering.fill_cluster_groups(ws);
     create_reduced_network_grouped_from_workspace(graph, clustering, keep_self_loops, ws)
 }
 
@@ -350,8 +303,8 @@ fn create_reduced_network_grouped_core(
         } else {
             edge_capacity as f64 / graph.n_edges as f64
         };
-        eprintln!(
-            "[sciscape_leiden] phase=contraction_csr input_nodes={} input_directed_edges={} reduced_nodes={} reduced_directed_edges={} reserved_directed_edges={} edge_ratio={:.6} reserve_ratio={:.6}",
+        trace::emit(format_args!(
+            "phase=contraction_csr input_nodes={} input_directed_edges={} reduced_nodes={} reduced_directed_edges={} reserved_directed_edges={} edge_ratio={:.6} reserve_ratio={:.6}{}",
             graph.n_nodes,
             graph.n_edges,
             n_clusters,
@@ -359,7 +312,8 @@ fn create_reduced_network_grouped_core(
             edge_capacity,
             edge_ratio,
             reserve_ratio,
-        );
+            trace::memory_fields(),
+        ));
     }
     debug_assert_eq!(cluster_weights.len(), n_clusters);
     debug_assert_eq!(self_loop_weights.len(), n_clusters);

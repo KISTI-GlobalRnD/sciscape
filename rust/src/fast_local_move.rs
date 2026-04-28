@@ -240,7 +240,7 @@ pub fn improve_clustering(
     }
 
     if update {
-        compact_clusters_from_counts(clustering, npc);
+        clustering.compact_from_counts(npc);
     }
 
     // Return nc_buf to workspace
@@ -249,21 +249,6 @@ pub fn improve_clustering(
     ws.unused = unused;
 
     update
-}
-
-fn compact_clusters_from_counts(clustering: &mut Clustering, counts: &mut [u32]) {
-    let mut new_id = 0u32;
-    for count_or_remap in counts.iter_mut().take(clustering.n_clusters) {
-        if *count_or_remap > 0 {
-            *count_or_remap = new_id;
-            new_id += 1;
-        }
-    }
-
-    for cid in &mut clustering.clusters {
-        *cid = counts[*cid as usize];
-    }
-    clustering.n_clusters = new_id as usize;
 }
 
 #[cfg(test)]

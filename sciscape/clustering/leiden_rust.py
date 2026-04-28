@@ -611,7 +611,7 @@ def postprocess_small_clusters_rust(
             component_max_weight=float(component_max_weight),
         )
 
-    changed = int(np.sum(result_mem != membership))
+    changed = int(np.sum(changed_at >= 0))
     threshold_str = (
         f"min_weight={min_weight}" if min_weight > 0
         else f"min_size={min_size}"

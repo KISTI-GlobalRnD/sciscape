@@ -1,5 +1,6 @@
 //! Cluster assignment with optional fixed-node constraints.
 
+use crate::workspace::Workspace;
 use std::collections::HashMap;
 
 pub type ClusterId = u32;
@@ -117,6 +118,118 @@ impl Clustering {
         weights
     }
 
+    /// Fill flat cluster groups in `ws`.
+    ///
+    /// After this call:
+    /// - `ws.npc[..n_clusters]` contains raw cluster sizes
+    /// - `ws.npc_starts[..=n_clusters]` contains prefix offsets
+    /// - `ws.npc_nodes[..n_nodes]` contains nodes grouped by cluster
+    pub(crate) fn fill_cluster_groups(&self, ws: &mut Workspace) {
+        let n_nodes = self.n_nodes;
+        let n_clusters = self.n_clusters;
+        ws.ensure_capacity(n_nodes.max(n_clusters));
+
+        let counts = &mut ws.npc[..n_clusters];
+        counts.fill(0);
+        let counts_ptr = counts.as_mut_ptr();
+        for &cid in &self.clusters {
+            let cid = cid as usize;
+            debug_assert!(cid < n_clusters);
+            unsafe {
+                *counts_ptr.add(cid) += 1;
+            }
+        }
+
+        self.fill_group_offsets_and_nodes(ws);
+    }
+
+    /// Fill flat cluster groups and cluster weights in `ws`.
+    ///
+    /// In addition to `fill_cluster_groups`, `ws.cw[..n_clusters]` contains the
+    /// sum of `node_weights` for each cluster.
+    pub(crate) fn fill_cluster_groups_and_weights(&self, node_weights: &[f64], ws: &mut Workspace) {
+        debug_assert_eq!(node_weights.len(), self.n_nodes);
+        let n_nodes = self.n_nodes;
+        let n_clusters = self.n_clusters;
+        ws.ensure_capacity(n_nodes.max(n_clusters));
+
+        let counts = &mut ws.npc[..n_clusters];
+        let weights = &mut ws.cw[..n_clusters];
+        counts.fill(0);
+        weights.fill(0.0);
+        let counts_ptr = counts.as_mut_ptr();
+        let weights_ptr = weights.as_mut_ptr();
+        for (node, &cid) in self.clusters.iter().enumerate() {
+            let cid = cid as usize;
+            debug_assert!(cid < n_clusters);
+            unsafe {
+                *counts_ptr.add(cid) += 1;
+                *weights_ptr.add(cid) += *node_weights.get_unchecked(node);
+            }
+        }
+
+        self.fill_group_offsets_and_nodes(ws);
+    }
+
+    fn fill_group_offsets_and_nodes(&self, ws: &mut Workspace) {
+        let n_nodes = self.n_nodes;
+        let n_clusters = self.n_clusters;
+
+        {
+            let counts = &ws.npc[..n_clusters];
+            let starts = &mut ws.npc_starts[..n_clusters + 1];
+            starts[0] = 0;
+            for c in 0..n_clusters {
+                starts[c + 1] = starts[c] + counts[c];
+            }
+        }
+
+        {
+            let starts = &ws.npc_starts[..n_clusters];
+            let offsets = &mut ws.npc_off[..n_clusters];
+            offsets.copy_from_slice(starts);
+        }
+
+        let nodes = &mut ws.npc_nodes[..n_nodes];
+        let offsets = &mut ws.npc_off[..n_clusters];
+        let nodes_ptr = nodes.as_mut_ptr();
+        let offsets_ptr = offsets.as_mut_ptr();
+        for (node, &cid) in self.clusters.iter().enumerate() {
+            let cid = cid as usize;
+            debug_assert!(cid < n_clusters);
+            unsafe {
+                let off = offsets_ptr.add(cid);
+                let pos = *off as usize;
+                *nodes_ptr.add(pos) = node as u32;
+                *off += 1;
+            }
+        }
+    }
+
+    /// Compact cluster IDs using precomputed counts for the active cluster range.
+    pub(crate) fn compact_from_counts(&mut self, counts: &mut [u32]) {
+        debug_assert!(counts.len() >= self.n_clusters);
+        let mut new_id = 0u32;
+        let mut needs_remap = false;
+        for (old_id, count_or_remap) in counts.iter_mut().take(self.n_clusters).enumerate() {
+            if *count_or_remap > 0 {
+                if old_id != new_id as usize {
+                    needs_remap = true;
+                }
+                *count_or_remap = new_id;
+                new_id += 1;
+            }
+        }
+
+        let new_n_clusters = new_id as usize;
+        if needs_remap {
+            for cid in &mut self.clusters {
+                *cid = counts[*cid as usize];
+            }
+        }
+        self.n_clusters = new_n_clusters;
+    }
+
     /// Remove empty clusters and renumber to 0..k-1.
     pub fn remove_empty_clusters(&mut self) {
         let mut used = vec![false; self.n_clusters];
@@ -186,6 +299,42 @@ mod tests {
         c.remove_empty_clusters();
         assert_eq!(c.n_clusters, 2);
         assert_eq!(c.clusters, vec![0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn test_fill_cluster_groups() {
+        let clustering = Clustering::from_assignments(vec![1, 0, 1, 0, 2]);
+        let mut ws = Workspace::new(clustering.n_nodes);
+
+        clustering.fill_cluster_groups(&mut ws);
+
+        assert_eq!(&ws.npc[..clustering.n_clusters], &[2, 2, 1]);
+        assert_eq!(&ws.npc_starts[..=clustering.n_clusters], &[0, 2, 4, 5]);
+        assert_eq!(&ws.npc_nodes[..clustering.n_nodes], &[1, 3, 0, 2, 4]);
+    }
+
+    #[test]
+    fn test_fill_cluster_groups_and_weights() {
+        let clustering = Clustering::from_assignments(vec![1, 0, 1, 0, 2]);
+        let mut ws = Workspace::new(clustering.n_nodes);
+
+        clustering.fill_cluster_groups_and_weights(&[1.0, 2.0, 3.0, 4.0, 5.0], &mut ws);
+
+        assert_eq!(&ws.npc[..clustering.n_clusters], &[2, 2, 1]);
+        assert_eq!(&ws.cw[..clustering.n_clusters], &[6.0, 4.0, 5.0]);
+        assert_eq!(&ws.npc_nodes[..clustering.n_nodes], &[1, 3, 0, 2, 4]);
+    }
+
+    #[test]
+    fn test_compact_from_counts() {
+        let mut clustering = Clustering::from_assignments(vec![0, 0, 3, 3]);
+        clustering.n_clusters = 4;
+        let mut counts = vec![2, 0, 0, 2];
+
+        clustering.compact_from_counts(&mut counts);
+
+        assert_eq!(clustering.n_clusters, 2);
+        assert_eq!(clustering.clusters, vec![0, 0, 1, 1]);
     }
 
     #[test]

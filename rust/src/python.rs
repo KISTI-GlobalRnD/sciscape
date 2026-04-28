@@ -14,6 +14,8 @@ use crate::contraction::create_reduced_network;
 #[cfg(feature = "python")]
 use crate::quality::{QualityFunction, CPM};
 #[cfg(feature = "python")]
+use crate::trace;
+#[cfg(feature = "python")]
 use crate::workspace::Workspace;
 #[cfg(feature = "python")]
 use crate::{
@@ -32,20 +34,8 @@ use std::mem;
 use std::time::Instant;
 
 #[cfg(feature = "python")]
-fn trace_enabled() -> bool {
-    !matches!(
-        std::env::var("SCISCAPE_LEIDEN_TRACE")
-            .unwrap_or_default()
-            .as_str(),
-        "" | "0" | "false" | "False" | "FALSE"
-    )
-}
-
-#[cfg(feature = "python")]
 fn trace_python(message: &str) {
-    if trace_enabled() {
-        eprintln!("[sciscape_leiden] {}", message);
-    }
+    trace::emit(format_args!("{}", message));
 }
 
 #[cfg(feature = "python")]
@@ -611,11 +601,12 @@ impl PyGraph {
             )
         };
         trace_python(&format!(
-            "phase=graph_build nodes={} undirected_edges={} directed_edges={} elapsed_ms={:.1}",
+            "phase=graph_build nodes={} undirected_edges={} directed_edges={} elapsed_ms={:.1}{}",
             graph.n_nodes,
             n_input_edges,
             graph.n_edges,
             t0.elapsed().as_secs_f64() * 1000.0,
+            trace::memory_fields(),
         ));
         Ok(Self { graph })
     }
@@ -906,12 +897,13 @@ fn load_graph_raw_files(
     )?;
 
     trace_python(&format!(
-        "phase=graph_build_raw_files_streaming nodes={} undirected_edges={} directed_edges={} chunk_size={} elapsed_ms={:.1}",
+        "phase=graph_build_raw_files_streaming nodes={} undirected_edges={} directed_edges={} chunk_size={} elapsed_ms={:.1}{}",
         graph.n_nodes,
         graph.n_edges / 2,
         graph.n_edges,
         raw_edge_chunk_size(),
         t0.elapsed().as_secs_f64() * 1000.0,
+        trace::memory_fields(),
     ));
     Ok(PyGraph { graph })
 }
@@ -1025,11 +1017,12 @@ fn rust_integer_remap_parquet_graph(
         })
         .map_err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>)?;
     trace_python(&format!(
-        "phase=remap_graph_build nodes={} undirected_edges={} directed_edges={} elapsed_ms={:.1}",
+        "phase=remap_graph_build nodes={} undirected_edges={} directed_edges={} elapsed_ms={:.1}{}",
         result.graph.n_nodes,
         result.n_edges,
         result.graph.n_edges,
         t0.elapsed().as_secs_f64() * 1000.0,
+        trace::memory_fields(),
     ));
     let graph = Py::new(
         py,

@@ -20,6 +20,7 @@ pub mod python;
 pub mod quality;
 mod random_utils;
 pub mod remap;
+mod trace;
 pub mod workspace;
 
 // Re-export main types
