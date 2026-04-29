@@ -113,6 +113,12 @@ pub struct LeidenResult {
     pub n_iterations_used: usize,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+struct IterationStats {
+    improved: bool,
+    moved_nodes: usize,
+}
+
 struct RefinementResult {
     clustering: Clustering,
     parent_clusters: Vec<u32>,
@@ -122,10 +128,10 @@ struct RefinementResult {
 
 enum IterationStep {
     Done {
-        improved: bool,
+        stats: IterationStats,
     },
     NonRefined {
-        update: bool,
+        local_stats: IterationStats,
         reduced: Graph,
         reduced_clustering: Clustering,
         parent_nodes: usize,
@@ -133,7 +139,7 @@ enum IterationStep {
         trace_detail: bool,
     },
     Refined {
-        update: bool,
+        local_stats: IterationStats,
         reduced: Graph,
         reduced_clustering: Clustering,
         refinement_clustering: Clustering,
@@ -161,6 +167,34 @@ fn counts_to_starts(mut counts: Vec<u32>) -> Vec<u32> {
     }
     counts.push(running);
     counts
+}
+
+fn trace_contraction_progress(
+    graph: &Graph,
+    reduced: &Graph,
+    depth: usize,
+    mode: &str,
+    elapsed_ms: f64,
+) {
+    let node_delta = graph.n_nodes.saturating_sub(reduced.n_nodes);
+    let edge_delta = graph.n_edges.saturating_sub(reduced.n_edges);
+    let rel_node_delta = node_delta as f64 / graph.n_nodes.max(1) as f64;
+    let rel_edge_delta = edge_delta as f64 / graph.n_edges.max(1) as f64;
+    trace_graph_summary!(
+        graph,
+        "phase=leiden_contraction depth={} mode={} input_nodes={} input_directed_edges={} reduced_nodes={} reduced_directed_edges={} node_delta={} rel_node_delta={:.8e} edge_delta={} rel_edge_delta={:.8e} elapsed_ms={:.1}",
+        depth,
+        mode,
+        graph.n_nodes,
+        graph.n_edges,
+        reduced.n_nodes,
+        reduced.n_edges,
+        node_delta,
+        rel_node_delta,
+        edge_delta,
+        rel_edge_delta,
+        elapsed_ms,
+    );
 }
 
 /// Run the Leiden algorithm on a graph.
@@ -206,19 +240,20 @@ pub(crate) fn leiden_with_workspace(
         for _ in 0..config.n_iterations {
             let iter_start = Instant::now();
             let iter_randomness = config.randomness_for_iteration(n_used);
-            let improved =
+            let stats =
                 improve_one_iteration(graph, &mut clustering, config, iter_randomness, rng, ws);
             n_used += 1;
             trace_graph_summary!(
                 graph,
-                "phase=leiden_iteration iter={} randomness={:.6} improved={} clusters={} elapsed_ms={:.1}",
+                "phase=leiden_iteration iter={} randomness={:.6} improved={} moved_nodes={} clusters={} elapsed_ms={:.1}",
                 n_used,
                 iter_randomness,
-                improved,
+                stats.improved,
+                stats.moved_nodes,
                 clustering.n_clusters,
                 iter_start.elapsed().as_secs_f64() * 1000.0,
             );
-            if !improved {
+            if !stats.improved {
                 break;
             }
         }
@@ -230,7 +265,7 @@ pub(crate) fn leiden_with_workspace(
         loop {
             let iter_start = Instant::now();
             let iter_randomness = config.randomness_for_iteration(n_used);
-            let improved =
+            let stats =
                 improve_one_iteration(graph, &mut clustering, config, iter_randomness, rng, ws);
             n_used += 1;
             let cluster_delta = previous_n_clusters.abs_diff(clustering.n_clusters);
@@ -238,17 +273,18 @@ pub(crate) fn leiden_with_workspace(
                 cluster_delta as f64 / previous_n_clusters.max(clustering.n_clusters).max(1) as f64;
             trace_graph_summary!(
                 graph,
-                "phase=leiden_iteration iter={} randomness={:.6} improved={} clusters={} cluster_delta={} rel_cluster_delta={:.8e} stagnant_iterations={} elapsed_ms={:.1}",
+                "phase=leiden_iteration iter={} randomness={:.6} improved={} moved_nodes={} clusters={} cluster_delta={} rel_cluster_delta={:.8e} stagnant_iterations={} elapsed_ms={:.1}",
                 n_used,
                 iter_randomness,
-                improved,
+                stats.improved,
+                stats.moved_nodes,
                 clustering.n_clusters,
                 cluster_delta,
                 rel_cluster_delta,
                 stagnant_iterations,
                 iter_start.elapsed().as_secs_f64() * 1000.0,
             );
-            if !improved {
+            if !stats.improved {
                 break;
             }
             if patience > 0 && rel_cluster_delta <= min_rel_cluster_delta {
@@ -332,9 +368,9 @@ fn improve_one_iteration(
     randomness: f64,
     rng: &mut impl Rng,
     ws: &mut Workspace,
-) -> bool {
-    let step = prepare_iteration_step(graph, clustering, config, randomness, rng, ws);
-    finish_iteration_step(step, clustering, config, randomness, rng, ws)
+) -> IterationStats {
+    let step = prepare_iteration_step(graph, clustering, config, randomness, rng, ws, 0);
+    finish_iteration_step(step, clustering, config, randomness, rng, ws, 0)
 }
 
 /// Recursive Leiden iteration for reduced graphs owned by the current frame.
@@ -352,10 +388,11 @@ fn improve_one_iteration_owned(
     randomness: f64,
     rng: &mut impl Rng,
     ws: &mut Workspace,
-) -> bool {
-    let step = prepare_iteration_step(&graph, clustering, config, randomness, rng, ws);
+    depth: usize,
+) -> IterationStats {
+    let step = prepare_iteration_step(&graph, clustering, config, randomness, rng, ws, depth);
     drop(graph);
-    finish_iteration_step(step, clustering, config, randomness, rng, ws)
+    finish_iteration_step(step, clustering, config, randomness, rng, ws, depth)
 }
 
 fn prepare_iteration_step(
@@ -365,26 +402,34 @@ fn prepare_iteration_step(
     randomness: f64,
     rng: &mut impl Rng,
     ws: &mut Workspace,
+    depth: usize,
 ) -> IterationStep {
     let trace_detail = should_trace_graph_detail(graph);
     let parent_nodes = graph.n_nodes;
 
     // Phase 1: Local moving
     let t_move = Instant::now();
-    let update = fast_local_move::improve_clustering(graph, clustering, config.resolution, rng, ws);
+    let local_move =
+        fast_local_move::improve_clustering(graph, clustering, config.resolution, rng, ws);
+    let local_stats = IterationStats {
+        improved: local_move.improved,
+        moved_nodes: local_move.moved_nodes,
+    };
     trace_graph!(
         graph,
-        "phase=local_move nodes={} directed_edges={} clusters={} updated={} elapsed_ms={:.1}",
+        "phase=local_move depth={} nodes={} directed_edges={} clusters={} updated={} moved_nodes={} elapsed_ms={:.1}",
+        depth,
         graph.n_nodes,
         graph.n_edges,
         clustering.n_clusters,
-        update,
+        local_stats.improved,
+        local_stats.moved_nodes,
         t_move.elapsed().as_secs_f64() * 1000.0,
     );
 
     // If every node is its own cluster, nothing to do
     if clustering.n_clusters >= graph.n_nodes {
-        return IterationStep::Done { improved: update };
+        return IterationStep::Done { stats: local_stats };
     }
 
     // Phase 2: Refinement
@@ -394,7 +439,8 @@ fn prepare_iteration_step(
         clustering.fill_cluster_groups(ws);
         trace_graph!(
             graph,
-            "phase=nodes_per_cluster mode=flat clusters={} elapsed_ms={:.1}",
+            "phase=nodes_per_cluster depth={} mode=flat clusters={} elapsed_ms={:.1}",
+            depth,
             clustering.n_clusters,
             t_nodes.elapsed().as_secs_f64() * 1000.0,
         );
@@ -417,7 +463,8 @@ fn prepare_iteration_step(
         };
         trace_graph!(
             graph,
-            "phase=refinement mode=streaming refined_clusters={} elapsed_ms={:.1}",
+            "phase=refinement depth={} mode=streaming refined_clusters={} elapsed_ms={:.1}",
+            depth,
             refinement.clustering.n_clusters,
             t_refine.elapsed().as_secs_f64() * 1000.0,
         );
@@ -426,7 +473,8 @@ fn prepare_iteration_step(
         let nodes_per_cluster = clustering.nodes_per_cluster();
         trace_graph!(
             graph,
-            "phase=nodes_per_cluster mode=vec clusters={} elapsed_ms={:.1}",
+            "phase=nodes_per_cluster depth={} mode=vec clusters={} elapsed_ms={:.1}",
+            depth,
             nodes_per_cluster.len(),
             t_nodes.elapsed().as_secs_f64() * 1000.0,
         );
@@ -441,7 +489,8 @@ fn prepare_iteration_step(
         );
         trace_graph!(
             graph,
-            "phase=refinement mode=eager refined_clusters={} elapsed_ms={:.1}",
+            "phase=refinement depth={} mode=eager refined_clusters={} elapsed_ms={:.1}",
+            depth,
             refinement.clustering.n_clusters,
             t_refine.elapsed().as_secs_f64() * 1000.0,
         );
@@ -452,12 +501,15 @@ fn prepare_iteration_step(
         // Refinement produced singletons — aggregate on non-refined clustering
         let t_contract = Instant::now();
         let reduced = create_reduced_network(graph, clustering, true, ws);
+        let contract_elapsed_ms = t_contract.elapsed().as_secs_f64() * 1000.0;
+        trace_contraction_progress(graph, &reduced, depth, "non_refined", contract_elapsed_ms);
         trace_graph!(
             graph,
-            "phase=contract_non_refined reduced_nodes={} reduced_directed_edges={} elapsed_ms={:.1}",
+            "phase=contract_non_refined depth={} reduced_nodes={} reduced_directed_edges={} elapsed_ms={:.1}",
+            depth,
             reduced.n_nodes,
             reduced.n_edges,
-            t_contract.elapsed().as_secs_f64() * 1000.0,
+            contract_elapsed_ms,
         );
         let mut reduced_clustering = Clustering::singleton(reduced.n_nodes);
 
@@ -474,7 +526,7 @@ fn prepare_iteration_step(
 
         let reduced_nodes = reduced.n_nodes;
         return IterationStep::NonRefined {
-            update,
+            local_stats,
             reduced,
             reduced_clustering,
             parent_nodes,
@@ -492,12 +544,15 @@ fn prepare_iteration_step(
         true,
         ws,
     );
+    let contract_elapsed_ms = t_contract.elapsed().as_secs_f64() * 1000.0;
+    trace_contraction_progress(graph, &reduced, depth, "refined", contract_elapsed_ms);
     trace_graph!(
         graph,
-        "phase=contract_refined reduced_nodes={} reduced_directed_edges={} elapsed_ms={:.1}",
+        "phase=contract_refined depth={} reduced_nodes={} reduced_directed_edges={} elapsed_ms={:.1}",
+        depth,
         reduced.n_nodes,
         reduced.n_edges,
-        t_contract.elapsed().as_secs_f64() * 1000.0,
+        contract_elapsed_ms,
     );
 
     // Initial clustering for aggregate network: map non-refined clusters
@@ -519,7 +574,7 @@ fn prepare_iteration_step(
 
     let reduced_nodes = reduced.n_nodes;
     IterationStep::Refined {
-        update,
+        local_stats,
         reduced,
         reduced_clustering,
         refinement_clustering: refinement.clustering,
@@ -536,11 +591,12 @@ fn finish_iteration_step(
     randomness: f64,
     rng: &mut impl Rng,
     ws: &mut Workspace,
-) -> bool {
+    depth: usize,
+) -> IterationStats {
     match step {
-        IterationStep::Done { improved } => improved,
+        IterationStep::Done { stats } => stats,
         IterationStep::NonRefined {
-            update,
+            local_stats,
             reduced,
             mut reduced_clustering,
             parent_nodes,
@@ -548,37 +604,46 @@ fn finish_iteration_step(
             trace_detail,
         } => {
             let t_recurse = Instant::now();
-            let improved = improve_one_iteration_owned(
+            let recursive_stats = improve_one_iteration_owned(
                 reduced,
                 &mut reduced_clustering,
                 config,
                 randomness,
                 rng,
                 ws,
+                depth + 1,
             );
             if trace_detail {
                 trace::emit(format_args!(
-                    "phase=recurse_non_refined reduced_nodes={} improved={} elapsed_ms={:.1}",
+                    "phase=recurse_non_refined depth={} reduced_nodes={} improved={} moved_nodes={} elapsed_ms={:.1}",
+                    depth,
                     reduced_nodes,
-                    improved,
+                    recursive_stats.improved,
+                    recursive_stats.moved_nodes,
                     t_recurse.elapsed().as_secs_f64() * 1000.0,
                 ));
             }
-            if improved {
+            if recursive_stats.improved {
                 let t_merge = Instant::now();
                 clustering.merge_clusters(&reduced_clustering);
                 if trace_detail {
                     trace::emit(format_args!(
-                        "phase=merge_non_refined nodes={} elapsed_ms={:.1}",
+                        "phase=merge_non_refined depth={} nodes={} elapsed_ms={:.1}",
+                        depth,
                         parent_nodes,
                         t_merge.elapsed().as_secs_f64() * 1000.0,
                     ));
                 }
             }
-            update | improved
+            IterationStats {
+                improved: local_stats.improved | recursive_stats.improved,
+                moved_nodes: local_stats
+                    .moved_nodes
+                    .saturating_add(recursive_stats.moved_nodes),
+            }
         }
         IterationStep::Refined {
-            update,
+            local_stats,
             reduced,
             mut reduced_clustering,
             refinement_clustering,
@@ -587,19 +652,22 @@ fn finish_iteration_step(
             trace_detail,
         } => {
             let t_recurse = Instant::now();
-            let improved = improve_one_iteration_owned(
+            let recursive_stats = improve_one_iteration_owned(
                 reduced,
                 &mut reduced_clustering,
                 config,
                 randomness,
                 rng,
                 ws,
+                depth + 1,
             );
             if trace_detail {
                 trace::emit(format_args!(
-                    "phase=recurse_refined reduced_nodes={} improved={} elapsed_ms={:.1}",
+                    "phase=recurse_refined depth={} reduced_nodes={} improved={} moved_nodes={} elapsed_ms={:.1}",
+                    depth,
                     reduced_nodes,
-                    improved,
+                    recursive_stats.improved,
+                    recursive_stats.moved_nodes,
                     t_recurse.elapsed().as_secs_f64() * 1000.0,
                 ));
             }
@@ -608,21 +676,27 @@ fn finish_iteration_step(
             // When recursion reports no improvement, `reduced_clustering` is
             // equivalent to the initial projection and merge-back would only
             // restore the move-phase clustering after a full O(n) scan.
-            if improved {
+            if recursive_stats.improved {
                 let t_merge = Instant::now();
                 clustering.clusters = refinement_clustering.clusters;
                 clustering.n_clusters = refinement_clustering.n_clusters;
                 clustering.merge_clusters(&reduced_clustering);
                 if trace_detail {
                     trace::emit(format_args!(
-                        "phase=merge_refined nodes={} elapsed_ms={:.1}",
+                        "phase=merge_refined depth={} nodes={} elapsed_ms={:.1}",
+                        depth,
                         parent_nodes,
                         t_merge.elapsed().as_secs_f64() * 1000.0,
                     ));
                 }
             }
 
-            update | improved
+            IterationStats {
+                improved: local_stats.improved | recursive_stats.improved,
+                moved_nodes: local_stats
+                    .moved_nodes
+                    .saturating_add(recursive_stats.moved_nodes),
+            }
         }
     }
 }

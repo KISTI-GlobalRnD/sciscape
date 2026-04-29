@@ -9,6 +9,12 @@ use crate::random_utils::{fill_identity_u32, permute_cwts_style};
 use crate::workspace::Workspace;
 use rand::Rng;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LocalMoveStats {
+    pub improved: bool,
+    pub moved_nodes: usize,
+}
+
 /// Run one iteration of fast local moving.
 /// `ws` is a reusable workspace (avoids allocation per call).
 pub fn improve_clustering(
@@ -17,13 +23,13 @@ pub fn improve_clustering(
     resolution: f64,
     rng: &mut impl Rng,
     ws: &mut Workspace,
-) -> bool {
+) -> LocalMoveStats {
     let n = graph.n_nodes;
     if n <= 1 {
-        return false;
+        return LocalMoveStats::default();
     }
 
-    let mut update = false;
+    let mut moved_nodes = 0usize;
 
     let first_nbr = graph.first_neighbor_index.as_ptr();
     let nbr_arr = graph.neighbors.as_ptr();
@@ -230,7 +236,7 @@ pub fn improve_clustering(
                 }
             }
 
-            update = true;
+            moved_nodes += 1;
         }
 
         i += 1;
@@ -239,7 +245,7 @@ pub fn improve_clustering(
         }
     }
 
-    if update {
+    if moved_nodes > 0 {
         clustering.compact_from_counts(npc);
     }
 
@@ -248,7 +254,10 @@ pub fn improve_clustering(
     ws.order = order;
     ws.unused = unused;
 
-    update
+    LocalMoveStats {
+        improved: moved_nodes > 0,
+        moved_nodes,
+    }
 }
 
 #[cfg(test)]
@@ -268,8 +277,9 @@ mod tests {
         let mut c = Clustering::singleton(6);
         let mut rng = StdRng::seed_from_u64(42);
         let mut ws = Workspace::new(6);
-        let improved = improve_clustering(&g, &mut c, 0.5, &mut rng, &mut ws);
-        assert!(improved);
+        let stats = improve_clustering(&g, &mut c, 0.5, &mut rng, &mut ws);
+        assert!(stats.improved);
+        assert!(stats.moved_nodes > 0);
         assert!(c.n_clusters <= 3);
         assert_eq!(c.clusters[0], c.clusters[1]);
         assert_eq!(c.clusters[1], c.clusters[2]);
@@ -295,9 +305,10 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(42);
         let mut ws = Workspace::new(4);
 
-        let improved = improve_clustering(&g, &mut c, 1.0, &mut rng, &mut ws);
+        let stats = improve_clustering(&g, &mut c, 1.0, &mut rng, &mut ws);
 
-        assert!(improved);
+        assert!(stats.improved);
+        assert!(stats.moved_nodes > 0);
         assert!(c.n_clusters > 1);
     }
 
@@ -316,9 +327,10 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(42);
         let mut ws = Workspace::new(2);
 
-        let improved = improve_clustering(&g, &mut c, 0.1, &mut rng, &mut ws);
+        let stats = improve_clustering(&g, &mut c, 0.1, &mut rng, &mut ws);
 
-        assert!(improved);
+        assert!(stats.improved);
+        assert!(stats.moved_nodes > 0);
         assert_eq!(c.n_clusters, 1);
     }
 
