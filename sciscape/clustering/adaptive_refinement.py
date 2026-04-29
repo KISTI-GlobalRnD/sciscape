@@ -19,6 +19,7 @@ from .leiden_rust import (
     RustBoundaryMoveProbes,
     RustClusterGraphStats,
     RustMultiCoreSplitProbes,
+    RustSplitMergeRepairProbes,
 )
 
 
@@ -1056,6 +1057,126 @@ def write_multi_core_split_probe_report(
     return {"summary": str(summary_path), "probes": str(csv_path)}
 
 
+def summarize_split_merge_repair_probes(probes: RustSplitMergeRepairProbes) -> dict[str, Any]:
+    """Return aggregate diagnostics for split-then-repair probes."""
+
+    net_positive = probes.net_delta_q > 0
+    net_positive_eps = probes.net_delta_q > 1e-6
+    net_positive_one = probes.net_delta_q > 1.0
+    escaped = probes.escaped_source_units > 0
+    retained_split = probes.retained_source_units >= 2
+    restored = probes.restored_source_cluster
+    return {
+        "n_probes": int(probes.n_probes),
+        "n_net_positive": int(net_positive.sum()),
+        "n_net_positive_gt_1e_minus_6": int(net_positive_eps.sum()),
+        "n_net_positive_gt_1": int(net_positive_one.sum()),
+        "n_net_positive_escaped_gt_1e_minus_6": int((net_positive_eps & escaped).sum()),
+        "n_with_repair_merges": int((probes.repair_merge_count > 0).sum()),
+        "n_with_escaped_source": int(escaped.sum()),
+        "n_retained_split": int(retained_split.sum()),
+        "n_restored_source_cluster": int(restored.sum()),
+        "net_delta_q": _percentiles(probes.net_delta_q, [50, 90, 95, 99]),
+        "net_delta_q_max": float(probes.net_delta_q.max()) if probes.n_probes else 0.0,
+        "repair_delta_q": _percentiles(probes.repair_delta_q, [50, 90, 95, 99]),
+        "escaped_source_weight": _percentiles(
+            probes.escaped_source_weight, [50, 90, 95, 99]
+        ),
+        "largest_source_unit_fraction": _percentiles(
+            probes.largest_source_unit_fraction, [50, 90, 95, 99]
+        ),
+        "final_source_units": _percentiles(
+            probes.final_source_units.astype(np.float64), [50, 90, 95, 99]
+        ),
+    }
+
+
+def write_split_merge_repair_probe_report(
+    probes: RustSplitMergeRepairProbes,
+    output_dir: Path,
+    *,
+    top_probes: int | None = None,
+) -> dict[str, str]:
+    """Write JSON/CSV diagnostics for split-then-repair probes."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary = summarize_split_merge_repair_probes(probes)
+    summary_path = output_dir / "split_merge_repair_probe_summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    order = np.lexsort((probes.cluster, -probes.net_delta_q))
+    if top_probes is not None:
+        order = order[: int(top_probes)]
+
+    csv_path = output_dir / "split_merge_repair_probes.csv"
+    fieldnames = [
+        "rank",
+        "cluster",
+        "gamma_multiplier",
+        "probe_resolution",
+        "block_count",
+        "doc_weight",
+        "n_parts",
+        "core_part_count",
+        "singleton_weight",
+        "cut_weight",
+        "split_delta_q_base",
+        "split_delta_q_probe",
+        "repair_merge_count",
+        "repair_delta_q",
+        "net_delta_q",
+        "final_source_units",
+        "retained_source_units",
+        "escaped_source_units",
+        "escaped_source_weight",
+        "final_small_source_units",
+        "final_small_source_weight",
+        "largest_source_unit_fraction",
+        "restored_source_cluster",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for rank, idx in enumerate(order, start=1):
+            writer.writerow(
+                {
+                    "rank": rank,
+                    "cluster": int(probes.cluster[idx]),
+                    "gamma_multiplier": float(probes.gamma_multiplier[idx]),
+                    "probe_resolution": float(probes.probe_resolution[idx]),
+                    "block_count": int(probes.block_count[idx]),
+                    "doc_weight": float(probes.doc_weight[idx]),
+                    "n_parts": int(probes.n_parts[idx]),
+                    "core_part_count": int(probes.core_part_count[idx]),
+                    "singleton_weight": float(probes.singleton_weight[idx]),
+                    "cut_weight": float(probes.cut_weight[idx]),
+                    "split_delta_q_base": float(probes.split_delta_q_base[idx]),
+                    "split_delta_q_probe": float(probes.split_delta_q_probe[idx]),
+                    "repair_merge_count": int(probes.repair_merge_count[idx]),
+                    "repair_delta_q": float(probes.repair_delta_q[idx]),
+                    "net_delta_q": float(probes.net_delta_q[idx]),
+                    "final_source_units": int(probes.final_source_units[idx]),
+                    "retained_source_units": int(probes.retained_source_units[idx]),
+                    "escaped_source_units": int(probes.escaped_source_units[idx]),
+                    "escaped_source_weight": float(probes.escaped_source_weight[idx]),
+                    "final_small_source_units": int(probes.final_small_source_units[idx]),
+                    "final_small_source_weight": float(
+                        probes.final_small_source_weight[idx]
+                    ),
+                    "largest_source_unit_fraction": float(
+                        probes.largest_source_unit_fraction[idx]
+                    ),
+                    "restored_source_cluster": bool(probes.restored_source_cluster[idx]),
+                }
+            )
+
+    return {"summary": str(summary_path), "probes": str(csv_path)}
+
+
 def write_adaptive_refinement_report(
     stats: RustClusterGraphStats,
     output_dir: Path,
@@ -1186,10 +1307,12 @@ __all__ = [
     "summarize_boundary_move_probes",
     "summarize_cluster_graph_stats",
     "summarize_multi_core_split_probes",
+    "summarize_split_merge_repair_probes",
     "write_adaptive_refinement_report",
     "write_boundary_candidate_report",
     "write_boundary_group_probe_report",
     "write_boundary_move_probe_report",
     "write_macro_merge_ensemble_report",
     "write_multi_core_split_probe_report",
+    "write_split_merge_repair_probe_report",
 ]

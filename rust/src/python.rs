@@ -15,6 +15,7 @@ use crate::adaptive::{
     boundary_move_probes as compute_boundary_move_probes,
     cluster_graph_stats as compute_cluster_graph_stats,
     multi_core_split_probes as compute_multi_core_split_probes,
+    split_merge_repair_probes as compute_split_merge_repair_probes,
 };
 #[cfg(feature = "python")]
 use crate::contraction::create_reduced_network;
@@ -1469,6 +1470,219 @@ impl PyGraph {
         out.insert(
             "hysteresis_only".to_string(),
             PyArray1::from_vec(py, hysteresis_only).into_any().unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        resolution,
+        gamma_multipliers,
+        min_core_weight = 25.0,
+        randomness = 0.01,
+        repair_epsilon = 0.0,
+        seed = 0,
+    ))]
+    fn split_merge_repair_probes(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        resolution: f64,
+        gamma_multipliers: PyReadonlyArray1<f64>,
+        min_core_weight: f64,
+        randomness: f64,
+        repair_epsilon: f64,
+        seed: u64,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+        let gamma_multipliers = gamma_multipliers.as_slice()?.to_vec();
+
+        let probes = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_split_merge_repair_probes(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                resolution,
+                &gamma_multipliers,
+                min_core_weight,
+                randomness,
+                repair_epsilon,
+                seed,
+                &mut ws,
+            )
+        });
+
+        let n = probes.len();
+        let mut cluster = Vec::with_capacity(n);
+        let mut gamma_multiplier = Vec::with_capacity(n);
+        let mut probe_resolution = Vec::with_capacity(n);
+        let mut block_count = Vec::with_capacity(n);
+        let mut doc_weight = Vec::with_capacity(n);
+        let mut n_parts = Vec::with_capacity(n);
+        let mut core_part_count = Vec::with_capacity(n);
+        let mut singleton_weight = Vec::with_capacity(n);
+        let mut cut_weight = Vec::with_capacity(n);
+        let mut split_delta_q_base = Vec::with_capacity(n);
+        let mut split_delta_q_probe = Vec::with_capacity(n);
+        let mut repair_merge_count = Vec::with_capacity(n);
+        let mut repair_delta_q = Vec::with_capacity(n);
+        let mut net_delta_q = Vec::with_capacity(n);
+        let mut final_source_units = Vec::with_capacity(n);
+        let mut retained_source_units = Vec::with_capacity(n);
+        let mut escaped_source_units = Vec::with_capacity(n);
+        let mut escaped_source_weight = Vec::with_capacity(n);
+        let mut final_small_source_units = Vec::with_capacity(n);
+        let mut final_small_source_weight = Vec::with_capacity(n);
+        let mut largest_source_unit_fraction = Vec::with_capacity(n);
+        let mut restored_source_cluster = Vec::with_capacity(n);
+
+        for probe in probes {
+            cluster.push(probe.cluster);
+            gamma_multiplier.push(probe.gamma_multiplier);
+            probe_resolution.push(probe.probe_resolution);
+            block_count.push(probe.block_count);
+            doc_weight.push(probe.doc_weight);
+            n_parts.push(probe.n_parts);
+            core_part_count.push(probe.core_part_count);
+            singleton_weight.push(probe.singleton_weight);
+            cut_weight.push(probe.cut_weight);
+            split_delta_q_base.push(probe.split_delta_q_base);
+            split_delta_q_probe.push(probe.split_delta_q_probe);
+            repair_merge_count.push(probe.repair_merge_count);
+            repair_delta_q.push(probe.repair_delta_q);
+            net_delta_q.push(probe.net_delta_q);
+            final_source_units.push(probe.final_source_units);
+            retained_source_units.push(probe.retained_source_units);
+            escaped_source_units.push(probe.escaped_source_units);
+            escaped_source_weight.push(probe.escaped_source_weight);
+            final_small_source_units.push(probe.final_small_source_units);
+            final_small_source_weight.push(probe.final_small_source_weight);
+            largest_source_unit_fraction.push(probe.largest_source_unit_fraction);
+            restored_source_cluster.push(probe.restored_source_cluster);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "cluster".to_string(),
+            PyArray1::from_vec(py, cluster).into_any().unbind(),
+        );
+        out.insert(
+            "gamma_multiplier".to_string(),
+            PyArray1::from_vec(py, gamma_multiplier).into_any().unbind(),
+        );
+        out.insert(
+            "probe_resolution".to_string(),
+            PyArray1::from_vec(py, probe_resolution).into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, block_count).into_any().unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "n_parts".to_string(),
+            PyArray1::from_vec(py, n_parts).into_any().unbind(),
+        );
+        out.insert(
+            "core_part_count".to_string(),
+            PyArray1::from_vec(py, core_part_count).into_any().unbind(),
+        );
+        out.insert(
+            "singleton_weight".to_string(),
+            PyArray1::from_vec(py, singleton_weight).into_any().unbind(),
+        );
+        out.insert(
+            "cut_weight".to_string(),
+            PyArray1::from_vec(py, cut_weight).into_any().unbind(),
+        );
+        out.insert(
+            "split_delta_q_base".to_string(),
+            PyArray1::from_vec(py, split_delta_q_base)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "split_delta_q_probe".to_string(),
+            PyArray1::from_vec(py, split_delta_q_probe)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "repair_merge_count".to_string(),
+            PyArray1::from_vec(py, repair_merge_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "repair_delta_q".to_string(),
+            PyArray1::from_vec(py, repair_delta_q).into_any().unbind(),
+        );
+        out.insert(
+            "net_delta_q".to_string(),
+            PyArray1::from_vec(py, net_delta_q).into_any().unbind(),
+        );
+        out.insert(
+            "final_source_units".to_string(),
+            PyArray1::from_vec(py, final_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "retained_source_units".to_string(),
+            PyArray1::from_vec(py, retained_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "escaped_source_units".to_string(),
+            PyArray1::from_vec(py, escaped_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "escaped_source_weight".to_string(),
+            PyArray1::from_vec(py, escaped_source_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "final_small_source_units".to_string(),
+            PyArray1::from_vec(py, final_small_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "final_small_source_weight".to_string(),
+            PyArray1::from_vec(py, final_small_source_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_source_unit_fraction".to_string(),
+            PyArray1::from_vec(py, largest_source_unit_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "restored_source_cluster".to_string(),
+            PyArray1::from_vec(py, restored_source_cluster)
+                .into_any()
+                .unbind(),
         );
         Ok(out)
     }

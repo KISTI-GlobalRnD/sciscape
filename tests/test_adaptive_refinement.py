@@ -14,18 +14,21 @@ from sciscape.clustering.adaptive_refinement import (
     summarize_boundary_move_probes,
     summarize_cluster_graph_stats,
     summarize_multi_core_split_probes,
+    summarize_split_merge_repair_probes,
     write_adaptive_refinement_report,
     write_boundary_candidate_report,
     write_boundary_group_probe_report,
     write_boundary_move_probe_report,
     write_macro_merge_ensemble_report,
     write_multi_core_split_probe_report,
+    write_split_merge_repair_probe_report,
 )
 from sciscape.clustering.leiden_rust import (
     RustBoundaryGroupProbes,
     RustBoundaryMoveProbes,
     RustClusterGraphStats,
     RustMultiCoreSplitProbes,
+    RustSplitMergeRepairProbes,
 )
 
 
@@ -129,6 +132,33 @@ def _multi_core_split_probes() -> RustMultiCoreSplitProbes:
         split_delta_q_base=np.array([2.0, -1.0, 0.0], dtype=np.float64),
         split_delta_q_probe=np.array([8.0, 5.0, 0.0], dtype=np.float64),
         hysteresis_only=np.array([False, True, False], dtype=bool),
+    )
+
+
+def _split_merge_repair_probes() -> RustSplitMergeRepairProbes:
+    return RustSplitMergeRepairProbes(
+        cluster=np.array([10, 20], dtype=np.uint64),
+        gamma_multiplier=np.array([1.05, 1.10], dtype=np.float64),
+        probe_resolution=np.array([0.008925, 0.00935], dtype=np.float64),
+        block_count=np.array([100, 80], dtype=np.uint64),
+        doc_weight=np.array([300.0, 120.0], dtype=np.float64),
+        n_parts=np.array([5, 3], dtype=np.uint64),
+        core_part_count=np.array([2, 1], dtype=np.uint64),
+        singleton_weight=np.array([20.0, 50.0], dtype=np.float64),
+        cut_weight=np.array([10.0, 8.0], dtype=np.float64),
+        split_delta_q_base=np.array([-5.0, -3.0], dtype=np.float64),
+        split_delta_q_probe=np.array([4.0, 2.0], dtype=np.float64),
+        repair_merge_count=np.array([3, 1], dtype=np.uint64),
+        repair_delta_q=np.array([8.0, 1.0], dtype=np.float64),
+        net_delta_q=np.array([3.0, -2.0], dtype=np.float64),
+        final_source_units=np.array([2, 1], dtype=np.uint64),
+        retained_source_units=np.array([1, 1], dtype=np.uint64),
+        escaped_source_units=np.array([1, 0], dtype=np.uint64),
+        escaped_source_weight=np.array([80.0, 0.0], dtype=np.float64),
+        final_small_source_units=np.array([0, 1], dtype=np.uint64),
+        final_small_source_weight=np.array([0.0, 10.0], dtype=np.float64),
+        largest_source_unit_fraction=np.array([0.7, 1.0], dtype=np.float64),
+        restored_source_cluster=np.array([False, True], dtype=bool),
     )
 
 
@@ -386,3 +416,25 @@ def test_write_multi_core_split_probe_report(tmp_path):
     assert rows[0]["cluster"] == "10"
     assert rows[0]["split_delta_q_base"] == "2.0"
     assert any(row["hysteresis_only"] == "True" for row in rows)
+
+
+def test_summarize_split_merge_repair_probes():
+    summary = summarize_split_merge_repair_probes(_split_merge_repair_probes())
+
+    assert summary["n_probes"] == 2
+    assert summary["n_net_positive"] == 1
+    assert summary["n_with_repair_merges"] == 2
+    assert summary["n_with_escaped_source"] == 1
+    assert summary["n_restored_source_cluster"] == 1
+
+
+def test_write_split_merge_repair_probe_report(tmp_path):
+    paths = write_split_merge_repair_probe_report(_split_merge_repair_probes(), tmp_path)
+
+    assert set(paths) == {"summary", "probes"}
+    summary = json.loads((tmp_path / "split_merge_repair_probe_summary.json").read_text())
+    assert summary["n_net_positive"] == 1
+    rows = list(csv.DictReader((tmp_path / "split_merge_repair_probes.csv").open()))
+    assert rows[0]["cluster"] == "10"
+    assert rows[0]["net_delta_q"] == "3.0"
+    assert rows[0]["escaped_source_units"] == "1"

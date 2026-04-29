@@ -1,0 +1,67 @@
+{
+  "escaped_source_weight": {
+    "p50": 0.0,
+    "p90": 742.2999999999997,
+    "p95": 782.0
+  },
+  "hwm_mb_final": 4175.58984375,
+  "largest_source_unit_fraction": {
+    "p50": 1.0,
+    "p90": 1.0,
+    "p95": 1.0
+  },
+  "n_net_positive": 1275,
+  "n_net_positive_escaped_gt_1e_minus_6": 130,
+  "n_net_positive_gt_1": 81,
+  "n_net_positive_gt_1e_minus_6": 144,
+  "n_probes": 3000,
+  "n_restored_source_cluster": 2612,
+  "n_retained_split": 186,
+  "n_with_escaped_source": 374,
+  "n_with_repair_merges": 2883,
+  "net_delta_q": {
+    "max": 58.90630514146034,
+    "p50": 0.0,
+    "p90": 8.242295734817162e-13,
+    "p95": 2.192734882555646e-12,
+    "p99": 9.050706670639329
+  },
+  "paths": {
+    "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine/split_merge_repair_probes.npz",
+    "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine/split_merge_repair_probes.csv",
+    "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine/split_merge_repair_probe_summary.json"
+  },
+  "phases": [
+    {
+      "elapsed_sec": 0.0006396740209311247,
+      "hwm_mb": 59.84375,
+      "name": "candidate_load",
+      "rss_mb": 59.84375
+    },
+    {
+      "elapsed_sec": 9.864612092962489,
+      "hwm_mb": 4030.34375,
+      "name": "graph_load",
+      "rss_mb": 3944.3203125
+    },
+    {
+      "elapsed_sec": 0.17685731896199286,
+      "hwm_mb": 4116.71484375,
+      "name": "membership_load",
+      "rss_mb": 4116.71484375
+    },
+    {
+      "elapsed_sec": 1.1882913460722193,
+      "hwm_mb": 4175.58984375,
+      "name": "split_merge_repair_probes",
+      "rss_mb": 4117.45703125
+    }
+  ],
+  "repair_delta_q": {
+    "p50": 142.58628395618922,
+    "p90": 314.91410955919304,
+    "p95": 364.30517820614955,
+    "p99": 482.5232063462138
+  },
+  "rss_mb_final": 4118.26953125
+}

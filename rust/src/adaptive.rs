@@ -12,7 +12,7 @@ use crate::workspace::Workspace;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use std::cmp::Ordering;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Clone, Debug)]
 pub struct MergeCandidate {
@@ -116,6 +116,32 @@ pub struct MultiCoreSplitProbe {
     pub split_delta_q_base: f64,
     pub split_delta_q_probe: f64,
     pub hysteresis_only: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct SplitMergeRepairProbe {
+    pub cluster: u64,
+    pub gamma_multiplier: f64,
+    pub probe_resolution: f64,
+    pub block_count: u64,
+    pub doc_weight: f64,
+    pub n_parts: u64,
+    pub core_part_count: u64,
+    pub singleton_weight: f64,
+    pub cut_weight: f64,
+    pub split_delta_q_base: f64,
+    pub split_delta_q_probe: f64,
+    pub repair_merge_count: u64,
+    pub repair_delta_q: f64,
+    pub net_delta_q: f64,
+    pub final_source_units: u64,
+    pub retained_source_units: u64,
+    pub escaped_source_units: u64,
+    pub escaped_source_weight: f64,
+    pub final_small_source_units: u64,
+    pub final_small_source_weight: f64,
+    pub largest_source_unit_fraction: f64,
+    pub restored_source_cluster: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -808,6 +834,28 @@ struct SplitEval {
     split_delta_q_probe: f64,
 }
 
+struct RepairEval {
+    repair_merge_count: u64,
+    repair_delta_q: f64,
+    net_delta_q: f64,
+    final_source_units: u64,
+    retained_source_units: u64,
+    escaped_source_units: u64,
+    escaped_source_weight: f64,
+    final_small_source_units: u64,
+    final_small_source_weight: f64,
+    largest_source_unit_fraction: f64,
+    restored_source_cluster: bool,
+}
+
+fn add_local_edge(adj: &mut [HashMap<usize, f64>], u: usize, v: usize, weight: f64) {
+    if u == v || weight == 0.0 {
+        return;
+    }
+    *adj[u].entry(v).or_insert(0.0) += weight;
+    *adj[v].entry(u).or_insert(0.0) += weight;
+}
+
 fn evaluate_split_partition(
     graph: &Graph,
     nodes: &[u32],
@@ -896,6 +944,194 @@ fn evaluate_split_partition(
         cut_weight,
         split_delta_q_base,
         split_delta_q_probe,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn repair_split_partition(
+    graph: &Graph,
+    clustering: &Clustering,
+    nodes: &[u32],
+    assignments: &[u32],
+    n_parts: usize,
+    source_cluster: usize,
+    source_doc_weight: f64,
+    split_delta_q_base: f64,
+    resolution: f64,
+    min_core_weight: f64,
+    repair_epsilon: f64,
+    ws: &mut Workspace,
+) -> RepairEval {
+    let mut unit_weight = vec![0.0f64; n_parts];
+    let mut source_weight = vec![0.0f64; n_parts];
+    let mut source_part_count = vec![1u64; n_parts];
+    let mut has_external = vec![false; n_parts];
+    let mut adj: Vec<HashMap<usize, f64>> = (0..n_parts).map(|_| HashMap::new()).collect();
+
+    for (local, &node) in nodes.iter().enumerate() {
+        ws.local_index[node as usize] = local as u32;
+        let part = assignments[local] as usize;
+        let weight = graph.node_weights[node as usize];
+        unit_weight[part] += weight;
+        source_weight[part] += weight;
+    }
+
+    ws.temp_used.clear();
+    for (local, &node_u32) in nodes.iter().enumerate() {
+        let node = node_u32 as usize;
+        let part = assignments[local] as usize;
+        let nbr_start = graph.first_neighbor_index[node] as usize;
+        let nbr_end = graph.first_neighbor_index[node + 1] as usize;
+        for edge_idx in nbr_start..nbr_end {
+            let nbr = graph.neighbors[edge_idx] as usize;
+            let nbr_cluster = clustering.clusters[nbr] as usize;
+            let weight = graph.edge_weights[edge_idx];
+            if nbr_cluster == source_cluster {
+                let local_nbr = ws.local_index[nbr];
+                if local_nbr != u32::MAX && local < local_nbr as usize {
+                    let nbr_part = assignments[local_nbr as usize] as usize;
+                    add_local_edge(&mut adj, part, nbr_part, weight);
+                }
+                continue;
+            }
+
+            let unit = if ws.temp_seen[nbr_cluster] == u32::MAX {
+                let unit = unit_weight.len();
+                ws.temp_seen[nbr_cluster] = unit as u32;
+                ws.temp_used.push(nbr_cluster as u32);
+                unit_weight.push(ws.cw[nbr_cluster]);
+                source_weight.push(0.0);
+                source_part_count.push(0);
+                has_external.push(true);
+                adj.push(HashMap::new());
+                unit
+            } else {
+                ws.temp_seen[nbr_cluster] as usize
+            };
+            add_local_edge(&mut adj, part, unit, weight);
+        }
+    }
+
+    for &node in nodes {
+        ws.local_index[node as usize] = u32::MAX;
+    }
+    for nbr_cluster_u32 in ws.temp_used.drain(..) {
+        ws.temp_seen[nbr_cluster_u32 as usize] = u32::MAX;
+    }
+
+    let mut active = vec![true; unit_weight.len()];
+    let mut repair_merge_count = 0u64;
+    let mut repair_delta_q = 0.0;
+
+    loop {
+        let mut best_delta_q = f64::NEG_INFINITY;
+        let mut best_pair = None;
+        for u in 0..adj.len() {
+            if !active[u] {
+                continue;
+            }
+            for (&v, &edge_weight) in &adj[u] {
+                if u >= v || !active[v] {
+                    continue;
+                }
+                if source_weight[u] == 0.0 && source_weight[v] == 0.0 {
+                    continue;
+                }
+                if has_external[u] && has_external[v] {
+                    continue;
+                }
+                let delta_q = edge_weight - resolution * unit_weight[u] * unit_weight[v];
+                if delta_q > best_delta_q {
+                    best_delta_q = delta_q;
+                    best_pair = Some((u, v));
+                }
+            }
+        }
+
+        let should_merge = if repair_epsilon > 0.0 {
+            best_delta_q >= -repair_epsilon
+        } else {
+            best_delta_q > 0.0
+        };
+        if !should_merge {
+            break;
+        }
+        let Some((u, v)) = best_pair else {
+            break;
+        };
+
+        let (keep, remove) = if has_external[u] && !has_external[v] {
+            (u, v)
+        } else if has_external[v] && !has_external[u] {
+            (v, u)
+        } else if unit_weight[u] >= unit_weight[v] {
+            (u, v)
+        } else {
+            (v, u)
+        };
+
+        repair_merge_count += 1;
+        repair_delta_q += best_delta_q;
+        unit_weight[keep] += unit_weight[remove];
+        source_weight[keep] += source_weight[remove];
+        source_part_count[keep] += source_part_count[remove];
+        has_external[keep] |= has_external[remove];
+        active[remove] = false;
+
+        adj[keep].remove(&remove);
+        let removed_neighbors: Vec<(usize, f64)> = adj[remove].drain().collect();
+        for (nbr, weight) in removed_neighbors {
+            if nbr == keep || !active[nbr] {
+                continue;
+            }
+            adj[nbr].remove(&remove);
+            add_local_edge(&mut adj, keep, nbr, weight);
+        }
+    }
+
+    let mut final_source_units = 0u64;
+    let mut retained_source_units = 0u64;
+    let mut escaped_source_units = 0u64;
+    let mut escaped_source_weight = 0.0;
+    let mut final_small_source_units = 0u64;
+    let mut final_small_source_weight = 0.0;
+    let mut largest_source_unit_weight = 0.0;
+    for u in 0..active.len() {
+        if !active[u] || source_weight[u] == 0.0 {
+            continue;
+        }
+        final_source_units += 1;
+        if has_external[u] {
+            escaped_source_units += 1;
+            escaped_source_weight += source_weight[u];
+        } else {
+            retained_source_units += 1;
+        }
+        if source_weight[u] < min_core_weight {
+            final_small_source_units += 1;
+            final_small_source_weight += source_weight[u];
+        }
+        if source_weight[u] > largest_source_unit_weight {
+            largest_source_unit_weight = source_weight[u];
+        }
+    }
+
+    RepairEval {
+        repair_merge_count,
+        repair_delta_q,
+        net_delta_q: split_delta_q_base + repair_delta_q,
+        final_source_units,
+        retained_source_units,
+        escaped_source_units,
+        escaped_source_weight,
+        final_small_source_units,
+        final_small_source_weight,
+        largest_source_unit_fraction: if source_doc_weight > 0.0 {
+            largest_source_unit_weight / source_doc_weight
+        } else {
+            0.0
+        },
+        restored_source_cluster: final_source_units == 1 && escaped_source_units == 0,
     }
 }
 
@@ -1002,6 +1238,117 @@ pub fn multi_core_split_probes(
                 split_delta_q_base: eval.split_delta_q_base,
                 split_delta_q_probe: eval.split_delta_q_probe,
                 hysteresis_only: eval.split_delta_q_base <= 0.0 && eval.split_delta_q_probe > 0.0,
+            });
+        }
+    }
+
+    out
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn split_merge_repair_probes(
+    graph: &Graph,
+    clustering: &Clustering,
+    candidate_clusters: &[u64],
+    resolution: f64,
+    gamma_multipliers: &[f64],
+    min_core_weight: f64,
+    randomness: f64,
+    repair_epsilon: f64,
+    seed: u64,
+    ws: &mut Workspace,
+) -> Vec<SplitMergeRepairProbe> {
+    assert_eq!(clustering.n_nodes, graph.n_nodes);
+
+    let n_clusters = clustering.n_clusters;
+    clustering.fill_cluster_groups_and_weights(&graph.node_weights, ws);
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut merge_ws = LocalMergeWorkspace::new(0);
+    let mut cluster_sizes = Vec::new();
+    let mut out = Vec::with_capacity(candidate_clusters.len() * gamma_multipliers.len().max(1));
+
+    for &cluster_u64 in candidate_clusters {
+        let Ok(cluster_u32) = u32::try_from(cluster_u64) else {
+            continue;
+        };
+        let c = cluster_u32 as usize;
+        if c >= n_clusters {
+            continue;
+        }
+
+        let start = ws.npc_starts[c] as usize;
+        let end = ws.npc_starts[c + 1] as usize;
+        let nodes: Vec<u32> = ws.npc_nodes[start..end].to_vec();
+        if nodes.is_empty() {
+            continue;
+        }
+
+        let doc_weight = ws.cw[c];
+        for &multiplier in gamma_multipliers {
+            if !multiplier.is_finite() || multiplier <= 0.0 {
+                continue;
+            }
+            let probe_resolution = resolution * multiplier;
+            cluster_sizes.clear();
+            let n_parts =
+                local_merge::find_clustering_induced_u32_with_workspace_assignments_and_append_sizes(
+                    graph,
+                    &nodes,
+                    &mut ws.local_index,
+                    probe_resolution,
+                    randomness,
+                    &mut rng,
+                    &mut merge_ws,
+                    &mut cluster_sizes,
+                );
+            let assignments = &merge_ws.assignments()[..nodes.len()];
+            let split_eval = evaluate_split_partition(
+                graph,
+                &nodes,
+                assignments,
+                n_parts,
+                resolution,
+                probe_resolution,
+                min_core_weight,
+                &mut ws.local_index,
+            );
+            let repair_eval = repair_split_partition(
+                graph,
+                clustering,
+                &nodes,
+                assignments,
+                n_parts,
+                c,
+                doc_weight,
+                split_eval.split_delta_q_base,
+                resolution,
+                min_core_weight,
+                repair_epsilon,
+                ws,
+            );
+            out.push(SplitMergeRepairProbe {
+                cluster: cluster_u64,
+                gamma_multiplier: multiplier,
+                probe_resolution,
+                block_count: nodes.len() as u64,
+                doc_weight,
+                n_parts: split_eval.n_parts,
+                core_part_count: split_eval.core_part_count,
+                singleton_weight: split_eval.singleton_weight,
+                cut_weight: split_eval.cut_weight,
+                split_delta_q_base: split_eval.split_delta_q_base,
+                split_delta_q_probe: split_eval.split_delta_q_probe,
+                repair_merge_count: repair_eval.repair_merge_count,
+                repair_delta_q: repair_eval.repair_delta_q,
+                net_delta_q: repair_eval.net_delta_q,
+                final_source_units: repair_eval.final_source_units,
+                retained_source_units: repair_eval.retained_source_units,
+                escaped_source_units: repair_eval.escaped_source_units,
+                escaped_source_weight: repair_eval.escaped_source_weight,
+                final_small_source_units: repair_eval.final_small_source_units,
+                final_small_source_weight: repair_eval.final_small_source_weight,
+                largest_source_unit_fraction: repair_eval.largest_source_unit_fraction,
+                restored_source_cluster: repair_eval.restored_source_cluster,
             });
         }
     }
@@ -1118,5 +1465,35 @@ mod tests {
         assert!((probe.cut_weight - 0.1).abs() < 1e-12);
         assert!(probe.split_delta_q_base > 0.0);
         assert!(probe.split_delta_q_probe > probe.split_delta_q_base);
+    }
+
+    #[test]
+    fn split_merge_repair_probes_can_escape_to_external_cluster() {
+        let graph = Graph::from_edge_list(3, &[0, 1], &[1, 2], &[0.1, 10.0]);
+        let clustering = Clustering::from_assignments(vec![0, 0, 1]);
+        let mut ws = Workspace::new(3);
+
+        let probes = split_merge_repair_probes(
+            &graph,
+            &clustering,
+            &[0],
+            0.1,
+            &[10.0],
+            1.0,
+            0.0,
+            0.0,
+            42,
+            &mut ws,
+        );
+
+        assert_eq!(probes.len(), 1);
+        let probe = &probes[0];
+        assert_eq!(probe.n_parts, 2);
+        assert_eq!(probe.repair_merge_count, 1);
+        assert!(probe.net_delta_q > 9.0);
+        assert_eq!(probe.final_source_units, 2);
+        assert_eq!(probe.escaped_source_units, 1);
+        assert_eq!(probe.escaped_source_weight, 1.0);
+        assert!(!probe.restored_source_cluster);
     }
 }

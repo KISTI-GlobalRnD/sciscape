@@ -148,6 +148,27 @@ stage rather than another full random restart:
     fragments and hub/supernode singletons, but preserving those fragments after
     lowering gamma requires an explicit utility/debt rule rather than pure CPM
     acceptance
+- Split-then-repair probes on the same top `500` g016 doc-weight clusters:
+  - summary artifact:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_split_merge_repair_probe/README_summary.json`
+  - GPU artifact directory:
+    `/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine`
+  - repair policy: force high-gamma split, then greedily merge at baseline
+    `gamma=0.0085`; source-source and source-external merges are allowed, while
+    external-external merges are blocked
+  - probe pass takes approximately `1.19 sec` for `500` clusters times `6`
+    gamma multipliers
+  - most forced splits repair back to the original source cluster:
+    `2,612 / 3,000` rows restore the source cluster
+  - `374 / 3,000` rows have source mass escaping into external neighbor
+    clusters after repair
+  - because restored splits can produce tiny floating-point positive
+    `net_delta_Q`, use `net_delta_Q > 1e-6` as the practical positive threshold
+  - `144` rows are practically net-positive, `130` of them include escaped
+    source mass, and `81` rows exceed `net_delta_Q > 1.0`
+  - best observed repaired perturbation has `net_delta_Q = 58.91`
+  - this is the first positive evidence for the hysteretic strategy: a split
+    that is not acceptable by itself can become useful after baseline repair
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -315,8 +336,9 @@ Implementation status:
 - [x] induced local-merge reclustering for candidate clusters
 - [x] local split `delta_Q` evaluation at baseline and probe gamma
 - [x] hysteresis-only split diagnostics
-- [ ] split acceptance policy with explicit debt/utility and singleton penalty
-- [ ] accepted split materialization plus polish/rollback
+- [x] split-then-baseline-repair dry-run with external-neighbor escape metrics
+- [ ] split repair acceptance policy with explicit debt/utility and singleton penalty
+- [ ] accepted split/repair materialization plus polish/rollback
 - [ ] pilot on a larger graph with clusters above the target maximum
 
 ## Stage 4: Boundary Refinement

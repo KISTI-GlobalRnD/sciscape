@@ -1,0 +1,36 @@
+{
+  "dataset": "g016_contracted_gamma_0p0085",
+  "description": "Forced high-gamma split followed by baseline-gamma local merge repair on the top 500 doc-weight clusters.",
+  "candidate_source": "research/consensus/results/adaptive_refinement/g016_gamma0p0085_multi_core_split_probe/large_doc_weight_candidates.csv",
+  "gamma_multipliers": [1.02, 1.05, 1.1, 1.15, 1.2, 1.25],
+  "repair_policy": {
+    "baseline_gamma": 0.0085,
+    "repair_epsilon": 0.0,
+    "allowed_merges": "source-source and source-external; external-external merges are blocked"
+  },
+  "key_findings": {
+    "n_probe_rows": 3000,
+    "n_with_repair_merges": 2883,
+    "n_restored_source_cluster": 2612,
+    "n_with_escaped_source": 374,
+    "n_retained_split": 186,
+    "n_net_positive_raw": 1275,
+    "n_net_positive_gt_1e_minus_6": 144,
+    "n_net_positive_gt_1": 81,
+    "n_net_positive_escaped_gt_1e_minus_6": 130,
+    "net_delta_q_max": 58.90630514146034,
+    "probe_elapsed_sec": 1.1882913460722193,
+    "interpretation": "Most forced high-gamma splits are repaired back to the original source cluster at baseline gamma. A smaller but nontrivial set escapes into external neighbor clusters and remains net-positive after repair, which is the first evidence that split-then-repair can move the solution into a better basin than pure split acceptance."
+  },
+  "threshold_notes": {
+    "raw_positive_count_includes_float_noise": true,
+    "preferred_positive_threshold": "net_delta_q > 1e-6",
+    "strong_positive_threshold": "net_delta_q > 1.0"
+  },
+  "remote_paths": {
+    "directory": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine",
+    "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine/split_merge_repair_probes.npz",
+    "csv": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine/split_merge_repair_probes.csv",
+    "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_split_merge_repair_probe_large_top500_fine/split_merge_repair_probe_summary.json"
+  }
+}

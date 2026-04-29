@@ -198,6 +198,38 @@ class RustMultiCoreSplitProbes:
 
 
 @dataclass(frozen=True)
+class RustSplitMergeRepairProbes:
+    """Dry-run forced split followed by baseline-gamma local merge repair."""
+
+    cluster: np.ndarray
+    gamma_multiplier: np.ndarray
+    probe_resolution: np.ndarray
+    block_count: np.ndarray
+    doc_weight: np.ndarray
+    n_parts: np.ndarray
+    core_part_count: np.ndarray
+    singleton_weight: np.ndarray
+    cut_weight: np.ndarray
+    split_delta_q_base: np.ndarray
+    split_delta_q_probe: np.ndarray
+    repair_merge_count: np.ndarray
+    repair_delta_q: np.ndarray
+    net_delta_q: np.ndarray
+    final_source_units: np.ndarray
+    retained_source_units: np.ndarray
+    escaped_source_units: np.ndarray
+    escaped_source_weight: np.ndarray
+    final_small_source_units: np.ndarray
+    final_small_source_weight: np.ndarray
+    largest_source_unit_fraction: np.ndarray
+    restored_source_cluster: np.ndarray
+
+    @property
+    def n_probes(self) -> int:
+        return int(self.cluster.shape[0])
+
+
+@dataclass(frozen=True)
 class RustLeidenGraph:
     """Reusable Rust CSR graph for repeated Leiden/postprocess calls."""
 
@@ -514,6 +546,67 @@ class RustLeidenGraph:
             split_delta_q_base=np.asarray(raw["split_delta_q_base"], dtype=np.float64),
             split_delta_q_probe=np.asarray(raw["split_delta_q_probe"], dtype=np.float64),
             hysteresis_only=np.asarray(raw["hysteresis_only"], dtype=bool),
+        )
+
+    def split_merge_repair_probes(
+        self,
+        membership: np.ndarray,
+        candidate_clusters: np.ndarray,
+        *,
+        resolution: float,
+        gamma_multipliers: Sequence[float],
+        min_core_weight: float = 25.0,
+        randomness: float = 0.01,
+        repair_epsilon: float = 0.0,
+        seed: int = 0,
+    ) -> RustSplitMergeRepairProbes:
+        """Probe forced high-gamma splits followed by baseline-gamma repair."""
+        probes = getattr(self.graph, "split_merge_repair_probes", None)
+        if probes is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose "
+                "Graph.split_merge_repair_probes"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
+        gamma_multipliers_array = np.ascontiguousarray(gamma_multipliers, dtype=np.float64)
+        raw = probes(
+            membership=membership,
+            candidate_clusters=candidate_clusters,
+            resolution=float(resolution),
+            gamma_multipliers=gamma_multipliers_array,
+            min_core_weight=float(min_core_weight),
+            randomness=float(randomness),
+            repair_epsilon=float(repair_epsilon),
+            seed=int(seed),
+        )
+        return RustSplitMergeRepairProbes(
+            cluster=np.asarray(raw["cluster"], dtype=np.uint64),
+            gamma_multiplier=np.asarray(raw["gamma_multiplier"], dtype=np.float64),
+            probe_resolution=np.asarray(raw["probe_resolution"], dtype=np.float64),
+            block_count=np.asarray(raw["block_count"], dtype=np.uint64),
+            doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            n_parts=np.asarray(raw["n_parts"], dtype=np.uint64),
+            core_part_count=np.asarray(raw["core_part_count"], dtype=np.uint64),
+            singleton_weight=np.asarray(raw["singleton_weight"], dtype=np.float64),
+            cut_weight=np.asarray(raw["cut_weight"], dtype=np.float64),
+            split_delta_q_base=np.asarray(raw["split_delta_q_base"], dtype=np.float64),
+            split_delta_q_probe=np.asarray(raw["split_delta_q_probe"], dtype=np.float64),
+            repair_merge_count=np.asarray(raw["repair_merge_count"], dtype=np.uint64),
+            repair_delta_q=np.asarray(raw["repair_delta_q"], dtype=np.float64),
+            net_delta_q=np.asarray(raw["net_delta_q"], dtype=np.float64),
+            final_source_units=np.asarray(raw["final_source_units"], dtype=np.uint64),
+            retained_source_units=np.asarray(raw["retained_source_units"], dtype=np.uint64),
+            escaped_source_units=np.asarray(raw["escaped_source_units"], dtype=np.uint64),
+            escaped_source_weight=np.asarray(raw["escaped_source_weight"], dtype=np.float64),
+            final_small_source_units=np.asarray(raw["final_small_source_units"], dtype=np.uint64),
+            final_small_source_weight=np.asarray(
+                raw["final_small_source_weight"], dtype=np.float64
+            ),
+            largest_source_unit_fraction=np.asarray(
+                raw["largest_source_unit_fraction"], dtype=np.float64
+            ),
+            restored_source_cluster=np.asarray(raw["restored_source_cluster"], dtype=bool),
         )
 
     def postprocess_small_clusters(
