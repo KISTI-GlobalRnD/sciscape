@@ -1,0 +1,65 @@
+{
+  "best_action_counts": {
+    "none": 1000,
+    "second_move": 0,
+    "second_split": 0,
+    "top_move": 0,
+    "top_split": 0
+  },
+  "best_delta_q": {
+    "max": 0.0,
+    "p50": -11.569895877435805,
+    "p90": -0.46635788051984084,
+    "p95": -0.16806903149997274,
+    "p99": 0.0
+  },
+  "hwm_mb_final": 4199.33203125,
+  "n_positive_best": 0,
+  "n_positive_second_group_move": 0,
+  "n_positive_second_group_split": 0,
+  "n_positive_top_group_move": 0,
+  "n_positive_top_group_split": 0,
+  "n_probes": 1000,
+  "paths": {
+    "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_high_ambiguity_top1000/boundary_group_probes.npz",
+    "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_high_ambiguity_top1000/boundary_group_probes.csv",
+    "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_high_ambiguity_top1000/boundary_group_probe_summary.json"
+  },
+  "phases": [
+    {
+      "elapsed_sec": 0.004293792997486889,
+      "hwm_mb": 60.53125,
+      "name": "candidate_load",
+      "rss_mb": 60.53125
+    },
+    {
+      "elapsed_sec": 9.009390510967933,
+      "hwm_mb": 4030.28125,
+      "name": "graph_load",
+      "rss_mb": 3944.2109375
+    },
+    {
+      "elapsed_sec": 0.15354708395898342,
+      "hwm_mb": 4128.45703125,
+      "name": "membership_load",
+      "rss_mb": 4128.45703125
+    },
+    {
+      "elapsed_sec": 0.109475655015558,
+      "hwm_mb": 4199.33203125,
+      "name": "boundary_group_probes",
+      "rss_mb": 4129.1796875
+    }
+  ],
+  "rss_mb_final": 4129.93359375,
+  "second_group_weight": {
+    "p50": 32.0,
+    "p90": 227.30000000000007,
+    "p95": 311.0999999999999
+  },
+  "top_group_weight": {
+    "p50": 277.0,
+    "p90": 457.0,
+    "p95": 526.0
+  }
+}

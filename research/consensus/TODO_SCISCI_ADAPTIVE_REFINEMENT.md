@@ -113,6 +113,19 @@ stage rather than another full random restart:
     `boundary_band_scale` found `22`
   - best observed single-block move still had negative `delta_Q`
     (`-0.000401`)
+- Boundary grouped split/move probes on the same top `1,000` candidate sets:
+  - summary artifact:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_boundary_group_probe/README_summary.json`
+  - GPU artifact directories:
+    `/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_*`
+  - each run reloads graph in approximately `8.9-9.0 sec`, while the grouped
+    probe pass itself takes only `0.08-0.11 sec` for `1,000` clusters
+  - tested policies: `boundary_strict`, `boundary_high_ambiguity`,
+    `boundary_band_scale`, and `boundary_nonleaf`
+  - no policy found a positive-CPM grouped move or split to the top or second
+    neighbor cluster
+  - the grouped top/second-neighbor heuristic is therefore useful as a cheap
+    negative screen, but not sufficient as the adaptive perturbation itself
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -298,7 +311,8 @@ Implementation status:
 - [x] boundary ambiguity policy summaries
 - [x] top boundary candidate CSV export
 - [x] single-block top/second-neighbor move probe around candidate clusters
-- [ ] grouped induced-subgraph probe around candidate clusters
+- [x] grouped top/second-neighbor split/move probe around candidate clusters
+- [ ] richer induced-subgraph or multi-core split probe around candidate clusters
 - [ ] accepted boundary perturbation plus polish/rollback
 
 ## Stage 5: Local Polish

@@ -10,14 +10,20 @@ from sciscape.clustering.adaptive_refinement import (
     score_boundary_candidates,
     simulate_macro_merge_policy,
     summarize_boundary_candidate_policies,
+    summarize_boundary_group_probes,
     summarize_boundary_move_probes,
     summarize_cluster_graph_stats,
     write_adaptive_refinement_report,
     write_boundary_candidate_report,
+    write_boundary_group_probe_report,
     write_boundary_move_probe_report,
     write_macro_merge_ensemble_report,
 )
-from sciscape.clustering.leiden_rust import RustBoundaryMoveProbes, RustClusterGraphStats
+from sciscape.clustering.leiden_rust import (
+    RustBoundaryGroupProbes,
+    RustBoundaryMoveProbes,
+    RustClusterGraphStats,
+)
 
 
 def _stats() -> RustClusterGraphStats:
@@ -69,6 +75,32 @@ def _move_probes() -> RustBoundaryMoveProbes:
         best_move_target=np.array([1, 3], dtype=np.int64),
         top_move_count=np.array([1, 0], dtype=np.uint64),
         second_move_count=np.array([1, 0], dtype=np.uint64),
+    )
+
+
+def _group_probes() -> RustBoundaryGroupProbes:
+    return RustBoundaryGroupProbes(
+        cluster=np.array([10, 20], dtype=np.uint64),
+        block_count=np.array([3, 2], dtype=np.uint64),
+        doc_weight=np.array([120.0, 80.0], dtype=np.float64),
+        top_neighbor=np.array([1, 2], dtype=np.int64),
+        second_neighbor=np.array([2, 3], dtype=np.int64),
+        top_group_count=np.array([2, 1], dtype=np.uint64),
+        top_group_weight=np.array([50.0, 10.0], dtype=np.float64),
+        top_group_to_target_weight=np.array([30.0, 2.0], dtype=np.float64),
+        top_group_cut_weight=np.array([5.0, 1.0], dtype=np.float64),
+        top_group_move_delta_q=np.array([2.0, -0.5], dtype=np.float64),
+        top_group_split_delta_q=np.array([1.0, -1.0], dtype=np.float64),
+        top_group_is_full_cluster=np.array([False, False], dtype=bool),
+        second_group_count=np.array([1, 1], dtype=np.uint64),
+        second_group_weight=np.array([20.0, 20.0], dtype=np.float64),
+        second_group_to_target_weight=np.array([10.0, 3.0], dtype=np.float64),
+        second_group_cut_weight=np.array([4.0, 2.0], dtype=np.float64),
+        second_group_move_delta_q=np.array([0.5, -0.2], dtype=np.float64),
+        second_group_split_delta_q=np.array([0.25, -0.4], dtype=np.float64),
+        second_group_is_full_cluster=np.array([False, False], dtype=bool),
+        best_delta_q=np.array([2.0, -0.2], dtype=np.float64),
+        best_action=np.array([1, 0], dtype=np.uint8),
     )
 
 
@@ -280,3 +312,26 @@ def test_write_boundary_move_probe_report(tmp_path):
     assert rows[0]["cluster"] == "10"
     assert rows[0]["best_move_node"] == "7"
     assert rows[1]["cluster"] == "20"
+
+
+def test_summarize_boundary_group_probes():
+    summary = summarize_boundary_group_probes(_group_probes())
+
+    assert summary["n_probes"] == 2
+    assert summary["n_positive_best"] == 1
+    assert summary["n_positive_top_group_move"] == 1
+    assert summary["best_action_counts"]["top_move"] == 1
+    assert summary["best_action_counts"]["none"] == 1
+
+
+def test_write_boundary_group_probe_report(tmp_path):
+    paths = write_boundary_group_probe_report(_group_probes(), tmp_path)
+
+    assert set(paths) == {"summary", "probes"}
+    summary = json.loads((tmp_path / "boundary_group_probe_summary.json").read_text())
+    assert summary["n_positive_best"] == 1
+    rows = list(csv.DictReader((tmp_path / "boundary_group_probes.csv").open()))
+    assert rows[0]["cluster"] == "10"
+    assert rows[0]["best_action"] == "1"
+    assert rows[1]["cluster"] == "20"
+    assert rows[1]["best_action"] == "0"

@@ -11,6 +11,7 @@ use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
 use crate::adaptive::{
+    boundary_group_probes as compute_boundary_group_probes,
     boundary_move_probes as compute_boundary_move_probes,
     cluster_graph_stats as compute_cluster_graph_stats,
 };
@@ -1084,6 +1085,199 @@ impl PyGraph {
             PyArray1::from_vec(py, second_move_count)
                 .into_any()
                 .unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        resolution,
+    ))]
+    fn boundary_group_probes(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        resolution: f64,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+
+        let probes = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_boundary_group_probes(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                resolution,
+                &mut ws,
+            )
+        });
+
+        let n = probes.len();
+        let mut cluster = Vec::with_capacity(n);
+        let mut block_count = Vec::with_capacity(n);
+        let mut doc_weight = Vec::with_capacity(n);
+        let mut top_neighbor = Vec::with_capacity(n);
+        let mut second_neighbor = Vec::with_capacity(n);
+        let mut top_group_count = Vec::with_capacity(n);
+        let mut top_group_weight = Vec::with_capacity(n);
+        let mut top_group_to_target_weight = Vec::with_capacity(n);
+        let mut top_group_cut_weight = Vec::with_capacity(n);
+        let mut top_group_move_delta_q = Vec::with_capacity(n);
+        let mut top_group_split_delta_q = Vec::with_capacity(n);
+        let mut top_group_is_full_cluster = Vec::with_capacity(n);
+        let mut second_group_count = Vec::with_capacity(n);
+        let mut second_group_weight = Vec::with_capacity(n);
+        let mut second_group_to_target_weight = Vec::with_capacity(n);
+        let mut second_group_cut_weight = Vec::with_capacity(n);
+        let mut second_group_move_delta_q = Vec::with_capacity(n);
+        let mut second_group_split_delta_q = Vec::with_capacity(n);
+        let mut second_group_is_full_cluster = Vec::with_capacity(n);
+        let mut best_delta_q = Vec::with_capacity(n);
+        let mut best_action = Vec::with_capacity(n);
+
+        for probe in probes {
+            cluster.push(probe.cluster);
+            block_count.push(probe.block_count);
+            doc_weight.push(probe.doc_weight);
+            top_neighbor.push(probe.top_neighbor);
+            second_neighbor.push(probe.second_neighbor);
+            top_group_count.push(probe.top_group_count);
+            top_group_weight.push(probe.top_group_weight);
+            top_group_to_target_weight.push(probe.top_group_to_target_weight);
+            top_group_cut_weight.push(probe.top_group_cut_weight);
+            top_group_move_delta_q.push(probe.top_group_move_delta_q);
+            top_group_split_delta_q.push(probe.top_group_split_delta_q);
+            top_group_is_full_cluster.push(probe.top_group_is_full_cluster);
+            second_group_count.push(probe.second_group_count);
+            second_group_weight.push(probe.second_group_weight);
+            second_group_to_target_weight.push(probe.second_group_to_target_weight);
+            second_group_cut_weight.push(probe.second_group_cut_weight);
+            second_group_move_delta_q.push(probe.second_group_move_delta_q);
+            second_group_split_delta_q.push(probe.second_group_split_delta_q);
+            second_group_is_full_cluster.push(probe.second_group_is_full_cluster);
+            best_delta_q.push(probe.best_delta_q);
+            best_action.push(probe.best_action);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "cluster".to_string(),
+            PyArray1::from_vec(py, cluster).into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, block_count).into_any().unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "top_neighbor".to_string(),
+            PyArray1::from_vec(py, top_neighbor).into_any().unbind(),
+        );
+        out.insert(
+            "second_neighbor".to_string(),
+            PyArray1::from_vec(py, second_neighbor).into_any().unbind(),
+        );
+        out.insert(
+            "top_group_count".to_string(),
+            PyArray1::from_vec(py, top_group_count).into_any().unbind(),
+        );
+        out.insert(
+            "top_group_weight".to_string(),
+            PyArray1::from_vec(py, top_group_weight).into_any().unbind(),
+        );
+        out.insert(
+            "top_group_to_target_weight".to_string(),
+            PyArray1::from_vec(py, top_group_to_target_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "top_group_cut_weight".to_string(),
+            PyArray1::from_vec(py, top_group_cut_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "top_group_move_delta_q".to_string(),
+            PyArray1::from_vec(py, top_group_move_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "top_group_split_delta_q".to_string(),
+            PyArray1::from_vec(py, top_group_split_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "top_group_is_full_cluster".to_string(),
+            PyArray1::from_vec(py, top_group_is_full_cluster)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_count".to_string(),
+            PyArray1::from_vec(py, second_group_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_weight".to_string(),
+            PyArray1::from_vec(py, second_group_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_to_target_weight".to_string(),
+            PyArray1::from_vec(py, second_group_to_target_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_cut_weight".to_string(),
+            PyArray1::from_vec(py, second_group_cut_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_move_delta_q".to_string(),
+            PyArray1::from_vec(py, second_group_move_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_split_delta_q".to_string(),
+            PyArray1::from_vec(py, second_group_split_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_is_full_cluster".to_string(),
+            PyArray1::from_vec(py, second_group_is_full_cluster)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_delta_q".to_string(),
+            PyArray1::from_vec(py, best_delta_q).into_any().unbind(),
+        );
+        out.insert(
+            "best_action".to_string(),
+            PyArray1::from_vec(py, best_action).into_any().unbind(),
         );
         Ok(out)
     }

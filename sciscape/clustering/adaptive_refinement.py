@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-from .leiden_rust import RustBoundaryMoveProbes, RustClusterGraphStats
+from .leiden_rust import RustBoundaryGroupProbes, RustBoundaryMoveProbes, RustClusterGraphStats
 
 
 @dataclass(frozen=True)
@@ -818,6 +818,119 @@ def write_boundary_move_probe_report(
     return {"summary": str(summary_path), "probes": str(csv_path)}
 
 
+def summarize_boundary_group_probes(probes: RustBoundaryGroupProbes) -> dict[str, Any]:
+    """Return compact aggregate diagnostics for grouped boundary probes."""
+
+    positive = probes.best_delta_q > 0
+    top_move = probes.best_action == 1
+    second_move = probes.best_action == 2
+    top_split = probes.best_action == 3
+    second_split = probes.best_action == 4
+    return {
+        "n_probes": int(probes.n_probes),
+        "n_positive_best": int(positive.sum()),
+        "n_positive_top_group_move": int((probes.top_group_move_delta_q > 0).sum()),
+        "n_positive_second_group_move": int((probes.second_group_move_delta_q > 0).sum()),
+        "n_positive_top_group_split": int((probes.top_group_split_delta_q > 0).sum()),
+        "n_positive_second_group_split": int((probes.second_group_split_delta_q > 0).sum()),
+        "best_action_counts": {
+            "none": int((probes.best_action == 0).sum()),
+            "top_move": int(top_move.sum()),
+            "second_move": int(second_move.sum()),
+            "top_split": int(top_split.sum()),
+            "second_split": int(second_split.sum()),
+        },
+        "best_delta_q": _percentiles(probes.best_delta_q, [50, 90, 95, 99]),
+        "best_delta_q_max": float(probes.best_delta_q.max()) if probes.n_probes else 0.0,
+        "top_group_weight": _percentiles(probes.top_group_weight, [50, 90, 95, 99]),
+        "second_group_weight": _percentiles(probes.second_group_weight, [50, 90, 95, 99]),
+    }
+
+
+def write_boundary_group_probe_report(
+    probes: RustBoundaryGroupProbes,
+    output_dir: Path,
+    *,
+    top_probes: int | None = None,
+) -> dict[str, str]:
+    """Write JSON/CSV diagnostics for grouped boundary split/move probes."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary = summarize_boundary_group_probes(probes)
+    summary_path = output_dir / "boundary_group_probe_summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    order = np.argsort(-probes.best_delta_q, kind="mergesort")
+    if top_probes is not None:
+        order = order[: int(top_probes)]
+
+    csv_path = output_dir / "boundary_group_probes.csv"
+    fieldnames = [
+        "rank",
+        "cluster",
+        "block_count",
+        "doc_weight",
+        "top_neighbor",
+        "second_neighbor",
+        "top_group_count",
+        "top_group_weight",
+        "top_group_to_target_weight",
+        "top_group_cut_weight",
+        "top_group_move_delta_q",
+        "top_group_split_delta_q",
+        "top_group_is_full_cluster",
+        "second_group_count",
+        "second_group_weight",
+        "second_group_to_target_weight",
+        "second_group_cut_weight",
+        "second_group_move_delta_q",
+        "second_group_split_delta_q",
+        "second_group_is_full_cluster",
+        "best_delta_q",
+        "best_action",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for rank, idx in enumerate(order, start=1):
+            writer.writerow(
+                {
+                    "rank": rank,
+                    "cluster": int(probes.cluster[idx]),
+                    "block_count": int(probes.block_count[idx]),
+                    "doc_weight": float(probes.doc_weight[idx]),
+                    "top_neighbor": int(probes.top_neighbor[idx]),
+                    "second_neighbor": int(probes.second_neighbor[idx]),
+                    "top_group_count": int(probes.top_group_count[idx]),
+                    "top_group_weight": float(probes.top_group_weight[idx]),
+                    "top_group_to_target_weight": float(probes.top_group_to_target_weight[idx]),
+                    "top_group_cut_weight": float(probes.top_group_cut_weight[idx]),
+                    "top_group_move_delta_q": float(probes.top_group_move_delta_q[idx]),
+                    "top_group_split_delta_q": float(probes.top_group_split_delta_q[idx]),
+                    "top_group_is_full_cluster": bool(probes.top_group_is_full_cluster[idx]),
+                    "second_group_count": int(probes.second_group_count[idx]),
+                    "second_group_weight": float(probes.second_group_weight[idx]),
+                    "second_group_to_target_weight": float(
+                        probes.second_group_to_target_weight[idx]
+                    ),
+                    "second_group_cut_weight": float(probes.second_group_cut_weight[idx]),
+                    "second_group_move_delta_q": float(probes.second_group_move_delta_q[idx]),
+                    "second_group_split_delta_q": float(probes.second_group_split_delta_q[idx]),
+                    "second_group_is_full_cluster": bool(
+                        probes.second_group_is_full_cluster[idx]
+                    ),
+                    "best_delta_q": float(probes.best_delta_q[idx]),
+                    "best_action": int(probes.best_action[idx]),
+                }
+            )
+
+    return {"summary": str(summary_path), "probes": str(csv_path)}
+
+
 def write_adaptive_refinement_report(
     stats: RustClusterGraphStats,
     output_dir: Path,
@@ -944,10 +1057,12 @@ __all__ = [
     "score_boundary_candidates",
     "simulate_macro_merge_policy",
     "summarize_boundary_candidate_policies",
+    "summarize_boundary_group_probes",
     "summarize_boundary_move_probes",
     "summarize_cluster_graph_stats",
     "write_adaptive_refinement_report",
     "write_boundary_candidate_report",
+    "write_boundary_group_probe_report",
     "write_boundary_move_probe_report",
     "write_macro_merge_ensemble_report",
 ]

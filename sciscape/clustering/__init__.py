@@ -78,6 +78,7 @@ from .leiden_java import (
 )
 from .leiden_rust import (
     RUST_AVAILABLE,
+    RustBoundaryGroupProbes,
     RustBoundaryMoveProbes,
     RustClusterGraphStats,
     RustLeidenGraph,
@@ -95,10 +96,12 @@ from .adaptive_refinement import (
     score_boundary_candidates,
     simulate_macro_merge_policy,
     summarize_boundary_candidate_policies,
+    summarize_boundary_group_probes,
     summarize_boundary_move_probes,
     summarize_cluster_graph_stats,
     write_adaptive_refinement_report,
     write_boundary_candidate_report,
+    write_boundary_group_probe_report,
     write_boundary_move_probe_report,
     write_macro_merge_ensemble_report,
 )
@@ -188,6 +191,7 @@ __all__ = [
     "run_multilevel_java",
     "postprocess_small_clusters_java",
     "RUST_AVAILABLE",
+    "RustBoundaryGroupProbes",
     "RustBoundaryMoveProbes",
     "RustClusterGraphStats",
     "RustLeidenGraph",
@@ -203,10 +207,12 @@ __all__ = [
     "score_boundary_candidates",
     "simulate_macro_merge_policy",
     "summarize_boundary_candidate_policies",
+    "summarize_boundary_group_probes",
     "summarize_boundary_move_probes",
     "summarize_cluster_graph_stats",
     "write_adaptive_refinement_report",
     "write_boundary_candidate_report",
+    "write_boundary_group_probe_report",
     "write_boundary_move_probe_report",
     "write_macro_merge_ensemble_report",
 ]

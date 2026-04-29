@@ -1,0 +1,125 @@
+{
+  "dataset": "g016_contracted_gamma_0p0085",
+  "description": "Top-1000 boundary candidate grouped split/move probes against top/second cluster neighbors.",
+  "key_findings": {
+    "all_runs_positive_group_probes": 0,
+    "all_runs_best_action_none": true,
+    "best_observed_delta_q": 0.0,
+    "max_probe_elapsed_sec": 0.11290851107332855,
+    "typical_graph_reload_sec": 8.9
+  },
+  "runs": [
+    {
+      "best_action_counts": {
+        "none": 1000,
+        "second_move": 0,
+        "second_split": 0,
+        "top_move": 0,
+        "top_split": 0
+      },
+      "best_delta_q_max": 0.0,
+      "best_delta_q_p50": -11.980609627708272,
+      "best_delta_q_p90": -0.6205353449827787,
+      "best_delta_q_p95": -0.23024107297311597,
+      "best_delta_q_p99": 0.0,
+      "hwm_mb_final": 4191.65234375,
+      "n_positive_best": 0,
+      "n_probes": 1000,
+      "probe_elapsed_sec": 0.11290851107332855,
+      "remote_paths": {
+        "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_band_scale_top1000/boundary_group_probes.npz",
+        "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_band_scale_top1000/boundary_group_probes.csv",
+        "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_band_scale_top1000/boundary_group_probe_summary.json"
+      },
+      "run": "band_scale_top1000",
+      "top_group_weight_p50": 281.0,
+      "top_group_weight_p95": 526.05,
+      "second_group_weight_p50": 33.0,
+      "second_group_weight_p95": 311.0999999999999
+    },
+    {
+      "best_action_counts": {
+        "none": 1000,
+        "second_move": 0,
+        "second_split": 0,
+        "top_move": 0,
+        "top_split": 0
+      },
+      "best_delta_q_max": 0.0,
+      "best_delta_q_p50": -11.569895877435805,
+      "best_delta_q_p90": -0.46635788051984084,
+      "best_delta_q_p95": -0.16806903149997274,
+      "best_delta_q_p99": 0.0,
+      "hwm_mb_final": 4199.33203125,
+      "n_positive_best": 0,
+      "n_probes": 1000,
+      "probe_elapsed_sec": 0.109475655015558,
+      "remote_paths": {
+        "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_high_ambiguity_top1000/boundary_group_probes.npz",
+        "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_high_ambiguity_top1000/boundary_group_probes.csv",
+        "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_high_ambiguity_top1000/boundary_group_probe_summary.json"
+      },
+      "run": "high_ambiguity_top1000",
+      "top_group_weight_p50": 277.0,
+      "top_group_weight_p95": 526.0,
+      "second_group_weight_p50": 32.0,
+      "second_group_weight_p95": 311.0999999999999
+    },
+    {
+      "best_action_counts": {
+        "none": 1000,
+        "second_move": 0,
+        "second_split": 0,
+        "top_move": 0,
+        "top_split": 0
+      },
+      "best_delta_q_max": 0.0,
+      "best_delta_q_p50": -0.7562103258731032,
+      "best_delta_q_p90": -0.028636197725442732,
+      "best_delta_q_p95": 0.0,
+      "best_delta_q_p99": 0.0,
+      "hwm_mb_final": 4189.37109375,
+      "n_positive_best": 0,
+      "n_probes": 1000,
+      "probe_elapsed_sec": 0.081628822023049,
+      "remote_paths": {
+        "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_nonleaf_top1000/boundary_group_probes.npz",
+        "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_nonleaf_top1000/boundary_group_probes.csv",
+        "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_nonleaf_top1000/boundary_group_probe_summary.json"
+      },
+      "run": "nonleaf_top1000",
+      "top_group_weight_p50": 77.5,
+      "top_group_weight_p95": 407.0,
+      "second_group_weight_p50": 10.0,
+      "second_group_weight_p95": 104.04999999999995
+    },
+    {
+      "best_action_counts": {
+        "none": 1000,
+        "second_move": 0,
+        "second_split": 0,
+        "top_move": 0,
+        "top_split": 0
+      },
+      "best_delta_q_max": 0.0,
+      "best_delta_q_p50": -1.752614870660342,
+      "best_delta_q_p90": -0.15955298154167222,
+      "best_delta_q_p95": 0.0,
+      "best_delta_q_p99": 0.0,
+      "hwm_mb_final": 4201.9609375,
+      "n_positive_best": 0,
+      "n_probes": 1000,
+      "probe_elapsed_sec": 0.08902644203044474,
+      "remote_paths": {
+        "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_strict_top1000/boundary_group_probes.npz",
+        "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_strict_top1000/boundary_group_probes.csv",
+        "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_group_probe_strict_top1000/boundary_group_probe_summary.json"
+      },
+      "run": "strict_top1000",
+      "top_group_weight_p50": 125.0,
+      "top_group_weight_p95": 409.0999999999999,
+      "second_group_weight_p50": 8.0,
+      "second_group_weight_p95": 117.0
+    }
+  ]
+}
