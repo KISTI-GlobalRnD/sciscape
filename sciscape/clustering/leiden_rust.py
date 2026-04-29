@@ -168,6 +168,36 @@ class RustBoundaryGroupProbes:
 
 
 @dataclass(frozen=True)
+class RustMultiCoreSplitProbes:
+    """Per-cluster high-gamma induced split probes for multi-core diagnostics."""
+
+    cluster: np.ndarray
+    gamma_multiplier: np.ndarray
+    probe_resolution: np.ndarray
+    block_count: np.ndarray
+    doc_weight: np.ndarray
+    internal_weight: np.ndarray
+    induced_directed_edges: np.ndarray
+    n_parts: np.ndarray
+    non_singleton_parts: np.ndarray
+    singleton_parts: np.ndarray
+    singleton_weight: np.ndarray
+    core_part_count: np.ndarray
+    core_part_weight: np.ndarray
+    largest_part_weight: np.ndarray
+    second_part_weight: np.ndarray
+    largest_part_fraction: np.ndarray
+    cut_weight: np.ndarray
+    split_delta_q_base: np.ndarray
+    split_delta_q_probe: np.ndarray
+    hysteresis_only: np.ndarray
+
+    @property
+    def n_probes(self) -> int:
+        return int(self.cluster.shape[0])
+
+
+@dataclass(frozen=True)
 class RustLeidenGraph:
     """Reusable Rust CSR graph for repeated Leiden/postprocess calls."""
 
@@ -426,6 +456,64 @@ class RustLeidenGraph:
             ),
             best_delta_q=np.asarray(raw["best_delta_q"], dtype=np.float64),
             best_action=np.asarray(raw["best_action"], dtype=np.uint8),
+        )
+
+    def multi_core_split_probes(
+        self,
+        membership: np.ndarray,
+        candidate_clusters: np.ndarray,
+        *,
+        resolution: float,
+        gamma_multipliers: Sequence[float],
+        min_core_weight: float = 25.0,
+        randomness: float = 0.01,
+        seed: int = 0,
+    ) -> RustMultiCoreSplitProbes:
+        """Probe high-gamma induced splits inside candidate clusters.
+
+        The resulting partitions are evaluated both at the baseline resolution
+        and at the probing resolution. This keeps hysteresis-only splits visible
+        without mutating ``membership``.
+        """
+        probes = getattr(self.graph, "multi_core_split_probes", None)
+        if probes is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose "
+                "Graph.multi_core_split_probes"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
+        gamma_multipliers_array = np.ascontiguousarray(gamma_multipliers, dtype=np.float64)
+        raw = probes(
+            membership=membership,
+            candidate_clusters=candidate_clusters,
+            resolution=float(resolution),
+            gamma_multipliers=gamma_multipliers_array,
+            min_core_weight=float(min_core_weight),
+            randomness=float(randomness),
+            seed=int(seed),
+        )
+        return RustMultiCoreSplitProbes(
+            cluster=np.asarray(raw["cluster"], dtype=np.uint64),
+            gamma_multiplier=np.asarray(raw["gamma_multiplier"], dtype=np.float64),
+            probe_resolution=np.asarray(raw["probe_resolution"], dtype=np.float64),
+            block_count=np.asarray(raw["block_count"], dtype=np.uint64),
+            doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            internal_weight=np.asarray(raw["internal_weight"], dtype=np.float64),
+            induced_directed_edges=np.asarray(raw["induced_directed_edges"], dtype=np.uint64),
+            n_parts=np.asarray(raw["n_parts"], dtype=np.uint64),
+            non_singleton_parts=np.asarray(raw["non_singleton_parts"], dtype=np.uint64),
+            singleton_parts=np.asarray(raw["singleton_parts"], dtype=np.uint64),
+            singleton_weight=np.asarray(raw["singleton_weight"], dtype=np.float64),
+            core_part_count=np.asarray(raw["core_part_count"], dtype=np.uint64),
+            core_part_weight=np.asarray(raw["core_part_weight"], dtype=np.float64),
+            largest_part_weight=np.asarray(raw["largest_part_weight"], dtype=np.float64),
+            second_part_weight=np.asarray(raw["second_part_weight"], dtype=np.float64),
+            largest_part_fraction=np.asarray(raw["largest_part_fraction"], dtype=np.float64),
+            cut_weight=np.asarray(raw["cut_weight"], dtype=np.float64),
+            split_delta_q_base=np.asarray(raw["split_delta_q_base"], dtype=np.float64),
+            split_delta_q_probe=np.asarray(raw["split_delta_q_probe"], dtype=np.float64),
+            hysteresis_only=np.asarray(raw["hysteresis_only"], dtype=bool),
         )
 
     def postprocess_small_clusters(

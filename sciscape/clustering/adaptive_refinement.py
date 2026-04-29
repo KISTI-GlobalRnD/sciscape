@@ -14,7 +14,12 @@ from typing import Any
 
 import numpy as np
 
-from .leiden_rust import RustBoundaryGroupProbes, RustBoundaryMoveProbes, RustClusterGraphStats
+from .leiden_rust import (
+    RustBoundaryGroupProbes,
+    RustBoundaryMoveProbes,
+    RustClusterGraphStats,
+    RustMultiCoreSplitProbes,
+)
 
 
 @dataclass(frozen=True)
@@ -931,6 +936,126 @@ def write_boundary_group_probe_report(
     return {"summary": str(summary_path), "probes": str(csv_path)}
 
 
+def summarize_multi_core_split_probes(probes: RustMultiCoreSplitProbes) -> dict[str, Any]:
+    """Return compact aggregate diagnostics for high-gamma split probes."""
+
+    split = probes.n_parts > 1
+    base_positive = probes.split_delta_q_base > 0
+    probe_positive = probes.split_delta_q_probe > 0
+    meaningful_core = probes.core_part_count >= 2
+    return {
+        "n_probes": int(probes.n_probes),
+        "n_split": int(split.sum()),
+        "n_base_positive": int(base_positive.sum()),
+        "n_probe_positive": int(probe_positive.sum()),
+        "n_hysteresis_only": int(probes.hysteresis_only.sum()),
+        "n_meaningful_core_split": int((split & meaningful_core).sum()),
+        "n_base_positive_meaningful_core_split": int(
+            (base_positive & meaningful_core).sum()
+        ),
+        "n_parts": _percentiles(probes.n_parts.astype(np.float64), [50, 90, 95, 99]),
+        "core_part_count": _percentiles(
+            probes.core_part_count.astype(np.float64), [50, 90, 95, 99]
+        ),
+        "split_delta_q_base": _percentiles(probes.split_delta_q_base, [50, 90, 95, 99]),
+        "split_delta_q_base_max": (
+            float(probes.split_delta_q_base.max()) if probes.n_probes else 0.0
+        ),
+        "split_delta_q_probe": _percentiles(probes.split_delta_q_probe, [50, 90, 95, 99]),
+        "split_delta_q_probe_max": (
+            float(probes.split_delta_q_probe.max()) if probes.n_probes else 0.0
+        ),
+        "largest_part_fraction": _percentiles(
+            probes.largest_part_fraction, [50, 90, 95, 99]
+        ),
+        "singleton_weight": _percentiles(probes.singleton_weight, [50, 90, 95, 99]),
+    }
+
+
+def write_multi_core_split_probe_report(
+    probes: RustMultiCoreSplitProbes,
+    output_dir: Path,
+    *,
+    top_probes: int | None = None,
+) -> dict[str, str]:
+    """Write JSON/CSV diagnostics for high-gamma induced split probes."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary = summarize_multi_core_split_probes(probes)
+    summary_path = output_dir / "multi_core_split_probe_summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    order = np.lexsort(
+        (
+            probes.cluster,
+            -probes.split_delta_q_probe,
+            -probes.split_delta_q_base,
+        )
+    )
+    if top_probes is not None:
+        order = order[: int(top_probes)]
+
+    csv_path = output_dir / "multi_core_split_probes.csv"
+    fieldnames = [
+        "rank",
+        "cluster",
+        "gamma_multiplier",
+        "probe_resolution",
+        "block_count",
+        "doc_weight",
+        "internal_weight",
+        "induced_directed_edges",
+        "n_parts",
+        "non_singleton_parts",
+        "singleton_parts",
+        "singleton_weight",
+        "core_part_count",
+        "core_part_weight",
+        "largest_part_weight",
+        "second_part_weight",
+        "largest_part_fraction",
+        "cut_weight",
+        "split_delta_q_base",
+        "split_delta_q_probe",
+        "hysteresis_only",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for rank, idx in enumerate(order, start=1):
+            writer.writerow(
+                {
+                    "rank": rank,
+                    "cluster": int(probes.cluster[idx]),
+                    "gamma_multiplier": float(probes.gamma_multiplier[idx]),
+                    "probe_resolution": float(probes.probe_resolution[idx]),
+                    "block_count": int(probes.block_count[idx]),
+                    "doc_weight": float(probes.doc_weight[idx]),
+                    "internal_weight": float(probes.internal_weight[idx]),
+                    "induced_directed_edges": int(probes.induced_directed_edges[idx]),
+                    "n_parts": int(probes.n_parts[idx]),
+                    "non_singleton_parts": int(probes.non_singleton_parts[idx]),
+                    "singleton_parts": int(probes.singleton_parts[idx]),
+                    "singleton_weight": float(probes.singleton_weight[idx]),
+                    "core_part_count": int(probes.core_part_count[idx]),
+                    "core_part_weight": float(probes.core_part_weight[idx]),
+                    "largest_part_weight": float(probes.largest_part_weight[idx]),
+                    "second_part_weight": float(probes.second_part_weight[idx]),
+                    "largest_part_fraction": float(probes.largest_part_fraction[idx]),
+                    "cut_weight": float(probes.cut_weight[idx]),
+                    "split_delta_q_base": float(probes.split_delta_q_base[idx]),
+                    "split_delta_q_probe": float(probes.split_delta_q_probe[idx]),
+                    "hysteresis_only": bool(probes.hysteresis_only[idx]),
+                }
+            )
+
+    return {"summary": str(summary_path), "probes": str(csv_path)}
+
+
 def write_adaptive_refinement_report(
     stats: RustClusterGraphStats,
     output_dir: Path,
@@ -1060,9 +1185,11 @@ __all__ = [
     "summarize_boundary_group_probes",
     "summarize_boundary_move_probes",
     "summarize_cluster_graph_stats",
+    "summarize_multi_core_split_probes",
     "write_adaptive_refinement_report",
     "write_boundary_candidate_report",
     "write_boundary_group_probe_report",
     "write_boundary_move_probe_report",
     "write_macro_merge_ensemble_report",
+    "write_multi_core_split_probe_report",
 ]

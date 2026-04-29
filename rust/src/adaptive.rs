@@ -7,7 +7,10 @@
 use crate::clustering::Clustering;
 use crate::contraction::create_reduced_network;
 use crate::graph::Graph;
+use crate::local_merge::{self, LocalMergeWorkspace};
 use crate::workspace::Workspace;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
@@ -89,6 +92,30 @@ pub struct BoundaryGroupProbe {
     pub second_group_is_full_cluster: bool,
     pub best_delta_q: f64,
     pub best_action: u8,
+}
+
+#[derive(Clone, Debug)]
+pub struct MultiCoreSplitProbe {
+    pub cluster: u64,
+    pub gamma_multiplier: f64,
+    pub probe_resolution: f64,
+    pub block_count: u64,
+    pub doc_weight: f64,
+    pub internal_weight: f64,
+    pub induced_directed_edges: u64,
+    pub n_parts: u64,
+    pub non_singleton_parts: u64,
+    pub singleton_parts: u64,
+    pub singleton_weight: f64,
+    pub core_part_count: u64,
+    pub core_part_weight: f64,
+    pub largest_part_weight: f64,
+    pub second_part_weight: f64,
+    pub largest_part_fraction: f64,
+    pub cut_weight: f64,
+    pub split_delta_q_base: f64,
+    pub split_delta_q_probe: f64,
+    pub hysteresis_only: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -766,6 +793,222 @@ pub fn boundary_group_probes(
     out
 }
 
+struct SplitEval {
+    n_parts: u64,
+    non_singleton_parts: u64,
+    singleton_parts: u64,
+    singleton_weight: f64,
+    core_part_count: u64,
+    core_part_weight: f64,
+    largest_part_weight: f64,
+    second_part_weight: f64,
+    largest_part_fraction: f64,
+    cut_weight: f64,
+    split_delta_q_base: f64,
+    split_delta_q_probe: f64,
+}
+
+fn evaluate_split_partition(
+    graph: &Graph,
+    nodes: &[u32],
+    assignments: &[u32],
+    n_parts: usize,
+    base_resolution: f64,
+    probe_resolution: f64,
+    min_core_weight: f64,
+    local_index: &mut [u32],
+) -> SplitEval {
+    let mut part_counts = vec![0u64; n_parts];
+    let mut part_weights = vec![0.0f64; n_parts];
+    for (local, &node) in nodes.iter().enumerate() {
+        local_index[node as usize] = local as u32;
+        let part = assignments[local] as usize;
+        part_counts[part] += 1;
+        part_weights[part] += graph.node_weights[node as usize];
+    }
+
+    let mut directed_cut_weight = 0.0;
+    for (local, &node) in nodes.iter().enumerate() {
+        let part = assignments[local] as usize;
+        let start = graph.first_neighbor_index[node as usize] as usize;
+        let end = graph.first_neighbor_index[node as usize + 1] as usize;
+        for edge_idx in start..end {
+            let nbr = graph.neighbors[edge_idx] as usize;
+            let local_nbr = local_index[nbr];
+            if local_nbr != u32::MAX && assignments[local_nbr as usize] as usize != part {
+                directed_cut_weight += graph.edge_weights[edge_idx];
+            }
+        }
+    }
+
+    for &node in nodes {
+        local_index[node as usize] = u32::MAX;
+    }
+
+    let doc_weight: f64 = part_weights.iter().sum();
+    let sum_square_weight: f64 = part_weights.iter().map(|weight| weight * weight).sum();
+    let pair_weight = (doc_weight * doc_weight - sum_square_weight) / 2.0;
+    let cut_weight = directed_cut_weight / 2.0;
+    let split_delta_q_base = -cut_weight + base_resolution * pair_weight;
+    let split_delta_q_probe = -cut_weight + probe_resolution * pair_weight;
+
+    let mut singleton_parts = 0u64;
+    let mut singleton_weight = 0.0;
+    let mut non_singleton_parts = 0u64;
+    let mut core_part_count = 0u64;
+    let mut core_part_weight = 0.0;
+    let mut largest_part_weight = 0.0;
+    let mut second_part_weight = 0.0;
+    for (&count, &weight) in part_counts.iter().zip(part_weights.iter()) {
+        if count == 1 {
+            singleton_parts += 1;
+            singleton_weight += weight;
+        } else if count > 1 {
+            non_singleton_parts += 1;
+        }
+        if weight >= min_core_weight {
+            core_part_count += 1;
+            core_part_weight += weight;
+        }
+        if weight > largest_part_weight {
+            second_part_weight = largest_part_weight;
+            largest_part_weight = weight;
+        } else if weight > second_part_weight {
+            second_part_weight = weight;
+        }
+    }
+    let largest_part_fraction = if doc_weight > 0.0 {
+        largest_part_weight / doc_weight
+    } else {
+        0.0
+    };
+
+    SplitEval {
+        n_parts: n_parts as u64,
+        non_singleton_parts,
+        singleton_parts,
+        singleton_weight,
+        core_part_count,
+        core_part_weight,
+        largest_part_weight,
+        second_part_weight,
+        largest_part_fraction,
+        cut_weight,
+        split_delta_q_base,
+        split_delta_q_probe,
+    }
+}
+
+pub fn multi_core_split_probes(
+    graph: &Graph,
+    clustering: &Clustering,
+    candidate_clusters: &[u64],
+    resolution: f64,
+    gamma_multipliers: &[f64],
+    min_core_weight: f64,
+    randomness: f64,
+    seed: u64,
+    ws: &mut Workspace,
+) -> Vec<MultiCoreSplitProbe> {
+    assert_eq!(clustering.n_nodes, graph.n_nodes);
+
+    let n_clusters = clustering.n_clusters;
+    clustering.fill_cluster_groups_and_weights(&graph.node_weights, ws);
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut merge_ws = LocalMergeWorkspace::new(0);
+    let mut cluster_sizes = Vec::new();
+    let mut out = Vec::with_capacity(candidate_clusters.len() * gamma_multipliers.len().max(1));
+
+    for &cluster_u64 in candidate_clusters {
+        let Ok(cluster_u32) = u32::try_from(cluster_u64) else {
+            continue;
+        };
+        let c = cluster_u32 as usize;
+        if c >= n_clusters {
+            continue;
+        }
+
+        let start = ws.npc_starts[c] as usize;
+        let end = ws.npc_starts[c + 1] as usize;
+        let nodes = &ws.npc_nodes[start..end];
+        if nodes.is_empty() {
+            continue;
+        }
+
+        let doc_weight = ws.cw[c];
+        let mut self_loop_weight = 0.0;
+        let mut internal_directed_weight = 0.0;
+        let mut induced_directed_edges = 0u64;
+        for &node_u32 in nodes {
+            let node = node_u32 as usize;
+            self_loop_weight += graph.self_loop_weights[node];
+            let nbr_start = graph.first_neighbor_index[node] as usize;
+            let nbr_end = graph.first_neighbor_index[node + 1] as usize;
+            for edge_idx in nbr_start..nbr_end {
+                let nbr = graph.neighbors[edge_idx] as usize;
+                if clustering.clusters[nbr] as usize == c {
+                    internal_directed_weight += graph.edge_weights[edge_idx];
+                    induced_directed_edges += 1;
+                }
+            }
+        }
+        let internal_weight = internal_directed_weight / 2.0 + self_loop_weight;
+
+        for &multiplier in gamma_multipliers {
+            if !multiplier.is_finite() || multiplier <= 0.0 {
+                continue;
+            }
+            let probe_resolution = resolution * multiplier;
+            cluster_sizes.clear();
+            let n_parts = local_merge::find_clustering_induced_u32_with_workspace_assignments_and_append_sizes(
+                graph,
+                nodes,
+                &mut ws.local_index,
+                probe_resolution,
+                randomness,
+                &mut rng,
+                &mut merge_ws,
+                &mut cluster_sizes,
+            );
+            let assignments = &merge_ws.assignments()[..nodes.len()];
+            let eval = evaluate_split_partition(
+                graph,
+                nodes,
+                assignments,
+                n_parts,
+                resolution,
+                probe_resolution,
+                min_core_weight,
+                &mut ws.local_index,
+            );
+            out.push(MultiCoreSplitProbe {
+                cluster: cluster_u64,
+                gamma_multiplier: multiplier,
+                probe_resolution,
+                block_count: nodes.len() as u64,
+                doc_weight,
+                internal_weight,
+                induced_directed_edges,
+                n_parts: eval.n_parts,
+                non_singleton_parts: eval.non_singleton_parts,
+                singleton_parts: eval.singleton_parts,
+                singleton_weight: eval.singleton_weight,
+                core_part_count: eval.core_part_count,
+                core_part_weight: eval.core_part_weight,
+                largest_part_weight: eval.largest_part_weight,
+                second_part_weight: eval.second_part_weight,
+                largest_part_fraction: eval.largest_part_fraction,
+                cut_weight: eval.cut_weight,
+                split_delta_q_base: eval.split_delta_q_base,
+                split_delta_q_probe: eval.split_delta_q_probe,
+                hysteresis_only: eval.split_delta_q_base <= 0.0 && eval.split_delta_q_probe > 0.0,
+            });
+        }
+    }
+
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -845,5 +1088,35 @@ mod tests {
         assert!(probe.top_group_move_delta_q > 9.0);
         assert!(probe.second_group_move_delta_q > 8.0);
         assert!(probe.best_delta_q > 9.0);
+    }
+
+    #[test]
+    fn multi_core_split_probes_reports_many_core_split() {
+        let graph = Graph::from_edge_list(4, &[0, 2, 1], &[1, 3, 2], &[10.0, 10.0, 0.1]);
+        let clustering = Clustering::from_assignments(vec![0, 0, 0, 0]);
+        let mut ws = Workspace::new(4);
+
+        let probes = multi_core_split_probes(
+            &graph,
+            &clustering,
+            &[0],
+            0.1,
+            &[10.0],
+            2.0,
+            0.0,
+            42,
+            &mut ws,
+        );
+
+        assert_eq!(probes.len(), 1);
+        let probe = &probes[0];
+        assert_eq!(probe.cluster, 0);
+        assert_eq!(probe.n_parts, 2);
+        assert_eq!(probe.non_singleton_parts, 2);
+        assert_eq!(probe.singleton_parts, 0);
+        assert_eq!(probe.core_part_count, 2);
+        assert!((probe.cut_weight - 0.1).abs() < 1e-12);
+        assert!(probe.split_delta_q_base > 0.0);
+        assert!(probe.split_delta_q_probe > probe.split_delta_q_base);
     }
 }

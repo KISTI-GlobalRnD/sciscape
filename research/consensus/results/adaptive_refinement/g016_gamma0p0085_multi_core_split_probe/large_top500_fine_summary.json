@@ -1,0 +1,81 @@
+{
+  "core_part_count": {
+    "max": 8,
+    "p50": 2.0,
+    "p90": 4.0,
+    "p95": 4.0,
+    "p99": 5.0
+  },
+  "hwm_mb_final": 4176.26953125,
+  "largest_part_fraction": {
+    "p50": 0.7325210905536044,
+    "p90": 0.9874450278859968,
+    "p95": 0.998679170082306
+  },
+  "n_base_positive": 0,
+  "n_base_positive_meaningful_core_split": 0,
+  "n_hysteresis_only": 1892,
+  "n_meaningful_core_split": 2298,
+  "n_parts": {
+    "max": 104,
+    "p50": 10.0,
+    "p90": 26.0,
+    "p95": 32.0,
+    "p99": 50.0
+  },
+  "n_probe_positive": 1892,
+  "n_probe_positive_meaningful_core_split": 1367,
+  "n_probes": 3000,
+  "n_split": 2883,
+  "paths": {
+    "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_multi_core_split_probe_large_top500_fine/multi_core_split_probes.npz",
+    "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_multi_core_split_probe_large_top500_fine/multi_core_split_probes.csv",
+    "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_multi_core_split_probe_large_top500_fine/multi_core_split_probe_summary.json"
+  },
+  "phases": [
+    {
+      "elapsed_sec": 0.0007137448992580175,
+      "hwm_mb": 60.609375,
+      "name": "candidate_load",
+      "rss_mb": 60.609375
+    },
+    {
+      "elapsed_sec": 8.911230216966942,
+      "hwm_mb": 4032.234375,
+      "name": "graph_load",
+      "rss_mb": 3946.1328125
+    },
+    {
+      "elapsed_sec": 0.15378226898610592,
+      "hwm_mb": 4117.39453125,
+      "name": "membership_load",
+      "rss_mb": 4117.39453125
+    },
+    {
+      "elapsed_sec": 0.07009976892732084,
+      "hwm_mb": 4176.26953125,
+      "name": "multi_core_split_probes",
+      "rss_mb": 4118.12109375
+    }
+  ],
+  "rss_mb_final": 4118.93359375,
+  "singleton_weight": {
+    "p50": 113.0,
+    "p90": 747.0999999999999,
+    "p95": 787.0999999999995
+  },
+  "split_delta_q_base": {
+    "max": 0.0,
+    "p50": -143.62243565326435,
+    "p90": -1.5726329989089847,
+    "p95": -0.11882848586445194,
+    "p99": 0.0
+  },
+  "split_delta_q_probe": {
+    "max": 459.7561411128654,
+    "p50": 2.5715716278355814,
+    "p90": 99.5981022657601,
+    "p95": 150.4625671678443,
+    "p99": 250.81466355957392
+  }
+}

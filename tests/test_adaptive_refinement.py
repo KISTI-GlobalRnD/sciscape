@@ -13,16 +13,19 @@ from sciscape.clustering.adaptive_refinement import (
     summarize_boundary_group_probes,
     summarize_boundary_move_probes,
     summarize_cluster_graph_stats,
+    summarize_multi_core_split_probes,
     write_adaptive_refinement_report,
     write_boundary_candidate_report,
     write_boundary_group_probe_report,
     write_boundary_move_probe_report,
     write_macro_merge_ensemble_report,
+    write_multi_core_split_probe_report,
 )
 from sciscape.clustering.leiden_rust import (
     RustBoundaryGroupProbes,
     RustBoundaryMoveProbes,
     RustClusterGraphStats,
+    RustMultiCoreSplitProbes,
 )
 
 
@@ -101,6 +104,31 @@ def _group_probes() -> RustBoundaryGroupProbes:
         second_group_is_full_cluster=np.array([False, False], dtype=bool),
         best_delta_q=np.array([2.0, -0.2], dtype=np.float64),
         best_action=np.array([1, 0], dtype=np.uint8),
+    )
+
+
+def _multi_core_split_probes() -> RustMultiCoreSplitProbes:
+    return RustMultiCoreSplitProbes(
+        cluster=np.array([10, 10, 20], dtype=np.uint64),
+        gamma_multiplier=np.array([1.5, 2.0, 1.5], dtype=np.float64),
+        probe_resolution=np.array([0.01275, 0.017, 0.01275], dtype=np.float64),
+        block_count=np.array([100, 100, 80], dtype=np.uint64),
+        doc_weight=np.array([300.0, 300.0, 120.0], dtype=np.float64),
+        internal_weight=np.array([500.0, 500.0, 90.0], dtype=np.float64),
+        induced_directed_edges=np.array([1000, 1000, 250], dtype=np.uint64),
+        n_parts=np.array([3, 5, 1], dtype=np.uint64),
+        non_singleton_parts=np.array([3, 4, 1], dtype=np.uint64),
+        singleton_parts=np.array([0, 1, 0], dtype=np.uint64),
+        singleton_weight=np.array([0.0, 1.0, 0.0], dtype=np.float64),
+        core_part_count=np.array([3, 4, 1], dtype=np.uint64),
+        core_part_weight=np.array([300.0, 299.0, 120.0], dtype=np.float64),
+        largest_part_weight=np.array([140.0, 100.0, 120.0], dtype=np.float64),
+        second_part_weight=np.array([90.0, 80.0, 0.0], dtype=np.float64),
+        largest_part_fraction=np.array([0.4667, 0.3333, 1.0], dtype=np.float64),
+        cut_weight=np.array([10.0, 40.0, 0.0], dtype=np.float64),
+        split_delta_q_base=np.array([2.0, -1.0, 0.0], dtype=np.float64),
+        split_delta_q_probe=np.array([8.0, 5.0, 0.0], dtype=np.float64),
+        hysteresis_only=np.array([False, True, False], dtype=bool),
     )
 
 
@@ -335,3 +363,26 @@ def test_write_boundary_group_probe_report(tmp_path):
     assert rows[0]["best_action"] == "1"
     assert rows[1]["cluster"] == "20"
     assert rows[1]["best_action"] == "0"
+
+
+def test_summarize_multi_core_split_probes():
+    summary = summarize_multi_core_split_probes(_multi_core_split_probes())
+
+    assert summary["n_probes"] == 3
+    assert summary["n_split"] == 2
+    assert summary["n_base_positive"] == 1
+    assert summary["n_probe_positive"] == 2
+    assert summary["n_hysteresis_only"] == 1
+    assert summary["n_meaningful_core_split"] == 2
+
+
+def test_write_multi_core_split_probe_report(tmp_path):
+    paths = write_multi_core_split_probe_report(_multi_core_split_probes(), tmp_path)
+
+    assert set(paths) == {"summary", "probes"}
+    summary = json.loads((tmp_path / "multi_core_split_probe_summary.json").read_text())
+    assert summary["n_hysteresis_only"] == 1
+    rows = list(csv.DictReader((tmp_path / "multi_core_split_probes.csv").open()))
+    assert rows[0]["cluster"] == "10"
+    assert rows[0]["split_delta_q_base"] == "2.0"
+    assert any(row["hysteresis_only"] == "True" for row in rows)

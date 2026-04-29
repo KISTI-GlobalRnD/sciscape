@@ -126,6 +126,28 @@ stage rather than another full random restart:
     neighbor cluster
   - the grouped top/second-neighbor heuristic is therefore useful as a cheap
     negative screen, but not sufficient as the adaptive perturbation itself
+- Multi-core split probes on the top `500` g016 doc-weight clusters:
+  - summary artifact:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_multi_core_split_probe/README_summary.json`
+  - GPU artifact directories:
+    `/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_multi_core_split_probe_large_top500*`
+  - probe pass takes approximately `0.07 sec` for `500` clusters times
+    `5-6` gamma multipliers; graph reload still dominates at approximately
+    `8.9 sec`
+  - no induced split is positive at the baseline `gamma=0.0085`
+  - high-gamma probes reveal strong hysteresis-only splits:
+    - coarse multipliers `{1.25,1.5,2,3,5}`: `2,455 / 2,500` rows are
+      positive at the probe gamma but non-positive at the baseline gamma
+    - fine multipliers `{1.02,1.05,1.10,1.15,1.20,1.25}`: `1,892 / 3,000`
+      rows are hysteresis-only
+  - split granularity rises rapidly as gamma increases:
+    - at `1.02x`, median parts is `3`, median singleton weight is `2`
+    - at `1.10x`, median parts is `9`, median singleton weight is `87.5`
+    - at `1.25x`, median parts is `20`, median singleton weight is `306.5`
+  - this supports the hysteresis model: raising gamma exposes many internal
+    fragments and hub/supernode singletons, but preserving those fragments after
+    lowering gamma requires an explicit utility/debt rule rather than pure CPM
+    acceptance
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -281,11 +303,21 @@ Budget constraints:
 total_induced_edges_to_probe <= 5-10% of original directed edges
 top_k_split_candidates <= 500-1000
 probe_seeds <= 2-3
-probe_gamma_multipliers in {1.25, 1.5, 2.0}
+probe_gamma_multipliers in {1.02, 1.05, 1.10, 1.15, 1.20, 1.25}
 ```
 
 Accept split only if it improves CPM or nearly preserves CPM while improving
 the target size distribution without creating excessive singleton mass.
+
+Implementation status:
+
+- [x] large-cluster candidate export by doc weight
+- [x] induced local-merge reclustering for candidate clusters
+- [x] local split `delta_Q` evaluation at baseline and probe gamma
+- [x] hysteresis-only split diagnostics
+- [ ] split acceptance policy with explicit debt/utility and singleton penalty
+- [ ] accepted split materialization plus polish/rollback
+- [ ] pilot on a larger graph with clusters above the target maximum
 
 ## Stage 4: Boundary Refinement
 

@@ -14,6 +14,7 @@ use crate::adaptive::{
     boundary_group_probes as compute_boundary_group_probes,
     boundary_move_probes as compute_boundary_move_probes,
     cluster_graph_stats as compute_cluster_graph_stats,
+    multi_core_split_probes as compute_multi_core_split_probes,
 };
 #[cfg(feature = "python")]
 use crate::contraction::create_reduced_network;
@@ -1278,6 +1279,196 @@ impl PyGraph {
         out.insert(
             "best_action".to_string(),
             PyArray1::from_vec(py, best_action).into_any().unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        resolution,
+        gamma_multipliers,
+        min_core_weight = 25.0,
+        randomness = 0.01,
+        seed = 0,
+    ))]
+    fn multi_core_split_probes(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        resolution: f64,
+        gamma_multipliers: PyReadonlyArray1<f64>,
+        min_core_weight: f64,
+        randomness: f64,
+        seed: u64,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+        let gamma_multipliers = gamma_multipliers.as_slice()?.to_vec();
+
+        let probes = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_multi_core_split_probes(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                resolution,
+                &gamma_multipliers,
+                min_core_weight,
+                randomness,
+                seed,
+                &mut ws,
+            )
+        });
+
+        let n = probes.len();
+        let mut cluster = Vec::with_capacity(n);
+        let mut gamma_multiplier = Vec::with_capacity(n);
+        let mut probe_resolution = Vec::with_capacity(n);
+        let mut block_count = Vec::with_capacity(n);
+        let mut doc_weight = Vec::with_capacity(n);
+        let mut internal_weight = Vec::with_capacity(n);
+        let mut induced_directed_edges = Vec::with_capacity(n);
+        let mut n_parts = Vec::with_capacity(n);
+        let mut non_singleton_parts = Vec::with_capacity(n);
+        let mut singleton_parts = Vec::with_capacity(n);
+        let mut singleton_weight = Vec::with_capacity(n);
+        let mut core_part_count = Vec::with_capacity(n);
+        let mut core_part_weight = Vec::with_capacity(n);
+        let mut largest_part_weight = Vec::with_capacity(n);
+        let mut second_part_weight = Vec::with_capacity(n);
+        let mut largest_part_fraction = Vec::with_capacity(n);
+        let mut cut_weight = Vec::with_capacity(n);
+        let mut split_delta_q_base = Vec::with_capacity(n);
+        let mut split_delta_q_probe = Vec::with_capacity(n);
+        let mut hysteresis_only = Vec::with_capacity(n);
+
+        for probe in probes {
+            cluster.push(probe.cluster);
+            gamma_multiplier.push(probe.gamma_multiplier);
+            probe_resolution.push(probe.probe_resolution);
+            block_count.push(probe.block_count);
+            doc_weight.push(probe.doc_weight);
+            internal_weight.push(probe.internal_weight);
+            induced_directed_edges.push(probe.induced_directed_edges);
+            n_parts.push(probe.n_parts);
+            non_singleton_parts.push(probe.non_singleton_parts);
+            singleton_parts.push(probe.singleton_parts);
+            singleton_weight.push(probe.singleton_weight);
+            core_part_count.push(probe.core_part_count);
+            core_part_weight.push(probe.core_part_weight);
+            largest_part_weight.push(probe.largest_part_weight);
+            second_part_weight.push(probe.second_part_weight);
+            largest_part_fraction.push(probe.largest_part_fraction);
+            cut_weight.push(probe.cut_weight);
+            split_delta_q_base.push(probe.split_delta_q_base);
+            split_delta_q_probe.push(probe.split_delta_q_probe);
+            hysteresis_only.push(probe.hysteresis_only);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "cluster".to_string(),
+            PyArray1::from_vec(py, cluster).into_any().unbind(),
+        );
+        out.insert(
+            "gamma_multiplier".to_string(),
+            PyArray1::from_vec(py, gamma_multiplier).into_any().unbind(),
+        );
+        out.insert(
+            "probe_resolution".to_string(),
+            PyArray1::from_vec(py, probe_resolution).into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, block_count).into_any().unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "internal_weight".to_string(),
+            PyArray1::from_vec(py, internal_weight).into_any().unbind(),
+        );
+        out.insert(
+            "induced_directed_edges".to_string(),
+            PyArray1::from_vec(py, induced_directed_edges)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "n_parts".to_string(),
+            PyArray1::from_vec(py, n_parts).into_any().unbind(),
+        );
+        out.insert(
+            "non_singleton_parts".to_string(),
+            PyArray1::from_vec(py, non_singleton_parts)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "singleton_parts".to_string(),
+            PyArray1::from_vec(py, singleton_parts).into_any().unbind(),
+        );
+        out.insert(
+            "singleton_weight".to_string(),
+            PyArray1::from_vec(py, singleton_weight).into_any().unbind(),
+        );
+        out.insert(
+            "core_part_count".to_string(),
+            PyArray1::from_vec(py, core_part_count).into_any().unbind(),
+        );
+        out.insert(
+            "core_part_weight".to_string(),
+            PyArray1::from_vec(py, core_part_weight).into_any().unbind(),
+        );
+        out.insert(
+            "largest_part_weight".to_string(),
+            PyArray1::from_vec(py, largest_part_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_part_weight".to_string(),
+            PyArray1::from_vec(py, second_part_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_part_fraction".to_string(),
+            PyArray1::from_vec(py, largest_part_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "cut_weight".to_string(),
+            PyArray1::from_vec(py, cut_weight).into_any().unbind(),
+        );
+        out.insert(
+            "split_delta_q_base".to_string(),
+            PyArray1::from_vec(py, split_delta_q_base)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "split_delta_q_probe".to_string(),
+            PyArray1::from_vec(py, split_delta_q_probe)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "hysteresis_only".to_string(),
+            PyArray1::from_vec(py, hysteresis_only).into_any().unbind(),
         );
         Ok(out)
     }

@@ -1,0 +1,107 @@
+{
+  "dataset": "g016_contracted_gamma_0p0085",
+  "description": "High-gamma induced local-merge probes on the top 500 doc-weight clusters.",
+  "candidate_source": {
+    "path": "research/consensus/results/adaptive_refinement/g016_gamma0p0085_multi_core_split_probe/large_doc_weight_candidates.csv",
+    "policy": "large_doc_weight",
+    "n_candidates": 500,
+    "top_doc_weight": 1118.0,
+    "last_doc_weight": 743.0
+  },
+  "key_findings": {
+    "base_gamma_positive_splits": 0,
+    "coarse_probe_hysteresis_only": 2455,
+    "coarse_probe_rows": 2500,
+    "fine_probe_hysteresis_only": 1892,
+    "fine_probe_rows": 3000,
+    "probe_elapsed_sec": {
+      "coarse": 0.06521857797633857,
+      "fine": 0.07009976892732084
+    },
+    "interpretation": "High-gamma probes reveal many internal fragments, but none is CPM-positive at the baseline gamma. The signal is hysteretic: raised gamma exposes splits that would need explicit debt/utility rules to preserve after returning to baseline gamma."
+  },
+  "fine_by_gamma_multiplier": [
+    {
+      "gamma_multiplier": 1.02,
+      "split": 400,
+      "probe_positive": 167,
+      "meaningful_core_split": 231,
+      "hysteresis_only": 167,
+      "n_parts_p50": 3.0,
+      "core_part_count_p50": 1.0,
+      "singleton_weight_p50": 2.0,
+      "largest_part_fraction_p50": 0.9714755124393679,
+      "split_delta_q_base_p50": -2.6886176943828843,
+      "split_delta_q_probe_p50": 0.0
+    },
+    {
+      "gamma_multiplier": 1.05,
+      "split": 487,
+      "probe_positive": 238,
+      "meaningful_core_split": 308,
+      "hysteresis_only": 238,
+      "n_parts_p50": 5.0,
+      "core_part_count_p50": 2.0,
+      "singleton_weight_p50": 22.0,
+      "largest_part_fraction_p50": 0.8902275769745649,
+      "split_delta_q_base_p50": -27.411778133799373,
+      "split_delta_q_probe_p50": 0.0
+    },
+    {
+      "gamma_multiplier": 1.1,
+      "split": 497,
+      "probe_positive": 280,
+      "meaningful_core_split": 386,
+      "hysteresis_only": 280,
+      "n_parts_p50": 9.0,
+      "core_part_count_p50": 2.0,
+      "singleton_weight_p50": 87.5,
+      "largest_part_fraction_p50": 0.8009459093222635,
+      "split_delta_q_base_p50": -82.0635154344643,
+      "split_delta_q_probe_p50": 1.6007329803609878
+    },
+    {
+      "gamma_multiplier": 1.15,
+      "split": 500,
+      "probe_positive": 339,
+      "meaningful_core_split": 435,
+      "hysteresis_only": 339,
+      "n_parts_p50": 14.0,
+      "core_part_count_p50": 3.0,
+      "singleton_weight_p50": 172.0,
+      "largest_part_fraction_p50": 0.7221726537623723,
+      "split_delta_q_base_p50": -158.77819271479996,
+      "split_delta_q_probe_p50": 11.827327703815882
+    },
+    {
+      "gamma_multiplier": 1.2,
+      "split": 499,
+      "probe_positive": 407,
+      "meaningful_core_split": 460,
+      "hysteresis_only": 407,
+      "n_parts_p50": 17.0,
+      "core_part_count_p50": 3.0,
+      "singleton_weight_p50": 252.5,
+      "largest_part_fraction_p50": 0.6581740189261189,
+      "split_delta_q_base_p50": -211.245490371294,
+      "split_delta_q_probe_p50": 37.3979244808844
+    },
+    {
+      "gamma_multiplier": 1.25,
+      "split": 500,
+      "probe_positive": 461,
+      "meaningful_core_split": 478,
+      "hysteresis_only": 461,
+      "n_parts_p50": 20.0,
+      "core_part_count_p50": 3.0,
+      "singleton_weight_p50": 306.5,
+      "largest_part_fraction_p50": 0.6269538428278024,
+      "split_delta_q_base_p50": -254.34243042435287,
+      "split_delta_q_probe_p50": 79.47748927137297
+    }
+  ],
+  "remote_paths": {
+    "coarse": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_multi_core_split_probe_large_top500",
+    "fine": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_multi_core_split_probe_large_top500_fine"
+  }
+}
