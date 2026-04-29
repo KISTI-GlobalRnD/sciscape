@@ -10,6 +10,8 @@ use pyo3::conversion::IntoPyObject;
 use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
+use crate::adaptive::cluster_graph_stats as compute_cluster_graph_stats;
+#[cfg(feature = "python")]
 use crate::contraction::create_reduced_network;
 #[cfg(feature = "python")]
 use crate::quality::{QualityFunction, CPM};
@@ -702,6 +704,157 @@ impl PyGraph {
         }
         let cpm = CPM::new(resolution);
         Ok(cpm.quality(&self.graph, &clustering))
+    }
+
+    #[pyo3(signature = (
+        membership,
+        resolution,
+        min_weight = 0.0,
+        max_weight = 0.0,
+        top_k = 1000,
+    ))]
+    fn cluster_graph_stats(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        resolution: f64,
+        min_weight: f64,
+        max_weight: f64,
+        top_k: usize,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+
+        let stats = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_cluster_graph_stats(
+                &self.graph,
+                &clustering,
+                resolution,
+                min_weight,
+                max_weight,
+                top_k,
+                &mut ws,
+            )
+        });
+
+        let n_clusters = stats.block_count.len();
+        let candidates = stats.merge_candidates;
+        let n_candidates = candidates.len();
+        let mut candidate_source = Vec::with_capacity(n_candidates);
+        let mut candidate_target = Vec::with_capacity(n_candidates);
+        let mut candidate_edge_weight = Vec::with_capacity(n_candidates);
+        let mut candidate_delta_q = Vec::with_capacity(n_candidates);
+        let mut candidate_merged_weight = Vec::with_capacity(n_candidates);
+        let mut candidate_size_band_gain = Vec::with_capacity(n_candidates);
+        for candidate in candidates {
+            candidate_source.push(candidate.source);
+            candidate_target.push(candidate.target);
+            candidate_edge_weight.push(candidate.edge_weight);
+            candidate_delta_q.push(candidate.delta_q);
+            candidate_merged_weight.push(candidate.merged_weight);
+            candidate_size_band_gain.push(candidate.size_band_gain);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "n_clusters".to_string(),
+            n_clusters.into_pyobject(py).unwrap().into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, stats.block_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, stats.doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "internal_weight".to_string(),
+            PyArray1::from_vec(py, stats.internal_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "external_weight".to_string(),
+            PyArray1::from_vec(py, stats.external_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "degree".to_string(),
+            PyArray1::from_vec(py, stats.degree).into_any().unbind(),
+        );
+        out.insert(
+            "top_neighbor".to_string(),
+            PyArray1::from_vec(py, stats.top_neighbor)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "top_neighbor_weight".to_string(),
+            PyArray1::from_vec(py, stats.top_neighbor_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "conductance".to_string(),
+            PyArray1::from_vec(py, stats.conductance)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "leafness".to_string(),
+            PyArray1::from_vec(py, stats.leafness).into_any().unbind(),
+        );
+        out.insert(
+            "band_distance".to_string(),
+            PyArray1::from_vec(py, stats.band_distance)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "candidate_source".to_string(),
+            PyArray1::from_vec(py, candidate_source).into_any().unbind(),
+        );
+        out.insert(
+            "candidate_target".to_string(),
+            PyArray1::from_vec(py, candidate_target).into_any().unbind(),
+        );
+        out.insert(
+            "candidate_edge_weight".to_string(),
+            PyArray1::from_vec(py, candidate_edge_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "candidate_delta_q".to_string(),
+            PyArray1::from_vec(py, candidate_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "candidate_merged_weight".to_string(),
+            PyArray1::from_vec(py, candidate_merged_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "candidate_size_band_gain".to_string(),
+            PyArray1::from_vec(py, candidate_size_band_gain)
+                .into_any()
+                .unbind(),
+        );
+        Ok(out)
     }
 
     #[pyo3(signature = (

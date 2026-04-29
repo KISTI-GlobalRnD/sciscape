@@ -6,6 +6,7 @@
 //! - Graph contraction for hierarchical clustering
 //! - Randomized refinement (LocalMergingAlgorithm)
 
+pub mod adaptive;
 pub mod clustering;
 pub mod contraction;
 pub mod fast_local_move;

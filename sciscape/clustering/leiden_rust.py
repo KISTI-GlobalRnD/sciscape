@@ -71,6 +71,36 @@ class RustResolutionSearchResult:
 
 
 @dataclass(frozen=True)
+class RustClusterGraphStats:
+    """Cluster-graph diagnostics for adaptive refinement dry-runs."""
+
+    block_count: np.ndarray
+    doc_weight: np.ndarray
+    internal_weight: np.ndarray
+    external_weight: np.ndarray
+    degree: np.ndarray
+    top_neighbor: np.ndarray
+    top_neighbor_weight: np.ndarray
+    conductance: np.ndarray
+    leafness: np.ndarray
+    band_distance: np.ndarray
+    candidate_source: np.ndarray
+    candidate_target: np.ndarray
+    candidate_edge_weight: np.ndarray
+    candidate_delta_q: np.ndarray
+    candidate_merged_weight: np.ndarray
+    candidate_size_band_gain: np.ndarray
+
+    @property
+    def n_clusters(self) -> int:
+        return int(self.block_count.shape[0])
+
+    @property
+    def n_candidates(self) -> int:
+        return int(self.candidate_source.shape[0])
+
+
+@dataclass(frozen=True)
 class RustLeidenGraph:
     """Reusable Rust CSR graph for repeated Leiden/postprocess calls."""
 
@@ -156,6 +186,54 @@ class RustLeidenGraph:
             raise AttributeError("installed sciscape_leiden module does not expose Graph.cpm_quality")
         membership = np.ascontiguousarray(membership, dtype=np.uint64)
         return float(quality(membership=membership, resolution=resolution))
+
+    def cluster_graph_stats(
+        self,
+        membership: np.ndarray,
+        *,
+        resolution: float,
+        min_weight: float = 0.0,
+        max_weight: float = 0.0,
+        top_k: int = 1000,
+    ) -> RustClusterGraphStats:
+        """Build cluster-level diagnostics and macro-merge dry-run candidates.
+
+        This is an observational helper for SciSci adaptive refinement. It
+        contracts the graph by ``membership`` once, reports per-cluster edge and
+        size statistics, and returns the top ``top_k`` inter-cluster merge
+        candidates ranked by predicted CPM delta.
+        """
+        stats = getattr(self.graph, "cluster_graph_stats", None)
+        if stats is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose Graph.cluster_graph_stats"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        raw = stats(
+            membership=membership,
+            resolution=float(resolution),
+            min_weight=float(min_weight),
+            max_weight=float(max_weight),
+            top_k=int(top_k),
+        )
+        return RustClusterGraphStats(
+            block_count=np.asarray(raw["block_count"], dtype=np.uint64),
+            doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            internal_weight=np.asarray(raw["internal_weight"], dtype=np.float64),
+            external_weight=np.asarray(raw["external_weight"], dtype=np.float64),
+            degree=np.asarray(raw["degree"], dtype=np.uint64),
+            top_neighbor=np.asarray(raw["top_neighbor"], dtype=np.int64),
+            top_neighbor_weight=np.asarray(raw["top_neighbor_weight"], dtype=np.float64),
+            conductance=np.asarray(raw["conductance"], dtype=np.float64),
+            leafness=np.asarray(raw["leafness"], dtype=np.float64),
+            band_distance=np.asarray(raw["band_distance"], dtype=np.float64),
+            candidate_source=np.asarray(raw["candidate_source"], dtype=np.uint64),
+            candidate_target=np.asarray(raw["candidate_target"], dtype=np.uint64),
+            candidate_edge_weight=np.asarray(raw["candidate_edge_weight"], dtype=np.float64),
+            candidate_delta_q=np.asarray(raw["candidate_delta_q"], dtype=np.float64),
+            candidate_merged_weight=np.asarray(raw["candidate_merged_weight"], dtype=np.float64),
+            candidate_size_band_gain=np.asarray(raw["candidate_size_band_gain"], dtype=np.float64),
+        )
 
     def postprocess_small_clusters(
         self,
@@ -641,6 +719,7 @@ def postprocess_small_clusters_rust(
 __all__ = [
     "RUST_AVAILABLE",
     "RustLeidenGraph",
+    "RustClusterGraphStats",
     "RustLeidenResult",
     "RustPostprocessResult",
     "RustResolutionSearchResult",

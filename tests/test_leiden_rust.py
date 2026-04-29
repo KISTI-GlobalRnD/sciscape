@@ -110,6 +110,36 @@ def test_cached_graph_cpm_quality():
     assert quality == pytest.approx(1.5)
 
 
+def test_cached_graph_cluster_graph_stats():
+    graph = build_leiden_graph(
+        edges_src=np.asarray([0, 0, 1, 2], dtype=np.uint32),
+        edges_dst=np.asarray([1, 2, 3, 3], dtype=np.uint32),
+        edges_weight=np.asarray([2.0, 0.5, 0.5, 3.0], dtype=np.float64),
+        n_nodes=4,
+    )
+    membership = np.asarray([0, 0, 1, 1], dtype=np.uint64)
+
+    stats = graph.cluster_graph_stats(
+        membership,
+        resolution=0.1,
+        min_weight=3.0,
+        max_weight=10.0,
+        top_k=4,
+    )
+
+    np.testing.assert_array_equal(stats.block_count, np.asarray([2, 2], dtype=np.uint64))
+    np.testing.assert_allclose(stats.doc_weight, np.asarray([2.0, 2.0]))
+    np.testing.assert_allclose(stats.internal_weight, np.asarray([2.0, 3.0]))
+    np.testing.assert_allclose(stats.external_weight, np.asarray([1.0, 1.0]))
+    np.testing.assert_array_equal(stats.top_neighbor, np.asarray([1, 0], dtype=np.int64))
+    np.testing.assert_allclose(stats.band_distance, np.asarray([1.0, 1.0]))
+    assert stats.n_candidates == 1
+    assert int(stats.candidate_source[0]) == 0
+    assert int(stats.candidate_target[0]) == 1
+    assert float(stats.candidate_delta_q[0]) == pytest.approx(0.6)
+    assert float(stats.candidate_size_band_gain[0]) == pytest.approx(2.0)
+
+
 def test_cached_graph_postprocess_shape_matches_wrapper():
     src, dst, w = _two_clique_edges()
     graph = build_leiden_graph(

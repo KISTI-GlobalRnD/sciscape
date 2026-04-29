@@ -12,7 +12,8 @@ As of 2026-04-29, the first prerequisite is implemented: standard Leiden now
 logs enough progress detail to identify late near-identity contractions and low
 movement iterations (`moved_nodes`, recursion `depth`, and contraction
 node/edge deltas). A large-graph recursion guard also skips recursive Leiden
-calls when contraction has become nearly identity. The adaptive refinement
+calls when contraction has become nearly identity. Cluster-graph diagnostics
+and a dry-run report writer are now implemented, but the adaptive refinement
 stage itself is still unimplemented.
 
 ## Latest Observations
@@ -141,6 +142,14 @@ Suggested output:
 - aggregate histogram report,
 - top macro-merge and macro-split candidate tables.
 
+Implementation status:
+
+- [x] Rust backend method: `RustLeidenGraph.cluster_graph_stats(...)`
+- [x] Python report helper:
+      `sciscape.clustering.write_adaptive_refinement_report(...)`
+- [x] Macro-merge candidate table ranked by predicted CPM `delta_Q`
+- [ ] Macro-split candidate table
+
 ## Stage 2: Macro Merge Dry-Run
 
 Start here because it is cheap and works on the cluster graph.
@@ -226,7 +235,7 @@ Do not let polish turn into another full until-convergence run without a budget.
 
 1. [x] Add profiling observability to standard Leiden.
 2. [x] Add a large-graph recursion guard for near-identity contraction tails.
-3. [ ] Build cluster graph stats and dry-run report.
+3. [x] Build cluster graph stats and dry-run report.
 4. [ ] Implement macro merge dry-run.
 5. [ ] Validate predicted `delta_Q` against exact recomputation on small test graphs.
 6. [ ] Add macro merge apply mode behind an explicit experimental flag.

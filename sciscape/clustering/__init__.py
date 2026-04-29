@@ -78,9 +78,15 @@ from .leiden_java import (
 )
 from .leiden_rust import (
     RUST_AVAILABLE,
+    RustClusterGraphStats,
+    RustLeidenGraph,
     RustLeidenResult,
     run_leiden_rust,
     postprocess_small_clusters_rust,
+)
+from .adaptive_refinement import (
+    summarize_cluster_graph_stats,
+    write_adaptive_refinement_report,
 )
 from .prepartition import (
     PrepartitionResult,
@@ -168,7 +174,11 @@ __all__ = [
     "run_multilevel_java",
     "postprocess_small_clusters_java",
     "RUST_AVAILABLE",
+    "RustClusterGraphStats",
+    "RustLeidenGraph",
     "RustLeidenResult",
     "run_leiden_rust",
     "postprocess_small_clusters_rust",
+    "summarize_cluster_graph_stats",
+    "write_adaptive_refinement_report",
 ]
