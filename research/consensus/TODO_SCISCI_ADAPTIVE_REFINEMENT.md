@@ -12,9 +12,10 @@ As of 2026-04-29, the first prerequisite is implemented: standard Leiden now
 logs enough progress detail to identify late near-identity contractions and low
 movement iterations (`moved_nodes`, recursion `depth`, and contraction
 node/edge deltas). A large-graph recursion guard also skips recursive Leiden
-calls when contraction has become nearly identity. Cluster-graph diagnostics
-and a dry-run report writer are now implemented, but the adaptive refinement
-stage itself is still unimplemented.
+calls when contraction has become nearly identity. Cluster-graph diagnostics,
+boundary probes, high-gamma split probes, and split-then-repair dry-runs are
+implemented. The next step is no longer generic split/merge exploration; it is
+an explicit hysteretic split-repair apply path with rollback.
 
 ## Latest Observations
 
@@ -182,12 +183,19 @@ shuffling all nodes again is therefore a poor default perturbation strategy for
 SciSci graphs.
 
 SciSci clusters repeatedly show core-periphery structure. Perturbing leaf-like
-nodes is usually low value. More useful perturbations should target:
+nodes is usually low value, and pure high-gamma splitting is usually not
+acceptable at the baseline gamma. The useful perturbation is hysteretic:
 
-- whether a large core cluster should split,
-- whether medium clusters should merge,
-- whether ambiguous boundary subclusters should move,
-- and only then small local polish.
+- temporarily raise gamma to expose multiple cores and hub/periphery fragments,
+- force a local split only inside a small candidate cluster,
+- repair that split at the baseline gamma while allowing source fragments to
+  reattach to external neighbor clusters,
+- accept only the repaired final state, not the forced split itself,
+- and then run a limited polish around changed neighborhoods.
+
+Macro merge and boundary movement should therefore be treated as components of
+the repair stage, not as independent first-class strategies unless the current
+cluster-count regime specifically calls for them.
 
 ## Cost-Effectiveness Rule
 
@@ -226,6 +234,19 @@ For splitting one cluster into parts `P_i`:
 delta_Q_split = -cut(P) + gamma * sum_{i<j} s_i * s_j
 ```
 
+For split-then-repair:
+
+```text
+forced_split_debt = delta_Q_split_at_baseline
+repair_gain = sum accepted baseline-gamma merge gains after the forced split
+net_delta_Q = forced_split_debt + repair_gain
+```
+
+The forced split may be negative. It is only a basin-transition proposal. The
+candidate is evaluated after repair, using `net_delta_Q` and structural terms
+such as escaped source weight, retained core count, restored-source flag,
+singleton mass, and target-size-band movement.
+
 For boundary movement of subcluster `x` from `A` to `B`:
 
 ```text
@@ -242,20 +263,38 @@ Candidate priority should be computed from a utility/cost ratio:
 
 ```text
 utility =
-  delta_Q
+  net_delta_Q
   + lambda * size_band_improvement
   + eta * target_cluster_count_improvement
+  + rho * escaped_source_weight_if_net_positive
   - mu * singleton_or_leaf_penalty
+  - nu * restored_source_cluster_penalty
 
 cost =
   estimated_edges_scanned
   + probe_count * induced_edges
+  + repair_quotient_edges
 
 priority = utility / cost
 ```
 
 The first implementation should log these terms in dry-run mode before applying
 any membership changes.
+
+For split-repair candidates, the first acceptance policy should be conservative:
+
+```text
+accept if:
+  net_delta_Q > 1e-6
+  and restored_source_cluster == false
+  and (escaped_source_weight > 0 or retained_source_units >= 2)
+  and final_small_source_weight <= singleton_budget
+  and candidate does not conflict with an already accepted source cluster
+```
+
+Candidates with `net_delta_Q > 1.0` should be treated as strong candidates.
+Candidates with `0 < net_delta_Q <= 1.0` are useful for diagnosis but should
+require a structural gain threshold before apply mode.
 
 ## Stage 1: Cluster Graph Stats
 
@@ -307,15 +346,19 @@ Implementation should first support:
 - [ ] actual membership perturbation,
 - [ ] post-perturb polish and rollback.
 
-## Stage 3: Large Cluster Split Probes
+## Stage 3: Hysteretic Split-Repair
 
-Only probe a small budgeted set of clusters.
+This is now the primary adaptive-refinement direction. Only probe a small
+budgeted set of clusters, and judge the final repaired state rather than the
+forced split itself.
 
 Candidate conditions:
 
 - doc weight above target maximum,
-- low internal density or high conductance proxy,
-- evidence of multi-core structure,
+- or high doc weight within the target band when searching for hysteretic
+  basin transitions,
+- low internal density, high conductance proxy, or strong external attachment,
+- evidence of multi-core structure after a small gamma increase,
 - sufficient induced edge budget.
 
 Budget constraints:
@@ -327,8 +370,20 @@ probe_seeds <= 2-3
 probe_gamma_multipliers in {1.02, 1.05, 1.10, 1.15, 1.20, 1.25}
 ```
 
-Accept split only if it improves CPM or nearly preserves CPM while improving
-the target size distribution without creating excessive singleton mass.
+Candidate workflow:
+
+1. Run high-gamma induced local merge inside the source cluster.
+2. Evaluate forced-split debt at the baseline gamma.
+3. Build a local quotient containing split source parts plus external neighbor
+   clusters touched by those parts.
+4. Repair greedily at the baseline gamma, allowing source-source and
+   source-external merges while blocking external-external merges.
+5. Accept only the repaired state if it passes `net_delta_Q` and structural
+   filters.
+
+Do not accept a split only because probe-gamma `delta_Q` is positive. The g016
+pilot showed that probe-positive split rows are mostly hysteresis-only and
+often create large singleton/hub fragments.
 
 Implementation status:
 
@@ -337,13 +392,16 @@ Implementation status:
 - [x] local split `delta_Q` evaluation at baseline and probe gamma
 - [x] hysteresis-only split diagnostics
 - [x] split-then-baseline-repair dry-run with external-neighbor escape metrics
-- [ ] split repair acceptance policy with explicit debt/utility and singleton penalty
-- [ ] accepted split/repair materialization plus polish/rollback
+- [ ] split-repair candidate selection table ranked by utility/cost
+- [ ] split-repair apply mode for non-conflicting candidates
+- [ ] exact quality recomputation and rollback after apply
+- [ ] limited polish over affected neighborhoods
 - [ ] pilot on a larger graph with clusters above the target maximum
 
 ## Stage 4: Boundary Refinement
 
-Boundary refinement should operate on subclusters or meaningful ambiguous
+Boundary refinement is now secondary to split-repair. It should operate on
+source fragments created by high-gamma split probes or on meaningful ambiguous
 regions, not arbitrary leaf nodes.
 
 Candidate conditions:
@@ -366,12 +424,12 @@ Implementation status:
 - [x] top boundary candidate CSV export
 - [x] single-block top/second-neighbor move probe around candidate clusters
 - [x] grouped top/second-neighbor split/move probe around candidate clusters
-- [ ] richer induced-subgraph or multi-core split probe around candidate clusters
-- [ ] accepted boundary perturbation plus polish/rollback
+- [ ] integrate split-repair escaped fragments with boundary candidate scoring
+- [ ] accepted boundary perturbation only when it improves repaired partition
 
 ## Stage 5: Local Polish
 
-After accepted macro perturbations, run a limited polish:
+After accepted split-repair perturbations, run a limited polish:
 
 - one standard Leiden iteration, or
 - a restricted local move over changed neighborhoods.
@@ -382,12 +440,18 @@ Do not let polish turn into another full until-convergence run without a budget.
 
 - What target should be optimized directly: cluster count, size-band mass, CPM,
   or a weighted combination?
-- Should macro merge happen before split for all regimes, or only when current
-  cluster count is above target?
-- What leafness threshold separates irrelevant leaves from meaningful boundary
-  subclusters?
-- Should adaptive refinement consume random seeds, or should it stay mostly
-  deterministic with randomness only for tie-breaking?
+- What `net_delta_Q` and structural-gain thresholds should separate apply-mode
+  candidates from diagnostic-only candidates?
+- How much singleton/hub mass is acceptable after repair when `net_delta_Q` is
+  positive?
+- Should the split-repair gamma multiplier be selected per candidate by the
+  smallest multiplier that creates an escape, or by best utility/cost?
+- Should repair allow near-neutral merges (`repair_epsilon > 0`) or stay
+  strictly CPM-positive at baseline gamma?
+- Should macro merge happen as a pre-pass only when current cluster count is
+  above target, or should it remain only inside split-repair repair?
+- Should adaptive refinement consume random seeds, or should it use deterministic
+  high-gamma ordering first and reserve randomness for tie-breaking?
 - How should accepted adaptive changes be compared against one extra standard
   Leiden iteration on the same baseline?
 
@@ -396,10 +460,15 @@ Do not let polish turn into another full until-convergence run without a budget.
 1. [x] Add profiling observability to standard Leiden.
 2. [x] Add a large-graph recursion guard for near-identity contraction tails.
 3. [x] Build cluster graph stats and dry-run report.
-4. [ ] Implement macro merge dry-run.
-5. [ ] Validate predicted `delta_Q` against exact recomputation on small test graphs.
-6. [ ] Add macro merge apply mode behind an explicit experimental flag.
-7. [ ] Design split probes after merge dry-run results are available.
+4. [x] Implement macro merge dry-run.
+5. [x] Validate predicted `delta_Q` with Rust unit tests and dry-run summaries.
+6. [x] Implement boundary move/group probes as negative screens.
+7. [x] Implement high-gamma multi-core split probes.
+8. [x] Implement split-then-baseline-repair dry-run.
+9. [ ] Build split-repair candidate selection and conflict resolution.
+10. [ ] Add split-repair apply mode behind an explicit experimental flag.
+11. [ ] Run exact quality recomputation plus rollback on accepted candidates.
+12. [ ] Pilot on larger graph where clusters exceed the target maximum.
 
 ## Non-Goals For Now
 
