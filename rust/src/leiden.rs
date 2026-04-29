@@ -14,6 +14,8 @@ use std::sync::OnceLock;
 use std::time::Instant;
 
 const DEFAULT_STREAMING_REFINEMENT_MIN_DIRECTED_EDGES: usize = 1_000_000;
+const DEFAULT_CONVERGENCE_PATIENCE: usize = 3;
+const DEFAULT_CONVERGENCE_MIN_REL_CLUSTER_DELTA: f64 = 1e-4;
 
 fn streaming_refinement_min_directed_edges() -> usize {
     static MIN_EDGES: OnceLock<usize> = OnceLock::new();
@@ -22,6 +24,27 @@ fn streaming_refinement_min_directed_edges() -> usize {
             .ok()
             .and_then(|value| value.parse::<usize>().ok())
             .unwrap_or(DEFAULT_STREAMING_REFINEMENT_MIN_DIRECTED_EDGES)
+    })
+}
+
+fn convergence_patience() -> usize {
+    static PATIENCE: OnceLock<usize> = OnceLock::new();
+    *PATIENCE.get_or_init(|| {
+        std::env::var("SCISCAPE_LEIDEN_CONVERGENCE_PATIENCE")
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .unwrap_or(DEFAULT_CONVERGENCE_PATIENCE)
+    })
+}
+
+fn convergence_min_rel_cluster_delta() -> f64 {
+    static MIN_DELTA: OnceLock<f64> = OnceLock::new();
+    *MIN_DELTA.get_or_init(|| {
+        std::env::var("SCISCAPE_LEIDEN_CONVERGENCE_MIN_REL_CLUSTER_DELTA")
+            .ok()
+            .and_then(|value| value.parse::<f64>().ok())
+            .filter(|value| value.is_finite() && *value >= 0.0)
+            .unwrap_or(DEFAULT_CONVERGENCE_MIN_REL_CLUSTER_DELTA)
     })
 }
 
@@ -200,24 +223,51 @@ pub(crate) fn leiden_with_workspace(
             }
         }
     } else {
+        let min_rel_cluster_delta = convergence_min_rel_cluster_delta();
+        let patience = convergence_patience();
+        let mut previous_n_clusters = clustering.n_clusters;
+        let mut stagnant_iterations = 0usize;
         loop {
             let iter_start = Instant::now();
             let iter_randomness = config.randomness_for_iteration(n_used);
             let improved =
                 improve_one_iteration(graph, &mut clustering, config, iter_randomness, rng, ws);
             n_used += 1;
+            let cluster_delta = previous_n_clusters.abs_diff(clustering.n_clusters);
+            let rel_cluster_delta =
+                cluster_delta as f64 / previous_n_clusters.max(clustering.n_clusters).max(1) as f64;
             trace_graph_summary!(
                 graph,
-                "phase=leiden_iteration iter={} randomness={:.6} improved={} clusters={} elapsed_ms={:.1}",
+                "phase=leiden_iteration iter={} randomness={:.6} improved={} clusters={} cluster_delta={} rel_cluster_delta={:.8e} stagnant_iterations={} elapsed_ms={:.1}",
                 n_used,
                 iter_randomness,
                 improved,
                 clustering.n_clusters,
+                cluster_delta,
+                rel_cluster_delta,
+                stagnant_iterations,
                 iter_start.elapsed().as_secs_f64() * 1000.0,
             );
             if !improved {
                 break;
             }
+            if patience > 0 && rel_cluster_delta <= min_rel_cluster_delta {
+                stagnant_iterations += 1;
+                if stagnant_iterations >= patience {
+                    trace_graph_summary!(
+                        graph,
+                        "phase=leiden_convergence_stop iter={} reason=cluster_delta rel_cluster_delta={:.8e} threshold={:.8e} patience={}",
+                        n_used,
+                        rel_cluster_delta,
+                        min_rel_cluster_delta,
+                        patience,
+                    );
+                    break;
+                }
+            } else {
+                stagnant_iterations = 0;
+            }
+            previous_n_clusters = clustering.n_clusters;
         }
     }
 
