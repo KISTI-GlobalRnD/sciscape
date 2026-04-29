@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-from .leiden_rust import RustClusterGraphStats
+from .leiden_rust import RustBoundaryMoveProbes, RustClusterGraphStats
 
 
 @dataclass(frozen=True)
@@ -710,6 +710,114 @@ def write_boundary_candidate_report(
     return {"summary": str(summary_path), "candidates": str(candidate_path)}
 
 
+def summarize_boundary_move_probes(probes: RustBoundaryMoveProbes) -> dict[str, Any]:
+    """Return compact aggregate diagnostics for boundary move dry-runs."""
+
+    positive = probes.positive_move_count > 0
+    near_neutral = probes.near_neutral_move_count > 0
+    return {
+        "n_probes": int(probes.n_probes),
+        "n_with_positive_moves": int(positive.sum()),
+        "n_with_near_neutral_moves": int(near_neutral.sum()),
+        "total_positive_move_count": int(probes.positive_move_count.sum()),
+        "total_positive_move_weight": float(probes.positive_move_weight.sum()),
+        "total_positive_delta_q": float(probes.positive_delta_q.sum()),
+        "total_near_neutral_move_count": int(probes.near_neutral_move_count.sum()),
+        "total_near_neutral_move_weight": float(probes.near_neutral_move_weight.sum()),
+        "total_near_neutral_delta_q": float(probes.near_neutral_delta_q.sum()),
+        "best_move_delta_q": _percentiles(probes.best_move_delta_q, [50, 90, 95, 99]),
+        "positive_move_count": _percentiles(
+            probes.positive_move_count.astype(np.float64),
+            [50, 90, 95, 99],
+        ),
+        "positive_move_weight": _percentiles(probes.positive_move_weight, [50, 90, 95, 99]),
+    }
+
+
+def write_boundary_move_probe_report(
+    probes: RustBoundaryMoveProbes,
+    output_dir: Path,
+    *,
+    top_probes: int | None = None,
+) -> dict[str, str]:
+    """Write JSON/CSV diagnostics for boundary move dry-runs."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary = summarize_boundary_move_probes(probes)
+    summary_path = output_dir / "boundary_move_probe_summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    order = np.argsort(-probes.best_move_delta_q, kind="mergesort")
+    if top_probes is not None:
+        order = order[: int(top_probes)]
+
+    csv_path = output_dir / "boundary_move_probes.csv"
+    fieldnames = [
+        "rank",
+        "cluster",
+        "block_count",
+        "doc_weight",
+        "internal_weight",
+        "external_weight",
+        "conductance",
+        "leafness",
+        "top_neighbor",
+        "top_neighbor_weight",
+        "second_neighbor",
+        "second_neighbor_weight",
+        "neighbor_weight_ratio",
+        "positive_move_count",
+        "positive_move_weight",
+        "positive_delta_q",
+        "near_neutral_move_count",
+        "near_neutral_move_weight",
+        "near_neutral_delta_q",
+        "best_move_delta_q",
+        "best_move_node",
+        "best_move_target",
+        "top_move_count",
+        "second_move_count",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for rank, idx in enumerate(order, start=1):
+            writer.writerow(
+                {
+                    "rank": rank,
+                    "cluster": int(probes.cluster[idx]),
+                    "block_count": int(probes.block_count[idx]),
+                    "doc_weight": float(probes.doc_weight[idx]),
+                    "internal_weight": float(probes.internal_weight[idx]),
+                    "external_weight": float(probes.external_weight[idx]),
+                    "conductance": float(probes.conductance[idx]),
+                    "leafness": float(probes.leafness[idx]),
+                    "top_neighbor": int(probes.top_neighbor[idx]),
+                    "top_neighbor_weight": float(probes.top_neighbor_weight[idx]),
+                    "second_neighbor": int(probes.second_neighbor[idx]),
+                    "second_neighbor_weight": float(probes.second_neighbor_weight[idx]),
+                    "neighbor_weight_ratio": float(probes.neighbor_weight_ratio[idx]),
+                    "positive_move_count": int(probes.positive_move_count[idx]),
+                    "positive_move_weight": float(probes.positive_move_weight[idx]),
+                    "positive_delta_q": float(probes.positive_delta_q[idx]),
+                    "near_neutral_move_count": int(probes.near_neutral_move_count[idx]),
+                    "near_neutral_move_weight": float(probes.near_neutral_move_weight[idx]),
+                    "near_neutral_delta_q": float(probes.near_neutral_delta_q[idx]),
+                    "best_move_delta_q": float(probes.best_move_delta_q[idx]),
+                    "best_move_node": int(probes.best_move_node[idx]),
+                    "best_move_target": int(probes.best_move_target[idx]),
+                    "top_move_count": int(probes.top_move_count[idx]),
+                    "second_move_count": int(probes.second_move_count[idx]),
+                }
+            )
+
+    return {"summary": str(summary_path), "probes": str(csv_path)}
+
+
 def write_adaptive_refinement_report(
     stats: RustClusterGraphStats,
     output_dir: Path,
@@ -836,8 +944,10 @@ __all__ = [
     "score_boundary_candidates",
     "simulate_macro_merge_policy",
     "summarize_boundary_candidate_policies",
+    "summarize_boundary_move_probes",
     "summarize_cluster_graph_stats",
     "write_adaptive_refinement_report",
     "write_boundary_candidate_report",
+    "write_boundary_move_probe_report",
     "write_macro_merge_ensemble_report",
 ]

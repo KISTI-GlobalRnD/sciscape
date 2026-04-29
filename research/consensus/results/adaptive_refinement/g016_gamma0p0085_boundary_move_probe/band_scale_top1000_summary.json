@@ -1,0 +1,58 @@
+{
+  "best_move_delta_q": {
+    "max": -0.00040109065674442945,
+    "p50": -0.9286016317102679,
+    "p90": -0.16983282239375347,
+    "p95": -0.09749688841976294,
+    "p99": -0.02345691351313281
+  },
+  "epsilon": 0.05,
+  "hwm_mb_final": 4189.375,
+  "n_probes": 1000,
+  "n_with_near_neutral_moves": 21,
+  "n_with_positive_moves": 0,
+  "paths": {
+    "arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_move_probe_band_scale_top1000/boundary_move_probes.npz",
+    "probes": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_move_probe_band_scale_top1000/boundary_move_probes.csv",
+    "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_move_probe_band_scale_top1000/boundary_move_probe_summary.json"
+  },
+  "phases": [
+    {
+      "elapsed_sec": 0.006073544966056943,
+      "hwm_mb": 59.234375,
+      "name": "candidate_load",
+      "rss_mb": 59.234375
+    },
+    {
+      "elapsed_sec": 13.333822955028154,
+      "hwm_mb": 4031.99609375,
+      "name": "graph_load",
+      "rss_mb": 3945.7890625
+    },
+    {
+      "elapsed_sec": 0.17719792295247316,
+      "hwm_mb": 4118.875,
+      "name": "membership_load",
+      "rss_mb": 4118.875
+    },
+    {
+      "elapsed_sec": 0.1785414780024439,
+      "hwm_mb": 4189.375,
+      "name": "boundary_move_probes",
+      "rss_mb": 4118.984375
+    }
+  ],
+  "positive_move_count": {
+    "p50": 0.0,
+    "p90": 0.0,
+    "p95": 0.0,
+    "p99": 0.0
+  },
+  "rss_mb_final": 4119.796875,
+  "total_near_neutral_delta_q": -0.5073564834658093,
+  "total_near_neutral_move_count": 22,
+  "total_near_neutral_move_weight": 22.0,
+  "total_positive_delta_q": 0.0,
+  "total_positive_move_count": 0,
+  "total_positive_move_weight": 0.0
+}

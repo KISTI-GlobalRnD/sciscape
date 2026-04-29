@@ -40,6 +40,33 @@ pub struct ClusterGraphStats {
 }
 
 #[derive(Clone, Debug)]
+pub struct BoundaryMoveProbe {
+    pub cluster: u64,
+    pub block_count: u64,
+    pub doc_weight: f64,
+    pub internal_weight: f64,
+    pub external_weight: f64,
+    pub conductance: f64,
+    pub leafness: f64,
+    pub top_neighbor: i64,
+    pub top_neighbor_weight: f64,
+    pub second_neighbor: i64,
+    pub second_neighbor_weight: f64,
+    pub neighbor_weight_ratio: f64,
+    pub positive_move_count: u64,
+    pub positive_move_weight: f64,
+    pub positive_delta_q: f64,
+    pub near_neutral_move_count: u64,
+    pub near_neutral_move_weight: f64,
+    pub near_neutral_delta_q: f64,
+    pub best_move_delta_q: f64,
+    pub best_move_node: u64,
+    pub best_move_target: i64,
+    pub top_move_count: u64,
+    pub second_move_count: u64,
+}
+
+#[derive(Clone, Debug)]
 struct HeapCandidate(MergeCandidate);
 
 impl PartialEq for HeapCandidate {
@@ -103,6 +130,26 @@ fn push_top_candidate(
     }
 }
 
+#[inline]
+fn update_top_two(
+    nbr_cluster: usize,
+    weight: f64,
+    top_neighbor: &mut i64,
+    top_weight: &mut f64,
+    second_neighbor: &mut i64,
+    second_weight: &mut f64,
+) {
+    if weight > *top_weight {
+        *second_weight = *top_weight;
+        *second_neighbor = *top_neighbor;
+        *top_weight = weight;
+        *top_neighbor = nbr_cluster as i64;
+    } else if weight > *second_weight {
+        *second_weight = weight;
+        *second_neighbor = nbr_cluster as i64;
+    }
+}
+
 pub fn cluster_graph_stats(
     graph: &Graph,
     clustering: &Clustering,
@@ -146,15 +193,14 @@ pub fn cluster_graph_stats(
             let nbr = reduced.neighbors[edge_idx] as usize;
             let edge_weight = reduced.edge_weights[edge_idx];
             external_weight[c] += edge_weight;
-            if edge_weight > top_neighbor_weight[c] {
-                second_neighbor_weight[c] = top_neighbor_weight[c];
-                second_neighbor[c] = top_neighbor[c];
-                top_neighbor_weight[c] = edge_weight;
-                top_neighbor[c] = nbr as i64;
-            } else if edge_weight > second_neighbor_weight[c] {
-                second_neighbor_weight[c] = edge_weight;
-                second_neighbor[c] = nbr as i64;
-            }
+            update_top_two(
+                nbr,
+                edge_weight,
+                &mut top_neighbor[c],
+                &mut top_neighbor_weight[c],
+                &mut second_neighbor[c],
+                &mut second_neighbor_weight[c],
+            );
 
             if c < nbr {
                 let merged_weight = weight + doc_weight[nbr];
@@ -219,6 +265,215 @@ pub fn cluster_graph_stats(
     }
 }
 
+pub fn boundary_move_probes(
+    graph: &Graph,
+    clustering: &Clustering,
+    candidate_clusters: &[u64],
+    resolution: f64,
+    epsilon: f64,
+    ws: &mut Workspace,
+) -> Vec<BoundaryMoveProbe> {
+    assert_eq!(clustering.n_nodes, graph.n_nodes);
+
+    let n_clusters = clustering.n_clusters;
+    clustering.fill_cluster_groups_and_weights(&graph.node_weights, ws);
+    ws.temp_used.clear();
+    let mut out = Vec::with_capacity(candidate_clusters.len());
+    let clusters = clustering.clusters.as_slice();
+
+    for &cluster_u64 in candidate_clusters {
+        let Ok(cluster_u32) = u32::try_from(cluster_u64) else {
+            continue;
+        };
+        let c = cluster_u32 as usize;
+        if c >= n_clusters {
+            continue;
+        }
+
+        let start = ws.npc_starts[c] as usize;
+        let end = ws.npc_starts[c + 1] as usize;
+        if start == end {
+            continue;
+        }
+        let doc_weight = ws.cw[c];
+
+        let mut self_loop_weight = 0.0;
+        let mut internal_directed_weight = 0.0;
+        let mut external_weight = 0.0;
+        let mut top_neighbor = -1i64;
+        let mut top_neighbor_weight = 0.0;
+        let mut second_neighbor = -1i64;
+        let mut second_neighbor_weight = 0.0;
+
+        for pos in start..end {
+            let node = ws.npc_nodes[pos] as usize;
+            self_loop_weight += graph.self_loop_weights[node];
+            let nbr_start = graph.first_neighbor_index[node] as usize;
+            let nbr_end = graph.first_neighbor_index[node + 1] as usize;
+            for edge_idx in nbr_start..nbr_end {
+                let nbr = graph.neighbors[edge_idx] as usize;
+                let nbr_cluster = clusters[nbr] as usize;
+                let weight = graph.edge_weights[edge_idx];
+                if nbr_cluster == c {
+                    internal_directed_weight += weight;
+                    continue;
+                }
+
+                external_weight += weight;
+                if ws.temp_seen[nbr_cluster] != cluster_u32 {
+                    ws.temp_seen[nbr_cluster] = cluster_u32;
+                    ws.temp_w[nbr_cluster] = 0.0;
+                    ws.temp_used.push(nbr_cluster as u32);
+                }
+                ws.temp_w[nbr_cluster] += weight;
+            }
+        }
+
+        for &nbr_cluster_u32 in &ws.temp_used {
+            let nbr_cluster = nbr_cluster_u32 as usize;
+            update_top_two(
+                nbr_cluster,
+                ws.temp_w[nbr_cluster],
+                &mut top_neighbor,
+                &mut top_neighbor_weight,
+                &mut second_neighbor,
+                &mut second_neighbor_weight,
+            );
+        }
+
+        let top_cluster = (top_neighbor >= 0).then_some(top_neighbor as usize);
+        let second_cluster = (second_neighbor >= 0).then_some(second_neighbor as usize);
+        let mut positive_move_count = 0u64;
+        let mut positive_move_weight = 0.0;
+        let mut positive_delta_q = 0.0;
+        let mut near_neutral_move_count = 0u64;
+        let mut near_neutral_move_weight = 0.0;
+        let mut near_neutral_delta_q = 0.0;
+        let mut best_move_delta_q = f64::NEG_INFINITY;
+        let mut best_move_node = u64::MAX;
+        let mut best_move_target = -1i64;
+        let mut top_move_count = 0u64;
+        let mut second_move_count = 0u64;
+
+        for pos in start..end {
+            let node = ws.npc_nodes[pos] as usize;
+            let node_weight = graph.node_weights[node];
+            let mut weight_to_current = 0.0;
+            let mut weight_to_top = 0.0;
+            let mut weight_to_second = 0.0;
+            let nbr_start = graph.first_neighbor_index[node] as usize;
+            let nbr_end = graph.first_neighbor_index[node + 1] as usize;
+            for edge_idx in nbr_start..nbr_end {
+                let nbr = graph.neighbors[edge_idx] as usize;
+                let nbr_cluster = clusters[nbr] as usize;
+                let weight = graph.edge_weights[edge_idx];
+                if nbr_cluster == c {
+                    weight_to_current += weight;
+                } else if Some(nbr_cluster) == top_cluster {
+                    weight_to_top += weight;
+                } else if Some(nbr_cluster) == second_cluster {
+                    weight_to_second += weight;
+                }
+            }
+
+            let current_increment =
+                weight_to_current - node_weight * (doc_weight - node_weight) * resolution;
+            let mut best_delta = f64::NEG_INFINITY;
+            let mut best_target = -1i64;
+            if let Some(target) = top_cluster {
+                let target_increment = weight_to_top - node_weight * ws.cw[target] * resolution;
+                best_delta = target_increment - current_increment;
+                best_target = target as i64;
+            }
+            if let Some(target) = second_cluster {
+                let target_increment = weight_to_second - node_weight * ws.cw[target] * resolution;
+                let delta = target_increment - current_increment;
+                if delta > best_delta {
+                    best_delta = delta;
+                    best_target = target as i64;
+                }
+            }
+
+            if best_delta > best_move_delta_q {
+                best_move_delta_q = best_delta;
+                best_move_node = node as u64;
+                best_move_target = best_target;
+            }
+            if best_delta > 0.0 {
+                positive_move_count += 1;
+                positive_move_weight += node_weight;
+                positive_delta_q += best_delta;
+                if best_target == top_neighbor {
+                    top_move_count += 1;
+                } else if best_target == second_neighbor {
+                    second_move_count += 1;
+                }
+            }
+            if best_delta >= -epsilon {
+                near_neutral_move_count += 1;
+                near_neutral_move_weight += node_weight;
+                near_neutral_delta_q += best_delta;
+            }
+        }
+
+        if !best_move_delta_q.is_finite() {
+            best_move_delta_q = 0.0;
+        }
+
+        let internal_weight = internal_directed_weight / 2.0 + self_loop_weight;
+        let volume = 2.0 * internal_weight + external_weight;
+        let conductance = if volume > 0.0 {
+            external_weight / volume
+        } else {
+            0.0
+        };
+        let leafness = if external_weight > 0.0 {
+            top_neighbor_weight / external_weight
+        } else {
+            0.0
+        };
+        let neighbor_weight_ratio = if top_neighbor_weight > 0.0 {
+            second_neighbor_weight / top_neighbor_weight
+        } else {
+            0.0
+        };
+
+        out.push(BoundaryMoveProbe {
+            cluster: cluster_u64,
+            block_count: (end - start) as u64,
+            doc_weight,
+            internal_weight,
+            external_weight,
+            conductance,
+            leafness,
+            top_neighbor,
+            top_neighbor_weight,
+            second_neighbor,
+            second_neighbor_weight,
+            neighbor_weight_ratio,
+            positive_move_count,
+            positive_move_weight,
+            positive_delta_q,
+            near_neutral_move_count,
+            near_neutral_move_weight,
+            near_neutral_delta_q,
+            best_move_delta_q,
+            best_move_node,
+            best_move_target,
+            top_move_count,
+            second_move_count,
+        });
+
+        for nbr_cluster_u32 in ws.temp_used.drain(..) {
+            let nbr_cluster = nbr_cluster_u32 as usize;
+            ws.temp_seen[nbr_cluster] = u32::MAX;
+            ws.temp_w[nbr_cluster] = 0.0;
+        }
+    }
+
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,5 +514,25 @@ mod tests {
         assert!((stats.top_neighbor_weight[0] - 4.0).abs() < 1e-12);
         assert!((stats.second_neighbor_weight[0] - 2.0).abs() < 1e-12);
         assert!((stats.neighbor_weight_ratio[0] - 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn boundary_move_probes_reports_positive_node_moves() {
+        let graph = Graph::from_edge_list(4, &[0, 1, 0, 1], &[1, 2, 2, 3], &[0.1, 5.0, 1.0, 4.0]);
+        let clustering = Clustering::from_assignments(vec![0, 0, 1, 2]);
+        let mut ws = Workspace::new(4);
+
+        let probes = boundary_move_probes(&graph, &clustering, &[0], 0.1, 0.0, &mut ws);
+
+        assert_eq!(probes.len(), 1);
+        let probe = &probes[0];
+        assert_eq!(probe.cluster, 0);
+        assert_eq!(probe.top_neighbor, 1);
+        assert_eq!(probe.second_neighbor, 2);
+        assert_eq!(probe.positive_move_count, 2);
+        assert_eq!(probe.positive_move_weight, 2.0);
+        assert_eq!(probe.best_move_node, 1);
+        assert_eq!(probe.best_move_target, 1);
+        assert!(probe.best_move_delta_q > 4.0);
     }
 }

@@ -10,12 +10,14 @@ from sciscape.clustering.adaptive_refinement import (
     score_boundary_candidates,
     simulate_macro_merge_policy,
     summarize_boundary_candidate_policies,
+    summarize_boundary_move_probes,
     summarize_cluster_graph_stats,
     write_adaptive_refinement_report,
     write_boundary_candidate_report,
+    write_boundary_move_probe_report,
     write_macro_merge_ensemble_report,
 )
-from sciscape.clustering.leiden_rust import RustClusterGraphStats
+from sciscape.clustering.leiden_rust import RustBoundaryMoveProbes, RustClusterGraphStats
 
 
 def _stats() -> RustClusterGraphStats:
@@ -39,6 +41,34 @@ def _stats() -> RustClusterGraphStats:
         candidate_delta_q=np.array([1.0, -2.0], dtype=np.float64),
         candidate_merged_weight=np.array([140.0, 520.0], dtype=np.float64),
         candidate_size_band_gain=np.array([30.0, -120.0], dtype=np.float64),
+    )
+
+
+def _move_probes() -> RustBoundaryMoveProbes:
+    return RustBoundaryMoveProbes(
+        cluster=np.array([10, 20], dtype=np.uint64),
+        block_count=np.array([3, 2], dtype=np.uint64),
+        doc_weight=np.array([120.0, 80.0], dtype=np.float64),
+        internal_weight=np.array([20.0, 10.0], dtype=np.float64),
+        external_weight=np.array([30.0, 20.0], dtype=np.float64),
+        conductance=np.array([30.0 / 70.0, 20.0 / 40.0], dtype=np.float64),
+        leafness=np.array([0.5, 0.8], dtype=np.float64),
+        top_neighbor=np.array([1, 2], dtype=np.int64),
+        top_neighbor_weight=np.array([15.0, 16.0], dtype=np.float64),
+        second_neighbor=np.array([2, 3], dtype=np.int64),
+        second_neighbor_weight=np.array([10.0, 4.0], dtype=np.float64),
+        neighbor_weight_ratio=np.array([2.0 / 3.0, 0.25], dtype=np.float64),
+        positive_move_count=np.array([2, 0], dtype=np.uint64),
+        positive_move_weight=np.array([50.0, 0.0], dtype=np.float64),
+        positive_delta_q=np.array([1.5, 0.0], dtype=np.float64),
+        near_neutral_move_count=np.array([2, 1], dtype=np.uint64),
+        near_neutral_move_weight=np.array([50.0, 10.0], dtype=np.float64),
+        near_neutral_delta_q=np.array([1.5, -0.01], dtype=np.float64),
+        best_move_delta_q=np.array([1.0, -0.01], dtype=np.float64),
+        best_move_node=np.array([7, 8], dtype=np.uint64),
+        best_move_target=np.array([1, 3], dtype=np.int64),
+        top_move_count=np.array([1, 0], dtype=np.uint64),
+        second_move_count=np.array([1, 0], dtype=np.uint64),
     )
 
 
@@ -228,3 +258,25 @@ def test_write_boundary_candidate_report(tmp_path):
     assert rows[0]["policy"] == "boundary"
     assert rows[0]["cluster"] == "1"
     assert rows[0]["second_neighbor"] == "2"
+
+
+def test_summarize_boundary_move_probes():
+    summary = summarize_boundary_move_probes(_move_probes())
+
+    assert summary["n_probes"] == 2
+    assert summary["n_with_positive_moves"] == 1
+    assert summary["n_with_near_neutral_moves"] == 2
+    assert summary["total_positive_move_count"] == 2
+    assert summary["total_positive_delta_q"] == 1.5
+
+
+def test_write_boundary_move_probe_report(tmp_path):
+    paths = write_boundary_move_probe_report(_move_probes(), tmp_path)
+
+    assert set(paths) == {"summary", "probes"}
+    summary = json.loads((tmp_path / "boundary_move_probe_summary.json").read_text())
+    assert summary["n_with_positive_moves"] == 1
+    rows = list(csv.DictReader((tmp_path / "boundary_move_probes.csv").open()))
+    assert rows[0]["cluster"] == "10"
+    assert rows[0]["best_move_node"] == "7"
+    assert rows[1]["cluster"] == "20"

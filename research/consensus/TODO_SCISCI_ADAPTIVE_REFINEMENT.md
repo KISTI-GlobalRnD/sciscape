@@ -97,6 +97,22 @@ stage rather than another full random restart:
     - `boundary_band_scale`: `85,204`
     - `boundary_largeish_ambiguous`: `27,453`
     - `boundary_strict`: `10,736`
+- Boundary block-move probes on top `1,000` candidates:
+  - summary artifact:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_boundary_move_probe/README_summary.json`
+  - GPU artifact directories:
+    `/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_move_probe_*`
+  - each run reloads graph in approximately `9-13 sec`, but the actual
+    block-move probe pass takes only `0.09-0.18 sec` for `1,000` clusters
+  - tested policies: `boundary_strict`, `boundary_high_ambiguity`,
+    `boundary_band_scale`, and `boundary_nonleaf`
+  - no policy found a positive-CPM single-block move to the top or second
+    neighbor cluster
+  - with a relaxed near-neutral threshold of `epsilon=0.05`,
+    `boundary_high_ambiguity` found only `21` near-neutral block moves and
+    `boundary_band_scale` found `22`
+  - best observed single-block move still had negative `delta_Q`
+    (`-0.000401`)
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -281,7 +297,8 @@ Implementation status:
 - [x] first-neighbor / second-neighbor cluster-graph metrics
 - [x] boundary ambiguity policy summaries
 - [x] top boundary candidate CSV export
-- [ ] induced-subgraph probe around candidate clusters
+- [x] single-block top/second-neighbor move probe around candidate clusters
+- [ ] grouped induced-subgraph probe around candidate clusters
 - [ ] accepted boundary perturbation plus polish/rollback
 
 ## Stage 5: Local Polish

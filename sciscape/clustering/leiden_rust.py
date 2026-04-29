@@ -104,6 +104,39 @@ class RustClusterGraphStats:
 
 
 @dataclass(frozen=True)
+class RustBoundaryMoveProbes:
+    """Per-cluster dry-run probes for boundary block moves."""
+
+    cluster: np.ndarray
+    block_count: np.ndarray
+    doc_weight: np.ndarray
+    internal_weight: np.ndarray
+    external_weight: np.ndarray
+    conductance: np.ndarray
+    leafness: np.ndarray
+    top_neighbor: np.ndarray
+    top_neighbor_weight: np.ndarray
+    second_neighbor: np.ndarray
+    second_neighbor_weight: np.ndarray
+    neighbor_weight_ratio: np.ndarray
+    positive_move_count: np.ndarray
+    positive_move_weight: np.ndarray
+    positive_delta_q: np.ndarray
+    near_neutral_move_count: np.ndarray
+    near_neutral_move_weight: np.ndarray
+    near_neutral_delta_q: np.ndarray
+    best_move_delta_q: np.ndarray
+    best_move_node: np.ndarray
+    best_move_target: np.ndarray
+    top_move_count: np.ndarray
+    second_move_count: np.ndarray
+
+    @property
+    def n_probes(self) -> int:
+        return int(self.cluster.shape[0])
+
+
+@dataclass(frozen=True)
 class RustLeidenGraph:
     """Reusable Rust CSR graph for repeated Leiden/postprocess calls."""
 
@@ -248,6 +281,57 @@ class RustLeidenGraph:
             candidate_delta_q=np.asarray(raw["candidate_delta_q"], dtype=np.float64),
             candidate_merged_weight=np.asarray(raw["candidate_merged_weight"], dtype=np.float64),
             candidate_size_band_gain=np.asarray(raw["candidate_size_band_gain"], dtype=np.float64),
+        )
+
+    def boundary_move_probes(
+        self,
+        membership: np.ndarray,
+        candidate_clusters: np.ndarray,
+        *,
+        resolution: float,
+        epsilon: float = 0.0,
+    ) -> RustBoundaryMoveProbes:
+        """Probe block-level moves from boundary clusters to top/second neighbors.
+
+        This is a dry-run diagnostic. It does not mutate ``membership``.
+        """
+        probes = getattr(self.graph, "boundary_move_probes", None)
+        if probes is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose Graph.boundary_move_probes"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
+        raw = probes(
+            membership=membership,
+            candidate_clusters=candidate_clusters,
+            resolution=float(resolution),
+            epsilon=float(epsilon),
+        )
+        return RustBoundaryMoveProbes(
+            cluster=np.asarray(raw["cluster"], dtype=np.uint64),
+            block_count=np.asarray(raw["block_count"], dtype=np.uint64),
+            doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            internal_weight=np.asarray(raw["internal_weight"], dtype=np.float64),
+            external_weight=np.asarray(raw["external_weight"], dtype=np.float64),
+            conductance=np.asarray(raw["conductance"], dtype=np.float64),
+            leafness=np.asarray(raw["leafness"], dtype=np.float64),
+            top_neighbor=np.asarray(raw["top_neighbor"], dtype=np.int64),
+            top_neighbor_weight=np.asarray(raw["top_neighbor_weight"], dtype=np.float64),
+            second_neighbor=np.asarray(raw["second_neighbor"], dtype=np.int64),
+            second_neighbor_weight=np.asarray(raw["second_neighbor_weight"], dtype=np.float64),
+            neighbor_weight_ratio=np.asarray(raw["neighbor_weight_ratio"], dtype=np.float64),
+            positive_move_count=np.asarray(raw["positive_move_count"], dtype=np.uint64),
+            positive_move_weight=np.asarray(raw["positive_move_weight"], dtype=np.float64),
+            positive_delta_q=np.asarray(raw["positive_delta_q"], dtype=np.float64),
+            near_neutral_move_count=np.asarray(raw["near_neutral_move_count"], dtype=np.uint64),
+            near_neutral_move_weight=np.asarray(raw["near_neutral_move_weight"], dtype=np.float64),
+            near_neutral_delta_q=np.asarray(raw["near_neutral_delta_q"], dtype=np.float64),
+            best_move_delta_q=np.asarray(raw["best_move_delta_q"], dtype=np.float64),
+            best_move_node=np.asarray(raw["best_move_node"], dtype=np.uint64),
+            best_move_target=np.asarray(raw["best_move_target"], dtype=np.int64),
+            top_move_count=np.asarray(raw["top_move_count"], dtype=np.uint64),
+            second_move_count=np.asarray(raw["second_move_count"], dtype=np.uint64),
         )
 
     def postprocess_small_clusters(

@@ -10,7 +10,10 @@ use pyo3::conversion::IntoPyObject;
 use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
-use crate::adaptive::cluster_graph_stats as compute_cluster_graph_stats;
+use crate::adaptive::{
+    boundary_move_probes as compute_boundary_move_probes,
+    cluster_graph_stats as compute_cluster_graph_stats,
+};
 #[cfg(feature = "python")]
 use crate::contraction::create_reduced_network;
 #[cfg(feature = "python")]
@@ -875,6 +878,210 @@ impl PyGraph {
         out.insert(
             "candidate_size_band_gain".to_string(),
             PyArray1::from_vec(py, candidate_size_band_gain)
+                .into_any()
+                .unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        resolution,
+        epsilon = 0.0,
+    ))]
+    fn boundary_move_probes(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        resolution: f64,
+        epsilon: f64,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+
+        let probes = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_boundary_move_probes(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                resolution,
+                epsilon,
+                &mut ws,
+            )
+        });
+
+        let n = probes.len();
+        let mut cluster = Vec::with_capacity(n);
+        let mut block_count = Vec::with_capacity(n);
+        let mut doc_weight = Vec::with_capacity(n);
+        let mut internal_weight = Vec::with_capacity(n);
+        let mut external_weight = Vec::with_capacity(n);
+        let mut conductance = Vec::with_capacity(n);
+        let mut leafness = Vec::with_capacity(n);
+        let mut top_neighbor = Vec::with_capacity(n);
+        let mut top_neighbor_weight = Vec::with_capacity(n);
+        let mut second_neighbor = Vec::with_capacity(n);
+        let mut second_neighbor_weight = Vec::with_capacity(n);
+        let mut neighbor_weight_ratio = Vec::with_capacity(n);
+        let mut positive_move_count = Vec::with_capacity(n);
+        let mut positive_move_weight = Vec::with_capacity(n);
+        let mut positive_delta_q = Vec::with_capacity(n);
+        let mut near_neutral_move_count = Vec::with_capacity(n);
+        let mut near_neutral_move_weight = Vec::with_capacity(n);
+        let mut near_neutral_delta_q = Vec::with_capacity(n);
+        let mut best_move_delta_q = Vec::with_capacity(n);
+        let mut best_move_node = Vec::with_capacity(n);
+        let mut best_move_target = Vec::with_capacity(n);
+        let mut top_move_count = Vec::with_capacity(n);
+        let mut second_move_count = Vec::with_capacity(n);
+
+        for probe in probes {
+            cluster.push(probe.cluster);
+            block_count.push(probe.block_count);
+            doc_weight.push(probe.doc_weight);
+            internal_weight.push(probe.internal_weight);
+            external_weight.push(probe.external_weight);
+            conductance.push(probe.conductance);
+            leafness.push(probe.leafness);
+            top_neighbor.push(probe.top_neighbor);
+            top_neighbor_weight.push(probe.top_neighbor_weight);
+            second_neighbor.push(probe.second_neighbor);
+            second_neighbor_weight.push(probe.second_neighbor_weight);
+            neighbor_weight_ratio.push(probe.neighbor_weight_ratio);
+            positive_move_count.push(probe.positive_move_count);
+            positive_move_weight.push(probe.positive_move_weight);
+            positive_delta_q.push(probe.positive_delta_q);
+            near_neutral_move_count.push(probe.near_neutral_move_count);
+            near_neutral_move_weight.push(probe.near_neutral_move_weight);
+            near_neutral_delta_q.push(probe.near_neutral_delta_q);
+            best_move_delta_q.push(probe.best_move_delta_q);
+            best_move_node.push(probe.best_move_node);
+            best_move_target.push(probe.best_move_target);
+            top_move_count.push(probe.top_move_count);
+            second_move_count.push(probe.second_move_count);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "cluster".to_string(),
+            PyArray1::from_vec(py, cluster).into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, block_count).into_any().unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "internal_weight".to_string(),
+            PyArray1::from_vec(py, internal_weight).into_any().unbind(),
+        );
+        out.insert(
+            "external_weight".to_string(),
+            PyArray1::from_vec(py, external_weight).into_any().unbind(),
+        );
+        out.insert(
+            "conductance".to_string(),
+            PyArray1::from_vec(py, conductance).into_any().unbind(),
+        );
+        out.insert(
+            "leafness".to_string(),
+            PyArray1::from_vec(py, leafness).into_any().unbind(),
+        );
+        out.insert(
+            "top_neighbor".to_string(),
+            PyArray1::from_vec(py, top_neighbor).into_any().unbind(),
+        );
+        out.insert(
+            "top_neighbor_weight".to_string(),
+            PyArray1::from_vec(py, top_neighbor_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_neighbor".to_string(),
+            PyArray1::from_vec(py, second_neighbor).into_any().unbind(),
+        );
+        out.insert(
+            "second_neighbor_weight".to_string(),
+            PyArray1::from_vec(py, second_neighbor_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "neighbor_weight_ratio".to_string(),
+            PyArray1::from_vec(py, neighbor_weight_ratio)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "positive_move_count".to_string(),
+            PyArray1::from_vec(py, positive_move_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "positive_move_weight".to_string(),
+            PyArray1::from_vec(py, positive_move_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "positive_delta_q".to_string(),
+            PyArray1::from_vec(py, positive_delta_q).into_any().unbind(),
+        );
+        out.insert(
+            "near_neutral_move_count".to_string(),
+            PyArray1::from_vec(py, near_neutral_move_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "near_neutral_move_weight".to_string(),
+            PyArray1::from_vec(py, near_neutral_move_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "near_neutral_delta_q".to_string(),
+            PyArray1::from_vec(py, near_neutral_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_move_delta_q".to_string(),
+            PyArray1::from_vec(py, best_move_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_move_node".to_string(),
+            PyArray1::from_vec(py, best_move_node).into_any().unbind(),
+        );
+        out.insert(
+            "best_move_target".to_string(),
+            PyArray1::from_vec(py, best_move_target).into_any().unbind(),
+        );
+        out.insert(
+            "top_move_count".to_string(),
+            PyArray1::from_vec(py, top_move_count).into_any().unbind(),
+        );
+        out.insert(
+            "second_move_count".to_string(),
+            PyArray1::from_vec(py, second_move_count)
                 .into_any()
                 .unbind(),
         );
