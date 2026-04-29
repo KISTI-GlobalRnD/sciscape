@@ -11,7 +11,9 @@ after baseline Leiden and before small-cluster postprocess.
 As of 2026-04-29, the first prerequisite is implemented: standard Leiden now
 logs enough progress detail to identify late near-identity contractions and low
 movement iterations (`moved_nodes`, recursion `depth`, and contraction
-node/edge deltas). The adaptive refinement stage itself is still unimplemented.
+node/edge deltas). A large-graph recursion guard also skips recursive Leiden
+calls when contraction has become nearly identity. The adaptive refinement
+stage itself is still unimplemented.
 
 ## Latest Observations
 
@@ -23,6 +25,15 @@ stage rather than another full random restart:
   - elapsed: approximately `66.1 min`
   - high-water memory: approximately `42.9 GB`
   - final doc-size distribution remains very small
+- Same input with the large-graph recursion guard:
+  - final clusters: `1,670,185`
+  - elapsed: approximately `59.2 min`
+  - Leiden phase elapsed: approximately `58.4 min`
+  - speedup over the guardless convergence run: approximately `414 sec`
+    (`10.4%` total wall time)
+  - high-water memory: approximately `42.9 GB`
+  - CPM quality improved slightly (`+103.37`)
+  - final doc-size distribution stayed effectively unchanged
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -53,9 +64,10 @@ expected_structural_gain / estimated_compute_cost
 additional_random_leiden_iteration_gain / additional_random_leiden_iteration_cost
 ```
 
-The current large bcrefresh probe should be used to estimate the denominator:
-late iterations around the 1.6M-cluster regime cost several hundred seconds
-while changing cluster count by only hundreds of clusters.
+The current large bcrefresh probe should be used to estimate the denominator.
+With recursion guard enabled, late iterations around the 1.6M-cluster regime
+still cost approximately `316-320 sec` each while changing cluster count by
+only `110-201` clusters and moving `5,040-10,104` aggregate nodes.
 
 ## Objective Terms
 
@@ -213,11 +225,12 @@ Do not let polish turn into another full until-convergence run without a budget.
 ## Initial Implementation Order
 
 1. [x] Add profiling observability to standard Leiden.
-2. [ ] Build cluster graph stats and dry-run report.
-3. [ ] Implement macro merge dry-run.
-4. [ ] Validate predicted `delta_Q` against exact recomputation on small test graphs.
-5. [ ] Add macro merge apply mode behind an explicit experimental flag.
-6. [ ] Design split probes after merge dry-run results are available.
+2. [x] Add a large-graph recursion guard for near-identity contraction tails.
+3. [ ] Build cluster graph stats and dry-run report.
+4. [ ] Implement macro merge dry-run.
+5. [ ] Validate predicted `delta_Q` against exact recomputation on small test graphs.
+6. [ ] Add macro merge apply mode behind an explicit experimental flag.
+7. [ ] Design split probes after merge dry-run results are available.
 
 ## Non-Goals For Now
 
