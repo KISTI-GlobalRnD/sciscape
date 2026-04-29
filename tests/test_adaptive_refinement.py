@@ -1,4 +1,5 @@
 import json
+import csv
 
 import numpy as np
 
@@ -57,7 +58,15 @@ def test_write_adaptive_refinement_report(tmp_path):
 
     candidate_lines = (tmp_path / "macro_merge_candidates.csv").read_text().splitlines()
     assert len(candidate_lines) == 2
-    assert candidate_lines[1].startswith("1,0,1,")
+    row = next(csv.DictReader(candidate_lines))
+    assert row["rank"] == "1"
+    assert row["source"] == "0"
+    assert row["target"] == "1"
+    assert float(row["source_doc_weight"]) == 20.0
+    assert float(row["target_doc_weight"]) == 120.0
+    assert int(row["source_degree"]) == 2
+    assert int(row["target_degree"]) == 2
+    assert float(row["source_leafness"]) == 0.7
 
     arrays = np.load(tmp_path / "cluster_graph_stats.npz")
     np.testing.assert_array_equal(arrays["block_count"], np.array([2, 3, 1], dtype=np.uint64))

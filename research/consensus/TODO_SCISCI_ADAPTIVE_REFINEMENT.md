@@ -47,6 +47,23 @@ stage rather than another full random restart:
     doc-weight band, but none had positive CPM `delta_Q`
   - the top `10,000` exported candidates include `105` exact `delta_Q = 0`
     ties and `1,161` near-neutral candidates with `delta_Q > -1e-4`
+- Medium g016 contracted-graph dry-run diagnostics on the
+  `gamma=0.0085` membership:
+  - summary artifact:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_cluster_graph_summary.json`
+  - GPU artifact directory:
+    `/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_dryrun_selfloops`
+  - input graph: `2,925,181` contracted nodes and `169,159,819`
+    parquet edge rows
+  - graph reload from raw sidecars: approximately `9.0 sec`
+  - cluster-graph stats pass: approximately `7.7 sec`
+  - dry-run high-water memory: approximately `7.4 GB`
+  - active clusters: `1,612,895`
+  - clusters in the `250-1500` doc-weight band: `51,845`
+  - top `50,000` macro-merge candidates all improved the target size band,
+    but none had positive CPM `delta_Q`
+  - `217` top candidates had `delta_Q > -1e-4`; `2,321` had
+    `delta_Q > -1e-3`
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but

@@ -175,8 +175,10 @@ fn build_graph_from_raw_files_streaming(
                     s, d, n_nodes,
                 )));
             }
-            degree[s] += 1;
-            degree[d] += 1;
+            if s != d {
+                degree[s] += 1;
+                degree[d] += 1;
+            }
         }
         remaining -= n_chunk;
     }
@@ -194,6 +196,7 @@ fn build_graph_from_raw_files_streaming(
     let n_edges = running as usize;
     let mut neighbors = vec![0u32; n_edges];
     let mut edge_weights = vec![0.0f64; n_edges];
+    let mut self_loop_weights = vec![0.0; n_nodes];
     let mut offset = degree;
 
     let mut src_file = open_raw_file(src_path)?;
@@ -221,6 +224,10 @@ fn build_graph_from_raw_files_streaming(
             let s = s_u32 as usize;
             let d = d_u32 as usize;
             let w = read_f64_at(&weight_buf, i);
+            if s == d {
+                self_loop_weights[s] += w;
+                continue;
+            }
 
             let pos_s = offset[s] as usize;
             neighbors[pos_s] = d_u32;
@@ -248,7 +255,6 @@ fn build_graph_from_raw_files_streaming(
     } else {
         vec![1.0; n_nodes]
     };
-    let self_loop_weights = vec![0.0; n_nodes];
 
     Ok(Graph {
         n_nodes,

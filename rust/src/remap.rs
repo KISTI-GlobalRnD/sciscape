@@ -423,7 +423,7 @@ fn read_int_edges_to_graph(
     edge_path: &Path,
     uid_to_idx: &UidMap,
     n_nodes: usize,
-    n_edges: usize,
+    _n_edges: usize,
     mut degree: Vec<u64>,
     uid1_col: &str,
     uid2_col: &str,
@@ -451,20 +451,11 @@ fn read_int_edges_to_graph(
         running += d;
     }
     first_neighbor_index[n_nodes] = running;
-    let expected_directed = n_edges
-        .checked_mul(2)
-        .ok_or_else(|| "directed edge count overflow during graph build".to_string())?;
-    if running as usize != expected_directed {
-        return Err(format!(
-            "remap degree mismatch: directed edges={}, expected={}",
-            running, expected_directed
-        ));
-    }
-
     let n_directed_edges = running as usize;
     let mut neighbors = filled_vec(n_directed_edges, 0u32, "reserve graph neighbor vector")?;
     let mut edge_weights =
         filled_vec(n_directed_edges, 0.0f64, "reserve graph edge-weight vector")?;
+    let mut self_loop_weights = filled_vec(n_nodes, 0.0f64, "reserve graph self-loop vector")?;
     let mut offset = degree;
 
     let mut reader = record_reader(edge_path, &[uid1_col, uid2_col, weight_col])?;
@@ -495,6 +486,10 @@ fn read_int_edges_to_graph(
         for (s, d, w) in triples {
             let s_idx = s as usize;
             let d_idx = d as usize;
+            if s_idx == d_idx {
+                self_loop_weights[s_idx] += w;
+                continue;
+            }
 
             let pos_s = offset[s_idx] as usize;
             neighbors[pos_s] = d;
@@ -515,7 +510,7 @@ fn read_int_edges_to_graph(
         neighbors,
         edge_weights,
         node_weights: filled_vec(n_nodes, 1.0f64, "reserve graph node-weight vector")?,
-        self_loop_weights: filled_vec(n_nodes, 0.0f64, "reserve graph self-loop vector")?,
+        self_loop_weights,
     })
 }
 
@@ -608,8 +603,10 @@ pub fn integer_remap_parquet_to_graph(
             let u2 = uid2_values.value(row, uid2_col)?;
             let s = intern_uid_with_degree(u1, &mut uid_to_idx, &mut uids, &mut degree)?;
             let d = intern_uid_with_degree(u2, &mut uid_to_idx, &mut uids, &mut degree)?;
-            degree[s as usize] += 1;
-            degree[d as usize] += 1;
+            if s != d {
+                degree[s as usize] += 1;
+                degree[d as usize] += 1;
+            }
             n_edges = n_edges
                 .checked_add(1)
                 .ok_or_else(|| "edge count overflow during integer remap".to_string())?;

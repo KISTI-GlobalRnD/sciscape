@@ -97,11 +97,15 @@ impl Graph {
         assert_eq!(src.len(), dst.len());
         assert_eq!(src.len(), weights.len());
 
-        // Count degree per node (both directions)
+        // Count stored CSR degree per node. Self-loops are stored separately
+        // in `self_loop_weights` because they are constant node-internal mass,
+        // not neighbor entries.
         let mut degree = vec![0u64; n_nodes];
         for (&s, &d) in src.iter().zip(dst.iter()) {
-            degree[s as usize] += 1;
-            degree[d as usize] += 1;
+            if s != d {
+                degree[s as usize] += 1;
+                degree[d as usize] += 1;
+            }
         }
 
         Self::from_edge_list_with_degrees_trusted(n_nodes, src, dst, weights, degree)
@@ -133,18 +137,23 @@ impl Graph {
             running += d;
         }
         first_neighbor_index[n_nodes] = running;
-        assert_eq!(running as usize, src.len() * 2);
         let n_edges = running as usize;
 
         // Fill CSR arrays
         let mut neighbors = vec![0u32; n_edges];
         let mut edge_weights = vec![0.0f64; n_edges];
+        let node_weights = vec![1.0; n_nodes];
+        let mut self_loop_weights = vec![0.0; n_nodes];
         let mut offset = degree;
 
         for i in 0..src.len() {
             let s = src[i] as usize;
             let d = dst[i] as usize;
             let w = weights[i];
+            if s == d {
+                self_loop_weights[s] += w;
+                continue;
+            }
 
             let pos_s = offset[s] as usize;
             neighbors[pos_s] = dst[i];
@@ -156,9 +165,6 @@ impl Graph {
             edge_weights[pos_d] = w;
             offset[d] += 1;
         }
-
-        let node_weights = vec![1.0; n_nodes];
-        let self_loop_weights = vec![0.0; n_nodes];
 
         Graph {
             n_nodes,
@@ -272,15 +278,17 @@ impl Graph {
 
     /// Total edge weight of self-loops.
     pub fn total_self_loop_weight(&self) -> f64 {
-        let mut total = 0.0;
+        let mut total = self.self_loop_weights.iter().sum::<f64>();
+        let mut legacy_csr_total = 0.0;
         for node in 0..self.n_nodes {
             for (nbr, w) in self.neighbors_of(node) {
                 if nbr == node as u32 {
-                    total += w;
+                    legacy_csr_total += w;
                 }
             }
         }
-        total / 2.0 // each self-loop counted twice in CSR
+        total += legacy_csr_total / 2.0;
+        total
     }
 
     /// Extract subgraph induced by the given node set.
@@ -672,6 +680,18 @@ mod tests {
         assert_eq!(g.degree(1), 2);
         assert_eq!(g.degree(2), 2);
         assert!((g.total_edge_weight() - 3.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_self_loop_edges_are_stored_as_self_loop_weights() {
+        let g = Graph::from_edge_list(2, &[0, 0], &[0, 1], &[3.0, 2.0]);
+
+        assert_eq!(g.n_edges, 2);
+        assert_eq!(g.degree(0), 1);
+        assert_eq!(g.degree(1), 1);
+        assert_eq!(g.self_loop_weights, vec![3.0, 0.0]);
+        assert!((g.total_edge_weight() - 2.0).abs() < 1e-10);
+        assert!((g.total_self_loop_weight() - 3.0).abs() < 1e-10);
     }
 
     #[test]

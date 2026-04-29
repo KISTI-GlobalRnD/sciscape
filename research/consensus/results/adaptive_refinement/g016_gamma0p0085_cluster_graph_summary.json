@@ -1,0 +1,104 @@
+{
+  "conductance": {
+    "p50": 0.927300617445265,
+    "p90": 1.0,
+    "p95": 1.0,
+    "p99": 1.0,
+    "p99.9": 1.0
+  },
+  "dataset": "g016_contracted_gamma_0p0085",
+  "doc_weight": {
+    "p50": 11.0,
+    "p90": 80.0,
+    "p95": 174.0,
+    "p99": 429.0,
+    "p99.9": 661.0
+  },
+  "graph_path": "/data/openalex_clusters/sciscape_initialized_graph_nano_layer_g016_seed0_20260409/contracted/int_edges.parquet",
+  "hwm_mb_final": 7383.5078125,
+  "leafness": {
+    "p50": 0.16534156810363793,
+    "p90": 0.3266506201168526,
+    "p95": 0.39987048103329276,
+    "p99": 0.8097453886831073,
+    "p99.9": 1.0
+  },
+  "max_weight": 1500.0,
+  "membership_path": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/membership.parquet",
+  "min_weight": 250.0,
+  "n_above_max_weight": 0,
+  "n_active_clusters": 1612895,
+  "n_band_improving_candidates": 50000,
+  "n_below_min_weight": 1561050,
+  "n_clusters": 1612895,
+  "n_merge_candidates": 50000,
+  "n_near_1e4_and_band_improving_candidates": 217,
+  "n_near_neutral_1e3_candidates": 2321,
+  "n_near_neutral_1e4_candidates": 217,
+  "n_nonnegative_and_band_improving_candidates": 0,
+  "n_nonnegative_delta_candidates": 0,
+  "n_positive_and_band_improving_candidates": 0,
+  "n_positive_delta_candidates": 0,
+  "n_within_weight_band": 51845,
+  "paths": {
+    "cluster_arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_dryrun_selfloops/cluster_graph_stats.npz",
+    "merge_candidates": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_dryrun_selfloops/macro_merge_candidates.csv",
+    "summary": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_dryrun_selfloops/cluster_graph_summary.json"
+  },
+  "phases": [
+    {
+      "elapsed_sec": 0.003687623073346913,
+      "hwm_mb": 64.70703125,
+      "name": "edge_sidecars",
+      "rss_mb": 64.70703125
+    },
+    {
+      "elapsed_sec": 0.21816533408127725,
+      "hwm_mb": 274.80859375,
+      "name": "node_weights",
+      "rss_mb": 208.08203125
+    },
+    {
+      "elapsed_sec": 9.032836292986758,
+      "hwm_mb": 4178.95703125,
+      "name": "graph_load",
+      "rss_mb": 4147.12890625
+    },
+    {
+      "elapsed_sec": 0.16091894800774753,
+      "hwm_mb": 4178.95703125,
+      "name": "membership_load",
+      "rss_mb": 4134.1328125
+    },
+    {
+      "elapsed_sec": 7.655215768958442,
+      "hwm_mb": 7383.5078125,
+      "name": "cluster_graph_stats",
+      "rss_mb": 4352.05859375
+    },
+    {
+      "elapsed_sec": 0.16510381398256868,
+      "hwm_mb": 7383.5078125,
+      "name": "write_report",
+      "rss_mb": 4353.26171875
+    }
+  ],
+  "resolution": 0.0085,
+  "rss_mb_final": 4353.26171875,
+  "top_delta_q": [
+    -3.5433757161751345e-07,
+    -4.367471810873269e-07,
+    -1.998492402899288e-06,
+    -2.788627188943238e-06,
+    -3.5706872581475757e-06,
+    -3.887263654245299e-06,
+    -7.416527892378788e-06,
+    -7.4790876710140175e-06,
+    -7.637732106546835e-06,
+    -7.952408569322778e-06
+  ],
+  "top_k": 50000,
+  "total_doc_weight": 56314817.0,
+  "total_external_weight": 774219972.1355834,
+  "total_internal_weight": 204286383.36081934
+}
