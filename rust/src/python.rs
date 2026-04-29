@@ -813,6 +813,24 @@ impl PyGraph {
                 .unbind(),
         );
         out.insert(
+            "second_neighbor".to_string(),
+            PyArray1::from_vec(py, stats.second_neighbor)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_neighbor_weight".to_string(),
+            PyArray1::from_vec(py, stats.second_neighbor_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "neighbor_weight_ratio".to_string(),
+            PyArray1::from_vec(py, stats.neighbor_weight_ratio)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
             "conductance".to_string(),
             PyArray1::from_vec(py, stats.conductance)
                 .into_any()

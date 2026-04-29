@@ -4,11 +4,15 @@ import csv
 import numpy as np
 
 from sciscape.clustering.adaptive_refinement import (
+    BoundaryCandidatePolicy,
     MacroMergePolicy,
     run_macro_merge_policy_ensemble,
+    score_boundary_candidates,
     simulate_macro_merge_policy,
+    summarize_boundary_candidate_policies,
     summarize_cluster_graph_stats,
     write_adaptive_refinement_report,
+    write_boundary_candidate_report,
     write_macro_merge_ensemble_report,
 )
 from sciscape.clustering.leiden_rust import RustClusterGraphStats
@@ -23,6 +27,9 @@ def _stats() -> RustClusterGraphStats:
         degree=np.array([2, 2, 1], dtype=np.uint64),
         top_neighbor=np.array([1, 0, 1], dtype=np.int64),
         top_neighbor_weight=np.array([7.0, 7.0, 5.0], dtype=np.float64),
+        second_neighbor=np.array([2, 2, -1], dtype=np.int64),
+        second_neighbor_weight=np.array([3.0, 5.0, 0.0], dtype=np.float64),
+        neighbor_weight_ratio=np.array([3.0 / 7.0, 5.0 / 7.0, 0.0], dtype=np.float64),
         conductance=np.array([0.5, 15.0 / 55.0, 5.0 / 165.0], dtype=np.float64),
         leafness=np.array([0.7, 7.0 / 15.0, 1.0], dtype=np.float64),
         band_distance=np.array([30.0, 0.0, 150.0], dtype=np.float64),
@@ -75,6 +82,7 @@ def test_write_adaptive_refinement_report(tmp_path):
     arrays = np.load(tmp_path / "cluster_graph_stats.npz")
     np.testing.assert_array_equal(arrays["block_count"], np.array([2, 3, 1], dtype=np.uint64))
     np.testing.assert_array_equal(arrays["candidate_source"], np.array([0, 1], dtype=np.uint64))
+    np.testing.assert_array_equal(arrays["second_neighbor"], np.array([2, 2, -1], dtype=np.int64))
 
 
 def test_simulate_macro_merge_policy_greedy_non_conflicting():
@@ -86,6 +94,9 @@ def test_simulate_macro_merge_policy_greedy_non_conflicting():
         degree=np.array([2, 2, 1, 1], dtype=np.uint64),
         top_neighbor=np.array([1, 0, 3, 2], dtype=np.int64),
         top_neighbor_weight=np.array([7.0, 7.0, 5.0, 5.0], dtype=np.float64),
+        second_neighbor=np.array([2, 2, -1, -1], dtype=np.int64),
+        second_neighbor_weight=np.array([3.0, 2.0, 0.0, 0.0], dtype=np.float64),
+        neighbor_weight_ratio=np.array([3.0 / 7.0, 2.0 / 7.0, 0.0, 0.0], dtype=np.float64),
         conductance=np.array([0.5, 0.4, 0.9, 0.6], dtype=np.float64),
         leafness=np.array([0.7, 0.5, 0.2, 0.3], dtype=np.float64),
         band_distance=np.array([30.0, 0.0, 10.0, 0.0], dtype=np.float64),
@@ -152,3 +163,68 @@ def test_run_macro_merge_policy_ensemble_default_policies():
 
     assert results
     assert all(result.policy.name for result in results)
+
+
+def test_score_boundary_candidates():
+    candidate_ids, scores = score_boundary_candidates(
+        _stats(),
+        BoundaryCandidatePolicy(
+            name="boundary",
+            min_block_count=2,
+            min_doc_weight=10.0,
+            min_degree=2,
+            min_conductance=0.2,
+            max_leafness=0.8,
+            min_neighbor_weight_ratio=0.4,
+        ),
+    )
+
+    np.testing.assert_array_equal(candidate_ids, np.array([1, 0]))
+    assert scores[0] > scores[1]
+
+
+def test_summarize_boundary_candidate_policies():
+    rows = summarize_boundary_candidate_policies(
+        _stats(),
+        [
+            BoundaryCandidatePolicy(
+                name="boundary",
+                min_block_count=2,
+                min_doc_weight=10.0,
+                min_degree=2,
+                min_conductance=0.2,
+                max_leafness=0.8,
+                min_neighbor_weight_ratio=0.4,
+            )
+        ],
+    )
+
+    assert rows[0]["policy"]["name"] == "boundary"
+    assert rows[0]["n_candidates_after_filters"] == 2
+    assert rows[0]["n_exported"] == 2
+
+
+def test_write_boundary_candidate_report(tmp_path):
+    paths = write_boundary_candidate_report(
+        _stats(),
+        tmp_path,
+        [
+            BoundaryCandidatePolicy(
+                name="boundary",
+                min_block_count=2,
+                min_doc_weight=10.0,
+                min_degree=2,
+                min_conductance=0.2,
+                max_leafness=0.8,
+                min_neighbor_weight_ratio=0.4,
+            )
+        ],
+    )
+
+    assert set(paths) == {"summary", "candidates"}
+    data = json.loads((tmp_path / "boundary_candidate_policy_summary.json").read_text())
+    assert data[0]["n_candidates_after_filters"] == 2
+    rows = list(csv.DictReader((tmp_path / "boundary_candidates.csv").open()))
+    assert rows[0]["policy"] == "boundary"
+    assert rows[0]["cluster"] == "1"
+    assert rows[0]["second_neighbor"] == "2"

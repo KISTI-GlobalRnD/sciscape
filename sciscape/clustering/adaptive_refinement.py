@@ -65,6 +65,22 @@ class MacroMergeSimulationResult:
         return out
 
 
+@dataclass(frozen=True)
+class BoundaryCandidatePolicy:
+    """Policy for ranking ambiguous cluster-graph boundary candidates."""
+
+    name: str
+    min_block_count: int = 2
+    min_doc_weight: float = 0.0
+    max_doc_weight: float | None = None
+    min_degree: int = 2
+    min_conductance: float = 0.5
+    max_leafness: float = 0.95
+    min_neighbor_weight_ratio: float = 0.25
+    exclude_singletons: bool = True
+    top_k: int = 1000
+
+
 def _percentiles(values: np.ndarray, percentiles: list[int]) -> dict[str, float]:
     if values.size == 0:
         return {f"p{p}": 0.0 for p in percentiles}
@@ -91,6 +107,7 @@ def summarize_cluster_graph_stats(
     active_external = stats.external_weight[active]
     active_conductance = stats.conductance[active]
     active_leafness = stats.leafness[active]
+    active_neighbor_ratio = stats.neighbor_weight_ratio[active]
     candidates = stats.candidate_source.shape[0]
     positive_delta = stats.candidate_delta_q > 0
     band_improving = stats.candidate_size_band_gain > 0
@@ -104,6 +121,7 @@ def summarize_cluster_graph_stats(
         "doc_weight": _percentiles(active_weight, [50, 90, 95, 99]),
         "conductance": _percentiles(active_conductance, [50, 90, 95, 99]),
         "leafness": _percentiles(active_leafness, [50, 90, 95, 99]),
+        "neighbor_weight_ratio": _percentiles(active_neighbor_ratio, [50, 90, 95, 99]),
         "n_merge_candidates": int(candidates),
         "n_positive_delta_candidates": int(positive_delta.sum()),
         "n_band_improving_candidates": int(band_improving.sum()),
@@ -140,6 +158,124 @@ def _count_band_delta(before_a: np.ndarray, before_b: np.ndarray, after: np.ndar
     within_delta = int((after_within - before_within).sum())
     above_delta = int((after_above - before_above).sum())
     return below_delta, within_delta, above_delta
+
+
+def _boundary_candidate_mask(
+    stats: RustClusterGraphStats,
+    policy: BoundaryCandidatePolicy,
+) -> np.ndarray:
+    mask = stats.second_neighbor >= 0
+    mask &= stats.degree >= int(policy.min_degree)
+    mask &= stats.doc_weight >= float(policy.min_doc_weight)
+    if policy.max_doc_weight is not None:
+        mask &= stats.doc_weight <= float(policy.max_doc_weight)
+    if policy.exclude_singletons:
+        mask &= stats.block_count > 1
+    else:
+        mask &= stats.block_count >= int(policy.min_block_count)
+    mask &= stats.block_count >= int(policy.min_block_count)
+    mask &= stats.conductance >= float(policy.min_conductance)
+    mask &= stats.leafness <= float(policy.max_leafness)
+    mask &= stats.neighbor_weight_ratio >= float(policy.min_neighbor_weight_ratio)
+    return mask
+
+
+def score_boundary_candidates(
+    stats: RustClusterGraphStats,
+    policy: BoundaryCandidatePolicy,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return candidate cluster ids and scores for one boundary policy."""
+
+    candidate_ids = np.flatnonzero(_boundary_candidate_mask(stats, policy))
+    if candidate_ids.size == 0:
+        return candidate_ids.astype(np.int64), np.empty(0, dtype=np.float64)
+    score = (
+        stats.neighbor_weight_ratio[candidate_ids]
+        * stats.conductance[candidate_ids]
+        * np.log1p(stats.doc_weight[candidate_ids])
+        / np.maximum(stats.leafness[candidate_ids], 1e-9)
+    )
+    order = np.argsort(-score, kind="mergesort")
+    top_n = min(int(policy.top_k), order.size)
+    selected = candidate_ids[order[:top_n]].astype(np.int64, copy=False)
+    return selected, score[order[:top_n]]
+
+
+def exploratory_boundary_candidate_policies() -> list[BoundaryCandidatePolicy]:
+    """Return a compact policy grid for boundary ambiguity diagnostics."""
+
+    return [
+        BoundaryCandidatePolicy(
+            name="boundary_nonleaf",
+            min_block_count=2,
+            min_doc_weight=10.0,
+            min_degree=2,
+            min_conductance=0.8,
+            max_leafness=0.8,
+            min_neighbor_weight_ratio=0.25,
+        ),
+        BoundaryCandidatePolicy(
+            name="boundary_high_ambiguity",
+            min_block_count=2,
+            min_doc_weight=10.0,
+            min_degree=2,
+            min_conductance=0.7,
+            max_leafness=0.9,
+            min_neighbor_weight_ratio=0.5,
+        ),
+        BoundaryCandidatePolicy(
+            name="boundary_band_scale",
+            min_block_count=2,
+            min_doc_weight=50.0,
+            max_doc_weight=1500.0,
+            min_degree=2,
+            min_conductance=0.7,
+            max_leafness=0.9,
+            min_neighbor_weight_ratio=0.25,
+        ),
+        BoundaryCandidatePolicy(
+            name="boundary_strict",
+            min_block_count=3,
+            min_doc_weight=50.0,
+            max_doc_weight=1500.0,
+            min_degree=3,
+            min_conductance=0.8,
+            max_leafness=0.75,
+            min_neighbor_weight_ratio=0.4,
+        ),
+    ]
+
+
+def summarize_boundary_candidate_policies(
+    stats: RustClusterGraphStats,
+    policies: list[BoundaryCandidatePolicy] | None = None,
+) -> list[dict[str, Any]]:
+    """Summarize candidate counts and top-score distribution by policy."""
+
+    if policies is None:
+        policies = exploratory_boundary_candidate_policies()
+    rows: list[dict[str, Any]] = []
+    for policy in policies:
+        mask = _boundary_candidate_mask(stats, policy)
+        candidate_ids, scores = score_boundary_candidates(stats, policy)
+        rows.append(
+            {
+                "policy": asdict(policy),
+                "n_candidates_after_filters": int(mask.sum()),
+                "n_exported": int(candidate_ids.size),
+                "score_p50": _percentile(scores, 50),
+                "score_p90": _percentile(scores, 90),
+                "doc_weight_p50": _percentile(stats.doc_weight[candidate_ids], 50),
+                "doc_weight_p90": _percentile(stats.doc_weight[candidate_ids], 90),
+                "neighbor_weight_ratio_p50": _percentile(
+                    stats.neighbor_weight_ratio[candidate_ids],
+                    50,
+                ),
+                "conductance_p50": _percentile(stats.conductance[candidate_ids], 50),
+                "leafness_p50": _percentile(stats.leafness[candidate_ids], 50),
+            }
+        )
+    return rows
 
 
 def simulate_macro_merge_policy(
@@ -503,6 +639,77 @@ def write_macro_merge_ensemble_report(
     return {"json": str(json_path), "csv": str(csv_path)}
 
 
+def write_boundary_candidate_report(
+    stats: RustClusterGraphStats,
+    output_dir: Path,
+    policies: list[BoundaryCandidatePolicy] | None = None,
+) -> dict[str, str]:
+    """Write boundary ambiguity summaries and top candidate table."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if policies is None:
+        policies = exploratory_boundary_candidate_policies()
+
+    summary = summarize_boundary_candidate_policies(stats, policies)
+    summary_path = output_dir / "boundary_candidate_policy_summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    candidate_path = output_dir / "boundary_candidates.csv"
+    fieldnames = [
+        "policy",
+        "rank",
+        "cluster",
+        "score",
+        "doc_weight",
+        "block_count",
+        "internal_weight",
+        "external_weight",
+        "degree",
+        "conductance",
+        "leafness",
+        "neighbor_weight_ratio",
+        "top_neighbor",
+        "top_neighbor_weight",
+        "second_neighbor",
+        "second_neighbor_weight",
+        "band_distance",
+    ]
+    with candidate_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for policy in policies:
+            candidate_ids, scores = score_boundary_candidates(stats, policy)
+            for rank, (cluster, score) in enumerate(zip(candidate_ids, scores), start=1):
+                c = int(cluster)
+                writer.writerow(
+                    {
+                        "policy": policy.name,
+                        "rank": rank,
+                        "cluster": c,
+                        "score": float(score),
+                        "doc_weight": float(stats.doc_weight[c]),
+                        "block_count": int(stats.block_count[c]),
+                        "internal_weight": float(stats.internal_weight[c]),
+                        "external_weight": float(stats.external_weight[c]),
+                        "degree": int(stats.degree[c]),
+                        "conductance": float(stats.conductance[c]),
+                        "leafness": float(stats.leafness[c]),
+                        "neighbor_weight_ratio": float(stats.neighbor_weight_ratio[c]),
+                        "top_neighbor": int(stats.top_neighbor[c]),
+                        "top_neighbor_weight": float(stats.top_neighbor_weight[c]),
+                        "second_neighbor": int(stats.second_neighbor[c]),
+                        "second_neighbor_weight": float(stats.second_neighbor_weight[c]),
+                        "band_distance": float(stats.band_distance[c]),
+                    }
+                )
+
+    return {"summary": str(summary_path), "candidates": str(candidate_path)}
+
+
 def write_adaptive_refinement_report(
     stats: RustClusterGraphStats,
     output_dir: Path,
@@ -602,6 +809,9 @@ def write_adaptive_refinement_report(
             degree=stats.degree,
             top_neighbor=stats.top_neighbor,
             top_neighbor_weight=stats.top_neighbor_weight,
+            second_neighbor=stats.second_neighbor,
+            second_neighbor_weight=stats.second_neighbor_weight,
+            neighbor_weight_ratio=stats.neighbor_weight_ratio,
             conductance=stats.conductance,
             leafness=stats.leafness,
             band_distance=stats.band_distance,
@@ -617,12 +827,17 @@ def write_adaptive_refinement_report(
 
 
 __all__ = [
+    "BoundaryCandidatePolicy",
     "MacroMergePolicy",
     "MacroMergeSimulationResult",
+    "exploratory_boundary_candidate_policies",
     "exploratory_macro_merge_policies",
     "run_macro_merge_policy_ensemble",
+    "score_boundary_candidates",
     "simulate_macro_merge_policy",
+    "summarize_boundary_candidate_policies",
     "summarize_cluster_graph_stats",
     "write_adaptive_refinement_report",
+    "write_boundary_candidate_report",
     "write_macro_merge_ensemble_report",
 ]

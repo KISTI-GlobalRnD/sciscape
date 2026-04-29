@@ -81,6 +81,9 @@ class RustClusterGraphStats:
     degree: np.ndarray
     top_neighbor: np.ndarray
     top_neighbor_weight: np.ndarray
+    second_neighbor: np.ndarray
+    second_neighbor_weight: np.ndarray
+    neighbor_weight_ratio: np.ndarray
     conductance: np.ndarray
     leafness: np.ndarray
     band_distance: np.ndarray
@@ -224,6 +227,18 @@ class RustLeidenGraph:
             degree=np.asarray(raw["degree"], dtype=np.uint64),
             top_neighbor=np.asarray(raw["top_neighbor"], dtype=np.int64),
             top_neighbor_weight=np.asarray(raw["top_neighbor_weight"], dtype=np.float64),
+            second_neighbor=np.asarray(
+                raw.get("second_neighbor", np.full_like(raw["top_neighbor"], -1)),
+                dtype=np.int64,
+            ),
+            second_neighbor_weight=np.asarray(
+                raw.get("second_neighbor_weight", np.zeros_like(raw["top_neighbor_weight"])),
+                dtype=np.float64,
+            ),
+            neighbor_weight_ratio=np.asarray(
+                raw.get("neighbor_weight_ratio", np.zeros_like(raw["top_neighbor_weight"])),
+                dtype=np.float64,
+            ),
             conductance=np.asarray(raw["conductance"], dtype=np.float64),
             leafness=np.asarray(raw["leafness"], dtype=np.float64),
             band_distance=np.asarray(raw["band_distance"], dtype=np.float64),

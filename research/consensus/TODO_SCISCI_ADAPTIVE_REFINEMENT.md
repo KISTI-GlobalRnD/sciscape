@@ -79,6 +79,24 @@ stage rather than another full random restart:
   - no policy increased the count of clusters already in the target band;
     these merges mainly attach tiny singleton fragments to small/medium
     clusters
+- Boundary-candidate dry-run on the same g016 membership:
+  - artifact directory:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_boundary_candidates`
+  - GPU artifact directory:
+    `/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_dryrun`
+  - graph reload: approximately `9.0 sec`
+  - cluster-graph stats pass with second-neighbor metrics: approximately
+    `7.5 sec`
+  - dry-run high-water memory: approximately `7.4 GB`
+  - active clusters with a second neighbor: `1,540,676`
+  - neighbor-weight ratio is high (`p50=0.630`, `p90=0.930`), meaning many
+    clusters are not one-sided leaves at the cluster-graph level
+  - policy-filtered candidate counts:
+    - `boundary_nonleaf`: `293,608`
+    - `boundary_high_ambiguity`: `264,945`
+    - `boundary_band_scale`: `85,204`
+    - `boundary_largeish_ambiguous`: `27,453`
+    - `boundary_strict`: `10,736`
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -257,6 +275,14 @@ Exclude:
 - low-degree one-sided leaves,
 - tiny doc-weight fragments,
 - moves that only increase singleton count.
+
+Implementation status:
+
+- [x] first-neighbor / second-neighbor cluster-graph metrics
+- [x] boundary ambiguity policy summaries
+- [x] top boundary candidate CSV export
+- [ ] induced-subgraph probe around candidate clusters
+- [ ] accepted boundary perturbation plus polish/rollback
 
 ## Stage 5: Local Polish
 

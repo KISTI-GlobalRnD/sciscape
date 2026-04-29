@@ -30,6 +30,9 @@ pub struct ClusterGraphStats {
     pub degree: Vec<u64>,
     pub top_neighbor: Vec<i64>,
     pub top_neighbor_weight: Vec<f64>,
+    pub second_neighbor: Vec<i64>,
+    pub second_neighbor_weight: Vec<f64>,
+    pub neighbor_weight_ratio: Vec<f64>,
     pub conductance: Vec<f64>,
     pub leafness: Vec<f64>,
     pub band_distance: Vec<f64>,
@@ -124,6 +127,8 @@ pub fn cluster_graph_stats(
     let mut degree = vec![0u64; n_clusters];
     let mut top_neighbor = vec![-1i64; n_clusters];
     let mut top_neighbor_weight = vec![0.0f64; n_clusters];
+    let mut second_neighbor = vec![-1i64; n_clusters];
+    let mut second_neighbor_weight = vec![0.0f64; n_clusters];
     let mut band_distance = vec![0.0f64; n_clusters];
     let mut candidate_heap: BinaryHeap<HeapCandidate> = BinaryHeap::with_capacity(top_k.min(4096));
 
@@ -142,8 +147,13 @@ pub fn cluster_graph_stats(
             let edge_weight = reduced.edge_weights[edge_idx];
             external_weight[c] += edge_weight;
             if edge_weight > top_neighbor_weight[c] {
+                second_neighbor_weight[c] = top_neighbor_weight[c];
+                second_neighbor[c] = top_neighbor[c];
                 top_neighbor_weight[c] = edge_weight;
                 top_neighbor[c] = nbr as i64;
+            } else if edge_weight > second_neighbor_weight[c] {
+                second_neighbor_weight[c] = edge_weight;
+                second_neighbor[c] = nbr as i64;
             }
 
             if c < nbr {
@@ -165,6 +175,7 @@ pub fn cluster_graph_stats(
 
     let mut conductance = vec![0.0f64; n_clusters];
     let mut leafness = vec![0.0f64; n_clusters];
+    let mut neighbor_weight_ratio = vec![0.0f64; n_clusters];
     for c in 0..n_clusters {
         let external = external_weight[c];
         let volume = 2.0 * internal_weight[c] + external;
@@ -173,6 +184,9 @@ pub fn cluster_graph_stats(
         }
         if external > 0.0 {
             leafness[c] = top_neighbor_weight[c] / external;
+        }
+        if top_neighbor_weight[c] > 0.0 {
+            neighbor_weight_ratio[c] = second_neighbor_weight[c] / top_neighbor_weight[c];
         }
     }
 
@@ -195,6 +209,9 @@ pub fn cluster_graph_stats(
         degree,
         top_neighbor,
         top_neighbor_weight,
+        second_neighbor,
+        second_neighbor_weight,
+        neighbor_weight_ratio,
         conductance,
         leafness,
         band_distance,
@@ -220,10 +237,27 @@ mod tests {
         assert_eq!(stats.external_weight, vec![1.0, 1.0]);
         assert_eq!(stats.degree, vec![1, 1]);
         assert_eq!(stats.top_neighbor, vec![1, 0]);
+        assert_eq!(stats.second_neighbor, vec![-1, -1]);
+        assert_eq!(stats.neighbor_weight_ratio, vec![0.0, 0.0]);
         assert_eq!(stats.merge_candidates.len(), 1);
         assert_eq!(stats.merge_candidates[0].source, 0);
         assert_eq!(stats.merge_candidates[0].target, 1);
         assert!((stats.merge_candidates[0].delta_q - 0.6).abs() < 1e-12);
         assert!((stats.merge_candidates[0].size_band_gain - 2.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn cluster_graph_stats_reports_second_neighbor() {
+        let graph = Graph::from_edge_list(3, &[0, 0, 1], &[1, 2, 2], &[4.0, 2.0, 1.0]);
+        let clustering = Clustering::from_assignments(vec![0, 1, 2]);
+        let mut ws = Workspace::new(3);
+
+        let stats = cluster_graph_stats(&graph, &clustering, 0.1, 0.0, 0.0, 4, &mut ws);
+
+        assert_eq!(stats.top_neighbor[0], 1);
+        assert_eq!(stats.second_neighbor[0], 2);
+        assert!((stats.top_neighbor_weight[0] - 4.0).abs() < 1e-12);
+        assert!((stats.second_neighbor_weight[0] - 2.0).abs() < 1e-12);
+        assert!((stats.neighbor_weight_ratio[0] - 0.5).abs() < 1e-12);
     }
 }

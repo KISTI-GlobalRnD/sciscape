@@ -1,0 +1,186 @@
+{
+  "key_findings": {
+    "band_scale_candidates_after_filters": 85204,
+    "max_policy_candidates_after_filters": 293608,
+    "n_active_clusters": 1612895,
+    "n_with_second_neighbor": 1540676,
+    "neighbor_weight_ratio_p50": 0.6296463469709762,
+    "neighbor_weight_ratio_p90": 0.9301045470409105,
+    "strict_policy_candidates_after_filters": 10736
+  },
+  "paths": {
+    "candidates": "research/consensus/results/adaptive_refinement/g016_gamma0p0085_boundary_candidates/boundary_candidates.csv",
+    "summary": "research/consensus/results/adaptive_refinement/g016_gamma0p0085_boundary_candidates/boundary_candidate_policy_summary.json"
+  },
+  "policy_summary": [
+    {
+      "conductance_p50": 0.8413541293098985,
+      "doc_weight_p50": 111.5,
+      "doc_weight_p90": 367.20000000000005,
+      "leafness_p50": 0.040763541201280576,
+      "n_candidates_after_filters": 293608,
+      "n_exported": 1000,
+      "neighbor_weight_ratio_p50": 0.9205902210321285,
+      "policy": {
+        "exclude_singletons": true,
+        "max_doc_weight": null,
+        "max_leafness": 0.8,
+        "min_block_count": 2,
+        "min_conductance": 0.8,
+        "min_degree": 2,
+        "min_doc_weight": 10,
+        "min_neighbor_weight_ratio": 0.25,
+        "name": "boundary_nonleaf",
+        "top_k": 1000
+      },
+      "score_p50": 77.36476715095321,
+      "score_p90": 136.80857987380773
+    },
+    {
+      "conductance_p50": 0.7708879047668418,
+      "doc_weight_p50": 348.5,
+      "doc_weight_p90": 535.2,
+      "leafness_p50": 0.03415218415972343,
+      "n_candidates_after_filters": 264945,
+      "n_exported": 1000,
+      "neighbor_weight_ratio_p50": 0.9096482237569103,
+      "policy": {
+        "exclude_singletons": true,
+        "max_doc_weight": null,
+        "max_leafness": 0.9,
+        "min_block_count": 2,
+        "min_conductance": 0.7,
+        "min_degree": 2,
+        "min_doc_weight": 10,
+        "min_neighbor_weight_ratio": 0.5,
+        "name": "boundary_high_ambiguity",
+        "top_k": 1000
+      },
+      "score_p50": 109.61157643682668,
+      "score_p90": 168.62058827979573
+    },
+    {
+      "conductance_p50": 0.7693891346965642,
+      "doc_weight_p50": 353.5,
+      "doc_weight_p90": 538.1,
+      "leafness_p50": 0.03446745514397974,
+      "n_candidates_after_filters": 85204,
+      "n_exported": 1000,
+      "neighbor_weight_ratio_p50": 0.9083921941091853,
+      "policy": {
+        "exclude_singletons": true,
+        "max_doc_weight": 1500,
+        "max_leafness": 0.9,
+        "min_block_count": 2,
+        "min_conductance": 0.7,
+        "min_degree": 2,
+        "min_doc_weight": 50,
+        "min_neighbor_weight_ratio": 0.25,
+        "name": "boundary_band_scale",
+        "top_k": 1000
+      },
+      "score_p50": 109.47816089616816,
+      "score_p90": 168.62058827979573
+    },
+    {
+      "conductance_p50": 0.8285260374217369,
+      "doc_weight_p50": 146.0,
+      "doc_weight_p90": 386.0,
+      "leafness_p50": 0.04890109968731037,
+      "n_candidates_after_filters": 10736,
+      "n_exported": 1000,
+      "neighbor_weight_ratio_p50": 0.8843591975415066,
+      "policy": {
+        "exclude_singletons": true,
+        "max_doc_weight": 1500,
+        "max_leafness": 0.75,
+        "min_block_count": 3,
+        "min_conductance": 0.8,
+        "min_degree": 3,
+        "min_doc_weight": 50,
+        "min_neighbor_weight_ratio": 0.4,
+        "name": "boundary_strict",
+        "top_k": 1000
+      },
+      "score_p50": 69.24350793512393,
+      "score_p90": 136.80857987380773
+    },
+    {
+      "conductance_p50": 0.7448487243479271,
+      "doc_weight_p50": 406.0,
+      "doc_weight_p90": 602.1,
+      "leafness_p50": 0.0336912558636978,
+      "n_candidates_after_filters": 27453,
+      "n_exported": 1000,
+      "neighbor_weight_ratio_p50": 0.9083921941091853,
+      "policy": {
+        "exclude_singletons": true,
+        "max_doc_weight": 1500,
+        "max_leafness": 0.9,
+        "min_block_count": 5,
+        "min_conductance": 0.6,
+        "min_degree": 3,
+        "min_doc_weight": 100,
+        "min_neighbor_weight_ratio": 0.5,
+        "name": "boundary_largeish_ambiguous",
+        "top_k": 1000
+      },
+      "score_p50": 113.35822440019965,
+      "score_p90": 173.40965455466076
+    }
+  ],
+  "remote_stats_summary": {
+    "conductance": {
+      "p50": 0.927300617445265,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0
+    },
+    "dataset": "adaptive_refinement_boundary_dryrun",
+    "hwm_mb_final": 7416.92578125,
+    "max_weight": 1500.0,
+    "min_weight": 250.0,
+    "n_active_clusters": 1612895,
+    "n_clusters": 1612895,
+    "n_merge_candidates": 50000,
+    "n_with_second_neighbor": 1540676,
+    "neighbor_weight_ratio": {
+      "p50": 0.6296463469709762,
+      "p90": 0.9301045470409105,
+      "p95": 0.9687992670884106,
+      "p99": 0.9966359968023585
+    },
+    "paths": {
+      "cluster_arrays": "/data/openalex_clusters/sciscape_initialized_graph_weighted_probe_g016_band_250_1500_20260410/gamma_0p0085/adaptive_refinement_boundary_dryrun/cluster_graph_stats.npz"
+    },
+    "phases": [
+      {
+        "elapsed_sec": 8.953017990919761,
+        "hwm_mb": 4030.7421875,
+        "name": "graph_load",
+        "rss_mb": 3944.4453125
+      },
+      {
+        "elapsed_sec": 0.15464419894851744,
+        "hwm_mb": 4119.49609375,
+        "name": "membership_load",
+        "rss_mb": 4119.49609375
+      },
+      {
+        "elapsed_sec": 7.501182115054689,
+        "hwm_mb": 7416.92578125,
+        "name": "cluster_graph_stats",
+        "rss_mb": 4385.44140625
+      },
+      {
+        "elapsed_sec": 0.1723892129957676,
+        "hwm_mb": 7416.92578125,
+        "name": "write_stats",
+        "rss_mb": 4385.8203125
+      }
+    ],
+    "resolution": 0.0085,
+    "rss_mb_final": 4385.8203125,
+    "top_k": 50000
+  }
+}
