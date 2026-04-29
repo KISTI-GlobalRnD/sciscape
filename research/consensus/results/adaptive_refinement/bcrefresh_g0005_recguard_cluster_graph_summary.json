@@ -1,0 +1,70 @@
+{
+  "candidate_delta_q_top10": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "conductance": {
+    "p50": 0.9737979340751761,
+    "p90": 0.9929502328348526,
+    "p95": 1.0,
+    "p99": 1.0
+  },
+  "doc_weight": {
+    "p50": 22.0,
+    "p90": 82.0,
+    "p95": 109.0,
+    "p99": 173.0
+  },
+  "hwm_mb": 26235.65234375,
+  "leafness": {
+    "p50": 0.04707605417606315,
+    "p90": 0.10132867229410338,
+    "p95": 0.12991591274867625,
+    "p99": 0.23476731699589232
+  },
+  "max_weight": 1500.0,
+  "min_weight": 250.0,
+  "n_above_max_weight": 0,
+  "n_active_clusters": 1670185,
+  "n_band_improving_candidates": 50000,
+  "n_below_min_weight": 1667446,
+  "n_clusters": 1670185,
+  "n_merge_candidates": 50000,
+  "n_positive_and_band_improving_candidates": 0,
+  "n_positive_delta_candidates": 0,
+  "n_within_weight_band": 2739,
+  "phases": [
+    {
+      "elapsed_sec": 50.45074062095955,
+      "hwm_mb": 15935.3828125,
+      "phase": "graph_load",
+      "rss_mb": 15819.66015625
+    },
+    {
+      "elapsed_sec": 0.008026981959119439,
+      "hwm_mb": 15935.3828125,
+      "phase": "membership_load",
+      "rss_mb": 15871.71875
+    },
+    {
+      "elapsed_sec": 38.97138318908401,
+      "hwm_mb": 26235.65234375,
+      "phase": "cluster_graph_stats",
+      "rss_mb": 16043.71484375
+    }
+  ],
+  "resolution": 0.0005,
+  "rss_mb": 16049.078125,
+  "top_k": 50000,
+  "total_doc_weight": 58923692.0,
+  "total_external_weight": 32632991.996520154,
+  "total_internal_weight": 1724571.4287580699
+}

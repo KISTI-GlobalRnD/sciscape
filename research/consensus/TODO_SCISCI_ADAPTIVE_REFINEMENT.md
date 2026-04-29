@@ -35,6 +35,18 @@ stage rather than another full random restart:
   - high-water memory: approximately `42.9 GB`
   - CPM quality improved slightly (`+103.37`)
   - final doc-size distribution stayed effectively unchanged
+- Cluster-graph dry-run diagnostics on that membership:
+  - summary artifact:
+    `research/consensus/results/adaptive_refinement/bcrefresh_g0005_recguard_cluster_graph_summary.json`
+  - GPU artifact directory:
+    `/data/openalex_clusters/rust_profile_bcrefresh_contracted_g0005_recguard_seed42_convergence_guard_20260429/adaptive_refinement_dryrun`
+  - graph reload: approximately `50.5 sec`
+  - cluster-graph stats pass: approximately `39.0 sec`
+  - dry-run high-water memory: approximately `26.2 GB`
+  - top `50,000` macro-merge candidates all improved the `250-1500`
+    doc-weight band, but none had positive CPM `delta_Q`
+  - the top `10,000` exported candidates include `105` exact `delta_Q = 0`
+    ties and `1,161` near-neutral candidates with `delta_Q > -1e-4`
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -156,7 +168,9 @@ Start here because it is cheap and works on the cluster graph.
 
 Candidate conditions:
 
-- `delta_Q_merge > -epsilon`,
+- `delta_Q_merge >= -epsilon` rather than strictly positive; the first large
+  dry-run found no positive macro-merge candidates but did find exact-tie and
+  near-neutral candidates that improve the target size band,
 - merged doc weight moves closer to target band,
 - neither side is purely leaf-like unless the merge fixes an obvious fragment,
 - no conflicting greedy merge in the same pass.
