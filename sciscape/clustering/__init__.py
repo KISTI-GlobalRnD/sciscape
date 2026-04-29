@@ -85,8 +85,14 @@ from .leiden_rust import (
     postprocess_small_clusters_rust,
 )
 from .adaptive_refinement import (
+    MacroMergePolicy,
+    MacroMergeSimulationResult,
+    exploratory_macro_merge_policies,
+    run_macro_merge_policy_ensemble,
+    simulate_macro_merge_policy,
     summarize_cluster_graph_stats,
     write_adaptive_refinement_report,
+    write_macro_merge_ensemble_report,
 )
 from .prepartition import (
     PrepartitionResult,
@@ -179,6 +185,12 @@ __all__ = [
     "RustLeidenResult",
     "run_leiden_rust",
     "postprocess_small_clusters_rust",
+    "MacroMergePolicy",
+    "MacroMergeSimulationResult",
+    "exploratory_macro_merge_policies",
+    "run_macro_merge_policy_ensemble",
+    "simulate_macro_merge_policy",
     "summarize_cluster_graph_stats",
     "write_adaptive_refinement_report",
+    "write_macro_merge_ensemble_report",
 ]

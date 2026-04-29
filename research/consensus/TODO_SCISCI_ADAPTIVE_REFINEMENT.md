@@ -64,6 +64,21 @@ stage rather than another full random restart:
     but none had positive CPM `delta_Q`
   - `217` top candidates had `delta_Q > -1e-4`; `2,321` had
     `delta_Q > -1e-3`
+- Exploratory macro-merge policy ensemble on the exported top `10,000`
+  g016 candidates:
+  - artifact directory:
+    `research/consensus/results/adaptive_refinement/g016_gamma0p0085_macro_merge_ensemble`
+  - all selected near-neutral candidates involved at least one singleton
+    endpoint; no non-singleton-only policy selected a candidate
+  - `epsilon=1e-4` selected `216` non-conflicting pairs with cumulative
+    `Q` debt approximately `0.0113`
+  - `epsilon=1e-3`, `Q` debt capped at `0.5`, selected `1,493` pairs
+  - policies requiring merged weight in the `250-1500` band selected only
+    `5` pairs at `epsilon=1e-4`, `23` at `epsilon=3e-4`, and `80` at
+    `epsilon=1e-3`
+  - no policy increased the count of clusters already in the target band;
+    these merges mainly attach tiny singleton fragments to small/medium
+    clusters
 - Late iterations can spend several minutes while reducing cluster count by
   only hundreds of clusters.
 - This suggests the valuable operations are not random leaf movements, but
@@ -194,10 +209,13 @@ Candidate conditions:
 
 Implementation should first support:
 
-- dry-run only,
-- greedy non-conflicting candidate selection,
-- exact predicted `delta_Q_merge`,
-- before/after size-band simulation.
+- [x] dry-run only,
+- [x] greedy non-conflicting candidate selection,
+- [x] exact predicted `delta_Q_merge`,
+- [x] before/after size-band simulation,
+- [x] policy-ensemble comparison over epsilon/leafness/conductance filters,
+- [ ] actual membership perturbation,
+- [ ] post-perturb polish and rollback.
 
 ## Stage 3: Large Cluster Split Probes
 
