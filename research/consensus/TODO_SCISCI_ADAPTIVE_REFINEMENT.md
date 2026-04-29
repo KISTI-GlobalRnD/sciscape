@@ -2,11 +2,31 @@
 
 ## Status
 
-This is a design TODO, not an implementation commitment yet.
+This is a design TODO, not a production implementation commitment yet.
 
 The standard Rust Leiden path should stay close to CWTS/Java behavior. SciSci-
 specific perturbation should be implemented as a separate experimental stage
 after baseline Leiden and before small-cluster postprocess.
+
+As of 2026-04-29, the first prerequisite is implemented: standard Leiden now
+logs enough progress detail to identify late near-identity contractions and low
+movement iterations (`moved_nodes`, recursion `depth`, and contraction
+node/edge deltas). The adaptive refinement stage itself is still unimplemented.
+
+## Latest Observations
+
+Large bcrefresh contracted-graph probes show why this should be a targeted
+stage rather than another full random restart:
+
+- `gamma=0.0005`, seed 42, convergence-guard run:
+  - final clusters: `1,670,312`
+  - elapsed: approximately `66.1 min`
+  - high-water memory: approximately `42.9 GB`
+  - final doc-size distribution remains very small
+- Late iterations can spend several minutes while reducing cluster count by
+  only hundreds of clusters.
+- This suggests the valuable operations are not random leaf movements, but
+  targeted macro merge/split/boundary corrections on the cluster graph.
 
 ## Motivation
 
@@ -192,9 +212,17 @@ Do not let polish turn into another full until-convergence run without a budget.
 
 ## Initial Implementation Order
 
-1. Add profiling observability to standard Leiden.
-2. Build cluster graph stats and dry-run report.
-3. Implement macro merge dry-run.
-4. Validate predicted delta_Q against exact recomputation on small test graphs.
-5. Add macro merge apply mode behind an explicit experimental flag.
-6. Design split probes after merge dry-run results are available.
+1. [x] Add profiling observability to standard Leiden.
+2. [ ] Build cluster graph stats and dry-run report.
+3. [ ] Implement macro merge dry-run.
+4. [ ] Validate predicted `delta_Q` against exact recomputation on small test graphs.
+5. [ ] Add macro merge apply mode behind an explicit experimental flag.
+6. [ ] Design split probes after merge dry-run results are available.
+
+## Non-Goals For Now
+
+- Do not change the default Leiden objective or local-move semantics.
+- Do not mix SciSci-specific target-size heuristics into the Java/CWTS parity
+  path.
+- Do not accept split/merge candidates solely because they move the cluster
+  count toward a target; CPM and size-distribution effects must both be logged.

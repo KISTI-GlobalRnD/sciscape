@@ -25,6 +25,31 @@
 - Use `Protocol D v1` as a baseline diagnostic only; coverage-aware `Protocol D
   v2` is required before claiming overall boundary accuracy.
 
+## Protocol D v2 Coverage-Aware Pilot Note
+
+- Current aggregate:
+  `results/cross_field_round2/boundary_coverage_v2_sample_summary.json`
+- Completed pilot comparison:
+  `cc-only vs citation_consensus` for `field_12`, `field_15`, and
+  `field_30_textfilt` at `effective_k=30`.
+- Positive net gaps favor `cc-only`; negative net gaps favor
+  `citation_consensus`.
+
+| Slice | Population coverage `cc/citation` | Population full net gap | Diagnostic full net gap | Diagnostic `NEITHER` rate |
+|---|---:|---:|---:|---:|
+| `field_12 ek30` | `0.5667 / 0.5333` | `+0.3333` | `+0.1935` | `0.5161` |
+| `field_15 ek30` | `0.8000 / 0.9333` | `+0.0455` | `+0.1429` | `0.4000` |
+| `field_30_textfilt ek30` | `0.7667 / 0.9000` | `-0.3000` | `-0.1579` | `0.3684` |
+
+- Interpretation:
+  D v2 confirms that boundary behavior is field/regime dependent. It supports
+  coverage-aware evaluation, but it does not yet support a blanket claim that
+  one method has generally more accurate boundaries.
+- Remaining before primary manuscript claims:
+  complete `cc-only vs all_consensus`, `bc-only vs cc-only`, and
+  `emb-only vs cc-only` D v2 runs; then build a `Protocol E` micro-gold local
+  partitioning pilot.
+
 ## Figure Notes
 
 ### Figure 1: Protocol Overview

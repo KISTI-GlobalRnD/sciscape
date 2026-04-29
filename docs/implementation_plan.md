@@ -1,5 +1,26 @@
 # Implementation Plan: CPM-Critical Dendrogram
 
+## Status Update (2026-04-29)
+
+This document is now mostly a historical implementation plan. The core pieces
+described below exist in the repository:
+
+- `cpm-dendro/` Rust crate with PyO3 bindings
+- `sciscape/clustering/dendrogram.py`
+- `sciscape/clustering/constrained_cut.py`
+- `tests/test_constrained_cut.py`
+- executable research scripts under `research/dendrogram/scripts/`
+- current research README under `research/dendrogram/README.md`
+
+Remaining work is validation and packaging rather than first implementation:
+
+- run larger field-level comparisons against Leiden+merge;
+- run optional baselines such as Paris or nested SBM when dependencies are
+  available;
+- harden the release-facing docs and examples;
+- decide whether dendrogram/optimal-cut becomes a supported module feature or
+  remains a research path.
+
 ## Implementation Strategy
 
 ### Core HAC: Rust + PyO3
@@ -101,15 +122,15 @@ cd cpm-dendro && maturin develop --release
 
 ## 구현 순서
 
-| Phase | 내용 | 산출물 |
-|-------|------|--------|
-| **1** | constrained_cut.py + 테스트 | Pure Python DP |
-| **2** | cpm-dendro crate 초기화 + graph.rs | Rust 프로젝트 구조 |
-| **3** | hac.rs + dendrogram.rs + Rust 테스트 | Core 알고리즘 |
-| **4** | PyO3 binding + dendrogram.py wrapper | Python 통합 |
-| **5** | triadic.rs | 전처리 |
-| **6** | KRISS 100K 실행 | **38개 ceiling 돌파 검증** |
-| **7** | Paris 비교, 전체 실험 | 논문 실험 |
+| Phase | 내용 | 상태 |
+|-------|------|------|
+| **1** | constrained_cut.py + 테스트 | implemented |
+| **2** | cpm-dendro crate 초기화 + graph.rs | implemented |
+| **3** | hac.rs + dendrogram.rs + Rust 테스트 | implemented |
+| **4** | PyO3 binding + dendrogram.py wrapper | implemented |
+| **5** | triadic.rs | implemented |
+| **6** | KRISS/field-level 실행 | validation pending |
+| **7** | Paris 비교, 전체 실험 | pending / optional dependency |
 
 ---
 

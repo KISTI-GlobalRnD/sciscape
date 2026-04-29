@@ -1,203 +1,155 @@
 # Boundary Accuracy V2 TODO
 
-## Current Status
+## Status (2026-04-29)
 
-- `Protocol D v1` is now running and/or completed for:
-  - `field_15`: `cc-only vs citation_consensus`
-  - `field_30`: `cc-only vs citation_consensus`
-  - `field_12`: sample-only still running
-  - `field_15`, `field_30`: `cc-only vs all_consensus` sample generation started
-- Current interpretation of `Protocol D v1`:
-  - It measures boundary accuracy more directly than stability metrics.
-  - But the current sampler is still biased toward `both-reviewable disagreement` cases.
-  - It also produces too many `NEITHER` cases, so it mixes:
-    - real head-to-head boundary decisions
-    - pathological cases where both methods fail
+`Protocol D v2` is no longer just a plan. The coverage-aware sampler, unary
+plausibility review path, binary boundary review path, and scorer are
+implemented and have completed pilot runs for:
 
-## Problem To Fix
+- `field_12`: `cc-only vs citation_consensus`
+- `field_15`: `cc-only vs citation_consensus`
+- `field_30_textfilt`: `cc-only vs citation_consensus`
 
-The current boundary-accuracy protocol is still not fully fair.
+Main code entry points:
 
-Main issues:
-- It can over-represent cases where `cc` is already reviewable and competitive.
-- It can miss cases where `cc` fails to form a usable neighborhood at all.
-- It does not cleanly separate:
-  - coverage failure
-  - plausible neighborhood formation
-  - conditional boundary accuracy
-- `NEITHER` cases are currently too common and dominate interpretation.
+- `research/consensus/scripts/run_boundary_coverage_review.py`
+- `research/consensus/scripts/score_boundary_coverage.py`
 
-## Goal
+Current aggregate file:
 
-Build `Protocol D v2` so that boundary evaluation answers:
+- `research/consensus/results/cross_field_round2/boundary_coverage_v2_sample_summary.json`
 
-1. Which method creates a plausible local neighborhood more often?
-2. Conditional on both methods producing a plausible neighborhood, which one gives the more accurate boundary?
-3. In which regimes does `cc` fail, and in which regimes does `consensus` fail?
+`Protocol D v1` is frozen as a baseline diagnostic. Its limitations are recorded
+in `research/consensus/RESULTS_NOTES.md`.
 
-## Todo
+## Current Pilot Summary
 
-### 1. Finish Current V1 Runs
+Positive net gaps below favor `cc_only`; negative gaps favor
+`citation_consensus`.
 
-- [ ] Wait for `field_12` `cc vs citation_consensus` sample-only run to finish.
-- [ ] Complete `field_15` `cc vs all_consensus` boundary-accuracy run.
-- [ ] Complete `field_30` `cc vs all_consensus` boundary-accuracy run.
-- [ ] Export a compact `Protocol D v1` summary table for:
-  - `field_12`
-  - `field_15`
-  - `field_30`
-  - comparisons:
-    - `cc vs citation_consensus`
-    - `cc vs all_consensus`
+| Slice | Universe | Population coverage `cc/citation` | Population both-reviewable | Population full net gap | Diagnostic full net gap | Diagnostic `NEITHER` rate |
+|---|---:|---:|---:|---:|---:|---:|
+| `field_12 ek30` | 28,808 | `0.5667 / 0.5333` | `0.3000` | `+0.3333` | `+0.1935` | `0.5161` |
+| `field_15 ek30` | 38,011 | `0.8000 / 0.9333` | `0.7333` | `+0.0455` | `+0.1429` | `0.4000` |
+| `field_30_textfilt ek30` | 21,491 | `0.7667 / 0.9000` | `0.6667` | `-0.3000` | `-0.1579` | `0.3684` |
 
-### 2. Freeze V1 As Baseline
+Current interpretation:
 
-- [ ] Save a short note in `RESULTS_NOTES.md` describing what `Protocol D v1` actually measures.
-- [ ] Explicitly record that `Protocol D v1` is:
-  - `intersection-heavy`
-  - disagreement-focused
-  - vulnerable to high `NEITHER` rates
-- [ ] Do not use `Protocol D v1` alone for claims about overall boundary accuracy.
+- D v2 is doing what it was designed to do: separating coverage failure from
+  conditional boundary accuracy.
+- The evidence is field/regime dependent. It should not be summarized as
+  "`cc-only` is always more accurate."
+- `field_30_textfilt` is an important counter-regime where
+  `citation_consensus` currently wins the pilot boundary comparison.
+- High `NEITHER` rates still matter. Report full summaries, excluding-neither
+  summaries, and discriminative `A_ONLY/B_ONLY` summaries separately.
 
-### 3. Implement Coverage-Aware Sampling (`Protocol D v2`)
+## Done
 
-- [ ] Add a new sampler that starts from the full target universe with metadata, not only disagreement cases.
-- [ ] For each target, assign a `coverage_state`:
+- [x] Freeze `Protocol D v1` as a baseline diagnostic.
+- [x] Record in `RESULTS_NOTES.md` that D v1 is intersection-heavy,
+      disagreement-focused, and vulnerable to high `NEITHER` rates.
+- [x] Implement coverage-aware target sampling from the full target universe.
+- [x] Assign and save `coverage_state`:
   - `A_only_reviewable`
   - `B_only_reviewable`
   - `both_reviewable`
   - `neither_reviewable`
-- [ ] Define `reviewable` using the same minimum metadata + minimum neighbor/group-size constraints as current review scripts.
-- [ ] Save `coverage_state` into the case payload.
+- [x] Split `population` and `diagnostic` sampling modes.
+- [x] Add unary plausibility review for one-sided reviewable cases.
+- [x] Keep binary boundary review for both-reviewable cases.
+- [x] Score:
+  - `coverage_rate`
+  - `reviewable_rate`
+  - `plausible_coverage_rate`
+  - `conditional_boundary_accuracy`
+  - `overall_boundary_utility`
+  - `neither_rate`
+- [x] Pilot D v2 on canonical fields for `cc-only vs citation_consensus`.
 
-Suggested file:
-- `sciscape/evaluation/sampler.py`
-  - add a new collector for boundary-accuracy v2
+## Remaining TODO
 
-### 4. Split Population vs Diagnostic Sampling
+### 1. Complete The D v2 Comparison Matrix
 
-- [ ] Add `population sample` mode:
-  - random sample from the full eligible target universe
-  - used for headline rate estimates
-- [ ] Add `diagnostic stratified sample` mode:
-  - oversample hard or asymmetric regimes
-  - used for mechanism analysis
-- [ ] Keep these outputs separate in saved JSON and in plots/tables.
-
-Suggested strata for diagnostic sampling:
-- [ ] `A_only_reviewable`
-- [ ] `B_only_reviewable`
-- [ ] `both_reviewable`
-- [ ] `neither_reviewable`
-- [ ] `cc sparse / consensus dense`
-- [ ] `consensus sparse / cc dense`
-- [ ] `high disagreement / both dense`
-
-### 5. Add Unary Review Path
-
-- [ ] For `A_only_reviewable` and `B_only_reviewable`, do not auto-award a win.
-- [ ] Add unary plausibility review:
-  - “Does this group plausibly represent the target’s immediate research neighborhood?”
-- [ ] Return:
-  - `PLAUSIBLE`
-  - `NOT_PLAUSIBLE`
-  - `UNCLEAR`
-
-This prevents “method formed a group” from being treated as a free accuracy win.
-
-Suggested additions:
-- `sciscape/evaluation/reviewer.py`
-- new script, likely:
-  - `research/consensus/scripts/run_boundary_coverage_review.py`
-
-### 6. Keep Binary Boundary Review For Both-Reviewable Cases
-
-- [ ] Reuse the current gold-label boundary review for `both_reviewable` cases.
-- [ ] Keep decisions:
-  - `A_ONLY`
-  - `B_ONLY`
-  - `BOTH`
-  - `NEITHER`
-  - `UNCLEAR`
-- [ ] Report:
-  - full summary
-  - summary excluding `NEITHER`
-  - summary excluding `NEITHER` and `UNCLEAR`
-
-### 7. Add New Metrics
-
-- [ ] `coverage_rate`
-- [ ] `reviewable_rate`
-- [ ] `plausible_coverage_rate`
-- [ ] `conditional_boundary_accuracy` on `both_reviewable`
-- [ ] `overall_boundary_utility`
-- [ ] `neither_rate`
-
-Minimum reporting split:
-- [ ] full sample
-- [ ] `both_reviewable` only
-- [ ] discriminative cases only (`A_ONLY`, `B_ONLY`, `BOTH`)
-
-### 8. Add Regime-Aware Comparisons
-
-- [ ] Do not evaluate only `cc vs citation_consensus`.
-- [ ] Run, at minimum:
-  - `cc-only vs citation_consensus`
-  - `cc-only vs all_consensus`
-  - `bc-only vs cc-only`
-  - `emb-only vs cc-only`
-- [ ] Add per-case metadata for:
-  - edge counts around target
-  - local overlap
-  - cluster size asymmetry
-  - degree sparsity
-
-Goal:
-- identify slices where `cc` is weak but current intersection-style review would miss it.
-
-### 9. Pilot `Protocol D v2` On Canonical Fields
-
-- [ ] Start with:
+- [ ] Run and score `cc-only vs all_consensus` for:
   - `field_12`
   - `field_15`
-  - `field_30`
-- [ ] For each field:
-  - `population sample`: ~30 cases
-  - `diagnostic stratified sample`: ~12 per major coverage stratum
-- [ ] First complete `cc vs citation_consensus`
-- [ ] Then complete `cc vs all_consensus`
+  - `field_30_textfilt`
+- [ ] Run and score `bc-only vs cc-only` for the same fields.
+- [ ] Run and score `emb-only vs cc-only` where the embedding layer is present
+      and sufficiently populated.
+- [ ] Keep `population` and `diagnostic` outputs separate in every exported
+      table and figure.
 
-### 10. Add `Protocol E` Micro-Gold Local Partitioning
+### 2. Export Manuscript-Ready D v2 Tables
 
-- [ ] After `Protocol D v2`, build a smaller micro-gold set.
-- [ ] For each of `field_12`, `field_15`, `field_30`, choose ~10 cases.
-- [ ] Build a small local neighborhood (10–20 papers).
-- [ ] Human-review the full local partition, not just a boundary decision.
+- [ ] Coverage table:
+  - universe size
+  - `A_only`, `B_only`, `both`, `neither` coverage-state counts
+  - population coverage rates by method
+- [ ] Conditional boundary table:
+  - full net gap
+  - excluding-neither net gap
+  - discriminative `A_ONLY/B_ONLY` gap
+  - `NEITHER` and `UNCLEAR` rates
+- [ ] Regime table:
+  - fields/slices where `cc-only` wins
+  - fields/slices where `citation_consensus` or `all_consensus` wins
+  - sparse/dense and asymmetric-reviewability regimes
+
+### 3. Add Review Reliability Checks For D v2
+
+- [ ] Run a small order-balanced repeat set for D v2 cases.
+- [ ] Estimate agreement or winner-stability for:
+  - unary plausibility decisions
+  - binary `A_ONLY/B_ONLY/BOTH/NEITHER/UNCLEAR` decisions
+- [ ] Decide whether the manuscript reports D v2 as pilot evidence or as a
+      primary validation result.
+
+### 4. Build Protocol E Micro-Gold Local Partitioning
+
+- [ ] For each of `field_12`, `field_15`, and `field_30_textfilt`, choose
+      approximately 10 cases from the D v2 case bank.
+- [ ] Build a local neighborhood of 10-20 papers around each target.
+- [ ] Human-review or tightly controlled LLM-review the full local partition,
+      not just a pairwise boundary choice.
 - [ ] Score:
   - pairwise precision/recall/F1
   - boundary precision/recall
   - local partition similarity
 
-This is the step needed before making strong “more accurate boundary” claims.
+### 5. Keep The Results Ledger Current
+
+- [ ] Add every new D v2 run to `RESULTS_NOTES.md` with:
+  - source JSON path
+  - model/judge version
+  - field and comparison labels
+  - sample sizes
+  - headline coverage and boundary metrics
+- [ ] Mark stale or superseded boundary review files explicitly instead of
+      deleting them.
 
 ## Execution Order
 
-1. Finish current `Protocol D v1` runs.
-2. Summarize `Protocol D v1`.
-3. Implement `coverage_state` and `population/diagnostic` sampling.
-4. Implement unary plausibility review.
-5. Re-run `Protocol D v2` for `field_12`, `field_15`, `field_30`.
-6. Add `bc-only` and `emb-only` regime comparisons.
-7. Build `Protocol E` micro-gold benchmark.
+1. Complete `cc-only vs all_consensus` D v2 runs.
+2. Complete `bc-only vs cc-only` and `emb-only vs cc-only` regime runs.
+3. Export D v2 tables and compact figures.
+4. Run D v2 reliability checks.
+5. Build Protocol E micro-gold cases.
+6. Only then decide whether the manuscript can use "boundary accuracy" as a
+   primary claim.
 
 ## Working Rule
 
-Until `Protocol D v2` and at least a pilot `Protocol E` exist:
+Until D v2 is expanded beyond `cc-only vs citation_consensus` and Protocol E has
+at least a pilot:
 
-- use `stability` and `local reranking` results as supporting evidence
-- avoid claiming `more accurate boundaries`
+- use stability and local reranking results as supporting evidence
+- describe D v2 as coverage-aware pilot evidence
+- avoid blanket claims that any single method has generally more accurate
+  boundaries
 - prefer phrasing like:
   - `more stable`
   - `more scope-controlled`
   - `better local reranking`
-  - `boundary-accuracy still under direct evaluation`
+  - `field-dependent boundary behavior under direct evaluation`
