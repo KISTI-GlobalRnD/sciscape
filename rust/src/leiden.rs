@@ -16,6 +16,8 @@ use std::time::Instant;
 const DEFAULT_STREAMING_REFINEMENT_MIN_DIRECTED_EDGES: usize = 1_000_000;
 const DEFAULT_CONVERGENCE_PATIENCE: usize = 3;
 const DEFAULT_CONVERGENCE_MIN_REL_CLUSTER_DELTA: f64 = 1e-4;
+const DEFAULT_RECURSION_GUARD_MIN_DIRECTED_EDGES: usize = 100_000_000;
+const DEFAULT_RECURSION_MIN_REL_NODE_DELTA: f64 = 1e-4;
 
 fn streaming_refinement_min_directed_edges() -> usize {
     static MIN_EDGES: OnceLock<usize> = OnceLock::new();
@@ -45,6 +47,27 @@ fn convergence_min_rel_cluster_delta() -> f64 {
             .and_then(|value| value.parse::<f64>().ok())
             .filter(|value| value.is_finite() && *value >= 0.0)
             .unwrap_or(DEFAULT_CONVERGENCE_MIN_REL_CLUSTER_DELTA)
+    })
+}
+
+fn recursion_guard_min_directed_edges() -> usize {
+    static MIN_EDGES: OnceLock<usize> = OnceLock::new();
+    *MIN_EDGES.get_or_init(|| {
+        std::env::var("SCISCAPE_LEIDEN_RECURSION_GUARD_MIN_DIRECTED_EDGES")
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .unwrap_or(DEFAULT_RECURSION_GUARD_MIN_DIRECTED_EDGES)
+    })
+}
+
+fn recursion_min_rel_node_delta() -> f64 {
+    static MIN_DELTA: OnceLock<f64> = OnceLock::new();
+    *MIN_DELTA.get_or_init(|| {
+        std::env::var("SCISCAPE_LEIDEN_RECURSION_MIN_REL_NODE_DELTA")
+            .ok()
+            .and_then(|value| value.parse::<f64>().ok())
+            .filter(|value| value.is_finite() && *value >= 0.0)
+            .unwrap_or(DEFAULT_RECURSION_MIN_REL_NODE_DELTA)
     })
 }
 
@@ -194,6 +217,49 @@ fn trace_contraction_progress(
         edge_delta,
         rel_edge_delta,
         elapsed_ms,
+    );
+}
+
+fn recursion_guard_triggers(
+    input_nodes: usize,
+    input_edges: usize,
+    reduced_nodes: usize,
+    min_directed_edges: usize,
+    min_rel_node_delta: f64,
+) -> bool {
+    if input_edges < min_directed_edges || min_rel_node_delta <= 0.0 || input_nodes == 0 {
+        return false;
+    }
+    let node_delta = input_nodes.saturating_sub(reduced_nodes);
+    let rel_node_delta = node_delta as f64 / input_nodes as f64;
+    rel_node_delta <= min_rel_node_delta
+}
+
+fn should_stop_recursion_after_contraction(graph: &Graph, reduced: &Graph) -> bool {
+    recursion_guard_triggers(
+        graph.n_nodes,
+        graph.n_edges,
+        reduced.n_nodes,
+        recursion_guard_min_directed_edges(),
+        recursion_min_rel_node_delta(),
+    )
+}
+
+fn trace_recursion_stop(graph: &Graph, reduced: &Graph, depth: usize, mode: &str) {
+    let node_delta = graph.n_nodes.saturating_sub(reduced.n_nodes);
+    let rel_node_delta = node_delta as f64 / graph.n_nodes.max(1) as f64;
+    trace_graph_summary!(
+        graph,
+        "phase=leiden_recursion_stop depth={} mode={} reason=small_contraction input_nodes={} input_directed_edges={} reduced_nodes={} reduced_directed_edges={} node_delta={} rel_node_delta={:.8e} threshold={:.8e}",
+        depth,
+        mode,
+        graph.n_nodes,
+        graph.n_edges,
+        reduced.n_nodes,
+        reduced.n_edges,
+        node_delta,
+        rel_node_delta,
+        recursion_min_rel_node_delta(),
     );
 }
 
@@ -511,6 +577,10 @@ fn prepare_iteration_step(
             reduced.n_edges,
             contract_elapsed_ms,
         );
+        if should_stop_recursion_after_contraction(graph, &reduced) {
+            trace_recursion_stop(graph, &reduced, depth, "non_refined");
+            return IterationStep::Done { stats: local_stats };
+        }
         let mut reduced_clustering = Clustering::singleton(reduced.n_nodes);
 
         // Propagate fixed status to reduced graph
@@ -554,6 +624,10 @@ fn prepare_iteration_step(
         reduced.n_edges,
         contract_elapsed_ms,
     );
+    if should_stop_recursion_after_contraction(graph, &reduced) {
+        trace_recursion_stop(graph, &reduced, depth, "refined");
+        return IterationStep::Done { stats: local_stats };
+    }
 
     // Initial clustering for aggregate network: map non-refined clusters
     // to the move-phase cluster assignments (before refinement).
@@ -958,5 +1032,37 @@ mod tests {
         assert_eq!(refinement.n_clusters, 0);
         assert_eq!(refinement.clusters, vec![0, 0, 0, 0]);
         assert!(refinement.fixed.is_none());
+    }
+
+    #[test]
+    fn test_recursion_guard_only_triggers_for_large_near_identity_contractions() {
+        assert!(!recursion_guard_triggers(
+            1_000_000,
+            99_999_999,
+            999_999,
+            100_000_000,
+            1e-4
+        ));
+        assert!(!recursion_guard_triggers(
+            1_000_000,
+            100_000_000,
+            999_800,
+            100_000_000,
+            1e-4
+        ));
+        assert!(recursion_guard_triggers(
+            1_000_000,
+            100_000_000,
+            999_950,
+            100_000_000,
+            1e-4
+        ));
+        assert!(!recursion_guard_triggers(
+            1_000_000,
+            100_000_000,
+            999_950,
+            100_000_000,
+            0.0
+        ));
     }
 }

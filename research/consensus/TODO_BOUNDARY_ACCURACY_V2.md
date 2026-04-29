@@ -19,6 +19,16 @@ Current aggregate file:
 
 - `research/consensus/results/cross_field_round2/boundary_coverage_v2_sample_summary.json`
 
+Current-code sample-only matrix after the Rust Leiden/postprocess optimization
+pass:
+
+- `research/consensus/results/cross_field_round2/boundary_coverage_v2_current_sample_matrix_summary.json`
+- includes sample banks for:
+  - `cc-only vs citation_consensus`
+  - `cc-only vs all_consensus`
+  - across `field_12`, `field_15`, and `field_30_textfilt`
+- live review is still pending for this current-code matrix.
+
 `Protocol D v1` is frozen as a baseline diagnostic. Its limitations are recorded
 in `research/consensus/RESULTS_NOTES.md`.
 
@@ -71,10 +81,15 @@ Current interpretation:
 
 ### 1. Complete The D v2 Comparison Matrix
 
-- [ ] Run and score `cc-only vs all_consensus` for:
+- [x] Generate current-code sample-only banks for `cc-only vs all_consensus`:
   - `field_12`
   - `field_15`
   - `field_30_textfilt`
+- [x] Regenerate current-code sample-only banks for `cc-only vs citation_consensus`
+      to avoid mixing older reviewed payloads with current clustering behavior.
+- [ ] Live-review the current-code `cc-only vs all_consensus` banks.
+- [ ] Live-review or selectively re-review the current-code
+      `cc-only vs citation_consensus` banks.
 - [ ] Run and score `bc-only vs cc-only` for the same fields.
 - [ ] Run and score `emb-only vs cc-only` where the embedding layer is present
       and sufficiently populated.

@@ -50,6 +50,22 @@
   `emb-only vs cc-only` D v2 runs; then build a `Protocol E` micro-gold local
   partitioning pilot.
 
+### Current-Code Sample Matrix
+
+- After the Rust Leiden/postprocess optimization pass, fixed-gamma clustering
+  can produce different cluster counts than the older reviewed D v2 payloads.
+- Do not mix older reviewed `cc-only vs citation_consensus` payloads with newly
+  generated `cc-only vs all_consensus` payloads as one final matrix.
+- Current-code sample-only payloads are stored under
+  `results/cross_field_round2/` and summarized in:
+  `boundary_coverage_v2_current_sample_matrix_summary.json`.
+- Current-code sample-only comparisons now prepared:
+  - `cc-only vs citation_consensus`
+  - `cc-only vs all_consensus`
+  - for `field_12`, `field_15`, and `field_30_textfilt`
+- These payloads still need live review before boundary-accuracy metrics can be
+  reported from them.
+
 ## Figure Notes
 
 ### Figure 1: Protocol Overview

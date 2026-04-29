@@ -1,0 +1,160 @@
+{
+  "rows": [
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_12_ek30_cc_vs_all_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_12_ek30_cc_vs_all_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "all_consensus",
+      "n_target_universe": 28808,
+      "coverage_state_counts": {
+        "A_only_reviewable": 19,
+        "B_only_reviewable": 11952,
+        "both_reviewable": 16820,
+        "neither_reviewable": 17
+      },
+      "review_progress": {
+        "population_complete": 0,
+        "population_total": 30,
+        "diagnostic_complete": 12,
+        "diagnostic_total": 84,
+        "reviewed_unique_cases": 0
+      },
+      "population": null,
+      "diagnostic": null
+    },
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_15_ek30_cc_vs_all_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_15_ek30_cc_vs_all_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "all_consensus",
+      "n_target_universe": 38011,
+      "coverage_state_counts": {
+        "A_only_reviewable": 2,
+        "B_only_reviewable": 9505,
+        "both_reviewable": 28503,
+        "neither_reviewable": 1
+      },
+      "review_progress": {
+        "population_complete": 0,
+        "population_total": 30,
+        "diagnostic_complete": 1,
+        "diagnostic_total": 63,
+        "reviewed_unique_cases": 0
+      },
+      "population": null,
+      "diagnostic": null
+    },
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_30_textfilt_ek30_cc_vs_all_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_30_textfilt_ek30_cc_vs_all_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "all_consensus",
+      "n_target_universe": 21491,
+      "coverage_state_counts": {
+        "A_only_reviewable": 9,
+        "B_only_reviewable": 5331,
+        "both_reviewable": 16149,
+        "neither_reviewable": 2
+      },
+      "review_progress": {
+        "population_complete": 0,
+        "population_total": 30,
+        "diagnostic_complete": 2,
+        "diagnostic_total": 71,
+        "reviewed_unique_cases": 0
+      },
+      "population": null,
+      "diagnostic": null
+    },
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_12_ek30_cc_vs_citation_current_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_12_ek30_cc_vs_citation_current_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "citation_consensus",
+      "n_target_universe": 28808,
+      "coverage_state_counts": {
+        "A_only_reviewable": 157,
+        "B_only_reviewable": 11856,
+        "both_reviewable": 16687,
+        "neither_reviewable": 108
+      },
+      "review_progress": {
+        "population_complete": 0,
+        "population_total": 30,
+        "diagnostic_complete": 12,
+        "diagnostic_total": 84,
+        "reviewed_unique_cases": 0
+      },
+      "population": null,
+      "diagnostic": null
+    },
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_15_ek30_cc_vs_citation_current_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_15_ek30_cc_vs_citation_current_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "citation_consensus",
+      "n_target_universe": 38011,
+      "coverage_state_counts": {
+        "A_only_reviewable": 12,
+        "B_only_reviewable": 9487,
+        "both_reviewable": 28505,
+        "neither_reviewable": 7
+      },
+      "review_progress": {
+        "population_complete": 0,
+        "population_total": 30,
+        "diagnostic_complete": 7,
+        "diagnostic_total": 79,
+        "reviewed_unique_cases": 0
+      },
+      "population": null,
+      "diagnostic": null
+    },
+    {
+      "source_json": "research/consensus/results/cross_field_round2/field_30_textfilt_ek30_cc_vs_citation_current_boundary_coverage_v2_boundary_coverage_v2_review.json",
+      "field": "field_30_textfilt_ek30_cc_vs_citation_current_boundary_coverage_v2",
+      "protocol": "candidate_budget_matched_boundary_coverage_v2",
+      "budget_mode": "effective_k",
+      "effective_k": 30,
+      "top_k": 30,
+      "label_a": "cc_only",
+      "label_b": "citation_consensus",
+      "n_target_universe": 21491,
+      "coverage_state_counts": {
+        "A_only_reviewable": 11,
+        "B_only_reviewable": 5323,
+        "both_reviewable": 16148,
+        "neither_reviewable": 9
+      },
+      "review_progress": {
+        "population_complete": 0,
+        "population_total": 30,
+        "diagnostic_complete": 9,
+        "diagnostic_total": 80,
+        "reviewed_unique_cases": 0
+      },
+      "population": null,
+      "diagnostic": null
+    }
+  ]
+}
