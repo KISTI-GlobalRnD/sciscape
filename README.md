@@ -6,6 +6,7 @@ Scientific landscape analysis toolkit: multi-layer consensus clustering + hierar
 
 - **Multi-layer consensus**: Combine DC, BC, CC, and embedding edges with top-k filtering, 1/rank normalization, and consensus weighting (edges confirmed by multiple layers get multiplicative boost)
 - **Hierarchical clustering**: nano → micro → meso → macro with auto-gamma per level
+- **Internal hierarchy postprocess**: Optional two-stage level repair (`small-cluster repair → oversize split/trim`) for development runs that need auditable max-size diagnostics
 - **Rust acceleration**: Leiden clustering + keyword extraction hot paths (50-200x speedup)
 - **OpenAlex integration**: Query → fetch → build citation edges → landscape report
 - **Web interface**: FastAPI + D3.js network visualization + Plotly treemap
@@ -71,6 +72,20 @@ result = build_hierarchy(
 )
 # nano(~1450) -> micro(~414) -> meso(~152) -> macro(~45)
 
+# Optional internal development mode: after normal small-cluster repair,
+# try to reduce oversized clusters before projecting/contracting the level.
+from sciscape.clustering.hierarchy_postprocess import HierarchyPostprocessConfig
+
+result = build_hierarchy(
+    layer_paths={...},
+    cache_dir="output/field_15",
+    n_levels=4,
+    hierarchy_postprocess=HierarchyPostprocessConfig(
+        enabled=True,
+        oversize_policy="quality_first",  # default; preserves CPM quality first
+    ),
+)
+
 # Label clusters
 from sciscape.clustering.label_pipeline import label_hierarchy
 labels = label_hierarchy(abstracts_df, result.to_dataframe(uids))
@@ -86,6 +101,7 @@ Each layer (BC, CC, DC, Emb)
   -> GCC filter
   -> auto-gamma (binary search, target max < 3%)
   -> Rust Leiden -> postprocess (cascade + greedy + Dijkstra)
+  -> optional hierarchy postprocess (oversize split-repair + boundary trim)
   -> contraction -> repeat for next hierarchy level
 ```
 
@@ -95,6 +111,8 @@ Each layer (BC, CC, DC, Emb)
 sciscape/
   clustering/
     hierarchical.py        4-level hierarchy (nano->micro->meso->macro)
+    hierarchy_postprocess.py
+                            Internal opt-in oversize postprocess automation
     auto_gamma.py          Automatic gamma selection (binary search)
     prepartition.py        Pre-partition (Lego block assembly)
     leiden_rust.py          Rust Leiden backend wrapper
@@ -145,11 +163,12 @@ Validated on 2 OpenAlex fields (Chemical Engineering 115K, Arts and Humanities 7
 - **Consensus backbone**: 6.5% of 3-layer edges (3x boost) form cluster cores
 
 See `docs/multilayer_combination_report.pdf` for the full 15-page analysis.
+See `docs/hierarchy_two_stage_postprocess_report.tex` for the two-stage hierarchy postprocess methodology.
 
 ## Tests
 
 ```bash
-pytest -q   # 818+ tests
+pytest -q   # 987+ tests
 ```
 
 ## License

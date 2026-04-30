@@ -1,0 +1,456 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array,tabularx}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\definecolor{accent}{RGB}{37,99,235}
+\hypersetup{
+    hypertexnames=false,
+    colorlinks=true,
+    linkcolor=accent,
+    citecolor=accent,
+    urlcolor=accent
+}
+
+\title{\textbf{Two-Stage Hierarchical Postprocessing\\for SciScape Paper Clustering}}
+\author{Young Jin Kim}
+\date{April 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+SciScape builds a publication-level research landscape by repeatedly running
+CPM Leiden clustering, resolving undersized clusters, and contracting the
+result into the next hierarchy level. This report documents an internal,
+opt-in extension that adds a second postprocessing stage at every hierarchy
+level: after the existing small-cluster repair, the system attempts to reduce
+oversized clusters using split--repair probes and boundary-node trimming. The
+method preserves the default product behavior, prioritizes CPM quality by
+default, and records explicit diagnostics whenever a hard maximum-size cap is
+requested but cannot be satisfied. The design is motivated by a recurring
+hierarchical failure mode: small-cluster repair can improve minimum-size
+constraints while leaving or creating large clusters that dominate subsequent
+graph contraction. The proposed automation makes the level transition
+``raw Leiden $\rightarrow$ small repair $\rightarrow$ oversize repair
+$\rightarrow$ next hierarchy'' explicit, cache-aware, and auditable.
+\end{abstract}
+
+%% ----------------------------------------------------------------------
+\section{Problem Context}
+
+SciScape represents papers as nodes in a weighted undirected graph. Edges come
+from citation and semantic similarity layers, then CPM Leiden is used to find
+communities. The hierarchy builder runs this process level by level:
+
+\begin{enumerate}[nosep]
+    \item run Leiden at the current level;
+    \item repair clusters below the level's minimum document weight;
+    \item project membership back to original papers;
+    \item contract clusters into super-nodes for the next level.
+\end{enumerate}
+
+This is a natural architecture for multi-scale scientific mapping, but it has
+an asymmetry: the existing postprocess stage enforces a lower size constraint,
+while the upper size target is used mainly during resolution selection. Once a
+small-cluster repair merges low-weight groups into larger neighbors, the
+largest cluster can remain above target. If this cluster is contracted as a
+single super-node, it becomes a coarse unit in the next level and can distort
+the hierarchy.
+
+\paragraph{Core motivation.}
+The target maximum cluster size is not just a reporting statistic. In a
+hierarchy, it controls the granularity of the next graph. A level that contains
+one very large cluster and many moderate clusters passes an imbalanced
+state into contraction. This can make upper levels less interpretable even
+when the current level has high CPM quality.
+
+%% ----------------------------------------------------------------------
+\section{Theoretical Grounding}
+
+\subsection{CPM Objective}
+
+SciScape uses the Constant Potts Model (CPM) quality function. For a partition
+$\mathcal{P}$ and resolution $\gamma$, CPM can be written as:
+
+\begin{equation}
+    Q_{\text{CPM}}(\mathcal{P}; \gamma)
+    =
+    \sum_{C \in \mathcal{P}}
+    \left[
+        e_C - \gamma \binom{|C|}{2}
+    \right],
+\end{equation}
+
+where $e_C$ is the total internal edge weight in cluster $C$. CPM is used
+because it is designed to avoid the classical modularity resolution limit
+described by Fortunato and Barthelemy~\cite{fortunato2007resolution}, and
+formalized in the resolution-limit-free discussion by Traag, Van Dooren, and
+Nesterov~\cite{traag2011narrow}. Leiden is used as the optimizer because it
+improves on Louvain by guaranteeing well-connected communities under its
+refinement procedure~\cite{traag2019leiden}.
+
+\subsection{Hierarchy-Specific Size Semantics}
+
+At hierarchy level $\ell$, the graph nodes may represent either original papers
+or contracted paper groups. Let $s_i$ denote the document weight of current
+node $i$. For a cluster $C$, its document weight is:
+
+\begin{equation}
+    W(C) = \sum_{i \in C} s_i.
+\end{equation}
+
+The lower and upper targets at level $\ell$ are:
+
+\begin{align}
+    W_{\min}^{(\ell)} &= \texttt{min\_sizes[level]}, \\
+    W_{\max}^{(\ell)} &= \frac{\texttt{targets[level]}}{100}
+                         \sum_{i \in V_\ell} s_i.
+\end{align}
+
+For the first level, $s_i=1$ for every paper. For contracted levels, $s_i$ is
+the number of original papers represented by super-node $i$.
+
+%% ----------------------------------------------------------------------
+\section{Method Overview}
+
+The new method is a two-stage postprocess applied at each hierarchy level.
+It is disabled by default and is activated only through an internal
+\texttt{HierarchyPostprocessConfig}.
+
+\begin{algorithm}[h]
+\caption{Level-wise two-stage hierarchy postprocess}
+\begin{algorithmic}[1]
+\REQUIRE Current graph $G_\ell$, Leiden membership $m_{\text{raw}}$, level targets
+\STATE $m_{\text{small}} \leftarrow \textsc{SmallClusterRepair}(m_{\text{raw}}, W_{\min})$
+\IF{hierarchy postprocess is disabled}
+    \STATE \RETURN $m_{\text{small}}$
+\ENDIF
+\STATE $m \leftarrow m_{\text{small}}$
+\FOR{$t = 1$ to \texttt{apply\_iterations}}
+    \STATE $O \leftarrow \{C : W(C) > W_{\max}\}$
+    \IF{$O = \emptyset$}
+        \STATE \textbf{break}
+    \ENDIF
+    \STATE $P \leftarrow \textsc{SplitRepairProbes}(G_\ell, m, O, \gamma)$
+    \STATE $S \leftarrow \textsc{SelectNonConflictingCandidates}(P)$
+    \STATE $m' \leftarrow \textsc{ApplySplitRepair}(G_\ell, m, S)$
+    \IF{$Q_{\text{CPM}}(m') - Q_{\text{CPM}}(m) < 0$}
+        \STATE \textbf{break}
+    \ENDIF
+    \STATE $m \leftarrow m'$
+\ENDFOR
+\STATE $m_{\text{trim}} \leftarrow \textsc{BoundaryTrim}(G_\ell, m, W_{\max})$
+\STATE accept or reject $m_{\text{trim}}$ according to policy
+\RETURN accepted membership, or $m_{\text{small}}$ as fallback
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Stage 1: Small-Cluster Repair}
+
+The first stage is the existing hierarchy behavior. It resolves clusters below
+$W_{\min}$ using the Rust postprocess backend. On contracted graphs, the repair
+uses node weights, so the threshold is interpreted as original-paper count
+rather than current super-node count.
+
+This stage remains mandatory because tiny clusters and singletons often arise
+from CPM resolution search and graph sparsity. Without this repair, the finest
+level can become fragmented and upper levels inherit many low-weight
+super-nodes.
+
+\subsection{Stage 2A: Oversize Split--Repair}
+
+After small-cluster repair, the method identifies current oversize clusters:
+
+\begin{equation}
+    O = \{C \in \mathcal{P}: W(C) > W_{\max}\}.
+\end{equation}
+
+For each candidate in $O$, split--repair probes force a higher-resolution split
+inside the source cluster and then repair the result back at the baseline
+resolution. Each probe records:
+
+\begin{itemize}[nosep]
+    \item source cluster document weight;
+    \item induced subgraph size;
+    \item number of proposed parts;
+    \item escaped source weight;
+    \item retained source units;
+    \item predicted and exact CPM quality deltas;
+    \item residual oversize after the candidate move.
+\end{itemize}
+
+Selection defaults to \texttt{oversize\_first}. This ranking is intentionally
+different from a pure utility-per-cost ranking: for hierarchy construction,
+the immediate objective is to reduce clusters that exceed the level-local
+maximum while preserving CPM quality.
+
+\subsection{Stage 2B: Oversize Boundary Trim}
+
+Split--repair can fail when a cluster has no stable multi-core split, or when
+all split proposals restore the original source cluster after repair. The trim
+stage therefore tries a smaller operation: moving boundary nodes out of
+oversize clusters into neighboring clusters, subject to receiver capacity and
+a per-move $\Delta Q$ lower bound.
+
+Let $\delta q_v$ be the predicted CPM quality change of moving boundary node
+$v$. The trim stage accepts moves satisfying:
+
+\begin{equation}
+    \delta q_v \geq \tau_{\text{trim}},
+\end{equation}
+
+and additionally prevents the target cluster from exceeding $W_{\max}$. A
+quality-floor prefix is used so that the committed prefix of trim moves keeps
+the final exact CPM quality above the policy floor.
+
+%% ----------------------------------------------------------------------
+\section{Acceptance Policies}
+
+The extension supports two policies. The default is \texttt{quality\_first}.
+
+\begin{table}[h]
+\centering
+\caption{Oversize postprocess acceptance policies}
+\begin{tabular}{lll}
+\toprule
+Policy & Trim default & Final acceptance rule \\
+\midrule
+\texttt{quality\_first}
+    & $\tau_{\text{trim}} = 0$
+    & $\Delta Q_{\text{exact}} \geq \Delta Q_{\min}$ \\
+\texttt{hard\_cap}
+    & $\tau_{\text{trim}} = -1$
+    & $\Delta Q_{\text{exact}} \geq \Delta Q_{\min}$ and
+      $\max_C W(C) \leq W_{\max}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{\texttt{quality\_first}.}
+This is the operating default. It accepts a postprocessed membership if final
+exact CPM quality is not below the configured floor. It does not require the
+maximum-size target to be fully satisfied. The summary records whether the cap
+was satisfied as a diagnostic field.
+
+\paragraph{\texttt{hard\_cap}.}
+This is an internal experimental policy for cases where the maximum document
+weight must be enforced. It allows slightly negative trim moves by default, but
+only accepts the result if the final exact quality floor and the hard maximum
+condition are both satisfied. If the hard cap is not satisfied, the diagnostic
+membership can be written, but the next hierarchy level uses the safer
+$m_{\text{small}}$ fallback.
+
+%% ----------------------------------------------------------------------
+\section{Cache and Artifacts}
+
+Default behavior is unchanged when hierarchy postprocess is disabled. Existing
+level caches remain backward compatible. When enabled, each level writes
+additional artifacts:
+
+\begin{itemize}[nosep]
+    \item \texttt{cache\_dir/<level>/postprocess/summary.json}
+    \item \texttt{cache\_dir/<level>/postprocess/oversize\_boundary\_trim\_moves.csv}
+    \item optional \texttt{diagnostic\_membership.parquet} for rejected hard-cap
+          or quality-floor cases with proposed changes.
+\end{itemize}
+
+The level \texttt{meta.json} is extended only for enabled runs:
+
+\begin{itemize}[nosep]
+    \item \texttt{hierarchy\_postprocess\_enabled}
+    \item \texttt{postprocess\_status}
+    \item \texttt{oversize\_policy}
+    \item \texttt{target\_min\_doc\_weight}
+    \item \texttt{target\_max\_doc\_weight}
+    \item \texttt{target\_max\_satisfied}
+    \item \texttt{postprocess\_quality\_delta}
+    \item \texttt{postprocess\_config\_hash}
+\end{itemize}
+
+When enabled, the hierarchy cache is valid only if the stored
+\texttt{postprocess\_config\_hash} matches the active config hash. This avoids
+silently reusing memberships generated under a different postprocess policy.
+
+%% ----------------------------------------------------------------------
+\section{Data and Evidence}
+
+\subsection{Design Evidence from Field-Level Experiments}
+
+The broader SciScape pipeline has been evaluated on OpenAlex fields with
+contrasting citation densities. The multi-layer report documents two important
+observations that motivate hierarchy-level automation:
+
+\begin{table}[h]
+\centering
+\caption{Representative field characteristics from previous SciScape experiments}
+\begin{tabularx}{\textwidth}{p{0.30\textwidth}p{0.16\textwidth}X}
+\toprule
+Dataset & Scale & Key observation \\
+\midrule
+Field 15: Chemical Engineering
+    & 115K papers
+    & Citation layers have high coverage; auto-$\gamma$ selects balanced clusters. \\
+Field 12: Arts and Humanities
+    & 754K papers
+    & Sparse citation coverage makes embedding edges important for connectivity. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These datasets show that the same hierarchy code must handle both dense
+scientific fields and sparse humanities fields. A fixed postprocess assumption
+is therefore brittle: after contraction, cluster document weights can vary
+substantially even when resolution search is successful at the current level.
+
+\subsection{Implementation Verification}
+
+The current implementation was validated with unit, integration, and Rust
+backend tests.
+
+\begin{table}[h]
+\centering
+\caption{Verification commands run after implementation}
+\begin{tabularx}{\textwidth}{p{0.30\textwidth}X}
+\toprule
+Suite & Result \\
+\midrule
+Rust backend
+    & \texttt{cargo test --manifest-path rust/Cargo.toml}: unit and integration tests passed. \\
+Targeted Python
+    & Hierarchy, adaptive-refinement, and Rust-wrapper tests: 77 passed, 1 warning. \\
+Full Python
+    & \texttt{uv run python -m pytest -q}: 987 passed, 1218 warnings. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The added tests cover:
+
+\begin{itemize}[nosep]
+    \item config defaults: disabled and \texttt{quality\_first};
+    \item target maximum calculation from level percentage and current document weight;
+    \item policy-specific trim bounds;
+    \item enabled artifact and metadata creation;
+    \item cache invalidation on config-hash mismatch;
+    \item hard-cap rejection and fallback to the small-postprocessed membership.
+\end{itemize}
+
+%% ----------------------------------------------------------------------
+\section{Operational Interpretation}
+
+\subsection{Default Product Behavior}
+
+The method is intentionally not exposed as a public CLI flag in this stage.
+It is an internal development feature. Without an explicit config, the product
+pipeline behaves exactly as before:
+
+\begin{equation}
+    m_{\text{level}} = m_{\text{small}}.
+\end{equation}
+
+\subsection{Recommended Internal Use}
+
+For exploratory hierarchy-building, use:
+
+\begin{verbatim}
+HierarchyPostprocessConfig(
+    enabled=True,
+    oversize_policy="quality_first"
+)
+\end{verbatim}
+
+Use \texttt{hard\_cap} only for experiments where the maximum document-weight
+constraint is the primary objective and quality loss must be explicitly
+measured.
+
+\subsection{Interpretability of Outcomes}
+
+The postprocess status should be interpreted as follows:
+
+\begin{table}[h]
+\centering
+\caption{Status semantics}
+\begin{tabularx}{\textwidth}{p{0.42\textwidth}X}
+\toprule
+Status & Meaning \\
+\midrule
+{\small\texttt{no\_current\_oversize\_candidates}}
+    & Small-repaired membership already has no cluster above target. \\
+\texttt{committed}
+    & Oversize postprocess was accepted and used for projection/contraction. \\
+\texttt{quality\_below\_floor}
+    & Proposed membership was rejected because exact CPM quality fell below floor. \\
+\texttt{hard\_cap\_not\_satisfied}
+    & Diagnostic was written, but fallback membership is used for next level. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ----------------------------------------------------------------------
+\section{Limitations and Open Questions}
+
+\begin{enumerate}[nosep]
+    \item \textbf{No new Rust kernel in this stage.} The method composes
+          existing Rust primitives rather than adding a single specialized
+          hierarchy postprocess kernel.
+    \item \textbf{Quality-first may leave oversized clusters.} This is a
+          deliberate default. The cap satisfaction flag must be inspected in
+          summaries.
+    \item \textbf{Hard-cap feasibility is graph-dependent.} If no acceptable
+          boundary moves exist, the system records diagnostics and falls back.
+    \item \textbf{Runtime cost grows with oversize candidates.} The method
+          runs split--repair probes repeatedly, so it should remain opt-in
+          until larger field-level runtime profiles are collected.
+    \item \textbf{Semantic quality still needs external validation.} Structural
+          balance is not the same as topic coherence. LLM or expert review
+          should be used for representative boundary cases.
+\end{enumerate}
+
+%% ----------------------------------------------------------------------
+\section{Conclusion}
+
+The two-stage hierarchy postprocess makes a previously implicit need explicit:
+after repairing clusters below the minimum size, hierarchy construction also
+needs a controlled mechanism for diagnosing and reducing clusters above the
+level target. The design preserves the CPM quality objective by default,
+supports a stricter hard-cap mode for experiments, and writes enough metadata
+to make every accepted or rejected level transition auditable. Most
+importantly, accepted memberships are used consistently for projection,
+per-level artifacts, metadata, and next-level graph contraction, so the
+hierarchy reflects the actual postprocessed partition rather than an
+intermediate diagnostic.
+
+\begin{thebibliography}{9}
+
+\bibitem{fortunato2007resolution}
+S. Fortunato and M. Barthelemy.
+\newblock Resolution limit in community detection.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 104(1):36--41, 2007.
+\newblock \url{https://doi.org/10.1073/pnas.0605965104}.
+
+\bibitem{traag2011narrow}
+V. A. Traag, P. Van Dooren, and Y. Nesterov.
+\newblock Narrow scope for resolution-limit-free community detection.
+\newblock \emph{Physical Review E}, 84:016114, 2011.
+\newblock \url{https://doi.org/10.1103/PhysRevE.84.016114}.
+
+\bibitem{traag2019leiden}
+V. A. Traag, L. Waltman, and N. J. van Eck.
+\newblock From Louvain to Leiden: guaranteeing well-connected communities.
+\newblock \emph{Scientific Reports}, 9:5233, 2019.
+\newblock \url{https://doi.org/10.1038/s41598-019-41695-z}.
+
+\end{thebibliography}
+
+\end{document}

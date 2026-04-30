@@ -9,6 +9,7 @@ sciscape/
 ├── clustering/              # CPM Leiden 클러스터링
 │   ├── prepartition.py        #   high-γ block → contraction → cascade hot start
 │   ├── postprocess.py       #   split/merge refinement, γ search
+│   ├── hierarchy_postprocess.py # 계층별 oversize split/trim 후처리 (내부 opt-in)
 │   ├── dendrogram.py        #   CPM density HAC
 │   ├── constrained_cut.py   #   size-constrained optimal cut (DP)
 │   ├── runner.py            #   LeidenRunner (leidenalg wrapper)
@@ -93,6 +94,8 @@ sciscape gui
 ```
 output/
 ├── membership.parquet       # uid + cluster_nano + cluster_micro
+├── nano/, micro/, ...       # 계층별 membership.parquet, meta.json
+│   └── postprocess/         # 내부 opt-in 활성화 시 summary/move diagnostics
 ├── blocks.parquet           # pre-partition 캐시 (gamma_block, seed 등 메타데이터 포함)
 ├── abstracts_subset.parquet # 서브샘플된 초록 데이터
 ├── keywords.parquet         # 키워드 테이블 (term, score, frequency, temporal 등)
@@ -132,6 +135,52 @@ cfg = LandscapeConfig(gamma_block=None)
 ```
 
 Block 캐시는 `blocks.parquet`에 저장되며, 동일 γ_block + 노드 수이면 재사용됩니다.
+
+## 계층 후처리 자동화 (내부 opt-in)
+
+기본 `sciscape landscape` 및 CLI 동작은 변경하지 않습니다. 개발/실험용으로
+명시적으로 켰을 때만 각 hierarchy level에서 다음 흐름을 수행합니다.
+
+```
+raw Leiden
+  → small-cluster repair
+  → oversize split-repair probes
+  → oversize boundary trim
+  → projection + membership/meta 저장
+  → contraction for next level
+```
+
+목표는 작은 클러스터를 해결한 뒤에도 남는 oversized cluster가 다음 단계
+contraction을 지배하지 않도록, 품질 보존 우선 정책으로 진단과 완화를
+자동화하는 것입니다.
+
+```python
+from sciscape.clustering.hierarchy_postprocess import HierarchyPostprocessConfig
+from sciscape.clustering.hierarchical import build_hierarchy
+
+result = build_hierarchy(
+    layer_paths={...},
+    cache_dir="output/field_15",
+    n_levels=4,
+    hierarchy_postprocess=HierarchyPostprocessConfig(
+        enabled=True,
+        oversize_policy="quality_first",
+    ),
+)
+```
+
+정책:
+- `quality_first` (기본): 최종 exact CPM 품질 floor를 만족하면 accept합니다.
+  `target_max_doc_weight` 달성 여부는 summary에 별도 기록합니다.
+- `hard_cap`: 품질 floor와 max doc-weight cap을 모두 만족할 때만 accept합니다.
+  실패 시 diagnostic artifact는 남기고 다음 level에는 small-repaired membership을
+  사용합니다.
+
+활성화 시 level별로 `postprocess/summary.json`,
+`postprocess/oversize_boundary_trim_moves.csv`, 확장된 `meta.json`을 기록합니다.
+캐시는 `postprocess_config_hash`가 일치할 때만 재사용됩니다.
+
+방법론 리포트: [`docs/hierarchy_two_stage_postprocess_report.tex`](../docs/hierarchy_two_stage_postprocess_report.tex)
 
 ## 키워드 추출 파이프라인
 
@@ -198,6 +247,10 @@ result = run_landscape(
 # result["report_dir"], result["keywords_df"], ...
 ```
 
+내부 계층 후처리를 `run_landscape` 경로에서 사용하려면 `LandscapeConfig`에
+`hierarchy_postprocess=HierarchyPostprocessConfig(enabled=True)`를 전달합니다.
+공개 CLI flag는 아직 제공하지 않습니다.
+
 ### Clustering
 
 ```python
@@ -262,7 +315,7 @@ export_viewer("viewer.html")
 
 ```bash
 python -m pip install -e ".[dev,viz,arrow]"
-pytest -q    # 528 tests
+pytest -q    # 987+ tests
 ```
 
 ## I/O 스키마
