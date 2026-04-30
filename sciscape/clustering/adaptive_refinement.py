@@ -87,6 +87,28 @@ class BoundaryCandidatePolicy:
     top_k: int = 1000
 
 
+@dataclass(frozen=True)
+class SplitRepairSelectionPolicy:
+    """Dry-run policy for ranking non-conflicting split-repair candidates."""
+
+    name: str = "conservative"
+    mode: str = "utility_cost"
+    min_net_delta_q: float = 1e-6
+    strong_net_delta_q: float = 1.0
+    singleton_budget: float = 25.0
+    min_retained_source_units: int = 2
+    min_weak_structural_gain: float = 0.0
+    max_selected: int | None = None
+    utility_size_band_weight: float = 1e-3
+    utility_target_cluster_count_weight: float = 1e-2
+    utility_escaped_weight_weight: float = 1e-3
+    utility_singleton_penalty_weight: float = 1e-3
+    utility_restored_penalty_weight: float = 1.0
+    cost_edge_scan_weight: float = 1.0
+    cost_probe_edge_weight: float = 1.0
+    cost_repair_quotient_weight: float = 1.0
+
+
 def _percentiles(values: np.ndarray, percentiles: list[int]) -> dict[str, float]:
     if values.size == 0:
         return {f"p{p}": 0.0 for p in percentiles}
@@ -1057,6 +1079,418 @@ def write_multi_core_split_probe_report(
     return {"summary": str(summary_path), "probes": str(csv_path)}
 
 
+def _probe_array(probes: RustSplitMergeRepairProbes | dict[str, np.ndarray], name: str) -> np.ndarray:
+    if isinstance(probes, dict):
+        return np.asarray(probes[name])
+    return np.asarray(getattr(probes, name))
+
+
+def _split_repair_probe_count_by_cluster(cluster: np.ndarray) -> dict[int, int]:
+    unique, counts = np.unique(cluster.astype(np.int64, copy=False), return_counts=True)
+    return {int(cluster_id): int(count) for cluster_id, count in zip(unique, counts)}
+
+
+def rank_split_repair_candidates(
+    probes: RustSplitMergeRepairProbes | dict[str, np.ndarray],
+    policy: SplitRepairSelectionPolicy | None = None,
+    *,
+    min_weight: float = 0.0,
+    max_weight: float = 0.0,
+) -> list[dict[str, Any]]:
+    """Rank split-repair probe rows and greedily select one row per source cluster.
+
+    This is still a dry-run layer. It records the utility/cost terms and marks
+    non-conflicting candidates that satisfy the conservative acceptance policy.
+    """
+
+    if policy is None:
+        policy = SplitRepairSelectionPolicy()
+    if policy.mode not in {"utility_cost", "oversize_first"}:
+        raise ValueError(f"unknown split-repair selection mode: {policy.mode!r}")
+
+    cluster = _probe_array(probes, "cluster").astype(np.int64, copy=False)
+    n = int(cluster.shape[0])
+    if n == 0:
+        return []
+
+    gamma_multiplier = _probe_array(probes, "gamma_multiplier").astype(np.float64, copy=False)
+    probe_resolution = _probe_array(probes, "probe_resolution").astype(np.float64, copy=False)
+    block_count = _probe_array(probes, "block_count").astype(np.uint64, copy=False)
+    doc_weight = _probe_array(probes, "doc_weight").astype(np.float64, copy=False)
+    induced_directed_edges = _probe_array(probes, "induced_directed_edges").astype(
+        np.float64,
+        copy=False,
+    )
+    n_parts = _probe_array(probes, "n_parts").astype(np.uint64, copy=False)
+    core_part_count = _probe_array(probes, "core_part_count").astype(np.uint64, copy=False)
+    singleton_weight = _probe_array(probes, "singleton_weight").astype(np.float64, copy=False)
+    cut_weight = _probe_array(probes, "cut_weight").astype(np.float64, copy=False)
+    split_delta_q_base = _probe_array(probes, "split_delta_q_base").astype(
+        np.float64,
+        copy=False,
+    )
+    split_delta_q_probe = _probe_array(probes, "split_delta_q_probe").astype(
+        np.float64,
+        copy=False,
+    )
+    repair_quotient_edges = _probe_array(probes, "repair_quotient_edges").astype(
+        np.float64,
+        copy=False,
+    )
+    repair_merge_count = _probe_array(probes, "repair_merge_count").astype(np.uint64, copy=False)
+    repair_delta_q = _probe_array(probes, "repair_delta_q").astype(np.float64, copy=False)
+    net_delta_q = _probe_array(probes, "net_delta_q").astype(np.float64, copy=False)
+    final_source_units = _probe_array(probes, "final_source_units").astype(np.uint64, copy=False)
+    retained_source_units = _probe_array(probes, "retained_source_units").astype(
+        np.uint64,
+        copy=False,
+    )
+    escaped_source_units = _probe_array(probes, "escaped_source_units").astype(
+        np.uint64,
+        copy=False,
+    )
+    escaped_source_weight = _probe_array(probes, "escaped_source_weight").astype(
+        np.float64,
+        copy=False,
+    )
+    final_small_source_units = _probe_array(probes, "final_small_source_units").astype(
+        np.uint64,
+        copy=False,
+    )
+    final_small_source_weight = _probe_array(probes, "final_small_source_weight").astype(
+        np.float64,
+        copy=False,
+    )
+    largest_source_unit_fraction = _probe_array(
+        probes,
+        "largest_source_unit_fraction",
+    ).astype(np.float64, copy=False)
+    restored_source_cluster = _probe_array(probes, "restored_source_cluster").astype(
+        bool,
+        copy=False,
+    )
+
+    probe_count_by_cluster = _split_repair_probe_count_by_cluster(cluster)
+    largest_source_unit_weight = largest_source_unit_fraction * doc_weight
+    if max_weight > 0:
+        remaining_oversize_before = np.maximum(0.0, doc_weight - max_weight)
+        remaining_oversize_after = np.maximum(0.0, largest_source_unit_weight - max_weight)
+        size_band_improvement = np.maximum(
+            0.0,
+            remaining_oversize_before - remaining_oversize_after,
+        )
+    else:
+        remaining_oversize_before = np.zeros(n, dtype=np.float64)
+        remaining_oversize_after = np.zeros(n, dtype=np.float64)
+        size_band_improvement = np.zeros(n, dtype=np.float64)
+    oversize_reduction = size_band_improvement
+    passes_size_objective_array = (
+        (max_weight > 0)
+        & (remaining_oversize_before > 0.0)
+        & (oversize_reduction > 0.0)
+        & (largest_source_unit_weight < doc_weight)
+    )
+
+    target_cluster_count_improvement = np.maximum(
+        final_source_units.astype(np.float64) - 1.0,
+        0.0,
+    )
+    escaped_if_net_positive = np.where(net_delta_q > 0.0, escaped_source_weight, 0.0)
+    singleton_penalty = np.maximum(singleton_weight, final_small_source_weight)
+    restored_penalty = np.where(restored_source_cluster, doc_weight, 0.0)
+    structural_gain = escaped_source_weight + np.maximum(
+        retained_source_units.astype(np.float64) - 1.0,
+        0.0,
+    )
+
+    utility = (
+        net_delta_q
+        + policy.utility_size_band_weight * size_band_improvement
+        + policy.utility_target_cluster_count_weight * target_cluster_count_improvement
+        + policy.utility_escaped_weight_weight * escaped_if_net_positive
+        - policy.utility_singleton_penalty_weight * singleton_penalty
+        - policy.utility_restored_penalty_weight * restored_penalty
+    )
+    probe_count = np.asarray(
+        [probe_count_by_cluster[int(cluster_id)] for cluster_id in cluster],
+        dtype=np.float64,
+    )
+    cost = (
+        policy.cost_edge_scan_weight * induced_directed_edges
+        + policy.cost_probe_edge_weight * probe_count * induced_directed_edges
+        + policy.cost_repair_quotient_weight * repair_quotient_edges
+    )
+    cost = np.maximum(cost, 1.0)
+    priority = utility / cost
+
+    rows: list[dict[str, Any]] = []
+    for idx in range(n):
+        passes_net = bool(net_delta_q[idx] > policy.min_net_delta_q)
+        passes_restored = bool(not restored_source_cluster[idx])
+        passes_structure = bool(
+            escaped_source_weight[idx] > 0.0
+            or retained_source_units[idx] >= policy.min_retained_source_units
+        )
+        passes_singleton_budget = bool(final_small_source_weight[idx] <= policy.singleton_budget)
+        strong_candidate = bool(net_delta_q[idx] > policy.strong_net_delta_q)
+        passes_weak_structure = bool(
+            strong_candidate or structural_gain[idx] >= policy.min_weak_structural_gain
+        )
+        passes_size_objective = bool(passes_size_objective_array[idx])
+
+        rejection_reason = ""
+        if policy.mode == "oversize_first" and max_weight <= 0:
+            rejection_reason = "target_max_weight_required"
+        elif policy.mode == "oversize_first" and remaining_oversize_before[idx] <= 0.0:
+            rejection_reason = "source_not_above_target_max"
+        elif policy.mode == "oversize_first" and not passes_size_objective:
+            rejection_reason = "no_oversize_reduction"
+        elif policy.mode == "oversize_first" and retained_source_units[idx] == 0:
+            rejection_reason = "no_retained_source_unit"
+        elif not passes_net:
+            rejection_reason = "net_delta_q_below_threshold"
+        elif not passes_restored:
+            rejection_reason = "restored_source_cluster"
+        elif not passes_structure:
+            rejection_reason = "no_escape_or_retained_split"
+        elif not passes_singleton_budget:
+            rejection_reason = "small_source_budget_exceeded"
+        elif not passes_weak_structure:
+            rejection_reason = "weak_structural_gain_below_threshold"
+
+        rows.append(
+            {
+                "rank": 0,
+                "selected_for_apply": False,
+                "accepted_by_policy": rejection_reason == "",
+                "rejection_reason": rejection_reason,
+                "conflict_reason": "",
+                "policy": policy.name,
+                "selection_mode": policy.mode,
+                "cluster": int(cluster[idx]),
+                "gamma_multiplier": float(gamma_multiplier[idx]),
+                "probe_resolution": float(probe_resolution[idx]),
+                "block_count": int(block_count[idx]),
+                "doc_weight": float(doc_weight[idx]),
+                "induced_directed_edges": int(induced_directed_edges[idx]),
+                "repair_quotient_edges": int(repair_quotient_edges[idx]),
+                "probe_count_for_cluster": int(probe_count[idx]),
+                "n_parts": int(n_parts[idx]),
+                "core_part_count": int(core_part_count[idx]),
+                "singleton_weight": float(singleton_weight[idx]),
+                "cut_weight": float(cut_weight[idx]),
+                "split_delta_q_base": float(split_delta_q_base[idx]),
+                "split_delta_q_probe": float(split_delta_q_probe[idx]),
+                "repair_merge_count": int(repair_merge_count[idx]),
+                "repair_delta_q": float(repair_delta_q[idx]),
+                "net_delta_q": float(net_delta_q[idx]),
+                "final_source_units": int(final_source_units[idx]),
+                "retained_source_units": int(retained_source_units[idx]),
+                "escaped_source_units": int(escaped_source_units[idx]),
+                "escaped_source_weight": float(escaped_source_weight[idx]),
+                "final_small_source_units": int(final_small_source_units[idx]),
+                "final_small_source_weight": float(final_small_source_weight[idx]),
+                "largest_source_unit_fraction": float(largest_source_unit_fraction[idx]),
+                "largest_source_unit_weight": float(largest_source_unit_weight[idx]),
+                "restored_source_cluster": bool(restored_source_cluster[idx]),
+                "strong_candidate": strong_candidate,
+                "structural_gain": float(structural_gain[idx]),
+                "size_band_improvement": float(size_band_improvement[idx]),
+                "remaining_oversize_before": float(remaining_oversize_before[idx]),
+                "remaining_oversize_after": float(remaining_oversize_after[idx]),
+                "oversize_reduction": float(oversize_reduction[idx]),
+                "passes_size_objective": passes_size_objective,
+                "target_cluster_count_improvement": float(
+                    target_cluster_count_improvement[idx]
+                ),
+                "escaped_source_weight_if_net_positive": float(escaped_if_net_positive[idx]),
+                "singleton_or_leaf_penalty": float(singleton_penalty[idx]),
+                "restored_source_cluster_penalty": float(restored_penalty[idx]),
+                "utility": float(utility[idx]),
+                "cost": float(cost[idx]),
+                "priority": float(priority[idx]),
+            }
+        )
+
+    if policy.mode == "oversize_first":
+        rows.sort(
+            key=lambda row: (
+                not row["accepted_by_policy"],
+                row["remaining_oversize_after"],
+                -row["oversize_reduction"],
+                row["final_small_source_weight"],
+                -row["net_delta_q"],
+                row["cost"],
+                row["cluster"],
+                row["gamma_multiplier"],
+            )
+        )
+    else:
+        rows.sort(
+            key=lambda row: (
+                not row["accepted_by_policy"],
+                -row["priority"],
+                -row["net_delta_q"],
+                row["cluster"],
+                row["gamma_multiplier"],
+            )
+        )
+
+    used_clusters: set[int] = set()
+    selected_count = 0
+    for rank, row in enumerate(rows, start=1):
+        row["rank"] = rank
+        if not row["accepted_by_policy"]:
+            continue
+        cluster_id = int(row["cluster"])
+        if cluster_id in used_clusters:
+            row["conflict_reason"] = "source_cluster_already_selected"
+            continue
+        if policy.max_selected is not None and selected_count >= int(policy.max_selected):
+            row["conflict_reason"] = "selection_budget_exhausted"
+            continue
+        row["selected_for_apply"] = True
+        used_clusters.add(cluster_id)
+        selected_count += 1
+
+    return rows
+
+
+def summarize_split_repair_candidate_selection(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate a split-repair candidate selection table."""
+
+    selected = [row for row in rows if row["selected_for_apply"]]
+    accepted = [row for row in rows if row["accepted_by_policy"]]
+    conflicted = [row for row in rows if row["conflict_reason"]]
+    rejected = [row for row in rows if not row["accepted_by_policy"]]
+    return {
+        "n_candidates": len(rows),
+        "n_accepted_by_policy": len(accepted),
+        "n_selected_for_apply": len(selected),
+        "n_conflicted": len(conflicted),
+        "n_rejected": len(rejected),
+        "selected_net_delta_q_sum": float(sum(row["net_delta_q"] for row in selected)),
+        "selected_utility_sum": float(sum(row["utility"] for row in selected)),
+        "selected_cost_sum": float(sum(row["cost"] for row in selected)),
+        "selected_escaped_source_weight_sum": float(
+            sum(row["escaped_source_weight"] for row in selected)
+        ),
+        "selected_final_small_source_weight_sum": float(
+            sum(row["final_small_source_weight"] for row in selected)
+        ),
+        "selected_oversize_reduction_sum": float(
+            sum(row["oversize_reduction"] for row in selected)
+        ),
+        "selected_remaining_oversize_after_sum": float(
+            sum(row["remaining_oversize_after"] for row in selected)
+        ),
+        "selected_strong_candidate_count": int(
+            sum(1 for row in selected if row["strong_candidate"])
+        ),
+        "rejection_reasons": {
+            reason: sum(1 for row in rejected if row["rejection_reason"] == reason)
+            for reason in sorted({row["rejection_reason"] for row in rejected})
+            if reason
+        },
+        "conflict_reasons": {
+            reason: sum(1 for row in conflicted if row["conflict_reason"] == reason)
+            for reason in sorted({row["conflict_reason"] for row in conflicted})
+            if reason
+        },
+    }
+
+
+def write_split_repair_candidate_selection_report(
+    probes: RustSplitMergeRepairProbes | dict[str, np.ndarray],
+    output_dir: Path,
+    policy: SplitRepairSelectionPolicy | None = None,
+    *,
+    min_weight: float = 0.0,
+    max_weight: float = 0.0,
+    rows: list[dict[str, Any]] | None = None,
+) -> dict[str, str]:
+    """Write a utility/cost-ranked split-repair candidate selection table."""
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if policy is None:
+        policy = SplitRepairSelectionPolicy()
+    if rows is None:
+        rows = rank_split_repair_candidates(
+            probes,
+            policy,
+            min_weight=min_weight,
+            max_weight=max_weight,
+        )
+    summary = summarize_split_repair_candidate_selection(rows)
+    summary["policy"] = asdict(policy)
+    summary["min_weight"] = float(min_weight)
+    summary["max_weight"] = float(max_weight)
+
+    summary_path = output_dir / "split_repair_candidate_selection_summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    csv_path = output_dir / "split_repair_candidate_selection.csv"
+    fieldnames = [
+        "rank",
+        "selected_for_apply",
+        "accepted_by_policy",
+        "rejection_reason",
+        "conflict_reason",
+        "policy",
+        "selection_mode",
+        "cluster",
+        "gamma_multiplier",
+        "probe_resolution",
+        "block_count",
+        "doc_weight",
+        "induced_directed_edges",
+        "repair_quotient_edges",
+        "probe_count_for_cluster",
+        "n_parts",
+        "core_part_count",
+        "singleton_weight",
+        "cut_weight",
+        "split_delta_q_base",
+        "split_delta_q_probe",
+        "repair_merge_count",
+        "repair_delta_q",
+        "net_delta_q",
+        "final_source_units",
+        "retained_source_units",
+        "escaped_source_units",
+        "escaped_source_weight",
+        "final_small_source_units",
+        "final_small_source_weight",
+        "largest_source_unit_fraction",
+        "largest_source_unit_weight",
+        "restored_source_cluster",
+        "strong_candidate",
+        "structural_gain",
+        "size_band_improvement",
+        "remaining_oversize_before",
+        "remaining_oversize_after",
+        "oversize_reduction",
+        "passes_size_objective",
+        "target_cluster_count_improvement",
+        "escaped_source_weight_if_net_positive",
+        "singleton_or_leaf_penalty",
+        "restored_source_cluster_penalty",
+        "utility",
+        "cost",
+        "priority",
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return {"summary": str(summary_path), "candidates": str(csv_path)}
+
+
 def summarize_split_merge_repair_probes(probes: RustSplitMergeRepairProbes) -> dict[str, Any]:
     """Return aggregate diagnostics for split-then-repair probes."""
 
@@ -1087,6 +1521,12 @@ def summarize_split_merge_repair_probes(probes: RustSplitMergeRepairProbes) -> d
         ),
         "final_source_units": _percentiles(
             probes.final_source_units.astype(np.float64), [50, 90, 95, 99]
+        ),
+        "induced_directed_edges": _percentiles(
+            probes.induced_directed_edges.astype(np.float64), [50, 90, 95, 99]
+        ),
+        "repair_quotient_edges": _percentiles(
+            probes.repair_quotient_edges.astype(np.float64), [50, 90, 95, 99]
         ),
     }
 
@@ -1120,12 +1560,14 @@ def write_split_merge_repair_probe_report(
         "probe_resolution",
         "block_count",
         "doc_weight",
+        "induced_directed_edges",
         "n_parts",
         "core_part_count",
         "singleton_weight",
         "cut_weight",
         "split_delta_q_base",
         "split_delta_q_probe",
+        "repair_quotient_edges",
         "repair_merge_count",
         "repair_delta_q",
         "net_delta_q",
@@ -1150,12 +1592,14 @@ def write_split_merge_repair_probe_report(
                     "probe_resolution": float(probes.probe_resolution[idx]),
                     "block_count": int(probes.block_count[idx]),
                     "doc_weight": float(probes.doc_weight[idx]),
+                    "induced_directed_edges": int(probes.induced_directed_edges[idx]),
                     "n_parts": int(probes.n_parts[idx]),
                     "core_part_count": int(probes.core_part_count[idx]),
                     "singleton_weight": float(probes.singleton_weight[idx]),
                     "cut_weight": float(probes.cut_weight[idx]),
                     "split_delta_q_base": float(probes.split_delta_q_base[idx]),
                     "split_delta_q_probe": float(probes.split_delta_q_probe[idx]),
+                    "repair_quotient_edges": int(probes.repair_quotient_edges[idx]),
                     "repair_merge_count": int(probes.repair_merge_count[idx]),
                     "repair_delta_q": float(probes.repair_delta_q[idx]),
                     "net_delta_q": float(probes.net_delta_q[idx]),
@@ -1297,8 +1741,10 @@ __all__ = [
     "BoundaryCandidatePolicy",
     "MacroMergePolicy",
     "MacroMergeSimulationResult",
+    "SplitRepairSelectionPolicy",
     "exploratory_boundary_candidate_policies",
     "exploratory_macro_merge_policies",
+    "rank_split_repair_candidates",
     "run_macro_merge_policy_ensemble",
     "score_boundary_candidates",
     "simulate_macro_merge_policy",
@@ -1307,6 +1753,7 @@ __all__ = [
     "summarize_boundary_move_probes",
     "summarize_cluster_graph_stats",
     "summarize_multi_core_split_probes",
+    "summarize_split_repair_candidate_selection",
     "summarize_split_merge_repair_probes",
     "write_adaptive_refinement_report",
     "write_boundary_candidate_report",
@@ -1314,5 +1761,6 @@ __all__ = [
     "write_boundary_move_probe_report",
     "write_macro_merge_ensemble_report",
     "write_multi_core_split_probe_report",
+    "write_split_repair_candidate_selection_report",
     "write_split_merge_repair_probe_report",
 ]

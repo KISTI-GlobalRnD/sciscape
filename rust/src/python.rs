@@ -11,12 +11,17 @@ use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
 use crate::adaptive::{
+    apply_split_merge_repair_candidates as compute_apply_split_merge_repair_candidates,
     boundary_group_probes as compute_boundary_group_probes,
     boundary_move_probes as compute_boundary_move_probes,
     cluster_graph_stats as compute_cluster_graph_stats,
+    external_grain_probes as compute_external_grain_probes,
     multi_core_split_probes as compute_multi_core_split_probes,
     split_merge_repair_probes as compute_split_merge_repair_probes,
+    trim_oversize_boundary_moves as compute_trim_oversize_boundary_moves,
 };
+#[cfg(feature = "python")]
+use crate::adaptive::{select_external_grain_probes, ExternalGrainSelectionPolicy};
 #[cfg(feature = "python")]
 use crate::contraction::create_reduced_network;
 #[cfg(feature = "python")]
@@ -891,6 +896,135 @@ impl PyGraph {
         membership,
         candidate_clusters,
         resolution,
+        target_max_weight,
+        min_delta_q = 0.0,
+        max_moves_per_cluster = 0,
+    ))]
+    fn trim_oversize_boundary_moves(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        resolution: f64,
+        target_max_weight: f64,
+        min_delta_q: f64,
+        max_moves_per_cluster: usize,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        if !target_max_weight.is_finite() || target_max_weight <= 0.0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "target_max_weight must be finite and > 0",
+            ));
+        }
+        if !min_delta_q.is_finite() {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "min_delta_q must be finite",
+            ));
+        }
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+
+        let (proposed_membership, moves) = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_trim_oversize_boundary_moves(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                resolution,
+                target_max_weight,
+                min_delta_q,
+                max_moves_per_cluster,
+                &mut ws,
+            )
+        });
+
+        let n = moves.len();
+        let mut source = Vec::with_capacity(n);
+        let mut target = Vec::with_capacity(n);
+        let mut node = Vec::with_capacity(n);
+        let mut node_weight = Vec::with_capacity(n);
+        let mut delta_q = Vec::with_capacity(n);
+        let mut source_weight_before = Vec::with_capacity(n);
+        let mut source_weight_after = Vec::with_capacity(n);
+        let mut target_weight_before = Vec::with_capacity(n);
+        let mut target_weight_after = Vec::with_capacity(n);
+        for mv in moves {
+            source.push(mv.source);
+            target.push(mv.target);
+            node.push(mv.node);
+            node_weight.push(mv.node_weight);
+            delta_q.push(mv.delta_q);
+            source_weight_before.push(mv.source_weight_before);
+            source_weight_after.push(mv.source_weight_after);
+            target_weight_before.push(mv.target_weight_before);
+            target_weight_after.push(mv.target_weight_after);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "membership".to_string(),
+            PyArray1::from_vec(py, proposed_membership)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "source".to_string(),
+            PyArray1::from_vec(py, source).into_any().unbind(),
+        );
+        out.insert(
+            "target".to_string(),
+            PyArray1::from_vec(py, target).into_any().unbind(),
+        );
+        out.insert(
+            "node".to_string(),
+            PyArray1::from_vec(py, node).into_any().unbind(),
+        );
+        out.insert(
+            "node_weight".to_string(),
+            PyArray1::from_vec(py, node_weight).into_any().unbind(),
+        );
+        out.insert(
+            "delta_q".to_string(),
+            PyArray1::from_vec(py, delta_q).into_any().unbind(),
+        );
+        out.insert(
+            "source_weight_before".to_string(),
+            PyArray1::from_vec(py, source_weight_before)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "source_weight_after".to_string(),
+            PyArray1::from_vec(py, source_weight_after)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "target_weight_before".to_string(),
+            PyArray1::from_vec(py, target_weight_before)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "target_weight_after".to_string(),
+            PyArray1::from_vec(py, target_weight_after)
+                .into_any()
+                .unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        resolution,
         epsilon = 0.0,
     ))]
     fn boundary_move_probes(
@@ -1288,6 +1422,354 @@ impl PyGraph {
         membership,
         candidate_clusters,
         resolution,
+        epsilon = 0.0,
+        min_doc_weight = 0.0,
+        max_incident_directed_edges = 0,
+        min_best_delta_q = 0.0,
+        min_assigned_fraction = 0.0,
+        min_best_group_fraction = 0.0,
+    ))]
+    fn external_grain_probes(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        resolution: f64,
+        epsilon: f64,
+        min_doc_weight: f64,
+        max_incident_directed_edges: u64,
+        min_best_delta_q: f64,
+        min_assigned_fraction: f64,
+        min_best_group_fraction: f64,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+
+        let probes = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_external_grain_probes(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                resolution,
+                epsilon,
+                &mut ws,
+            )
+        });
+
+        let selection = select_external_grain_probes(
+            &probes,
+            ExternalGrainSelectionPolicy {
+                min_doc_weight,
+                max_incident_directed_edges,
+                min_best_delta_q,
+                min_assigned_fraction,
+                min_best_group_fraction,
+            },
+        );
+        let n = probes.len();
+        let mut cluster = Vec::with_capacity(n);
+        let mut block_count = Vec::with_capacity(n);
+        let mut doc_weight = Vec::with_capacity(n);
+        let mut incident_directed_edges = Vec::with_capacity(n);
+        let mut source_directed_edges = Vec::with_capacity(n);
+        let mut external_directed_edges = Vec::with_capacity(n);
+        let mut n_external_groups = Vec::with_capacity(n);
+        let mut assigned_count = Vec::with_capacity(n);
+        let mut assigned_weight = Vec::with_capacity(n);
+        let mut assigned_fraction = Vec::with_capacity(n);
+        let mut largest_group_target = Vec::with_capacity(n);
+        let mut largest_group_count = Vec::with_capacity(n);
+        let mut largest_group_weight = Vec::with_capacity(n);
+        let mut largest_group_fraction = Vec::with_capacity(n);
+        let mut largest_group_to_target_weight = Vec::with_capacity(n);
+        let mut largest_group_cut_weight = Vec::with_capacity(n);
+        let mut largest_group_move_delta_q = Vec::with_capacity(n);
+        let mut largest_group_split_delta_q = Vec::with_capacity(n);
+        let mut second_group_target = Vec::with_capacity(n);
+        let mut second_group_weight = Vec::with_capacity(n);
+        let mut second_group_fraction = Vec::with_capacity(n);
+        let mut best_group_target = Vec::with_capacity(n);
+        let mut best_group_count = Vec::with_capacity(n);
+        let mut best_group_weight = Vec::with_capacity(n);
+        let mut best_group_fraction = Vec::with_capacity(n);
+        let mut best_group_to_target_weight = Vec::with_capacity(n);
+        let mut best_group_cut_weight = Vec::with_capacity(n);
+        let mut best_group_move_delta_q = Vec::with_capacity(n);
+        let mut best_group_split_delta_q = Vec::with_capacity(n);
+        let mut best_group_delta_q = Vec::with_capacity(n);
+        let mut best_group_action = Vec::with_capacity(n);
+        let mut positive_group_count = Vec::with_capacity(n);
+        let mut positive_group_weight = Vec::with_capacity(n);
+        let mut near_neutral_group_count = Vec::with_capacity(n);
+        let mut near_neutral_group_weight = Vec::with_capacity(n);
+        let mut recommended_for_split_repair = Vec::with_capacity(n);
+        let mut priority = Vec::with_capacity(n);
+
+        for (probe, selected) in probes.into_iter().zip(selection) {
+            cluster.push(probe.cluster);
+            block_count.push(probe.block_count);
+            doc_weight.push(probe.doc_weight);
+            incident_directed_edges.push(probe.incident_directed_edges);
+            source_directed_edges.push(probe.source_directed_edges);
+            external_directed_edges.push(probe.external_directed_edges);
+            n_external_groups.push(probe.n_external_groups);
+            assigned_count.push(probe.assigned_count);
+            assigned_weight.push(probe.assigned_weight);
+            assigned_fraction.push(probe.assigned_fraction);
+            largest_group_target.push(probe.largest_group_target);
+            largest_group_count.push(probe.largest_group_count);
+            largest_group_weight.push(probe.largest_group_weight);
+            largest_group_fraction.push(probe.largest_group_fraction);
+            largest_group_to_target_weight.push(probe.largest_group_to_target_weight);
+            largest_group_cut_weight.push(probe.largest_group_cut_weight);
+            largest_group_move_delta_q.push(probe.largest_group_move_delta_q);
+            largest_group_split_delta_q.push(probe.largest_group_split_delta_q);
+            second_group_target.push(probe.second_group_target);
+            second_group_weight.push(probe.second_group_weight);
+            second_group_fraction.push(probe.second_group_fraction);
+            best_group_target.push(probe.best_group_target);
+            best_group_count.push(probe.best_group_count);
+            best_group_weight.push(probe.best_group_weight);
+            best_group_fraction.push(probe.best_group_fraction);
+            best_group_to_target_weight.push(probe.best_group_to_target_weight);
+            best_group_cut_weight.push(probe.best_group_cut_weight);
+            best_group_move_delta_q.push(probe.best_group_move_delta_q);
+            best_group_split_delta_q.push(probe.best_group_split_delta_q);
+            best_group_delta_q.push(probe.best_group_delta_q);
+            best_group_action.push(probe.best_group_action);
+            positive_group_count.push(probe.positive_group_count);
+            positive_group_weight.push(probe.positive_group_weight);
+            near_neutral_group_count.push(probe.near_neutral_group_count);
+            near_neutral_group_weight.push(probe.near_neutral_group_weight);
+            recommended_for_split_repair.push(selected.recommended_for_split_repair);
+            priority.push(selected.priority);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "cluster".to_string(),
+            PyArray1::from_vec(py, cluster).into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, block_count).into_any().unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "incident_directed_edges".to_string(),
+            PyArray1::from_vec(py, incident_directed_edges)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "source_directed_edges".to_string(),
+            PyArray1::from_vec(py, source_directed_edges)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "external_directed_edges".to_string(),
+            PyArray1::from_vec(py, external_directed_edges)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "n_external_groups".to_string(),
+            PyArray1::from_vec(py, n_external_groups)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "assigned_count".to_string(),
+            PyArray1::from_vec(py, assigned_count).into_any().unbind(),
+        );
+        out.insert(
+            "assigned_weight".to_string(),
+            PyArray1::from_vec(py, assigned_weight).into_any().unbind(),
+        );
+        out.insert(
+            "assigned_fraction".to_string(),
+            PyArray1::from_vec(py, assigned_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_target".to_string(),
+            PyArray1::from_vec(py, largest_group_target)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_count".to_string(),
+            PyArray1::from_vec(py, largest_group_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_weight".to_string(),
+            PyArray1::from_vec(py, largest_group_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_fraction".to_string(),
+            PyArray1::from_vec(py, largest_group_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_to_target_weight".to_string(),
+            PyArray1::from_vec(py, largest_group_to_target_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_cut_weight".to_string(),
+            PyArray1::from_vec(py, largest_group_cut_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_move_delta_q".to_string(),
+            PyArray1::from_vec(py, largest_group_move_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_group_split_delta_q".to_string(),
+            PyArray1::from_vec(py, largest_group_split_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_target".to_string(),
+            PyArray1::from_vec(py, second_group_target)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_weight".to_string(),
+            PyArray1::from_vec(py, second_group_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "second_group_fraction".to_string(),
+            PyArray1::from_vec(py, second_group_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_target".to_string(),
+            PyArray1::from_vec(py, best_group_target)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_count".to_string(),
+            PyArray1::from_vec(py, best_group_count).into_any().unbind(),
+        );
+        out.insert(
+            "best_group_weight".to_string(),
+            PyArray1::from_vec(py, best_group_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_fraction".to_string(),
+            PyArray1::from_vec(py, best_group_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_to_target_weight".to_string(),
+            PyArray1::from_vec(py, best_group_to_target_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_cut_weight".to_string(),
+            PyArray1::from_vec(py, best_group_cut_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_move_delta_q".to_string(),
+            PyArray1::from_vec(py, best_group_move_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_split_delta_q".to_string(),
+            PyArray1::from_vec(py, best_group_split_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_delta_q".to_string(),
+            PyArray1::from_vec(py, best_group_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "best_group_action".to_string(),
+            PyArray1::from_vec(py, best_group_action)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "positive_group_count".to_string(),
+            PyArray1::from_vec(py, positive_group_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "positive_group_weight".to_string(),
+            PyArray1::from_vec(py, positive_group_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "near_neutral_group_count".to_string(),
+            PyArray1::from_vec(py, near_neutral_group_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "near_neutral_group_weight".to_string(),
+            PyArray1::from_vec(py, near_neutral_group_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "recommended_for_split_repair".to_string(),
+            PyArray1::from_vec(py, recommended_for_split_repair)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "priority".to_string(),
+            PyArray1::from_vec(py, priority).into_any().unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        resolution,
         gamma_multipliers,
         min_core_weight = 25.0,
         randomness = 0.01,
@@ -1483,6 +1965,7 @@ impl PyGraph {
         randomness = 0.01,
         repair_epsilon = 0.0,
         seed = 0,
+        pair_seeded = false,
     ))]
     fn split_merge_repair_probes(
         &self,
@@ -1495,6 +1978,7 @@ impl PyGraph {
         randomness: f64,
         repair_epsilon: f64,
         seed: u64,
+        pair_seeded: bool,
     ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
         let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
             .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
@@ -1520,6 +2004,7 @@ impl PyGraph {
                 randomness,
                 repair_epsilon,
                 seed,
+                pair_seeded,
                 &mut ws,
             )
         });
@@ -1530,12 +2015,14 @@ impl PyGraph {
         let mut probe_resolution = Vec::with_capacity(n);
         let mut block_count = Vec::with_capacity(n);
         let mut doc_weight = Vec::with_capacity(n);
+        let mut induced_directed_edges = Vec::with_capacity(n);
         let mut n_parts = Vec::with_capacity(n);
         let mut core_part_count = Vec::with_capacity(n);
         let mut singleton_weight = Vec::with_capacity(n);
         let mut cut_weight = Vec::with_capacity(n);
         let mut split_delta_q_base = Vec::with_capacity(n);
         let mut split_delta_q_probe = Vec::with_capacity(n);
+        let mut repair_quotient_edges = Vec::with_capacity(n);
         let mut repair_merge_count = Vec::with_capacity(n);
         let mut repair_delta_q = Vec::with_capacity(n);
         let mut net_delta_q = Vec::with_capacity(n);
@@ -1554,12 +2041,14 @@ impl PyGraph {
             probe_resolution.push(probe.probe_resolution);
             block_count.push(probe.block_count);
             doc_weight.push(probe.doc_weight);
+            induced_directed_edges.push(probe.induced_directed_edges);
             n_parts.push(probe.n_parts);
             core_part_count.push(probe.core_part_count);
             singleton_weight.push(probe.singleton_weight);
             cut_weight.push(probe.cut_weight);
             split_delta_q_base.push(probe.split_delta_q_base);
             split_delta_q_probe.push(probe.split_delta_q_probe);
+            repair_quotient_edges.push(probe.repair_quotient_edges);
             repair_merge_count.push(probe.repair_merge_count);
             repair_delta_q.push(probe.repair_delta_q);
             net_delta_q.push(probe.net_delta_q);
@@ -1595,6 +2084,12 @@ impl PyGraph {
             PyArray1::from_vec(py, doc_weight).into_any().unbind(),
         );
         out.insert(
+            "induced_directed_edges".to_string(),
+            PyArray1::from_vec(py, induced_directed_edges)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
             "n_parts".to_string(),
             PyArray1::from_vec(py, n_parts).into_any().unbind(),
         );
@@ -1619,6 +2114,12 @@ impl PyGraph {
         out.insert(
             "split_delta_q_probe".to_string(),
             PyArray1::from_vec(py, split_delta_q_probe)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "repair_quotient_edges".to_string(),
+            PyArray1::from_vec(py, repair_quotient_edges)
                 .into_any()
                 .unbind(),
         );
@@ -1681,6 +2182,246 @@ impl PyGraph {
         out.insert(
             "restored_source_cluster".to_string(),
             PyArray1::from_vec(py, restored_source_cluster)
+                .into_any()
+                .unbind(),
+        );
+        Ok(out)
+    }
+
+    #[pyo3(signature = (
+        membership,
+        candidate_clusters,
+        selected_clusters,
+        selected_gamma_multipliers,
+        resolution,
+        gamma_multipliers,
+        min_core_weight = 25.0,
+        randomness = 0.01,
+        repair_epsilon = 0.0,
+        seed = 0,
+        pair_seeded = false,
+    ))]
+    fn apply_split_merge_repair_candidates(
+        &self,
+        py: Python<'_>,
+        membership: PyReadonlyArray1<u64>,
+        candidate_clusters: PyReadonlyArray1<u64>,
+        selected_clusters: PyReadonlyArray1<u64>,
+        selected_gamma_multipliers: PyReadonlyArray1<f64>,
+        resolution: f64,
+        gamma_multipliers: PyReadonlyArray1<f64>,
+        min_core_weight: f64,
+        randomness: f64,
+        repair_epsilon: f64,
+        seed: u64,
+        pair_seeded: bool,
+    ) -> PyResult<std::collections::HashMap<String, pyo3::PyObject>> {
+        let clustering = Clustering::from_u64_assignments(membership.as_slice()?)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        if clustering.clusters.len() != self.graph.n_nodes {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "membership length {} does not match graph node count {}",
+                clustering.clusters.len(),
+                self.graph.n_nodes,
+            )));
+        }
+        let candidate_clusters = candidate_clusters.as_slice()?.to_vec();
+        let selected_clusters = selected_clusters.as_slice()?.to_vec();
+        let selected_gamma_multipliers = selected_gamma_multipliers.as_slice()?.to_vec();
+        let gamma_multipliers = gamma_multipliers.as_slice()?.to_vec();
+
+        if selected_clusters.len() != selected_gamma_multipliers.len() {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "selected_clusters length {} does not match selected_gamma_multipliers length {}",
+                selected_clusters.len(),
+                selected_gamma_multipliers.len(),
+            )));
+        }
+
+        let (membership, applied) = py.allow_threads(|| {
+            let mut ws = Workspace::new(self.graph.n_nodes.max(clustering.n_clusters));
+            compute_apply_split_merge_repair_candidates(
+                &self.graph,
+                &clustering,
+                &candidate_clusters,
+                &selected_clusters,
+                &selected_gamma_multipliers,
+                resolution,
+                &gamma_multipliers,
+                min_core_weight,
+                randomness,
+                repair_epsilon,
+                seed,
+                pair_seeded,
+                &mut ws,
+            )
+        });
+
+        let n = applied.len();
+        let mut selected_index = Vec::with_capacity(n);
+        let mut cluster = Vec::with_capacity(n);
+        let mut gamma_multiplier = Vec::with_capacity(n);
+        let mut probe_resolution = Vec::with_capacity(n);
+        let mut block_count = Vec::with_capacity(n);
+        let mut doc_weight = Vec::with_capacity(n);
+        let mut n_parts = Vec::with_capacity(n);
+        let mut split_delta_q_base = Vec::with_capacity(n);
+        let mut repair_delta_q = Vec::with_capacity(n);
+        let mut predicted_net_delta_q = Vec::with_capacity(n);
+        let mut repair_merge_count = Vec::with_capacity(n);
+        let mut final_source_units = Vec::with_capacity(n);
+        let mut retained_source_units = Vec::with_capacity(n);
+        let mut escaped_source_units = Vec::with_capacity(n);
+        let mut escaped_source_weight = Vec::with_capacity(n);
+        let mut final_small_source_units = Vec::with_capacity(n);
+        let mut final_small_source_weight = Vec::with_capacity(n);
+        let mut largest_source_unit_fraction = Vec::with_capacity(n);
+        let mut changed_nodes = Vec::with_capacity(n);
+        let mut moved_to_existing_cluster_nodes = Vec::with_capacity(n);
+        let mut moved_to_new_cluster_nodes = Vec::with_capacity(n);
+        let mut new_retained_clusters = Vec::with_capacity(n);
+
+        for row in applied {
+            selected_index.push(row.selected_index);
+            cluster.push(row.cluster);
+            gamma_multiplier.push(row.gamma_multiplier);
+            probe_resolution.push(row.probe_resolution);
+            block_count.push(row.block_count);
+            doc_weight.push(row.doc_weight);
+            n_parts.push(row.n_parts);
+            split_delta_q_base.push(row.split_delta_q_base);
+            repair_delta_q.push(row.repair_delta_q);
+            predicted_net_delta_q.push(row.predicted_net_delta_q);
+            repair_merge_count.push(row.repair_merge_count);
+            final_source_units.push(row.final_source_units);
+            retained_source_units.push(row.retained_source_units);
+            escaped_source_units.push(row.escaped_source_units);
+            escaped_source_weight.push(row.escaped_source_weight);
+            final_small_source_units.push(row.final_small_source_units);
+            final_small_source_weight.push(row.final_small_source_weight);
+            largest_source_unit_fraction.push(row.largest_source_unit_fraction);
+            changed_nodes.push(row.changed_nodes);
+            moved_to_existing_cluster_nodes.push(row.moved_to_existing_cluster_nodes);
+            moved_to_new_cluster_nodes.push(row.moved_to_new_cluster_nodes);
+            new_retained_clusters.push(row.new_retained_clusters);
+        }
+
+        let mut out = std::collections::HashMap::new();
+        out.insert(
+            "membership".to_string(),
+            PyArray1::from_vec(py, membership).into_any().unbind(),
+        );
+        out.insert(
+            "selected_index".to_string(),
+            PyArray1::from_vec(py, selected_index).into_any().unbind(),
+        );
+        out.insert(
+            "cluster".to_string(),
+            PyArray1::from_vec(py, cluster).into_any().unbind(),
+        );
+        out.insert(
+            "gamma_multiplier".to_string(),
+            PyArray1::from_vec(py, gamma_multiplier).into_any().unbind(),
+        );
+        out.insert(
+            "probe_resolution".to_string(),
+            PyArray1::from_vec(py, probe_resolution).into_any().unbind(),
+        );
+        out.insert(
+            "block_count".to_string(),
+            PyArray1::from_vec(py, block_count).into_any().unbind(),
+        );
+        out.insert(
+            "doc_weight".to_string(),
+            PyArray1::from_vec(py, doc_weight).into_any().unbind(),
+        );
+        out.insert(
+            "n_parts".to_string(),
+            PyArray1::from_vec(py, n_parts).into_any().unbind(),
+        );
+        out.insert(
+            "split_delta_q_base".to_string(),
+            PyArray1::from_vec(py, split_delta_q_base)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "repair_delta_q".to_string(),
+            PyArray1::from_vec(py, repair_delta_q).into_any().unbind(),
+        );
+        out.insert(
+            "predicted_net_delta_q".to_string(),
+            PyArray1::from_vec(py, predicted_net_delta_q)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "repair_merge_count".to_string(),
+            PyArray1::from_vec(py, repair_merge_count)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "final_source_units".to_string(),
+            PyArray1::from_vec(py, final_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "retained_source_units".to_string(),
+            PyArray1::from_vec(py, retained_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "escaped_source_units".to_string(),
+            PyArray1::from_vec(py, escaped_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "escaped_source_weight".to_string(),
+            PyArray1::from_vec(py, escaped_source_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "final_small_source_units".to_string(),
+            PyArray1::from_vec(py, final_small_source_units)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "final_small_source_weight".to_string(),
+            PyArray1::from_vec(py, final_small_source_weight)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "largest_source_unit_fraction".to_string(),
+            PyArray1::from_vec(py, largest_source_unit_fraction)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "changed_nodes".to_string(),
+            PyArray1::from_vec(py, changed_nodes).into_any().unbind(),
+        );
+        out.insert(
+            "moved_to_existing_cluster_nodes".to_string(),
+            PyArray1::from_vec(py, moved_to_existing_cluster_nodes)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "moved_to_new_cluster_nodes".to_string(),
+            PyArray1::from_vec(py, moved_to_new_cluster_nodes)
+                .into_any()
+                .unbind(),
+        );
+        out.insert(
+            "new_retained_clusters".to_string(),
+            PyArray1::from_vec(py, new_retained_clusters)
                 .into_any()
                 .unbind(),
         );

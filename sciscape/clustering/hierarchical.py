@@ -29,6 +29,12 @@ from .leiden_rust import (
     postprocess_small_clusters_rust,
     RUST_AVAILABLE,
 )
+from .hierarchy_postprocess import (
+    HierarchyPostprocessConfig,
+    hierarchy_target_max_doc_weight,
+    postprocess_config_hash,
+    run_hierarchy_level_postprocess,
+)
 from ..linkage.combine import combine_edge_layers
 
 log = logging.getLogger(__name__)
@@ -100,6 +106,7 @@ def build_hierarchy(
     stop_at_clusters: int = 5,
     cached_levels: List[HierarchyLevel] | None = None,
     cache_dir: Path | None = None,
+    hierarchy_postprocess: HierarchyPostprocessConfig | None = None,
     progress: callable | None = None,
 ) -> HierarchyResult:
     """Build hierarchical clustering with auto-γ per level.
@@ -134,6 +141,14 @@ def build_hierarchy(
 
     targets = targets or DEFAULT_TARGETS
     min_sizes = min_sizes or DEFAULT_MIN_SIZE
+    hierarchy_postprocess_enabled = bool(
+        hierarchy_postprocess is not None and hierarchy_postprocess.enabled
+    )
+    hierarchy_postprocess_hash = (
+        postprocess_config_hash(hierarchy_postprocess)
+        if hierarchy_postprocess_enabled
+        else None
+    )
 
     def _log(msg):
         log.info(msg)
@@ -241,42 +256,51 @@ def build_hierarchy(
 
         if level_mem_path and level_mem_path.exists() and level_meta_path and level_meta_path.exists():
             import json as _json
-            level_mem_df = pl.read_parquet(level_mem_path)
             with open(level_meta_path) as _f:
                 level_meta = _json.load(_f)
-            original_mem = np.array(level_mem_df["cluster"].to_list(), dtype=np.uint64)
-            gamma = level_meta["gamma"]
-            size_arr = np.bincount(original_mem.astype(np.int32))
-            size_arr = size_arr[size_arr > 0]
-            if len(size_arr) == 0:
-                _log(f"WARNING: empty cached clustering at {level_name}, skipping")
-                continue
-            mx = int(size_arr.max())
-            n_cl = len(size_arr)
-            level = HierarchyLevel(
-                name=level_name, gamma=gamma,
-                n_clusters=n_cl, max_pct=round(100 * mx / max(n_total, 1), 1),
-                avg_size=n_total // n_cl, top5=sorted(size_arr.tolist(), reverse=True)[:5],
-                membership=original_mem, elapsed=0,
-            )
-            levels.append(level)
-            _log(f"Loaded {level_name}: {level.n_clusters} cl, γ={gamma:.2e}")
-
-            # Contract for next level
-            if prev_membership_original is None:
-                # First level: mem is on original graph
-                level_mem_for_contract = original_mem[:n_nodes].astype(np.uint64)
+            cache_valid = True
+            if hierarchy_postprocess_enabled:
+                cache_valid = (
+                    level_meta.get("hierarchy_postprocess_enabled") is True
+                    and level_meta.get("postprocess_config_hash") == hierarchy_postprocess_hash
+                )
+            if not cache_valid:
+                _log(f"Ignoring cached {level_name}: hierarchy postprocess config changed")
             else:
-                # Subsequent: build super-node membership from original-node membership
-                pm = prev_membership_original.astype(np.uint64)
-                alloc_n = max(cur_n, int(pm.max()) + 1) if len(pm) > 0 else cur_n
-                level_mem_for_contract = np.zeros(alloc_n, dtype=np.uint64)
-                level_mem_for_contract[pm] = original_mem[:len(pm)]
-            prev_membership_original = original_mem.astype(np.uint64)
-            cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
-                cur_src, cur_dst, cur_w, level_mem_for_contract, node_sizes,
-            )
-            continue
+                level_mem_df = pl.read_parquet(level_mem_path)
+                original_mem = np.array(level_mem_df["cluster"].to_list(), dtype=np.uint64)
+                gamma = level_meta["gamma"]
+                size_arr = np.bincount(original_mem.astype(np.int32))
+                size_arr = size_arr[size_arr > 0]
+                if len(size_arr) == 0:
+                    _log(f"WARNING: empty cached clustering at {level_name}, skipping")
+                    continue
+                mx = int(size_arr.max())
+                n_cl = len(size_arr)
+                level = HierarchyLevel(
+                    name=level_name, gamma=gamma,
+                    n_clusters=n_cl, max_pct=round(100 * mx / max(n_total, 1), 1),
+                    avg_size=n_total // n_cl, top5=sorted(size_arr.tolist(), reverse=True)[:5],
+                    membership=original_mem, elapsed=0,
+                )
+                levels.append(level)
+                _log(f"Loaded {level_name}: {level.n_clusters} cl, γ={gamma:.2e}")
+
+                # Contract for next level
+                if prev_membership_original is None:
+                    # First level: mem is on original graph
+                    level_mem_for_contract = original_mem[:n_nodes].astype(np.uint64)
+                else:
+                    # Subsequent: build super-node membership from original-node membership
+                    pm = prev_membership_original.astype(np.uint64)
+                    alloc_n = max(cur_n, int(pm.max()) + 1) if len(pm) > 0 else cur_n
+                    level_mem_for_contract = np.zeros(alloc_n, dtype=np.uint64)
+                    level_mem_for_contract[pm] = original_mem[:len(pm)]
+                prev_membership_original = original_mem.astype(np.uint64)
+                cur_src, cur_dst, cur_w, cur_n, node_sizes = _contract_and_normalize(
+                    cur_src, cur_dst, cur_w, level_mem_for_contract, node_sizes,
+                )
+                continue
 
         _log(f"\n{'='*50}")
         _log(f"Level {level_idx}: {level_name} (target_max<{target_pct}%, min_size={min_size})")
@@ -361,7 +385,43 @@ def build_hierarchy(
                     gamma_decay=0.5, max_rounds=5,
                     use_greedy=True, use_component_merge=True,
                 )
-        mem = p.membership
+        mem = np.asarray(p.membership, dtype=np.uint64)
+        postprocess_result = None
+        if hierarchy_postprocess_enabled:
+            if graph is None:
+                graph = build_leiden_graph(
+                    edges_src=cur_src, edges_dst=cur_dst, edges_weight=cur_w,
+                    n_nodes=cur_n, node_weights=nw,
+                )
+            current_node_weights = (
+                node_sizes.astype(np.float64)
+                if node_sizes is not None
+                else np.ones(cur_n, dtype=np.float64)
+            )
+            target_max_doc_weight = hierarchy_target_max_doc_weight(
+                float(current_node_weights.sum()),
+                float(target_pct),
+            )
+            postprocess_result = run_hierarchy_level_postprocess(
+                graph,
+                raw_membership=np.asarray(r.membership, dtype=np.uint64),
+                small_membership=mem,
+                node_weights=current_node_weights,
+                resolution=float(gamma),
+                min_doc_weight=float(min_size),
+                target_max_doc_weight=target_max_doc_weight,
+                config=hierarchy_postprocess,
+                seed=seed,
+                output_dir=(level_dir / "postprocess") if level_dir else None,
+            )
+            mem = np.asarray(postprocess_result.membership, dtype=np.uint64)
+            _log(
+                "Hierarchy postprocess: "
+                f"status={postprocess_result.status}, "
+                f"accepted={postprocess_result.accepted}, "
+                f"target_max_satisfied="
+                f"{postprocess_result.oversize_summary.get('target_max_satisfied')}"
+            )
 
         # Map back to original nodes
         if prev_membership_original is None:
@@ -399,6 +459,25 @@ def build_hierarchy(
                 "max_pct": level.max_pct, "avg_size": level.avg_size,
                 "top5": level.top5, "target_pct": target_pct, "min_size": min_size,
             }
+            if hierarchy_postprocess_enabled and postprocess_result is not None:
+                meta_dict.update({
+                    "hierarchy_postprocess_enabled": True,
+                    "postprocess_status": postprocess_result.status,
+                    "oversize_policy": hierarchy_postprocess.oversize_policy,
+                    "target_min_doc_weight": float(min_size),
+                    "target_max_doc_weight": float(target_max_doc_weight),
+                    "target_max_satisfied": bool(
+                        postprocess_result.oversize_summary.get(
+                            "target_max_satisfied", False
+                        )
+                    ),
+                    "postprocess_quality_delta": float(
+                        postprocess_result.oversize_summary.get(
+                            "final_exact_delta_q", 0.0
+                        )
+                    ),
+                    "postprocess_config_hash": hierarchy_postprocess_hash,
+                })
             with open(level_meta_path, "w") as _f:
                 _json.dump(meta_dict, _f, indent=2)
             _log(f"Saved → {level_dir}/")

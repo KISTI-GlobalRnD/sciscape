@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     import polars as pl
+    from .clustering.hierarchy_postprocess import HierarchyPostprocessConfig
 
 import numpy as np
 
@@ -72,6 +73,7 @@ class LandscapeConfig:
     combine_top_k: int | str = "auto"
     auto_gamma: bool = False
     auto_gamma_target: float = 3.0
+    hierarchy_postprocess: "HierarchyPostprocessConfig | None" = None
 
     # Callbacks
     progress: Any = None  # callable(str) for progress messages
@@ -172,6 +174,8 @@ def _load_and_subsample(
 
 def _all_levels_cached(membership_path: Path, cfg: "LandscapeConfig") -> bool:
     """Check if all hierarchy levels already exist in the membership file."""
+    if cfg.hierarchy_postprocess is not None and cfg.hierarchy_postprocess.enabled:
+        return False
     if not membership_path.exists():
         return False
     import pyarrow.parquet as pq
@@ -422,6 +426,7 @@ def run_landscape(
                 combine_top_k=cfg.combine_top_k,
                 seed=cfg.seed,
                 cache_dir=output_dir,
+                hierarchy_postprocess=cfg.hierarchy_postprocess,
                 progress=cfg.progress,
             )
             # Build membership DataFrame from hierarchy result

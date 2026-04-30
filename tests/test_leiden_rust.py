@@ -140,6 +140,148 @@ def test_cached_graph_cluster_graph_stats():
     assert float(stats.candidate_size_band_gain[0]) == pytest.approx(2.0)
 
 
+def test_cached_graph_external_grain_probes_returns_selection_arrays():
+    graph = build_leiden_graph(
+        edges_src=np.asarray([0, 0, 1], dtype=np.uint32),
+        edges_dst=np.asarray([1, 2, 3], dtype=np.uint32),
+        edges_weight=np.asarray([0.1, 10.0, 9.0], dtype=np.float64),
+        n_nodes=4,
+    )
+    membership = np.asarray([0, 0, 1, 2], dtype=np.uint64)
+
+    probes = graph.external_grain_probes(
+        membership,
+        np.asarray([0], dtype=np.uint64),
+        resolution=0.1,
+    )
+
+    assert probes.n_probes == 1
+    assert bool(probes.recommended_for_split_repair[0]) is True
+    assert probes.recommended_for_split_repair.dtype == np.bool_
+    np.testing.assert_allclose(
+        probes.priority,
+        probes.best_group_delta_q
+        / np.maximum(probes.incident_directed_edges.astype(np.float64), 1.0),
+    )
+
+    filtered = graph.external_grain_probes(
+        membership,
+        np.asarray([0], dtype=np.uint64),
+        resolution=0.1,
+        min_doc_weight=3.0,
+    )
+    assert bool(filtered.recommended_for_split_repair[0]) is False
+    np.testing.assert_allclose(filtered.priority, probes.priority)
+
+
+def test_cached_graph_apply_split_repair_candidates_moves_escaped_fragment():
+    graph = build_leiden_graph(
+        edges_src=np.asarray([0, 1], dtype=np.uint32),
+        edges_dst=np.asarray([1, 2], dtype=np.uint32),
+        edges_weight=np.asarray([0.1, 10.0], dtype=np.float64),
+        n_nodes=3,
+    )
+    membership = np.asarray([0, 0, 1], dtype=np.uint64)
+
+    result = graph.apply_split_merge_repair_candidates(
+        membership,
+        np.asarray([0], dtype=np.uint64),
+        np.asarray([0], dtype=np.uint64),
+        [10.0],
+        resolution=0.1,
+        gamma_multipliers=[10.0],
+        min_core_weight=1.0,
+        randomness=0.0,
+        seed=42,
+    )
+
+    np.testing.assert_array_equal(result.membership, np.asarray([0, 1, 1], dtype=np.uint64))
+    assert result.n_applied == 1
+    assert int(result.changed_nodes[0]) == 1
+    assert int(result.moved_to_existing_cluster_nodes[0]) == 1
+    exact_delta = graph.cpm_quality(result.membership, resolution=0.1) - graph.cpm_quality(
+        membership,
+        resolution=0.1,
+    )
+    assert exact_delta == pytest.approx(float(result.predicted_net_delta_q.sum()))
+
+
+def test_cached_graph_pair_seeded_apply_matches_selected_probe():
+    graph = build_leiden_graph(
+        edges_src=np.asarray([0, 1, 1, 2, 3], dtype=np.uint32),
+        edges_dst=np.asarray([1, 2, 3, 3, 4], dtype=np.uint32),
+        edges_weight=np.asarray([0.1, 10.0, 0.5, 0.2, 8.0], dtype=np.float64),
+        n_nodes=5,
+    )
+    membership = np.asarray([0, 0, 0, 1, 1], dtype=np.uint64)
+    gamma_multipliers = [1.05, 10.0]
+
+    probes = graph.split_merge_repair_probes(
+        membership,
+        np.asarray([0], dtype=np.uint64),
+        resolution=0.1,
+        gamma_multipliers=gamma_multipliers,
+        min_core_weight=1.0,
+        randomness=0.01,
+        seed=42,
+        pair_seeded=True,
+    )
+    selected = np.flatnonzero(np.isclose(probes.gamma_multiplier, 10.0))[0]
+    result = graph.apply_split_merge_repair_candidates(
+        membership,
+        np.asarray([0], dtype=np.uint64),
+        np.asarray([0], dtype=np.uint64),
+        [10.0],
+        resolution=0.1,
+        gamma_multipliers=gamma_multipliers,
+        min_core_weight=1.0,
+        randomness=0.01,
+        seed=42,
+        pair_seeded=True,
+    )
+
+    assert result.n_applied == 1
+    assert int(result.n_parts[0]) == int(probes.n_parts[selected])
+    assert float(result.split_delta_q_base[0]) == pytest.approx(
+        float(probes.split_delta_q_base[selected])
+    )
+    assert float(result.repair_delta_q[0]) == pytest.approx(
+        float(probes.repair_delta_q[selected])
+    )
+    assert float(result.predicted_net_delta_q[0]) == pytest.approx(
+        float(probes.net_delta_q[selected])
+    )
+
+
+def test_cached_graph_trim_oversize_boundary_moves_reduces_source():
+    graph = build_leiden_graph(
+        edges_src=np.asarray([0, 1, 2], dtype=np.uint32),
+        edges_dst=np.asarray([1, 2, 3], dtype=np.uint32),
+        edges_weight=np.asarray([3.0, 0.1, 4.0], dtype=np.float64),
+        n_nodes=4,
+    )
+    membership = np.asarray([0, 0, 0, 1], dtype=np.uint64)
+
+    quality_before = graph.cpm_quality(membership, resolution=0.1)
+    result = graph.trim_oversize_boundary_moves(
+        membership,
+        np.asarray([0], dtype=np.uint64),
+        resolution=0.1,
+        target_max_weight=2.0,
+        min_delta_q=0.0,
+    )
+    quality_after = graph.cpm_quality(result.membership, resolution=0.1)
+
+    np.testing.assert_array_equal(result.membership, np.asarray([0, 0, 1, 1], dtype=np.uint64))
+    assert result.n_moves == 1
+    assert int(result.source[0]) == 0
+    assert int(result.target[0]) == 1
+    assert int(result.node[0]) == 2
+    assert float(result.source_weight_after[0]) == pytest.approx(2.0)
+    assert float(result.target_weight_after[0]) == pytest.approx(2.0)
+    assert quality_after - quality_before == pytest.approx(float(result.delta_q.sum()))
+
+
 def test_cached_graph_postprocess_shape_matches_wrapper():
     src, dst, w = _two_clique_edges()
     graph = build_leiden_graph(

@@ -137,6 +137,26 @@ class RustBoundaryMoveProbes:
 
 
 @dataclass(frozen=True)
+class RustOversizeBoundaryTrimResult:
+    """Applied boundary-node moves that trim clusters over a max doc weight."""
+
+    membership: np.ndarray
+    source: np.ndarray
+    target: np.ndarray
+    node: np.ndarray
+    node_weight: np.ndarray
+    delta_q: np.ndarray
+    source_weight_before: np.ndarray
+    source_weight_after: np.ndarray
+    target_weight_before: np.ndarray
+    target_weight_after: np.ndarray
+
+    @property
+    def n_moves(self) -> int:
+        return int(self.node.shape[0])
+
+
+@dataclass(frozen=True)
 class RustBoundaryGroupProbes:
     """Per-cluster dry-run probes for grouped boundary split/move proposals."""
 
@@ -161,6 +181,53 @@ class RustBoundaryGroupProbes:
     second_group_is_full_cluster: np.ndarray
     best_delta_q: np.ndarray
     best_action: np.ndarray
+
+    @property
+    def n_probes(self) -> int:
+        return int(self.cluster.shape[0])
+
+
+@dataclass(frozen=True)
+class RustExternalGrainProbes:
+    """Cheap source-grain diagnostics based on strongest external attachment."""
+
+    cluster: np.ndarray
+    block_count: np.ndarray
+    doc_weight: np.ndarray
+    incident_directed_edges: np.ndarray
+    source_directed_edges: np.ndarray
+    external_directed_edges: np.ndarray
+    n_external_groups: np.ndarray
+    assigned_count: np.ndarray
+    assigned_weight: np.ndarray
+    assigned_fraction: np.ndarray
+    largest_group_target: np.ndarray
+    largest_group_count: np.ndarray
+    largest_group_weight: np.ndarray
+    largest_group_fraction: np.ndarray
+    largest_group_to_target_weight: np.ndarray
+    largest_group_cut_weight: np.ndarray
+    largest_group_move_delta_q: np.ndarray
+    largest_group_split_delta_q: np.ndarray
+    second_group_target: np.ndarray
+    second_group_weight: np.ndarray
+    second_group_fraction: np.ndarray
+    best_group_target: np.ndarray
+    best_group_count: np.ndarray
+    best_group_weight: np.ndarray
+    best_group_fraction: np.ndarray
+    best_group_to_target_weight: np.ndarray
+    best_group_cut_weight: np.ndarray
+    best_group_move_delta_q: np.ndarray
+    best_group_split_delta_q: np.ndarray
+    best_group_delta_q: np.ndarray
+    best_group_action: np.ndarray
+    positive_group_count: np.ndarray
+    positive_group_weight: np.ndarray
+    near_neutral_group_count: np.ndarray
+    near_neutral_group_weight: np.ndarray
+    recommended_for_split_repair: np.ndarray
+    priority: np.ndarray
 
     @property
     def n_probes(self) -> int:
@@ -206,12 +273,14 @@ class RustSplitMergeRepairProbes:
     probe_resolution: np.ndarray
     block_count: np.ndarray
     doc_weight: np.ndarray
+    induced_directed_edges: np.ndarray
     n_parts: np.ndarray
     core_part_count: np.ndarray
     singleton_weight: np.ndarray
     cut_weight: np.ndarray
     split_delta_q_base: np.ndarray
     split_delta_q_probe: np.ndarray
+    repair_quotient_edges: np.ndarray
     repair_merge_count: np.ndarray
     repair_delta_q: np.ndarray
     net_delta_q: np.ndarray
@@ -226,6 +295,39 @@ class RustSplitMergeRepairProbes:
 
     @property
     def n_probes(self) -> int:
+        return int(self.cluster.shape[0])
+
+
+@dataclass(frozen=True)
+class RustSplitRepairApplyResult:
+    """Proposed membership after applying selected split-repair candidates."""
+
+    membership: np.ndarray
+    selected_index: np.ndarray
+    cluster: np.ndarray
+    gamma_multiplier: np.ndarray
+    probe_resolution: np.ndarray
+    block_count: np.ndarray
+    doc_weight: np.ndarray
+    n_parts: np.ndarray
+    split_delta_q_base: np.ndarray
+    repair_delta_q: np.ndarray
+    predicted_net_delta_q: np.ndarray
+    repair_merge_count: np.ndarray
+    final_source_units: np.ndarray
+    retained_source_units: np.ndarray
+    escaped_source_units: np.ndarray
+    escaped_source_weight: np.ndarray
+    final_small_source_units: np.ndarray
+    final_small_source_weight: np.ndarray
+    largest_source_unit_fraction: np.ndarray
+    changed_nodes: np.ndarray
+    moved_to_existing_cluster_nodes: np.ndarray
+    moved_to_new_cluster_nodes: np.ndarray
+    new_retained_clusters: np.ndarray
+
+    @property
+    def n_applied(self) -> int:
         return int(self.cluster.shape[0])
 
 
@@ -427,6 +529,50 @@ class RustLeidenGraph:
             second_move_count=np.asarray(raw["second_move_count"], dtype=np.uint64),
         )
 
+    def trim_oversize_boundary_moves(
+        self,
+        membership: np.ndarray,
+        candidate_clusters: np.ndarray,
+        *,
+        resolution: float,
+        target_max_weight: float,
+        min_delta_q: float = 0.0,
+        max_moves_per_cluster: int = 0,
+    ) -> RustOversizeBoundaryTrimResult:
+        """Move boundary nodes out of oversize clusters under a hard target cap."""
+        trim = getattr(self.graph, "trim_oversize_boundary_moves", None)
+        if trim is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose "
+                "Graph.trim_oversize_boundary_moves"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
+        raw = trim(
+            membership=membership,
+            candidate_clusters=candidate_clusters,
+            resolution=float(resolution),
+            target_max_weight=float(target_max_weight),
+            min_delta_q=float(min_delta_q),
+            max_moves_per_cluster=int(max_moves_per_cluster),
+        )
+        return RustOversizeBoundaryTrimResult(
+            membership=np.asarray(raw["membership"], dtype=np.uint64),
+            source=np.asarray(raw["source"], dtype=np.uint64),
+            target=np.asarray(raw["target"], dtype=np.uint64),
+            node=np.asarray(raw["node"], dtype=np.uint64),
+            node_weight=np.asarray(raw["node_weight"], dtype=np.float64),
+            delta_q=np.asarray(raw["delta_q"], dtype=np.float64),
+            source_weight_before=np.asarray(
+                raw["source_weight_before"], dtype=np.float64
+            ),
+            source_weight_after=np.asarray(raw["source_weight_after"], dtype=np.float64),
+            target_weight_before=np.asarray(
+                raw["target_weight_before"], dtype=np.float64
+            ),
+            target_weight_after=np.asarray(raw["target_weight_after"], dtype=np.float64),
+        )
+
     def boundary_group_probes(
         self,
         membership: np.ndarray,
@@ -488,6 +634,127 @@ class RustLeidenGraph:
             ),
             best_delta_q=np.asarray(raw["best_delta_q"], dtype=np.float64),
             best_action=np.asarray(raw["best_action"], dtype=np.uint8),
+        )
+
+    def external_grain_probes(
+        self,
+        membership: np.ndarray,
+        candidate_clusters: np.ndarray,
+        *,
+        resolution: float,
+        epsilon: float = 0.0,
+        min_doc_weight: float = 0.0,
+        max_incident_directed_edges: int = 0,
+        min_best_delta_q: float = 0.0,
+        min_assigned_fraction: float = 0.0,
+        min_best_group_fraction: float = 0.0,
+    ) -> RustExternalGrainProbes:
+        """Probe cheap external-attachment grains before full split-repair.
+
+        Each source node is assigned to the external neighbor cluster to which
+        it has the strongest edge weight. Nodes sharing that destination form a
+        candidate grain. The method evaluates direct split/move deltas for the
+        resulting grains without high-gamma local reclustering or repair.
+        """
+        probes = getattr(self.graph, "external_grain_probes", None)
+        if probes is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose "
+                "Graph.external_grain_probes"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
+        raw = probes(
+            membership=membership,
+            candidate_clusters=candidate_clusters,
+            resolution=float(resolution),
+            epsilon=float(epsilon),
+            min_doc_weight=float(min_doc_weight),
+            max_incident_directed_edges=int(max_incident_directed_edges),
+            min_best_delta_q=float(min_best_delta_q),
+            min_assigned_fraction=float(min_assigned_fraction),
+            min_best_group_fraction=float(min_best_group_fraction),
+        )
+        return RustExternalGrainProbes(
+            cluster=np.asarray(raw["cluster"], dtype=np.uint64),
+            block_count=np.asarray(raw["block_count"], dtype=np.uint64),
+            doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            incident_directed_edges=np.asarray(
+                raw["incident_directed_edges"], dtype=np.uint64
+            ),
+            source_directed_edges=np.asarray(
+                raw["source_directed_edges"], dtype=np.uint64
+            ),
+            external_directed_edges=np.asarray(
+                raw["external_directed_edges"], dtype=np.uint64
+            ),
+            n_external_groups=np.asarray(raw["n_external_groups"], dtype=np.uint64),
+            assigned_count=np.asarray(raw["assigned_count"], dtype=np.uint64),
+            assigned_weight=np.asarray(raw["assigned_weight"], dtype=np.float64),
+            assigned_fraction=np.asarray(raw["assigned_fraction"], dtype=np.float64),
+            largest_group_target=np.asarray(raw["largest_group_target"], dtype=np.int64),
+            largest_group_count=np.asarray(raw["largest_group_count"], dtype=np.uint64),
+            largest_group_weight=np.asarray(
+                raw["largest_group_weight"], dtype=np.float64
+            ),
+            largest_group_fraction=np.asarray(
+                raw["largest_group_fraction"], dtype=np.float64
+            ),
+            largest_group_to_target_weight=np.asarray(
+                raw["largest_group_to_target_weight"], dtype=np.float64
+            ),
+            largest_group_cut_weight=np.asarray(
+                raw["largest_group_cut_weight"], dtype=np.float64
+            ),
+            largest_group_move_delta_q=np.asarray(
+                raw["largest_group_move_delta_q"], dtype=np.float64
+            ),
+            largest_group_split_delta_q=np.asarray(
+                raw["largest_group_split_delta_q"], dtype=np.float64
+            ),
+            second_group_target=np.asarray(raw["second_group_target"], dtype=np.int64),
+            second_group_weight=np.asarray(
+                raw["second_group_weight"], dtype=np.float64
+            ),
+            second_group_fraction=np.asarray(
+                raw["second_group_fraction"], dtype=np.float64
+            ),
+            best_group_target=np.asarray(raw["best_group_target"], dtype=np.int64),
+            best_group_count=np.asarray(raw["best_group_count"], dtype=np.uint64),
+            best_group_weight=np.asarray(raw["best_group_weight"], dtype=np.float64),
+            best_group_fraction=np.asarray(
+                raw["best_group_fraction"], dtype=np.float64
+            ),
+            best_group_to_target_weight=np.asarray(
+                raw["best_group_to_target_weight"], dtype=np.float64
+            ),
+            best_group_cut_weight=np.asarray(
+                raw["best_group_cut_weight"], dtype=np.float64
+            ),
+            best_group_move_delta_q=np.asarray(
+                raw["best_group_move_delta_q"], dtype=np.float64
+            ),
+            best_group_split_delta_q=np.asarray(
+                raw["best_group_split_delta_q"], dtype=np.float64
+            ),
+            best_group_delta_q=np.asarray(raw["best_group_delta_q"], dtype=np.float64),
+            best_group_action=np.asarray(raw["best_group_action"], dtype=np.uint8),
+            positive_group_count=np.asarray(
+                raw["positive_group_count"], dtype=np.uint64
+            ),
+            positive_group_weight=np.asarray(
+                raw["positive_group_weight"], dtype=np.float64
+            ),
+            near_neutral_group_count=np.asarray(
+                raw["near_neutral_group_count"], dtype=np.uint64
+            ),
+            near_neutral_group_weight=np.asarray(
+                raw["near_neutral_group_weight"], dtype=np.float64
+            ),
+            recommended_for_split_repair=np.asarray(
+                raw["recommended_for_split_repair"], dtype=bool
+            ),
+            priority=np.asarray(raw["priority"], dtype=np.float64),
         )
 
     def multi_core_split_probes(
@@ -559,6 +826,7 @@ class RustLeidenGraph:
         randomness: float = 0.01,
         repair_epsilon: float = 0.0,
         seed: int = 0,
+        pair_seeded: bool = False,
     ) -> RustSplitMergeRepairProbes:
         """Probe forced high-gamma splits followed by baseline-gamma repair."""
         probes = getattr(self.graph, "split_merge_repair_probes", None)
@@ -570,28 +838,37 @@ class RustLeidenGraph:
         membership = np.ascontiguousarray(membership, dtype=np.uint64)
         candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
         gamma_multipliers_array = np.ascontiguousarray(gamma_multipliers, dtype=np.float64)
-        raw = probes(
-            membership=membership,
-            candidate_clusters=candidate_clusters,
-            resolution=float(resolution),
-            gamma_multipliers=gamma_multipliers_array,
-            min_core_weight=float(min_core_weight),
-            randomness=float(randomness),
-            repair_epsilon=float(repair_epsilon),
-            seed=int(seed),
-        )
+        probe_kwargs = {
+            "membership": membership,
+            "candidate_clusters": candidate_clusters,
+            "resolution": float(resolution),
+            "gamma_multipliers": gamma_multipliers_array,
+            "min_core_weight": float(min_core_weight),
+            "randomness": float(randomness),
+            "repair_epsilon": float(repair_epsilon),
+            "seed": int(seed),
+        }
+        if pair_seeded:
+            probe_kwargs["pair_seeded"] = True
+        raw = probes(**probe_kwargs)
         return RustSplitMergeRepairProbes(
             cluster=np.asarray(raw["cluster"], dtype=np.uint64),
             gamma_multiplier=np.asarray(raw["gamma_multiplier"], dtype=np.float64),
             probe_resolution=np.asarray(raw["probe_resolution"], dtype=np.float64),
             block_count=np.asarray(raw["block_count"], dtype=np.uint64),
             doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            induced_directed_edges=np.asarray(
+                raw["induced_directed_edges"], dtype=np.uint64
+            ),
             n_parts=np.asarray(raw["n_parts"], dtype=np.uint64),
             core_part_count=np.asarray(raw["core_part_count"], dtype=np.uint64),
             singleton_weight=np.asarray(raw["singleton_weight"], dtype=np.float64),
             cut_weight=np.asarray(raw["cut_weight"], dtype=np.float64),
             split_delta_q_base=np.asarray(raw["split_delta_q_base"], dtype=np.float64),
             split_delta_q_probe=np.asarray(raw["split_delta_q_probe"], dtype=np.float64),
+            repair_quotient_edges=np.asarray(
+                raw["repair_quotient_edges"], dtype=np.uint64
+            ),
             repair_merge_count=np.asarray(raw["repair_merge_count"], dtype=np.uint64),
             repair_delta_q=np.asarray(raw["repair_delta_q"], dtype=np.float64),
             net_delta_q=np.asarray(raw["net_delta_q"], dtype=np.float64),
@@ -607,6 +884,93 @@ class RustLeidenGraph:
                 raw["largest_source_unit_fraction"], dtype=np.float64
             ),
             restored_source_cluster=np.asarray(raw["restored_source_cluster"], dtype=bool),
+        )
+
+    def apply_split_merge_repair_candidates(
+        self,
+        membership: np.ndarray,
+        candidate_clusters: np.ndarray,
+        selected_clusters: np.ndarray,
+        selected_gamma_multipliers: Sequence[float],
+        *,
+        resolution: float,
+        gamma_multipliers: Sequence[float],
+        min_core_weight: float = 25.0,
+        randomness: float = 0.01,
+        repair_epsilon: float = 0.0,
+        seed: int = 0,
+        pair_seeded: bool = False,
+    ) -> RustSplitRepairApplyResult:
+        """Apply selected split-repair candidates to a proposed membership.
+
+        This method is deterministic with respect to ``candidate_clusters`` and
+        ``gamma_multipliers``: it replays the probe loop in the same order and
+        only materializes rows listed in ``selected_clusters`` /
+        ``selected_gamma_multipliers``.
+        """
+        apply = getattr(self.graph, "apply_split_merge_repair_candidates", None)
+        if apply is None:
+            raise AttributeError(
+                "installed sciscape_leiden module does not expose "
+                "Graph.apply_split_merge_repair_candidates"
+            )
+        membership = np.ascontiguousarray(membership, dtype=np.uint64)
+        candidate_clusters = np.ascontiguousarray(candidate_clusters, dtype=np.uint64)
+        selected_clusters = np.ascontiguousarray(selected_clusters, dtype=np.uint64)
+        selected_gamma_multipliers_array = np.ascontiguousarray(
+            selected_gamma_multipliers,
+            dtype=np.float64,
+        )
+        gamma_multipliers_array = np.ascontiguousarray(gamma_multipliers, dtype=np.float64)
+        apply_kwargs = {
+            "membership": membership,
+            "candidate_clusters": candidate_clusters,
+            "selected_clusters": selected_clusters,
+            "selected_gamma_multipliers": selected_gamma_multipliers_array,
+            "resolution": float(resolution),
+            "gamma_multipliers": gamma_multipliers_array,
+            "min_core_weight": float(min_core_weight),
+            "randomness": float(randomness),
+            "repair_epsilon": float(repair_epsilon),
+            "seed": int(seed),
+        }
+        if pair_seeded:
+            apply_kwargs["pair_seeded"] = True
+        raw = apply(**apply_kwargs)
+        return RustSplitRepairApplyResult(
+            membership=np.asarray(raw["membership"], dtype=np.uint64),
+            selected_index=np.asarray(raw["selected_index"], dtype=np.uint64),
+            cluster=np.asarray(raw["cluster"], dtype=np.uint64),
+            gamma_multiplier=np.asarray(raw["gamma_multiplier"], dtype=np.float64),
+            probe_resolution=np.asarray(raw["probe_resolution"], dtype=np.float64),
+            block_count=np.asarray(raw["block_count"], dtype=np.uint64),
+            doc_weight=np.asarray(raw["doc_weight"], dtype=np.float64),
+            n_parts=np.asarray(raw["n_parts"], dtype=np.uint64),
+            split_delta_q_base=np.asarray(raw["split_delta_q_base"], dtype=np.float64),
+            repair_delta_q=np.asarray(raw["repair_delta_q"], dtype=np.float64),
+            predicted_net_delta_q=np.asarray(raw["predicted_net_delta_q"], dtype=np.float64),
+            repair_merge_count=np.asarray(raw["repair_merge_count"], dtype=np.uint64),
+            final_source_units=np.asarray(raw["final_source_units"], dtype=np.uint64),
+            retained_source_units=np.asarray(raw["retained_source_units"], dtype=np.uint64),
+            escaped_source_units=np.asarray(raw["escaped_source_units"], dtype=np.uint64),
+            escaped_source_weight=np.asarray(raw["escaped_source_weight"], dtype=np.float64),
+            final_small_source_units=np.asarray(
+                raw["final_small_source_units"], dtype=np.uint64
+            ),
+            final_small_source_weight=np.asarray(
+                raw["final_small_source_weight"], dtype=np.float64
+            ),
+            largest_source_unit_fraction=np.asarray(
+                raw["largest_source_unit_fraction"], dtype=np.float64
+            ),
+            changed_nodes=np.asarray(raw["changed_nodes"], dtype=np.uint64),
+            moved_to_existing_cluster_nodes=np.asarray(
+                raw["moved_to_existing_cluster_nodes"], dtype=np.uint64
+            ),
+            moved_to_new_cluster_nodes=np.asarray(
+                raw["moved_to_new_cluster_nodes"], dtype=np.uint64
+            ),
+            new_retained_clusters=np.asarray(raw["new_retained_clusters"], dtype=np.uint64),
         )
 
     def postprocess_small_clusters(
@@ -1094,9 +1458,12 @@ __all__ = [
     "RUST_AVAILABLE",
     "RustLeidenGraph",
     "RustClusterGraphStats",
+    "RustExternalGrainProbes",
+    "RustOversizeBoundaryTrimResult",
     "RustLeidenResult",
     "RustPostprocessResult",
     "RustResolutionSearchResult",
+    "RustSplitRepairApplyResult",
     "build_leiden_graph",
     "remap_parquet_to_leiden_graph",
     "project_membership_rust",

@@ -18,6 +18,13 @@ from sciscape.clustering.hierarchical import (
     _contract_edges,
     _adaptive_contracted_k,
 )
+from sciscape.clustering.hierarchy_postprocess import (
+    HierarchyPostprocessConfig,
+    hierarchy_target_max_doc_weight,
+    postprocess_config_hash,
+    run_hierarchy_level_postprocess,
+    trim_min_delta_q_for_policy,
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────
@@ -150,6 +157,68 @@ class TestBuildHierarchy:
                                       targets={"nano": 50.0}, min_sizes={"nano": 2})
             assert result2.levels[0].n_clusters == result1.levels[0].n_clusters
 
+    def test_postprocess_enabled_writes_summary_and_meta(self):
+        import json
+
+        df = _make_simple_graph(60)
+        cfg = HierarchyPostprocessConfig(enabled=True)
+        with tempfile.TemporaryDirectory() as td:
+            result = build_hierarchy(
+                edges=df,
+                n_levels=1,
+                cache_dir=Path(td),
+                targets={"nano": 50.0},
+                min_sizes={"nano": 2},
+                hierarchy_postprocess=cfg,
+            )
+
+            assert len(result.levels) == 1
+            summary_path = Path(td) / "nano" / "postprocess" / "summary.json"
+            moves_path = Path(td) / "nano" / "postprocess" / "oversize_boundary_trim_moves.csv"
+            meta_path = Path(td) / "nano" / "meta.json"
+            assert summary_path.exists()
+            assert moves_path.exists()
+            meta = json.loads(meta_path.read_text())
+            summary = json.loads(summary_path.read_text())
+            assert meta["hierarchy_postprocess_enabled"] is True
+            assert meta["oversize_policy"] == "quality_first"
+            assert meta["postprocess_config_hash"] == postprocess_config_hash(cfg)
+            assert meta["target_min_doc_weight"] == 2.0
+            assert meta["target_max_doc_weight"] == pytest.approx(30.0)
+            assert "small_cluster_summary" in summary
+            assert "oversize_summary" in summary
+            assert "final_summary" in summary
+
+    def test_postprocess_cache_hash_mismatch_recomputes_level(self):
+        import json
+
+        df = _make_simple_graph(60)
+        cfg = HierarchyPostprocessConfig(enabled=True)
+        with tempfile.TemporaryDirectory() as td:
+            build_hierarchy(
+                edges=df,
+                n_levels=1,
+                cache_dir=Path(td),
+                targets={"nano": 50.0},
+                min_sizes={"nano": 2},
+                hierarchy_postprocess=cfg,
+            )
+            meta_path = Path(td) / "nano" / "meta.json"
+            meta = json.loads(meta_path.read_text())
+            meta["postprocess_config_hash"] = "stale"
+            meta_path.write_text(json.dumps(meta))
+
+            build_hierarchy(
+                edges=df,
+                n_levels=1,
+                cache_dir=Path(td),
+                targets={"nano": 50.0},
+                min_sizes={"nano": 2},
+                hierarchy_postprocess=cfg,
+            )
+            refreshed = json.loads(meta_path.read_text())
+            assert refreshed["postprocess_config_hash"] == postprocess_config_hash(cfg)
+
     def test_with_layers(self):
         """Test multi-layer combination path."""
         n = 30
@@ -171,6 +240,65 @@ class TestBuildHierarchy:
                                  targets={"nano": 50.0}, min_sizes={"nano": 2})
         assert result.n_nodes > 0
         assert len(result.levels) >= 1
+
+
+class TestHierarchyPostprocess:
+
+    def test_config_defaults_are_disabled_quality_first(self):
+        cfg = HierarchyPostprocessConfig()
+        assert cfg.enabled is False
+        assert cfg.oversize_policy == "quality_first"
+        assert trim_min_delta_q_for_policy(cfg) == 0.0
+
+    def test_target_max_uses_level_target_percentage(self):
+        assert hierarchy_target_max_doc_weight(250.0, 20.0) == 50.0
+
+    def test_hard_cap_uses_negative_trim_bound(self):
+        cfg = HierarchyPostprocessConfig(enabled=True, oversize_policy="hard_cap")
+        assert trim_min_delta_q_for_policy(cfg) == -1.0
+
+    def test_hard_cap_failure_falls_back_to_small_membership(self, tmp_path):
+        class FakeGraph:
+            def cpm_quality(self, membership, *, resolution):
+                return 10.0
+
+            def split_merge_repair_probes(self, *args, **kwargs):
+                return {"cluster": np.asarray([], dtype=np.uint64)}
+
+            def trim_oversize_boundary_moves(self, membership, candidate_clusters, **kwargs):
+                return {
+                    "membership": np.asarray(membership, dtype=np.uint64),
+                    "source": np.asarray([], dtype=np.uint64),
+                    "target": np.asarray([], dtype=np.uint64),
+                    "node": np.asarray([], dtype=np.uint64),
+                    "node_weight": np.asarray([], dtype=np.float64),
+                    "delta_q": np.asarray([], dtype=np.float64),
+                    "source_weight_before": np.asarray([], dtype=np.float64),
+                    "source_weight_after": np.asarray([], dtype=np.float64),
+                    "target_weight_before": np.asarray([], dtype=np.float64),
+                    "target_weight_after": np.asarray([], dtype=np.float64),
+                }
+
+        small_membership = np.asarray([0, 0, 0, 1], dtype=np.uint64)
+        result = run_hierarchy_level_postprocess(
+            FakeGraph(),
+            raw_membership=small_membership,
+            small_membership=small_membership,
+            node_weights=np.ones(4, dtype=np.float64),
+            resolution=0.1,
+            min_doc_weight=1.0,
+            target_max_doc_weight=2.0,
+            config=HierarchyPostprocessConfig(enabled=True, oversize_policy="hard_cap"),
+            seed=0,
+            output_dir=tmp_path,
+        )
+
+        assert result.accepted is False
+        assert result.status == "hard_cap_not_satisfied"
+        assert result.oversize_summary["target_max_satisfied"] is False
+        np.testing.assert_array_equal(result.membership, small_membership)
+        assert (tmp_path / "summary.json").exists()
+        assert (tmp_path / "oversize_boundary_trim_moves.csv").exists()
 
 
 # ── Tests: helper functions ──────────────────────────────────
