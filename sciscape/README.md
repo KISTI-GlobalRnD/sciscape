@@ -1,6 +1,8 @@
 # SciScape
 
-학술 논문 네트워크의 Leiden 클러스터링 + 키워드 추출 파이프라인.
+학술 논문 네트워크를 위한 SciSci 전주기 분석/시각화 패키지입니다. 데이터
+변환, 네트워크 구성, multi-layer clustering, 키워드 추출, 네트워크 시각화,
+리포트/뷰어 생성, 평가 유틸리티를 포함합니다.
 
 ## 구성
 
@@ -21,14 +23,30 @@ sciscape/
 │   └── ...                  #   vectorization → scoring → normalization → ...
 ├── adapters/                # WoS, Scopus, OpenAlex, BibTeX 입력 변환
 ├── landscape.py             # 엔드투엔드 파이프라인
-├── cli.py                   # CLI: cluster | keywords | convert | landscape | viewer | gui
+├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | viewer | export | web | gui
 └── gui.py                   # Tkinter GUI
 ```
+
+## 현재 지원 표면
+
+기본 공개 표면은 end-to-end SciSci analysis/visualization workflow입니다.
+데이터 변환, OpenAlex ingestion, multi-layer edge construction/combination,
+Rust CPM/Leiden clustering, hierarchy construction, keyword extraction,
+network visualization, report/web viewer, evaluation utilities를 포함합니다.
+클러스터링이 핵심 엔진이지만, Sciscape 브랜딩은 전주기 분석과 시각화
+패키지에 둡니다.
+
+Dongdaemun은 개발/연구용 family name입니다. 구체적인 claim에는
+`../docs/dongdaemun_naming_contract.md`를 따르고, `Dongdaemun-post`,
+`Dongdaemun-refinement`, diagnostic-only artifact를 구분합니다. 기본
+`sciscape landscape` 동작은 development-only Dongdaemun refinement를 켜지
+않습니다.
 
 ## 설치
 
 ```bash
-pip install .                 # 기본
+pip install .                 # 기본 Python package
+pip install ./rust ./rust-text . # Rust backends 포함
 pip install ".[viz]"          # + 시각화 (Plotly)
 pip install ".[arrow]"        # + Parquet 메타데이터 가속
 pip install ".[llm]"          # + LLM 정규화/요약 (OpenAI)
@@ -80,6 +98,18 @@ sciscape convert bibtex references.bib -o abstracts.parquet
 
 ```bash
 sciscape viewer -o viewer/index.html
+```
+
+### `sciscape web` — FastAPI 웹 인터페이스
+
+```bash
+sciscape web --host 127.0.0.1 --port 8000
+```
+
+### `sciscape export` — 네트워크 내보내기
+
+```bash
+sciscape export edges.parquet membership.parquet --format gexf -o network.gexf
 ```
 
 ### `sciscape gui` — GUI 실행
@@ -327,7 +357,15 @@ uv run --extra dev python -m pytest -q
 # Rust PyO3 binding 변경 후에는 editable native extension을 재빌드합니다.
 uv run --extra dev maturin develop --manifest-path rust/Cargo.toml
 uv run --extra dev python -m pytest -q
+
+# push/release 전 전체 로컬 게이트
+./scripts/release_check.sh
 ```
+
+`research/**/results/**` 아래의 새 산출물은 기본적으로 git에서 무시합니다.
+이미 추적 중인 curated evidence는 유지되지만, 새 산출물은
+`../research/DATA_RETENTION_PLAN.md` 검토 후 필요한 경우에만 `git add -f`로
+추가합니다. 릴리즈 체크리스트는 `../docs/release_readiness.md`를 참고합니다.
 
 ## I/O 스키마
 

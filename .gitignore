@@ -37,6 +37,11 @@ pilot_*.parquet
 *.parquet
 !tests/**/*.parquet
 
+# Local research result outputs.
+# Existing curated tracked files under research/**/results remain tracked.
+# Add new result artifacts only after DATA_RETENTION_PLAN review, usually with git add -f.
+research/**/results/**
+
 # Web output (temporary job results)
 sciscape_web_output/
 

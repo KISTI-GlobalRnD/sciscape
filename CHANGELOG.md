@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- Local release gate script (`scripts/release_check.sh`) covering whitespace checks,
+  Rust tests, PyO3 rebuilds, Python tests, and CLI import/help smoke.
+- Release readiness checklist (`docs/release_readiness.md`) documenting supported
+  toolkit surface, internal research surface, fresh-clone smoke checks, and
+  artifact policy.
 - **Hierarchical clustering** (`sciscape.clustering.hierarchical`): 4-level nano/micro/meso/macro hierarchy with auto-gamma per level, graph contraction + 1/rank re-normalization
 - **Automatic gamma selection** (`sciscape.clustering.auto_gamma`): density-aware range estimation, parallel coarse scan (ThreadPool), binary refinement, skip-postprocess optimization
 - **Adaptive top-k** (`sciscape.linkage.filters.compute_adaptive_k`): sqrt(n)-based dynamic top-k replacing fixed k=30
@@ -16,6 +21,17 @@
 - **Temporal tracking** (`sciscape.visualization.temporal_tracking`): rolling window cluster evolution
 
 ### Changed
+- README and package README now frame the supported SciScape toolkit surface
+  as a full-cycle SciSci analysis/visualization package across ingestion,
+  network construction, clustering, keyword extraction, visualization/reporting,
+  and evaluation while separating internal Dongdaemun/adaptive-refinement
+  research surfaces.
+- Makefile development targets default to `uv` so they work in checkouts where
+  only `python3` is available and the unversioned `python`/`pip` commands are
+  absent.
+- New research outputs under `research/**/results/**` are ignored by default;
+  curated evidence remains tracked and new result artifacts require explicit
+  retention review before force-adding.
 - `combine_edge_layers` consensus strategy: single group_by (2.1x faster)
 - DC/BC/CC edge construction: array-list (8.3x/3.3x faster) replacing dict-list
 - Edge landscape: numpy vectorized (np.add.at) replacing iter_rows

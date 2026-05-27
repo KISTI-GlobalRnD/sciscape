@@ -1,23 +1,43 @@
 # SciScape
 
-Scientific landscape analysis toolkit: multi-layer consensus clustering + hierarchical keyword extraction for research paper networks.
+SciScape is a full-cycle SciSci analysis and visualization package for research
+paper networks: data ingestion, multi-layer clustering, keyword extraction,
+network visualization, reporting, and evaluation.
 
-## Features
+## Full-Cycle Modules
 
-- **Multi-layer consensus**: Combine DC, BC, CC, and embedding edges with top-k filtering, 1/rank normalization, and consensus weighting (edges confirmed by multiple layers get multiplicative boost)
-- **Hierarchical clustering**: nano → micro → meso → macro with auto-gamma per level
+- **Data ingestion**: WoS, Scopus, OpenAlex, and BibTeX conversion into SciScape tables
+- **Network construction**: DC, BC, CC, and embedding edge builders for paper networks
+- **Multi-layer consensus**: Combine layers with top-k filtering, 1/rank normalization, and consensus weighting (edges confirmed by multiple layers get multiplicative boost)
+- **Hierarchical clustering core**: nano → micro → meso → macro with auto-gamma per level
 - **Rust CPM/Leiden backend**: High-performance Leiden clustering, contraction, projection, and small-cluster postprocess for the main pipeline
+- **10-stage keyword extraction**: TF-IDF, cooccurrence, term network, temporal/depth signals, and optional LLM canonicalization
+- **Network visualization and reports**: FastAPI + D3.js network visualization, Plotly treemap/sunburst, temporal charts, and standalone viewer export
+- **Evaluation framework**: LLM blind review (3 criteria), stability analysis (AMI/ARI), and quality reports
 - **SciSci research modules**: Optional diagnostics and hierarchy postprocess helpers for auditable development runs; Dongdaemun surfaces stay development-only
 - **Rust acceleration**: Clustering + keyword extraction hot paths (50-200x speedup)
 - **OpenAlex integration**: Query → fetch → build citation edges → landscape report
-- **Web interface**: FastAPI + D3.js network visualization + Plotly treemap
-- **10-stage keyword extraction**: TF-IDF, cooccurrence, term network, LLM canonicalization
-- **Evaluation framework**: LLM blind review (3 criteria), stability analysis (AMI/ARI)
+
+## Current Scope
+
+The supported package surface is the end-to-end SciSci analysis and
+visualization workflow: source-data conversion, OpenAlex ingestion, multi-layer
+edge construction and combination, Rust CPM/Leiden clustering, hierarchical
+landscape construction, keyword extraction, network visualization/report
+generation, standalone viewer export, and evaluation utilities. Clustering is
+the core engine, but the package is branded around the full analysis and
+visualization lifecycle.
+
+Dongdaemun is a development/research family name, not the default product
+surface. Use the specific terms in `docs/dongdaemun_naming_contract.md`:
+`Dongdaemun-post` for the manuscript-backed post-Leiden hierarchy repair
+method, `Dongdaemun-refinement` for opt-in integrated refinement R&D, and
+diagnostic-only names for basin/adaptive-refinement probes.
 
 ## Install
 
 ```bash
-# Full install (Rust backends + Python)
+# Full install from a checkout (Rust backends + Python)
 pip install ./rust ./rust-text .
 
 # Or use Makefile
@@ -30,6 +50,12 @@ make install-dev
 **Requirements**: Python >=3.10, Rust toolchain (`rustup`), maturin.
 Without Rust: `pip install .` (Python fallback, slower).
 
+For a pre-push or local release gate, run:
+
+```bash
+./scripts/release_check.sh
+```
+
 ## Quick Start
 
 ### 1. OpenAlex Query (all-in-one)
@@ -38,7 +64,7 @@ Without Rust: `pip install .` (Python fallback, slower).
 sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o results/
 ```
 
-### 2. Multi-layer Clustering
+### 2. Landscape Pipeline
 
 ```bash
 sciscape landscape abstracts.parquet \
@@ -47,6 +73,9 @@ sciscape landscape abstracts.parquet \
     --auto-gamma \
     -o output/
 ```
+
+This produces hierarchy membership, keyword tables, network/report artifacts,
+and viewer-ready data under the output directory.
 
 ### 3. Web Interface
 
@@ -157,18 +186,20 @@ docs/                       LaTeX report + figures
 | `sciscape convert` | Convert WoS/Scopus/OpenAlex/BibTeX -> parquet |
 | `sciscape web` | Launch web interface |
 
-## Key Results
+## Research Status
 
-Validated on 2 OpenAlex fields (Chemical Engineering 115K, Arts and Humanities 754K):
+The active research map is maintained in `research/PROJECT_TRACKS.md`.
+Use that file, `research/FAILED_DIRECTIONS.md`, and
+`research/DATA_RETENTION_PLAN.md` as the current source for claim boundaries,
+negative controls, and artifact retention.
 
-- **Consensus > Sum**: Boundary node assignment (29:26 in 55 LLM blind reviews)
-- **4-layer > 3-layer**: +Emb reduces clusters by 62%, doubles avg size (field_12)
-- **Auto-gamma essential**: gamma shifts 24-32x between 3L/4L
-- **Stability**: AMI = 0.902 +/- 0.009 (5 seeds)
-- **Consensus backbone**: 6.5% of 3-layer edges (3x boost) form cluster cores
+Historical reports remain available, but should not be treated as the current
+claim source without checking the active research notes:
 
-See `docs/multilayer_combination_report.pdf` for the full 15-page analysis.
-See `docs/hierarchy_two_stage_postprocess_report.tex` for the two-stage hierarchy postprocess methodology.
+- `docs/multilayer_combination_report.pdf`
+- `docs/hierarchy_two_stage_postprocess_report.tex`
+- `docs/dongdaemun_naming_contract.md`
+- `docs/leiden_multibasin_research_guardrails.md`
 
 ## Tests
 
@@ -179,7 +210,13 @@ uv run --extra dev python -m pytest -q
 # After changing Rust PyO3 bindings, rebuild the editable native extension.
 uv run --extra dev maturin develop --manifest-path rust/Cargo.toml
 uv run --extra dev python -m pytest -q
+
+# Full local pre-push/release gate.
+./scripts/release_check.sh
 ```
+
+See `docs/release_readiness.md` for the release checklist and research artifact
+policy.
 
 ## License
 

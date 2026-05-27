@@ -1,40 +1,47 @@
-.PHONY: install install-dev install-rust install-rust-text install-python test test-rust test-python clean build docs
+.PHONY: install install-dev install-rust install-rust-text install-python test test-rust test-python release-check clean build docs
+
+PYTHON ?= uv run --extra dev python
+PIP ?= uv pip
+CARGO ?= cargo
 
 # Install everything via pip (Rust crates + Python package)
 install:
-	pip install ./rust ./rust-text .
+	$(PIP) install ./rust ./rust-text .
 
 # Editable install for development
 install-dev:
-	pip install -e ./rust -e ./rust-text -e ".[dev,viz,arrow,openalex,web]"
+	$(PIP) install -e ./rust -e ./rust-text -e ".[dev,viz,arrow,openalex,web]"
 
 # Individual targets
 install-rust:
-	pip install ./rust
+	$(PIP) install ./rust
 
 install-rust-text:
-	pip install ./rust-text
+	$(PIP) install ./rust-text
 
 install-python:
-	pip install -e .
+	$(PIP) install -e .
 
 # Run all tests (Rust + Python)
 test: test-rust test-python
 
 test-rust:
-	cd rust && cargo test --release
-	cd rust-text && cargo test --release
+	cd rust && $(CARGO) test --release
+	cd rust-text && $(CARGO) test --release
 
 test-python:
-	python -m pytest tests/ -q --tb=short
+	$(PYTHON) -m pytest tests/ -q --tb=short
+
+release-check:
+	./scripts/release_check.sh
 
 # Build distributable package
 build:
-	python -m build
+	$(PYTHON) -m build
 
 # Generate API documentation
 docs:
-	pdoc sciscape.clustering.auto_gamma sciscape.clustering.hierarchical \
+	$(PYTHON) -m pdoc sciscape.clustering.auto_gamma sciscape.clustering.hierarchical \
 		sciscape.clustering.integer_remap sciscape.clustering.config \
 		sciscape.linkage.combine sciscape.linkage.filters \
 		sciscape.openalex.edges sciscape.openalex.pipeline \

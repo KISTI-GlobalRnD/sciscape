@@ -1,11 +1,15 @@
-"""SciScape CLI — minimal command-line interface.
+"""SciScape CLI.
 
 Usage:
-    sciscape query     <search_query> [options]          ← NEW: OpenAlex all-in-one
+    sciscape query     <search_query> [options]
     sciscape cluster   <zip_path> <inner_name> [options]
     sciscape keywords  <abstract_parquet> <membership_parquet> [options]
     sciscape convert   <source> <input_file> [options]
     sciscape landscape <edge_file> <abstract_parquet> [options]
+    sciscape viewer    [options]
+    sciscape export    <edge_parquet> <membership_parquet> [options]
+    sciscape web       [options]
+    sciscape gui
 
 Examples:
     sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o ml_output/
@@ -25,7 +29,9 @@ from pathlib import Path
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sciscape",
-        description="SciScape: Leiden clustering + keyword extraction toolkit.",
+        description=(
+            "SciScape: full-cycle SciSci analysis and visualization for paper networks."
+        ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
