@@ -143,6 +143,9 @@ from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pip
 Capabilities:
 
 - c-TF-IDF and frequency scoring.
+- domain-agnostic quality reranking for cluster-facing labels.
+- audit columns for raw terms, normalized terms, display labels, quality scores,
+  and quality flags.
 - vocabulary cleanup and synonym-style merge support.
 - cooccurrence and term-network signals.
 - temporal and depth features.

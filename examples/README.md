@@ -53,3 +53,7 @@ uv run --extra dev python examples/openalex_live_demo.py \
 
 Outputs are written under `examples_output/openalex_live/` by default. This
 directory is intentionally ignored by git as local generated output.
+
+Landscape runs now include keyword quality refinement columns in
+`landscape/keywords.parquet`.  Inspect `display_label`, `quality_score`, and
+`quality_flags` when comparing raw extracted terms with report-facing labels.

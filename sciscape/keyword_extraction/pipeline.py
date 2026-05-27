@@ -37,6 +37,7 @@ from .cooccurrence import collect_cooccurrence
 from .depth import estimate_depth
 from .llm_canonicalize import LLMCanonicalizeMixin
 from .normalization import normalize_keywords
+from .quality import annotate_keyword_quality
 from .temporal import TemporalMixin
 from .term_network import TermNetwork
 from .vocab_cleansing import VocabSimGraph, run_vocab_cleansing
@@ -918,6 +919,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         # Post-scoring normalization (between Stage 4 and 5)
         if stage_idx < 5:
             top_df = self._stage_normalization(top_df)
+            top_df = self._stage_quality_refinement(top_df, rerank=True)
 
         selected_terms = top_df["term"].unique().tolist() if not top_df.empty else []
 
@@ -948,6 +950,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             top_df = top_df.assign(pub_year_series=[])
         top_df = self._build_time_series_metrics(top_df, term_year)
         top_df = self._filter_stopword_only_terms(top_df)
+        top_df = self._stage_quality_refinement(top_df, rerank=False)
 
         self.final_keywords = top_df
         self._log("Pipeline resumed from '%s': final rows = %d", stage, len(top_df))
@@ -986,6 +989,34 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         if dropped > 0:
             self._log("Final cleanup: dropped %d stopword-only terms", dropped)
         return filtered
+
+    def _stage_quality_refinement(self, top_df: pd.DataFrame, *, rerank: bool) -> pd.DataFrame:
+        """Annotate keyword quality and optionally rerank by quality score."""
+        cfg = self.config
+        if top_df.empty or not cfg.quality_diagnostics_enabled:
+            return top_df
+
+        result = annotate_keyword_quality(
+            top_df,
+            rerank=bool(rerank and cfg.quality_rerank_enabled),
+            global_term_threshold=cfg.quality_global_term_threshold,
+            global_term_penalty=cfg.quality_global_term_penalty,
+            entropy_penalty=cfg.quality_cross_cluster_entropy_penalty,
+            phrase_preference_weight=cfg.quality_phrase_preference_weight,
+            artifact_demotion_weight=cfg.quality_artifact_demotion_weight,
+            acronym_demotion_weight=cfg.quality_acronym_demotion_weight,
+            formula_demotion_weight=cfg.quality_formula_demotion_weight,
+            single_token_shadow_penalty=cfg.quality_single_token_shadow_penalty,
+            cluster_specific_bonus=cfg.quality_cluster_specific_bonus,
+            min_multiplier=cfg.quality_min_multiplier,
+            acronym_max_length=cfg.quality_acronym_max_length,
+        )
+        if rerank and cfg.quality_rerank_enabled:
+            self._log(
+                "Quality refinement: reranked %d keyword candidates by quality_score",
+                len(result),
+            )
+        return result
 
     # ----- Optional stages (no-op when disabled) -----
 
@@ -1328,14 +1359,18 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
 
         # Pass 2: keyword refinement (post-scoring normalization → trim → network → canonicalize)
         top_df = self._stage_normalization(top_df)       # post-scoring normalization (+ P2 plural)
+        top_df = self._stage_quality_refinement(top_df, rerank=True)
 
         # Trim back to top_n_keywords per cluster after merge
         final_k = self.config.top_n_keywords
         if not top_df.empty and pool_factor > 1.0:
             before_trim = len(top_df)
+            sort_col = "quality_score" if (
+                self.config.quality_rerank_enabled and "quality_score" in top_df.columns
+            ) else "score"
             top_df = (
                 top_df
-                .sort_values(["cluster_id", "score"], ascending=[True, False])
+                .sort_values(["cluster_id", sort_col, "score"], ascending=[True, False, False])
                 .groupby("cluster_id", sort=False)
                 .head(final_k)
                 .reset_index(drop=True)
@@ -1365,6 +1400,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             top_df = top_df.assign(pub_year_series=[])
         top_df = self._build_time_series_metrics(top_df, term_year)
         top_df = self._filter_stopword_only_terms(top_df)
+        top_df = self._stage_quality_refinement(top_df, rerank=False)
 
         self.final_keywords = top_df
         self._log("Pipeline run complete: final rows = %d", len(top_df))

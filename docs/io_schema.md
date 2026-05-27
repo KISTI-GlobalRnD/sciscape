@@ -138,6 +138,12 @@ tables = run_pipeline(
 | `alias_actions` | List[str] | Stage 7 (LLM) | 정규화 결정 (keep/merge_into/drop) |
 | `alias_notes` | string | Stage 7 (LLM) | 결정 사유 (사람 읽기용) |
 | `alias_reason` | string | Stage 7 (LLM) | 결정 사유 (기술적) |
+| `raw_term` | string | Quality diagnostics | 정제 전 term 보존값 |
+| `normalized_term` | string | Quality diagnostics | 품질 판정용 정규화 term |
+| `display_label` | string | Quality diagnostics | 보고서/시각화 표시용 label |
+| `quality_score` | float | Quality diagnostics | 범용 품질 보정 점수 |
+| `quality_multiplier` | float | Quality diagnostics | 원점수 대비 보정 배율 |
+| `quality_flags` | string | Quality diagnostics | `too_global`, `phrase_preferred`, `acronym_like` 등 pipe-delimited reason code |
 
 ### 최소 설정
 
@@ -184,6 +190,8 @@ cfg = KeywordExtractionConfig(
     academic_stopwords_enabled=True,
     artifact_filter_enabled=True,
     cross_cluster_penalty_enabled=True,
+    quality_diagnostics_enabled=True,
+    quality_rerank_enabled=True,
     fragment_suppression_enabled=True,
 
     # Stage 5-6: Cooccurrence + Term Network
@@ -235,6 +243,7 @@ Pass 1: 문서 스캔 + 전수 정제
   Stage 4  Scoring + Top-K       — c-TF-IDF 점수화 + 풀링
 
 Pass 2: 키워드 정제
+  Quality Refinement       — 범용 quality flags/display label/reranking
   Stage 5  Cooccurrence          — 용어 공출현 행렬
   Stage 6  Term Network          — 유사도 네트워크 + 병합 그룹
   Stage 7  LLM Canonicalize      — LLM 기반 정규화 (선택)
@@ -251,4 +260,5 @@ Quality Filters (스테이지 내에서 적용):
   P5  Artifact filter            — LaTeX 잔여물/숫자/출판사 제거
   P6  Cross-cluster penalty      — 다수 클러스터 공통 용어 패널티
   P7  Fragment suppression       — 잘린 n-gram 억제
+  P8  Quality rerank             — 공통어 하향, phrase 우선, 약어 display 확장
 ```

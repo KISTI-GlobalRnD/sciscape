@@ -12,6 +12,8 @@
   for the full-cycle SciSci analysis/visualization package surface.
 - Live OpenAlex example presets for perovskite solar cells and graph neural
   networks (`examples/openalex_live_demo.py`).
+- Domain-agnostic keyword quality refinement with audit flags, display labels,
+  and optional quality-score reranking for landscape/`--enable-all` outputs.
 - **Hierarchical clustering** (`sciscape.clustering.hierarchical`): 4-level nano/micro/meso/macro hierarchy with auto-gamma per level, graph contraction + 1/rank re-normalization
 - **Automatic gamma selection** (`sciscape.clustering.auto_gamma`): density-aware range estimation, parallel coarse scan (ThreadPool), binary refinement, skip-postprocess optimization
 - **Adaptive top-k** (`sciscape.linkage.filters.compute_adaptive_k`): sqrt(n)-based dynamic top-k replacing fixed k=30

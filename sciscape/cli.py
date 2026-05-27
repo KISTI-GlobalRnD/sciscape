@@ -265,6 +265,8 @@ def _run_keywords(args: argparse.Namespace) -> None:
             academic_stopwords_enabled=True,
             artifact_filter_enabled=True,
             cross_cluster_penalty_enabled=True,
+            quality_diagnostics_enabled=True,
+            quality_rerank_enabled=True,
             fragment_suppression_enabled=True,
             cooccurrence_enabled=True,
             term_network=TermNetworkConfig(

@@ -211,6 +211,9 @@ keywords.to_parquet("keywords.parquet", index=False)
 ### Main Outputs
 
 - `keywords.parquet`.
+  - `term` preserves the extracted raw keyword surface used by downstream code.
+  - `display_label`, `quality_score`, and `quality_flags` expose the
+    domain-agnostic refinement layer for human-facing reports.
 - optional dashboard or viewer artifacts when using visualization helpers.
 - web UI session artifacts when using `sciscape web`.
 

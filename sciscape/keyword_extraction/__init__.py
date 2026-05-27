@@ -8,6 +8,7 @@ from .depth import DepthConfig, estimate_depth
 from .diagnostics import KeywordDiagnostics, keyword_diagnostics, score_before_after
 from .keyword_extraction import KeywordExtractionPipeline, run_keyword_pipeline
 from .normalization import normalize_keywords
+from .quality import annotate_keyword_quality, quality_flag_counts
 from .term_network import TermNetwork, TermNetworkConfig
 from .vocab_cleansing import VocabSimGraph
 from .visualization import (
@@ -32,6 +33,7 @@ __all__ = [
     "TermNetworkConfig",
     "VocabMergeConfig",
     "VocabSimGraph",
+    "annotate_keyword_quality",
     "collect_cooccurrence",
     "estimate_depth",
     "keyword_diagnostics",
@@ -42,6 +44,7 @@ __all__ = [
     "plot_depth_distribution",
     "plot_score_distribution",
     "plot_temporal_trends",
+    "quality_flag_counts",
     "run_keyword_pipeline",
     "score_before_after",
 ]

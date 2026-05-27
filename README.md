@@ -11,7 +11,7 @@ network visualization, reporting, and evaluation.
 - **Multi-layer consensus**: Combine layers with top-k filtering, 1/rank normalization, and consensus weighting (edges confirmed by multiple layers get multiplicative boost)
 - **Hierarchical clustering core**: nano → micro → meso → macro with auto-gamma per level
 - **Rust CPM/Leiden backend**: High-performance Leiden clustering, contraction, projection, and small-cluster postprocess for the main pipeline
-- **10-stage keyword extraction**: TF-IDF, cooccurrence, term network, temporal/depth signals, and optional LLM canonicalization
+- **10-stage keyword extraction**: TF-IDF, quality reranking/display labels, cooccurrence, term network, temporal/depth signals, and optional LLM canonicalization
 - **Network visualization and reports**: FastAPI + D3.js network visualization, Plotly treemap/sunburst, temporal charts, and standalone viewer export
 - **Evaluation framework**: LLM blind review (3 criteria), stability analysis (AMI/ARI), and quality reports
 - **SciSci research modules**: Optional diagnostics and hierarchy postprocess helpers for auditable development runs; Dongdaemun surfaces stay development-only

@@ -157,6 +157,24 @@ class KeywordExtractionConfig:
     cross_cluster_penalty_min_count: int = 2
     cross_cluster_penalty_fn: str = "inverse"  # "inverse" or "log_inverse"
 
+    # Domain-agnostic quality refinement.
+    #
+    # diagnostics_enabled only appends audit/display columns. rerank_enabled
+    # additionally uses the quality score for final top-K selection.
+    quality_diagnostics_enabled: bool = True
+    quality_rerank_enabled: bool = False
+    quality_global_term_threshold: float = 0.5
+    quality_global_term_penalty: float = 0.45
+    quality_cross_cluster_entropy_penalty: float = 0.35
+    quality_phrase_preference_weight: float = 0.25
+    quality_artifact_demotion_weight: float = 0.8
+    quality_acronym_demotion_weight: float = 0.1
+    quality_formula_demotion_weight: float = 0.25
+    quality_single_token_shadow_penalty: float = 0.65
+    quality_cluster_specific_bonus: float = 0.08
+    quality_min_multiplier: float = 0.05
+    quality_acronym_max_length: int = 6
+
     # Fragment suppression — suppress truncated n-grams like "supermassive black"
     # when a longer form "supermassive black hole" exists with comparable frequency.
     fragment_suppression_enabled: bool = True
@@ -254,6 +272,31 @@ class KeywordExtractionConfig:
             raise ValueError(
                 f"cross_cluster_penalty_fn must be 'inverse' or 'log_inverse', got {self.cross_cluster_penalty_fn!r}"
             )
+        if not (0.0 <= self.quality_global_term_threshold <= 1.0):
+            raise ValueError(
+                f"quality_global_term_threshold must be in [0.0, 1.0], got {self.quality_global_term_threshold}"
+            )
+        for name in (
+            "quality_global_term_penalty",
+            "quality_cross_cluster_entropy_penalty",
+            "quality_phrase_preference_weight",
+            "quality_artifact_demotion_weight",
+            "quality_acronym_demotion_weight",
+            "quality_formula_demotion_weight",
+            "quality_single_token_shadow_penalty",
+            "quality_cluster_specific_bonus",
+        ):
+            value = float(getattr(self, name))
+            if not (0.0 <= value <= 1.0):
+                raise ValueError(f"{name} must be in [0.0, 1.0], got {value}")
+        if not (0.0 < self.quality_min_multiplier <= 1.0):
+            raise ValueError(
+                f"quality_min_multiplier must be in (0.0, 1.0], got {self.quality_min_multiplier}"
+            )
+        if self.quality_acronym_max_length < 2:
+            raise ValueError(
+                f"quality_acronym_max_length must be >= 2, got {self.quality_acronym_max_length}"
+            )
         if self.short_term_expansion_mode not in ("annotate", "replace", "both"):
             raise ValueError(
                 f"short_term_expansion_mode must be 'annotate', 'replace', or 'both', got {self.short_term_expansion_mode!r}"
@@ -311,7 +354,9 @@ TIER2_COLUMNS = ["doc_coverage", "source_terms", "pub_year_series",
 #   alias_actions, alias_notes, alias_reason: Stage 8 (canonicalization)
 TIER3_COLUMNS = ["depth_score", "depth_level", "cross_cluster_count",
                  "candidates", "expanded_from",
-                 "alias_actions", "alias_notes", "alias_reason"]
+                 "alias_actions", "alias_notes", "alias_reason",
+                 "raw_term", "normalized_term", "display_label",
+                 "quality_score", "quality_multiplier", "quality_flags"]
 
 
 __all__ = [

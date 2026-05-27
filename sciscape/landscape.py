@@ -237,6 +237,8 @@ def _run_keywords(
         artifact_filter_enabled=True,
         cross_cluster_penalty_enabled=True,
         cross_cluster_penalty_min_count=2,
+        quality_diagnostics_enabled=True,
+        quality_rerank_enabled=True,
         fragment_suppression_enabled=True,
 
         cooccurrence_enabled=cfg.cooccurrence_enabled,
