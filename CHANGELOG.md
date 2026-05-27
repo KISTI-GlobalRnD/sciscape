@@ -8,6 +8,8 @@
 - Release readiness checklist (`docs/release_readiness.md`) documenting supported
   toolkit surface, internal research surface, fresh-clone smoke checks, and
   artifact policy.
+- Public workflow and module map docs (`docs/workflows.md`, `docs/modules.md`)
+  for the full-cycle SciSci analysis/visualization package surface.
 - **Hierarchical clustering** (`sciscape.clustering.hierarchical`): 4-level nano/micro/meso/macro hierarchy with auto-gamma per level, graph contraction + 1/rank re-normalization
 - **Automatic gamma selection** (`sciscape.clustering.auto_gamma`): density-aware range estimation, parallel coarse scan (ThreadPool), binary refinement, skip-postprocess optimization
 - **Adaptive top-k** (`sciscape.linkage.filters.compute_adaptive_k`): sqrt(n)-based dynamic top-k replacing fixed k=30

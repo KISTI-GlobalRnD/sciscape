@@ -50,6 +50,16 @@ The gate performs:
 - full Python test suite with `pytest -q`;
 - CLI import/help smoke check.
 
+## Planned Workflow Smoke
+
+The next release-hardening step is a small full-cycle smoke test that exercises
+the package identity directly:
+
+- build a synthetic abstract table and edge table;
+- run the landscape or equivalent module sequence;
+- confirm membership, keywords, report, and viewer-facing artifacts exist;
+- keep the test small enough to run inside the normal `pytest -q` gate.
+
 ## Fresh Clone Smoke
 
 Before a public release, verify from a new clone or clean virtual environment:

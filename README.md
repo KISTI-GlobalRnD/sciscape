@@ -34,6 +34,15 @@ surface. Use the specific terms in `docs/dongdaemun_naming_contract.md`:
 method, `Dongdaemun-refinement` for opt-in integrated refinement R&D, and
 diagnostic-only names for basin/adaptive-refinement probes.
 
+## Workflow Docs
+
+- `docs/workflows.md`: supported end-to-end workflows from source data to
+  landscapes, keywords, reports, and viewer artifacts.
+- `docs/modules.md`: lifecycle module map across ingest, network, landscape,
+  clustering, keywords, visualization, and evaluation.
+- `docs/io_schema.md`: table-level input/output schemas.
+- `docs/release_readiness.md`: local validation gate and artifact policy.
+
 ## Install
 
 ```bash
@@ -123,6 +132,9 @@ from sciscape.clustering.label_pipeline import label_hierarchy
 labels = label_hierarchy(abstracts_df, result.to_dataframe(uids))
 ```
 
+See `docs/workflows.md` for full CLI and Python examples covering OpenAlex,
+local edge layers, existing membership, and clustering-only runs.
+
 ## Pipeline
 
 ```
@@ -184,6 +196,8 @@ docs/                       LaTeX report + figures
 | `sciscape cluster` | Leiden clustering only |
 | `sciscape keywords` | Keyword extraction only |
 | `sciscape convert` | Convert WoS/Scopus/OpenAlex/BibTeX -> parquet |
+| `sciscape viewer` | Generate a standalone viewer shell |
+| `sciscape export` | Export network files for Gephi/Cytoscape |
 | `sciscape web` | Launch web interface |
 
 ## Research Status
