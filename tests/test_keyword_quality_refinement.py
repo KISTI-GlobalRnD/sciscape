@@ -83,6 +83,32 @@ def test_quality_flag_counts_counts_pipe_delimited_flags():
     }
 
 
+def test_dashboard_data_uses_display_labels_and_preserves_raw_terms():
+    from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
+
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["ddi", "drug drug interaction"],
+            "display_label": ["drug drug interaction", "drug drug interaction"],
+            "quality_score": [1.0, 2.0],
+            "score": [5.0, 1.0],
+            "quality_flags": ["acronym_like", "phrase"],
+            "frequency": [3, 4],
+            "doc_coverage": [2, 3],
+        }
+    )
+
+    data = prepare_cluster_data(df)
+    cluster = data[0]
+
+    assert cluster["label"] == "drug drug interaction"
+    assert cluster["keywords"][0]["term"] == "drug drug interaction"
+    assert cluster["keywords"][0]["raw_term"] == "drug drug interaction"
+    assert cluster["keywords"][0]["score"] == pytest.approx(2.0)
+    assert cluster["keywords"][0]["raw_score"] == pytest.approx(1.0)
+
+
 @pytest.fixture
 def quality_pipeline_data(tmp_path):
     abstracts = pd.DataFrame(

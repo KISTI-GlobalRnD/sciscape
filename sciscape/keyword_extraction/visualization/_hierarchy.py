@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from ._data_prep import _keyword_label_col, _keyword_score_col
+
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
@@ -54,10 +56,12 @@ def _build_hierarchy_df(
         df["depth_level"] = 0
 
     rows: list[dict] = []
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     for cid in sorted(df["cluster_id"].unique()):
         cgrp = df[df["cluster_id"] == cid]
         # Top terms per cluster (cluster label)
-        top3 = cgrp.nlargest(3, "score")["term"].tolist()
+        top3 = cgrp.nlargest(3, score_col)[label_col].astype(str).tolist()
         cluster_label = f"C{cid}: {', '.join(top3)}"
 
         for dlvl in sorted(cgrp["depth_level"].dropna().unique()):
@@ -65,14 +69,14 @@ def _build_hierarchy_df(
             dgrp = cgrp[cgrp["depth_level"] == dlvl]
             depth_label = _DEPTH_NAMES.get(dlvl, f"L{dlvl}")
 
-            for _, row in dgrp.nlargest(top_n_per_depth, "score").iterrows():
+            for _, row in dgrp.nlargest(top_n_per_depth, score_col).iterrows():
                 rows.append({
                     "cluster": cluster_label,
                     "cluster_id": int(cid),
                     "depth": depth_label,
                     "depth_level": dlvl,
-                    "term": row["term"],
-                    "score": row["score"],
+                    "term": row[label_col],
+                    "score": row[score_col],
                     "frequency": row.get("frequency", 1),
                 })
 

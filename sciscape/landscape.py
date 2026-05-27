@@ -511,9 +511,11 @@ def run_landscape(
     log.info("=" * 60)
     n_clusters = keywords_df["cluster_id"].nunique()
     log.info("DONE — %d clusters, %d keywords", n_clusters, len(keywords_df))
+    label_col = "display_label" if "display_label" in keywords_df.columns else "term"
+    score_col = "quality_score" if "quality_score" in keywords_df.columns else "score"
     for cid in sorted(keywords_df["cluster_id"].unique())[:10]:
         grp = keywords_df[keywords_df["cluster_id"] == cid]
-        top3 = grp.nlargest(3, "score")["term"].tolist()
+        top3 = grp.nlargest(3, score_col)[label_col].astype(str).tolist()
         log.info("  C%d (%d kw): %s", cid, len(grp), ", ".join(top3))
     if n_clusters > 10:
         log.info("  ... (%d more clusters)", n_clusters - 10)

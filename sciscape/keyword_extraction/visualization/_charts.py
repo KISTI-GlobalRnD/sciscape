@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from ._data_prep import _build_cluster_labels, _parse_json_col
+from ._data_prep import _build_cluster_labels, _keyword_label_col, _keyword_score_col, _parse_json_col
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
@@ -31,16 +31,19 @@ def plot_cluster_keywords(df: pd.DataFrame, top_n: int = 15) -> "go.Figure":
 
     clusters = sorted(df["cluster_id"].unique())
     labels = _build_cluster_labels(df)
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     fig = make_subplots(rows=len(clusters), cols=1,
                         subplot_titles=[f"C{c}: {labels[c]}" for c in clusters],
                         vertical_spacing=0.08 / max(1, len(clusters)))
     colors = px.colors.qualitative.Plotly
     for idx, cid in enumerate(clusters):
-        grp = df[df["cluster_id"] == cid].nlargest(top_n, "score").sort_values("score")
-        fig.add_trace(go.Bar(y=grp["term"], x=grp["score"], orientation="h",
+        grp = df[df["cluster_id"] == cid].nlargest(top_n, score_col).sort_values(score_col)
+        labels_y = grp[label_col].astype(str)
+        fig.add_trace(go.Bar(y=labels_y, x=grp[score_col], orientation="h",
                              marker_color=colors[idx % len(colors)], showlegend=False,
                              hovertext=[f"<b>{t}</b><br>Score: {s:.4f}<br>Freq: {f:,}"
-                                        for t, s, f in zip(grp["term"], grp["score"], grp["frequency"])],
+                                        for t, s, f in zip(labels_y, grp[score_col], grp["frequency"])],
                              hoverinfo="text"), row=idx + 1, col=1)
     fig.update_layout(title="Top Keywords per Cluster", height=350 * len(clusters), template="plotly_white")
     return fig
@@ -52,12 +55,14 @@ def plot_score_distribution(df: pd.DataFrame) -> "go.Figure":
     import plotly.graph_objects as go
 
     labels = _build_cluster_labels(df)
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     fig = go.Figure()
     for cid in sorted(df["cluster_id"].unique()):
         subset = df[df["cluster_id"] == cid]
-        fig.add_trace(go.Box(y=subset["score"], name=f"C{cid}: {labels[cid]}",
-                             boxpoints="all", jitter=0.4, hovertext=subset["term"], hoverinfo="y+text"))
-    fig.update_layout(title="Score Distribution", yaxis_title="Score", height=500, template="plotly_white")
+        fig.add_trace(go.Box(y=subset[score_col], name=f"C{cid}: {labels[cid]}",
+                             boxpoints="all", jitter=0.4, hovertext=subset[label_col], hoverinfo="y+text"))
+    fig.update_layout(title="Score Distribution", yaxis_title=score_col, height=500, template="plotly_white")
     return fig
 
 
@@ -69,11 +74,13 @@ def plot_temporal_trends(df: pd.DataFrame, metric: str = "pub_year_series", top_
 
     clusters = sorted(df["cluster_id"].unique())
     labels = _build_cluster_labels(df)
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     fig = make_subplots(rows=len(clusters), cols=1,
                         subplot_titles=[f"C{c}: {labels[c]}" for c in clusters],
                         vertical_spacing=0.06 / max(1, len(clusters)))
     for idx, cid in enumerate(clusters):
-        grp = df[df["cluster_id"] == cid].nlargest(top_n, "score").copy()
+        grp = df[df["cluster_id"] == cid].nlargest(top_n, score_col).copy()
         series = _parse_json_col(grp[metric])
         for ti, (_, row) in enumerate(grp.iterrows()):
             d = series.loc[row.name]
@@ -81,7 +88,7 @@ def plot_temporal_trends(df: pd.DataFrame, metric: str = "pub_year_series", top_
                 continue
             years = sorted(int(k) for k in d.keys())
             vals = [d.get(str(y), d.get(y, 0)) for y in years]
-            fig.add_trace(go.Scatter(x=years, y=vals, mode="lines+markers", name=row["term"],
+            fig.add_trace(go.Scatter(x=years, y=vals, mode="lines+markers", name=row[label_col],
                                      visible=True if ti < 5 else "legendonly",
                                      legendgroup=f"c{cid}"), row=idx + 1, col=1)
     fig.update_layout(title="Temporal Trends", height=450 * len(clusters), template="plotly_white")
@@ -115,21 +122,23 @@ def plot_cross_cluster_terms(df: pd.DataFrame, min_clusters: int = 2) -> "go.Fig
     import plotly.graph_objects as go
 
     _build_cluster_labels(df)
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     clusters = sorted(df["cluster_id"].unique())
-    tc = df.groupby("term")["cluster_id"].nunique()
+    tc = df.groupby(label_col)["cluster_id"].nunique()
     shared = tc[tc >= min_clusters].index.tolist()
     if not shared:
         fig = go.Figure()
         fig.add_annotation(text="No shared terms", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
         return fig
-    order = (df[df["term"].isin(shared)].groupby("term").agg(n=("cluster_id", "nunique"), ms=("score", "max"))
+    order = (df[df[label_col].isin(shared)].groupby(label_col).agg(n=("cluster_id", "nunique"), ms=(score_col, "max"))
              .sort_values(["n", "ms"], ascending=[False, False]).index.tolist())
     mat = np.zeros((len(order), len(clusters)))
     for i, t in enumerate(order):
         for j, c in enumerate(clusters):
-            r = df[(df["term"] == t) & (df["cluster_id"] == c)]
+            r = df[(df[label_col] == t) & (df["cluster_id"] == c)]
             if not r.empty:
-                mat[i, j] = r["score"].iloc[0]
+                mat[i, j] = r[score_col].iloc[0]
     fig = go.Figure(go.Heatmap(z=mat, x=[f"C{c}" for c in clusters], y=order, colorscale="YlOrRd"))
     fig.update_layout(title="Cross-Cluster Terms", height=max(400, len(order) * 25 + 150),
                       yaxis=dict(autorange="reversed"), template="plotly_white")

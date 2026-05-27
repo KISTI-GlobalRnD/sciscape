@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from ._data_prep import _keyword_label_col, _keyword_score_col
+
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
@@ -42,8 +44,9 @@ def _cluster_keyword_sets(
 ) -> Dict[int, set]:
     """Extract keyword sets per cluster."""
     result = {}
+    label_col = _keyword_label_col(df)
     for cid, grp in df.groupby("cluster_id"):
-        result[int(cid)] = set(grp["term"].tolist())
+        result[int(cid)] = set(grp[label_col].astype(str).tolist())
     return result
 
 
@@ -209,10 +212,12 @@ def plot_cluster_map(
     # Cluster metadata
     cluster_sizes = {}
     cluster_labels = {}
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     for cid in cids:
         grp = df[df["cluster_id"] == cid]
         cluster_sizes[cid] = len(grp)
-        top_terms = grp.nlargest(top_n_labels, "score")["term"].tolist()
+        top_terms = grp.nlargest(top_n_labels, score_col)[label_col].astype(str).tolist()
         cluster_labels[cid] = ", ".join(top_terms)
 
     # Use doc count from viz_data if available
@@ -371,7 +376,9 @@ def plot_cluster_map_with_keywords(
     for idx, cid in enumerate(cids):
         color = colors[idx % len(colors)]
         grp = df[df["cluster_id"] == cid]
-        top_kw = grp.nlargest(top_n_keywords, "score")
+        label_col = _keyword_label_col(df)
+        score_col = _keyword_score_col(df)
+        top_kw = grp.nlargest(top_n_keywords, score_col)
         n_kw = len(grp)
 
         # Main node
@@ -393,9 +400,9 @@ def plot_cluster_map_with_keywords(
             ky = pos[idx, 1] + r * np.sin(angle)
 
             # Font size proportional to score
-            fsize = max(7, min(11, 7 + row["score"] * 20))
+            fsize = max(7, min(11, 7 + row[score_col] * 20))
             fig.add_annotation(
-                x=kx, y=ky, text=row["term"],
+                x=kx, y=ky, text=row[label_col],
                 showarrow=False,
                 font=dict(size=fsize, color=color),
                 opacity=0.9,

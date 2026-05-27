@@ -23,10 +23,25 @@ def _parse_json_col(series: pd.Series) -> pd.Series:
     return series.apply(_parse)
 
 
+def _keyword_label_col(df: pd.DataFrame) -> str:
+    return "display_label" if "display_label" in df.columns else "term"
+
+
+def _keyword_score_col(df: pd.DataFrame) -> str:
+    return "quality_score" if "quality_score" in df.columns else "score"
+
+
 def _build_cluster_labels(df: pd.DataFrame, n: int = 3) -> Dict[int, str]:
     labels = {}
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
     for cid, grp in df.groupby("cluster_id"):
-        top = grp.nlargest(n, "score")["term"].tolist()
+        top = []
+        for label in grp.nlargest(max(n * 2, n), score_col)[label_col].astype(str).tolist():
+            if label not in top:
+                top.append(label)
+            if len(top) >= n:
+                break
         labels[int(cid)] = ", ".join(top[:n])
     return labels
 
@@ -86,20 +101,33 @@ def prepare_cluster_data(
         subphrase_by_cluster.setdefault(cid_sp, []).append(entry)
 
     _TEMPORAL_METRICS = ["pub_year_series", "ppm_series", "loglift_series"]
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
 
     for cid, grp in df.groupby("cluster_id"):
         cid = int(cid)
-        grp_sorted = grp.sort_values("score", ascending=False)
+        grp_sorted = grp.sort_values(score_col, ascending=False)
         cluster_terms = set(grp_sorted["term"].tolist())
+        raw_to_label = dict(zip(grp_sorted["term"].astype(str), grp_sorted[label_col].astype(str)))
 
         keywords = []
         for _, r in grp_sorted.iterrows():
+            raw_term = str(r["term"])
+            label = str(r[label_col])
             kw = {
-                "term": r["term"],
-                "score": round(float(r["score"]), 6),
+                "term": label,
+                "raw_term": raw_term,
+                "display_label": label,
+                "score": round(float(r[score_col]), 6),
                 "frequency": int(r["frequency"]),
                 "doc_coverage": int(r.get("doc_coverage", r["frequency"])),
             }
+            if score_col != "score" and "score" in r.index:
+                kw["raw_score"] = round(float(r["score"]), 6)
+            if "quality_flags" in r.index and pd.notna(r["quality_flags"]):
+                kw["quality_flags"] = str(r["quality_flags"])
+            if "quality_multiplier" in r.index and pd.notna(r["quality_multiplier"]):
+                kw["quality_multiplier"] = round(float(r["quality_multiplier"]), 6)
 
             if "depth_level" in r.index and pd.notna(r["depth_level"]):
                 kw["depth_level"] = int(r["depth_level"])
@@ -143,18 +171,29 @@ def prepare_cluster_data(
 
         if cooc_edges_all:
             edges = [
-                e for e in cooc_edges_all
+                {
+                    **e,
+                    "source": raw_to_label.get(str(e["source"]), str(e["source"])),
+                    "target": raw_to_label.get(str(e["target"]), str(e["target"])),
+                }
+                for e in cooc_edges_all
                 if e["source"] in cluster_terms and e["target"] in cluster_terms
             ]
             edges = edges[:max_edges_per_cluster]
         else:
-            edges = _compute_network_edges(grp_sorted)
+            edge_terms = grp_sorted.copy()
+            edge_terms["term"] = edge_terms[label_col].astype(str)
+            edges = _compute_network_edges(edge_terms)
 
         subphrases = subphrase_by_cluster.get(cid, [])
 
-        cluster_norm_merges = {
-            t: srcs for t, srcs in norm_merges.items() if t in cluster_terms
-        }
+        cluster_norm_merges = {}
+        for t, srcs in norm_merges.items():
+            if t not in cluster_terms:
+                continue
+            cluster_norm_merges[raw_to_label.get(str(t), str(t))] = [
+                raw_to_label.get(str(src), str(src)) for src in srcs
+            ]
 
         clusters[cid] = {
             "label": labels[cid],
@@ -169,6 +208,15 @@ def prepare_cluster_data(
     centrality = viz_data.get("centrality", {}) if viz_data else {}
     cross_cluster_terms = viz_data.get("cross_cluster_terms", []) if viz_data else []
     pipeline_config = viz_data.get("pipeline_config", {}) if viz_data else {}
+    if label_col != "term":
+        raw_to_label_all = dict(zip(df["term"].astype(str), df[label_col].astype(str)))
+        trend_scores = dict(trend_scores)
+        centrality = dict(centrality)
+        for raw, label in raw_to_label_all.items():
+            if raw in trend_scores and label not in trend_scores:
+                trend_scores[label] = trend_scores[raw]
+            if raw in centrality and label not in centrality:
+                centrality[label] = centrality[raw]
 
     global_data = {
         "_vocab_merges": vocab_merges,

@@ -299,8 +299,10 @@ def _run_keywords(args: argparse.Namespace) -> None:
     print(f"Keywords saved: {args.output} ({len(keywords)} rows)")
 
     # Summary
+    label_col = "display_label" if "display_label" in keywords.columns else "term"
+    score_col = "quality_score" if "quality_score" in keywords.columns else "score"
     for cid, grp in keywords.groupby("cluster_id"):
-        top3 = grp.nlargest(3, "score")["term"].tolist()
+        top3 = grp.nlargest(3, score_col)[label_col].astype(str).tolist()
         print(f"  cluster {cid}: {len(grp)} keywords — {top3}")
 
 

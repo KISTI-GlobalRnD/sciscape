@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import pandas as pd
 
+from ._data_prep import _keyword_label_col, _keyword_score_col
+
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
@@ -61,8 +63,10 @@ def _extract_year_matrix(
     if metric not in df.columns:
         return pd.DataFrame(), [], []
 
-    # Select top terms by score
-    top_df = df.nlargest(top_n, "score").copy()
+    # Select top terms by display-quality score when available.
+    label_col = _keyword_label_col(df)
+    score_col = _keyword_score_col(df)
+    top_df = df.nlargest(top_n, score_col).copy()
     parsed = _parse_year_series(top_df[metric])
 
     # Collect all years
@@ -74,7 +78,7 @@ def _extract_year_matrix(
         return pd.DataFrame(), [], []
 
     years = sorted(all_years)
-    terms = top_df["term"].tolist()
+    terms = top_df[label_col].astype(str).tolist()
 
     mat = np.zeros((len(terms), len(years)))
     for i, d in enumerate(parsed):
@@ -225,7 +229,9 @@ def plot_cluster_trend_comparison(
             values = [sum(year_totals[y]) for y in years]
 
         # Cluster label from top keywords
-        top3 = cgrp.nlargest(3, "score")["term"].tolist()
+        label_col = _keyword_label_col(cgrp)
+        score_col = _keyword_score_col(cgrp)
+        top3 = cgrp.nlargest(3, score_col)[label_col].astype(str).tolist()
         label = f"C{cid}: {', '.join(top3[:3])}"
 
         fig.add_trace(go.Scatter(

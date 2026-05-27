@@ -19,6 +19,22 @@ import polars as pl
 log = logging.getLogger(__name__)
 
 
+def _keyword_label_column(cols: list[str]) -> str:
+    for preferred in ("display_label", "keyword", "term", "word"):
+        for col in cols:
+            if col == preferred or preferred in col.lower():
+                return col
+    return cols[1] if len(cols) > 1 else cols[0]
+
+
+def _keyword_score_column(cols: list[str]) -> str | None:
+    for preferred in ("quality_score", "score", "weight", "tfidf"):
+        for col in cols:
+            if col == preferred or preferred in col.lower():
+                return col
+    return None
+
+
 def build_network_json(
     edges_path: Path,
     membership_path: Path | None = None,
@@ -127,17 +143,18 @@ def _build_level_network(
                     break
             else:
                 cluster_key = kw_df.columns[0]
-            for col in kw_df.columns:
-                if "keyword" in col.lower() or "term" in col.lower():
-                    keyword_key = col
-                    break
-            else:
-                keyword_key = kw_df.columns[1] if len(kw_df.columns) > 1 else kw_df.columns[0]
+            keyword_key = _keyword_label_column(kw_df.columns)
+            score_key = _keyword_score_column(kw_df.columns)
 
             # Top keyword per cluster (vectorized: first keyword per group)
-            first_kw = kw_df.group_by(cluster_key).agg(
-                pl.col(keyword_key).first()
-            )
+            if score_key:
+                first_kw = (
+                    kw_df.sort(score_key, descending=True)
+                    .group_by(cluster_key, maintain_order=True)
+                    .agg(pl.col(keyword_key).first())
+                )
+            else:
+                first_kw = kw_df.group_by(cluster_key).agg(pl.col(keyword_key).first())
             cluster_labels = dict(zip(
                 first_kw[cluster_key].cast(pl.Int64).to_list(),
                 first_kw[keyword_key].cast(pl.Utf8).to_list(),
@@ -311,14 +328,8 @@ def build_term_network_json(
 
     # Auto-detect columns
     cluster_col = next((c for c in cols if "cluster" in c.lower()), cols[0])
-    keyword_col = next(
-        (c for c in cols if any(k in c.lower() for k in ("keyword", "term", "word"))),
-        cols[1] if len(cols) > 1 else cols[0],
-    )
-    score_col = next(
-        (c for c in cols if any(k in c.lower() for k in ("score", "weight", "tfidf"))),
-        cols[2] if len(cols) > 2 else None,
-    )
+    keyword_col = _keyword_label_column(cols)
+    score_col = _keyword_score_column(cols)
 
     # Collect top-k keywords per cluster
     term_clusters: Dict[str, List[int]] = defaultdict(list)  # term → [cluster_ids]
