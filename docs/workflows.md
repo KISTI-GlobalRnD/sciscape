@@ -67,6 +67,25 @@ result = run_openalex_pipeline(cfg)
 - `sciscape.keyword_extraction`
 - `sciscape.keyword_extraction.visualization`
 
+### Curated Live Examples
+
+Two live OpenAlex presets are available in `examples/openalex_live_demo.py`.
+They are intended for a realistic demo dataset rather than CI:
+
+```bash
+uv run --extra dev python examples/openalex_live_demo.py \
+  --preset perovskite \
+  --email you@example.org
+
+uv run --extra dev python examples/openalex_live_demo.py \
+  --preset gnn \
+  --email you@example.org
+```
+
+The `perovskite` preset uses the query `perovskite solar cells`. The `gnn`
+preset uses `title_and_abstract.search=graph neural networks` to reduce generic
+search noise.
+
 ## Workflow 2: Local Abstracts And Edges To Viewer
 
 Use this when abstracts and one or more edge layers already exist locally.

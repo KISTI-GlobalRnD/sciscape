@@ -31,6 +31,7 @@ uv.lock
 # Local data / output / experiments
 data/
 output/
+examples_output/
 reports/
 pilot_*.html
 pilot_*.parquet

@@ -135,6 +135,9 @@ labels = label_hierarchy(abstracts_df, result.to_dataframe(uids))
 See `docs/workflows.md` for full CLI and Python examples covering OpenAlex,
 local edge layers, existing membership, and clustering-only runs.
 
+Curated live OpenAlex demos are available in `examples/openalex_live_demo.py`
+for perovskite solar cells and graph neural networks.
+
 ## Pipeline
 
 ```
