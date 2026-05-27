@@ -118,11 +118,17 @@ from .adaptive_refinement import (
     write_split_repair_candidate_selection_report,
     write_split_merge_repair_probe_report,
 )
-from .hierarchy_postprocess import (
+from .hierarchy_oversize_postprocess import (
+    CyclicPostprocessConfig,
+    CyclicPostprocessDecision,
+    CyclicPostprocessState,
     HierarchyPostprocessConfig,
     LevelPostprocessResult,
+    RefinementCheckpoint,
+    cyclic_postprocess_trigger_reasons,
     hierarchy_target_max_doc_weight,
     postprocess_config_hash,
+    run_cyclic_postprocess_if_due,
     run_hierarchy_level_postprocess,
 )
 from .prepartition import (
@@ -248,9 +254,15 @@ __all__ = [
     "write_multi_core_split_probe_report",
     "write_split_repair_candidate_selection_report",
     "write_split_merge_repair_probe_report",
+    "CyclicPostprocessConfig",
+    "CyclicPostprocessDecision",
+    "CyclicPostprocessState",
     "HierarchyPostprocessConfig",
     "LevelPostprocessResult",
+    "RefinementCheckpoint",
+    "cyclic_postprocess_trigger_reasons",
     "hierarchy_target_max_doc_weight",
     "postprocess_config_hash",
+    "run_cyclic_postprocess_if_due",
     "run_hierarchy_level_postprocess",
 ]

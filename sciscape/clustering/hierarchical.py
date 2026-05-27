@@ -29,7 +29,7 @@ from .leiden_rust import (
     postprocess_small_clusters_rust,
     RUST_AVAILABLE,
 )
-from .hierarchy_postprocess import (
+from .hierarchy_oversize_postprocess import (
     HierarchyPostprocessConfig,
     hierarchy_target_max_doc_weight,
     postprocess_config_hash,
@@ -417,6 +417,7 @@ def build_hierarchy(
             mem = np.asarray(postprocess_result.membership, dtype=np.uint64)
             _log(
                 "Hierarchy postprocess: "
+                f"backend={postprocess_result.backend}, "
                 f"status={postprocess_result.status}, "
                 f"accepted={postprocess_result.accepted}, "
                 f"target_max_satisfied="
@@ -462,6 +463,7 @@ def build_hierarchy(
             if hierarchy_postprocess_enabled and postprocess_result is not None:
                 meta_dict.update({
                     "hierarchy_postprocess_enabled": True,
+                    "postprocess_backend": postprocess_result.backend,
                     "postprocess_status": postprocess_result.status,
                     "oversize_policy": hierarchy_postprocess.oversize_policy,
                     "target_min_doc_weight": float(min_size),

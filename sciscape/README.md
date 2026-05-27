@@ -9,7 +9,8 @@ sciscape/
 ├── clustering/              # CPM Leiden 클러스터링
 │   ├── prepartition.py        #   high-γ block → contraction → cascade hot start
 │   ├── postprocess.py       #   split/merge refinement, γ search
-│   ├── hierarchy_postprocess.py # 계층별 oversize split/trim 후처리 (내부 opt-in)
+│   ├── hierarchy_oversize_postprocess.py # 계층별 oversize 후처리 (내부 dev opt-in)
+│   ├── hierarchy_postprocess.py # 기존 import 호환 경로
 │   ├── dendrogram.py        #   CPM density HAC
 │   ├── constrained_cut.py   #   size-constrained optimal cut (DP)
 │   ├── runner.py            #   LeidenRunner (leidenalg wrapper)
@@ -136,7 +137,7 @@ cfg = LandscapeConfig(gamma_block=None)
 
 Block 캐시는 `blocks.parquet`에 저장되며, 동일 γ_block + 노드 수이면 재사용됩니다.
 
-## 계층 후처리 자동화 (내부 opt-in)
+## 계층 후처리 자동화 (내부 개발 opt-in)
 
 기본 `sciscape landscape` 및 CLI 동작은 변경하지 않습니다. 개발/실험용으로
 명시적으로 켰을 때만 각 hierarchy level에서 다음 흐름을 수행합니다.
@@ -155,7 +156,7 @@ contraction을 지배하지 않도록, 품질 보존 우선 정책으로 진단�
 자동화하는 것입니다.
 
 ```python
-from sciscape.clustering.hierarchy_postprocess import HierarchyPostprocessConfig
+from sciscape.clustering.hierarchy_oversize_postprocess import HierarchyPostprocessConfig
 from sciscape.clustering.hierarchical import build_hierarchy
 
 result = build_hierarchy(
@@ -165,6 +166,8 @@ result = build_hierarchy(
     hierarchy_postprocess=HierarchyPostprocessConfig(
         enabled=True,
         oversize_policy="quality_first",
+        # use_rust_dongdaemun=True,  # 개발용 fast path
+        # write_artifacts=False,     # required for the Rust fast path today
     ),
 )
 ```
@@ -179,6 +182,10 @@ result = build_hierarchy(
 활성화 시 level별로 `postprocess/summary.json`,
 `postprocess/oversize_boundary_trim_moves.csv`, 확장된 `meta.json`을 기록합니다.
 캐시는 `postprocess_config_hash`가 일치할 때만 재사용됩니다.
+
+Dongdaemun 관련 Rust fast path는 현재 개발/연구 전용입니다. 메인 공개 표면은
+Rust CPM/Leiden 실행, projection, contraction, small-cluster postprocess와 SciSci
+연구용 진단 모듈입니다.
 
 방법론 리포트: [`docs/hierarchy_two_stage_postprocess_report.tex`](../docs/hierarchy_two_stage_postprocess_report.tex)
 
@@ -314,8 +321,12 @@ export_viewer("viewer.html")
 ## 개발/검증
 
 ```bash
-python -m pip install -e ".[dev,viz,arrow]"
-pytest -q    # 987+ tests
+# 저장소 로컬 uv 환경을 사용합니다. 시스템 python에는 pytest/pip가 없을 수 있습니다.
+uv run --extra dev python -m pytest -q
+
+# Rust PyO3 binding 변경 후에는 editable native extension을 재빌드합니다.
+uv run --extra dev maturin develop --manifest-path rust/Cargo.toml
+uv run --extra dev python -m pytest -q
 ```
 
 ## I/O 스키마

@@ -134,6 +134,91 @@ fn transformed_increment(inc: f64, randomness: f64) -> f64 {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct NearTieProbeConfig {
+    pub parent_weight: f64,
+    pub margin_parent_weight: f64,
+    pub randomness: f64,
+    pub max_decisions_per_parent: usize,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct LocalMergeMarginSummary {
+    pub decision_count: usize,
+    pub low_margin_decision_count: usize,
+    pub changed_decision_count: usize,
+    pub min_margin: f64,
+    pub p10_margin: f64,
+    pub p50_margin: f64,
+    margins: Vec<f64>,
+}
+
+impl Default for LocalMergeMarginSummary {
+    fn default() -> Self {
+        Self {
+            decision_count: 0,
+            low_margin_decision_count: 0,
+            changed_decision_count: 0,
+            min_margin: f64::NAN,
+            p10_margin: f64::NAN,
+            p50_margin: f64::NAN,
+            margins: Vec::new(),
+        }
+    }
+}
+
+impl LocalMergeMarginSummary {
+    fn record(&mut self, margin: f64, low_margin_threshold: f64) {
+        self.decision_count += 1;
+        if !margin.is_finite() {
+            return;
+        }
+        if margin <= low_margin_threshold {
+            self.low_margin_decision_count += 1;
+        }
+        self.margins.push(margin);
+    }
+
+    fn record_changed_decision(&mut self) {
+        self.changed_decision_count += 1;
+    }
+
+    fn finalize(&mut self) {
+        if self.margins.is_empty() {
+            return;
+        }
+        self.margins.sort_by(f64::total_cmp);
+        self.min_margin = self.margins[0];
+        self.p10_margin = percentile_sorted(&self.margins, 0.10);
+        self.p50_margin = percentile_sorted(&self.margins, 0.50);
+    }
+}
+
+fn percentile_sorted(values: &[f64], q: f64) -> f64 {
+    debug_assert!(!values.is_empty());
+    let index = ((values.len() - 1) as f64 * q).floor() as usize;
+    values[index]
+}
+
+fn update_top_two(
+    candidate: usize,
+    inc: f64,
+    best: &mut usize,
+    best_inc: &mut f64,
+    second: &mut Option<(usize, f64)>,
+) {
+    if inc > *best_inc {
+        *second = Some((*best, *best_inc));
+        *best = candidate;
+        *best_inc = inc;
+    } else if candidate != *best {
+        match second {
+            Some((_, second_inc)) if inc <= *second_inc => {}
+            _ => *second = Some((candidate, inc)),
+        }
+    }
+}
+
 /// Find clustering of a (sub)network via local merging.
 pub fn find_clustering(
     graph: &Graph,
@@ -198,6 +283,53 @@ pub(crate) fn find_clustering_with_workspace_assignments_and_append_sizes(
     ws: &mut LocalMergeWorkspace,
     cluster_sizes: &mut Vec<u32>,
 ) -> usize {
+    find_clustering_with_workspace_assignments_and_append_sizes_internal(
+        graph,
+        resolution,
+        randomness,
+        rng,
+        ws,
+        cluster_sizes,
+        None,
+        None,
+    )
+}
+
+pub(crate) fn find_clustering_with_workspace_assignments_and_append_sizes_traced(
+    graph: &Graph,
+    resolution: f64,
+    randomness: f64,
+    rng: &mut impl Rng,
+    ws: &mut LocalMergeWorkspace,
+    cluster_sizes: &mut Vec<u32>,
+    low_margin_threshold: f64,
+    near_tie_probe: Option<NearTieProbeConfig>,
+) -> (usize, LocalMergeMarginSummary) {
+    let mut summary = LocalMergeMarginSummary::default();
+    let n_clusters = find_clustering_with_workspace_assignments_and_append_sizes_internal(
+        graph,
+        resolution,
+        randomness,
+        rng,
+        ws,
+        cluster_sizes,
+        Some((low_margin_threshold, &mut summary)),
+        near_tie_probe,
+    );
+    summary.finalize();
+    (n_clusters, summary)
+}
+
+fn find_clustering_with_workspace_assignments_and_append_sizes_internal(
+    graph: &Graph,
+    resolution: f64,
+    randomness: f64,
+    rng: &mut impl Rng,
+    ws: &mut LocalMergeWorkspace,
+    cluster_sizes: &mut Vec<u32>,
+    mut margin_summary: Option<(f64, &mut LocalMergeMarginSummary)>,
+    near_tie_probe: Option<NearTieProbeConfig>,
+) -> usize {
     let n = graph.n_nodes;
 
     if n <= 1 {
@@ -230,6 +362,14 @@ pub(crate) fn find_clustering_with_workspace_assignments_and_append_sizes(
     let ewpc_ptr = ewpc.as_mut_ptr();
     let cw_ptr = cw.as_mut_ptr();
     let nc_buf = &mut ws.nc_buf;
+    let mut near_tie_decisions_used = 0usize;
+    let near_tie_threshold = near_tie_probe
+        .map(|probe| probe.margin_parent_weight * probe.parent_weight.max(0.0))
+        .unwrap_or(0.0);
+    let low_margin_threshold = margin_summary
+        .as_ref()
+        .map(|(threshold, _)| *threshold)
+        .unwrap_or(near_tie_threshold);
 
     for &j in order.iter() {
         let j = j as usize;
@@ -262,7 +402,9 @@ pub(crate) fn find_clustering_with_workspace_assignments_and_append_sizes(
         let node_w = unsafe { *nw_arr.get_unchecked(j) };
         let mut best = j;
         let mut max_inc = 0.0;
+        let mut second_best: Option<(usize, f64)> = None;
         let mut total = 0.0;
+        let current_inc = 0.0;
 
         for idx in 0..nc_buf.len() {
             let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
@@ -272,17 +414,42 @@ pub(crate) fn find_clustering_with_workspace_assignments_and_append_sizes(
                     * resolution
             {
                 let inc = unsafe { *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution };
-                if inc > max_inc {
-                    best = nc;
-                    max_inc = inc;
-                }
+                update_top_two(nc, inc, &mut best, &mut max_inc, &mut second_best);
                 if inc >= 0.0 {
                     total += transformed_increment(inc, randomness);
                 }
             }
         }
 
-        if total.is_finite() {
+        let mut near_tie_handled = false;
+        if let Some((_, summary)) = margin_summary.as_mut() {
+            let margin = second_best
+                .map(|(_, second_inc)| max_inc - second_inc)
+                .unwrap_or(f64::INFINITY);
+            summary.record(margin, low_margin_threshold);
+        }
+        if let (Some(probe), Some((second, second_inc))) = (near_tie_probe, second_best) {
+            let margin = max_inc - second_inc;
+            let decision_budget_remaining = probe.max_decisions_per_parent == 0
+                || near_tie_decisions_used < probe.max_decisions_per_parent;
+            if decision_budget_remaining
+                && margin <= near_tie_threshold
+                && second_inc >= current_inc
+                && second != best
+            {
+                near_tie_decisions_used += 1;
+                near_tie_handled = true;
+                let p = probe.randomness.clamp(0.0, 1.0);
+                if p > 0.0 && rng.gen::<f64>() < p {
+                    best = second;
+                    if let Some((_, summary)) = margin_summary.as_mut() {
+                        summary.record_changed_decision();
+                    }
+                }
+            }
+        }
+
+        if !near_tie_handled && total.is_finite() {
             let mut r = rng.gen::<f64>() * total;
             for idx in 0..nc_buf.len() {
                 let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
@@ -406,6 +573,62 @@ pub(crate) fn find_clustering_induced_u32_with_workspace_assignments_and_append_
     ws: &mut LocalMergeWorkspace,
     cluster_sizes: &mut Vec<u32>,
 ) -> usize {
+    find_clustering_induced_u32_with_workspace_assignments_and_append_sizes_internal(
+        graph,
+        nodes,
+        local_index,
+        resolution,
+        randomness,
+        rng,
+        ws,
+        cluster_sizes,
+        None,
+        None,
+    )
+}
+
+pub(crate) fn find_clustering_induced_u32_with_workspace_assignments_and_append_sizes_traced(
+    graph: &Graph,
+    nodes: &[u32],
+    local_index: &mut [u32],
+    resolution: f64,
+    randomness: f64,
+    rng: &mut impl Rng,
+    ws: &mut LocalMergeWorkspace,
+    cluster_sizes: &mut Vec<u32>,
+    low_margin_threshold: f64,
+    near_tie_probe: Option<NearTieProbeConfig>,
+) -> (usize, LocalMergeMarginSummary) {
+    let mut summary = LocalMergeMarginSummary::default();
+    let n_clusters =
+        find_clustering_induced_u32_with_workspace_assignments_and_append_sizes_internal(
+            graph,
+            nodes,
+            local_index,
+            resolution,
+            randomness,
+            rng,
+            ws,
+            cluster_sizes,
+            Some((low_margin_threshold, &mut summary)),
+            near_tie_probe,
+        );
+    summary.finalize();
+    (n_clusters, summary)
+}
+
+fn find_clustering_induced_u32_with_workspace_assignments_and_append_sizes_internal(
+    graph: &Graph,
+    nodes: &[u32],
+    local_index: &mut [u32],
+    resolution: f64,
+    randomness: f64,
+    rng: &mut impl Rng,
+    ws: &mut LocalMergeWorkspace,
+    cluster_sizes: &mut Vec<u32>,
+    mut margin_summary: Option<(f64, &mut LocalMergeMarginSummary)>,
+    near_tie_probe: Option<NearTieProbeConfig>,
+) -> usize {
     assert_eq!(local_index.len(), graph.n_nodes);
 
     let n = nodes.len();
@@ -461,6 +684,14 @@ pub(crate) fn find_clustering_induced_u32_with_workspace_assignments_and_append_
     let ewpc_ptr = ewpc.as_mut_ptr();
     let cw_ptr = cw.as_mut_ptr();
     let nc_buf = &mut ws.nc_buf;
+    let mut near_tie_decisions_used = 0usize;
+    let near_tie_threshold = near_tie_probe
+        .map(|probe| probe.margin_parent_weight * probe.parent_weight.max(0.0))
+        .unwrap_or(0.0);
+    let low_margin_threshold = margin_summary
+        .as_ref()
+        .map(|(threshold, _)| *threshold)
+        .unwrap_or(near_tie_threshold);
 
     for &j in order.iter() {
         let j = j as usize;
@@ -498,7 +729,9 @@ pub(crate) fn find_clustering_induced_u32_with_workspace_assignments_and_append_
         let node_w = unsafe { *nw_arr.get_unchecked(old_j) };
         let mut best = j;
         let mut max_inc = 0.0;
+        let mut second_best: Option<(usize, f64)> = None;
         let mut total = 0.0;
+        let current_inc = 0.0;
 
         for idx in 0..nc_buf.len() {
             let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
@@ -508,17 +741,42 @@ pub(crate) fn find_clustering_induced_u32_with_workspace_assignments_and_append_
                     * resolution
             {
                 let inc = unsafe { *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution };
-                if inc > max_inc {
-                    best = nc;
-                    max_inc = inc;
-                }
+                update_top_two(nc, inc, &mut best, &mut max_inc, &mut second_best);
                 if inc >= 0.0 {
                     total += transformed_increment(inc, randomness);
                 }
             }
         }
 
-        if total.is_finite() {
+        let mut near_tie_handled = false;
+        if let Some((_, summary)) = margin_summary.as_mut() {
+            let margin = second_best
+                .map(|(_, second_inc)| max_inc - second_inc)
+                .unwrap_or(f64::INFINITY);
+            summary.record(margin, low_margin_threshold);
+        }
+        if let (Some(probe), Some((second, second_inc))) = (near_tie_probe, second_best) {
+            let margin = max_inc - second_inc;
+            let decision_budget_remaining = probe.max_decisions_per_parent == 0
+                || near_tie_decisions_used < probe.max_decisions_per_parent;
+            if decision_budget_remaining
+                && margin <= near_tie_threshold
+                && second_inc >= current_inc
+                && second != best
+            {
+                near_tie_decisions_used += 1;
+                near_tie_handled = true;
+                let p = probe.randomness.clamp(0.0, 1.0);
+                if p > 0.0 && rng.gen::<f64>() < p {
+                    best = second;
+                    if let Some((_, summary)) = margin_summary.as_mut() {
+                        summary.record_changed_decision();
+                    }
+                }
+            }
+        }
+
+        if !near_tie_handled && total.is_finite() {
             let mut r = rng.gen::<f64>() * total;
             for idx in 0..nc_buf.len() {
                 let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
@@ -669,6 +927,69 @@ mod tests {
         assert_eq!(n_clusters, wrapped.n_clusters);
         assert_eq!(direct_ws.assignments(), wrapped.clusters.as_slice());
         assert_eq!(sizes.iter().sum::<u32>(), g.n_nodes as u32);
+    }
+
+    #[test]
+    fn test_near_tie_margin_summary_records_best_second_margin() {
+        let g = Graph::from_edge_list(2, &[0], &[1], &[10.0]);
+        let mut rng = StdRng::seed_from_u64(3);
+        let mut ws = LocalMergeWorkspace::new(0);
+        let mut sizes = Vec::new();
+
+        let (n_clusters, summary) =
+            find_clustering_with_workspace_assignments_and_append_sizes_traced(
+                &g, 0.0, 0.0, &mut rng, &mut ws, &mut sizes, 10.0, None,
+            );
+
+        assert_eq!(n_clusters, 1);
+        assert_eq!(summary.decision_count, 1);
+        assert_eq!(summary.low_margin_decision_count, 1);
+        assert_eq!(summary.changed_decision_count, 0);
+        assert!((summary.min_margin - 10.0).abs() < 1e-12);
+        assert!((summary.p10_margin - 10.0).abs() < 1e-12);
+        assert!((summary.p50_margin - 10.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_near_tie_probe_outside_margin_keeps_standard_assignment() {
+        let g = Graph::from_edge_list(2, &[0], &[1], &[10.0]);
+
+        let mut baseline_rng = StdRng::seed_from_u64(3);
+        let mut baseline_ws = LocalMergeWorkspace::new(0);
+        let mut baseline_sizes = Vec::new();
+        let baseline_n_clusters = find_clustering_with_workspace_assignments_and_append_sizes(
+            &g,
+            0.0,
+            0.0,
+            &mut baseline_rng,
+            &mut baseline_ws,
+            &mut baseline_sizes,
+        );
+        let baseline_assignments = baseline_ws.assignments()[..g.n_nodes].to_vec();
+
+        let mut probe_rng = StdRng::seed_from_u64(3);
+        let mut probe_ws = LocalMergeWorkspace::new(0);
+        let mut probe_sizes = Vec::new();
+        let (probe_n_clusters, summary) =
+            find_clustering_with_workspace_assignments_and_append_sizes_traced(
+                &g,
+                0.0,
+                0.0,
+                &mut probe_rng,
+                &mut probe_ws,
+                &mut probe_sizes,
+                0.1,
+                Some(NearTieProbeConfig {
+                    parent_weight: 2.0,
+                    margin_parent_weight: 0.05,
+                    randomness: 1.0,
+                    max_decisions_per_parent: 8,
+                }),
+            );
+
+        assert_eq!(probe_n_clusters, baseline_n_clusters);
+        assert_eq!(probe_ws.assignments(), baseline_assignments.as_slice());
+        assert_eq!(summary.changed_decision_count, 0);
     }
 
     #[test]

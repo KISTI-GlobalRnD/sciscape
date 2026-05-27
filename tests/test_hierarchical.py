@@ -6,7 +6,11 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from sciscape.clustering.leiden_rust import RUST_AVAILABLE
+from sciscape.clustering.leiden_rust import (
+    RUST_AVAILABLE,
+    RUST_DONGDAEMUN_AVAILABLE,
+    build_leiden_graph,
+)
 
 pytestmark = pytest.mark.skipif(not RUST_AVAILABLE, reason="Rust backend required")
 
@@ -18,7 +22,7 @@ from sciscape.clustering.hierarchical import (
     _contract_edges,
     _adaptive_contracted_k,
 )
-from sciscape.clustering.hierarchy_postprocess import (
+from sciscape.clustering.hierarchy_oversize_postprocess import (
     HierarchyPostprocessConfig,
     hierarchy_target_max_doc_weight,
     postprocess_config_hash,
@@ -182,9 +186,11 @@ class TestBuildHierarchy:
             summary = json.loads(summary_path.read_text())
             assert meta["hierarchy_postprocess_enabled"] is True
             assert meta["oversize_policy"] == "quality_first"
+            assert meta["postprocess_backend"] == "python"
             assert meta["postprocess_config_hash"] == postprocess_config_hash(cfg)
             assert meta["target_min_doc_weight"] == 2.0
             assert meta["target_max_doc_weight"] == pytest.approx(30.0)
+            assert summary["backend"] == "python"
             assert "small_cluster_summary" in summary
             assert "oversize_summary" in summary
             assert "final_summary" in summary
@@ -247,6 +253,7 @@ class TestHierarchyPostprocess:
     def test_config_defaults_are_disabled_quality_first(self):
         cfg = HierarchyPostprocessConfig()
         assert cfg.enabled is False
+        assert cfg.use_rust_dongdaemun is False
         assert cfg.oversize_policy == "quality_first"
         assert trim_min_delta_q_for_policy(cfg) == 0.0
 
@@ -299,6 +306,107 @@ class TestHierarchyPostprocess:
         np.testing.assert_array_equal(result.membership, small_membership)
         assert (tmp_path / "summary.json").exists()
         assert (tmp_path / "oversize_boundary_trim_moves.csv").exists()
+
+    def test_rust_dongdaemun_opt_in_keeps_python_backend_for_artifacts(self, tmp_path):
+        import json
+
+        class FakeGraph:
+            def cpm_quality(self, membership, *, resolution):
+                return 0.0
+
+            def dongdaemun_refine(self, *args, **kwargs):
+                raise AssertionError("artifact-writing runs must not use Rust fast path")
+
+        membership = np.asarray([0, 1, 2], dtype=np.uint64)
+        result = run_hierarchy_level_postprocess(
+            FakeGraph(),
+            raw_membership=membership,
+            small_membership=membership,
+            node_weights=np.ones(3, dtype=np.float64),
+            resolution=0.1,
+            min_doc_weight=1.0,
+            target_max_doc_weight=2.0,
+            config=HierarchyPostprocessConfig(
+                enabled=True,
+                use_rust_dongdaemun=True,
+            ),
+            seed=0,
+            output_dir=tmp_path,
+        )
+
+        summary = json.loads((tmp_path / "summary.json").read_text())
+        assert result.backend == "python"
+        assert result.status == "no_current_oversize_candidates"
+        assert summary["backend"] == "python"
+        assert "rust_audit" not in summary["oversize_summary"]
+        assert (tmp_path / "oversize_boundary_trim_moves.csv").exists()
+
+    def test_rust_dongdaemun_opt_in_requires_rust_graph_binding(self):
+        class FakeGraph:
+            def cpm_quality(self, membership, *, resolution):
+                return 0.0
+
+            def dongdaemun_refine(self, *args, **kwargs):
+                raise AssertionError("non-Rust graphs must stay on the Python path")
+
+        membership = np.asarray([0, 1, 2], dtype=np.uint64)
+        result = run_hierarchy_level_postprocess(
+            FakeGraph(),
+            raw_membership=membership,
+            small_membership=membership,
+            node_weights=np.ones(3, dtype=np.float64),
+            resolution=0.1,
+            min_doc_weight=1.0,
+            target_max_doc_weight=2.0,
+            config=HierarchyPostprocessConfig(
+                enabled=True,
+                use_rust_dongdaemun=True,
+                write_artifacts=False,
+            ),
+            seed=0,
+            output_dir=None,
+        )
+
+        assert result.backend == "python"
+        assert result.status == "no_current_oversize_candidates"
+        assert "rust_audit" not in result.oversize_summary
+        np.testing.assert_array_equal(result.membership, membership)
+
+    def test_rust_dongdaemun_opt_in_uses_fast_path_without_artifacts(self):
+        if not RUST_DONGDAEMUN_AVAILABLE:
+            pytest.skip("Rust Dongdaemun binding not available")
+        graph = build_leiden_graph(
+            edges_src=np.asarray([0, 1], dtype=np.uint32),
+            edges_dst=np.asarray([1, 2], dtype=np.uint32),
+            edges_weight=np.asarray([1.0, 1.0], dtype=np.float64),
+            n_nodes=3,
+        )
+
+        membership = np.asarray([0, 1, 2], dtype=np.uint64)
+        result = run_hierarchy_level_postprocess(
+            graph,
+            raw_membership=membership,
+            small_membership=membership,
+            node_weights=np.ones(3, dtype=np.float64),
+            resolution=0.1,
+            min_doc_weight=1.0,
+            target_max_doc_weight=2.0,
+            config=HierarchyPostprocessConfig(
+                enabled=True,
+                use_rust_dongdaemun=True,
+                write_artifacts=False,
+            ),
+            seed=0,
+            output_dir=None,
+        )
+
+        assert result.backend == "rust_dongdaemun"
+        assert result.oversize_summary["backend"] == "rust_dongdaemun"
+        assert result.oversize_summary["rust_audit"]["status"] == result.status
+        assert result.status == "no_current_oversize_candidates"
+        assert result.accepted is True
+        np.testing.assert_array_equal(result.membership, membership)
+        assert result.paths == {}
 
 
 # ── Tests: helper functions ──────────────────────────────────

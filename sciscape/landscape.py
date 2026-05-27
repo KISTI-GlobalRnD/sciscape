@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     import polars as pl
-    from .clustering.hierarchy_postprocess import HierarchyPostprocessConfig
+    from .clustering.hierarchy_oversize_postprocess import HierarchyPostprocessConfig
 
 import numpy as np
 

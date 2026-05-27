@@ -6,6 +6,7 @@
 use crate::clustering::Clustering;
 use crate::graph::Graph;
 use crate::random_utils::{fill_identity_u32, permute_cwts_style};
+use crate::trace;
 use crate::workspace::Workspace;
 use rand::Rng;
 
@@ -13,6 +14,37 @@ use rand::Rng;
 pub struct LocalMoveStats {
     pub improved: bool,
     pub moved_nodes: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct LocalMoveTraceContext {
+    pub depth: usize,
+    pub iteration: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct LocalMoveMarginEvent {
+    node: usize,
+    current_cluster: usize,
+    best_cluster: usize,
+    second_cluster: usize,
+    best_increment: f64,
+    second_increment: f64,
+    margin: f64,
+    moved: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct LocalMoveFocusEvent {
+    node: usize,
+    role: &'static str,
+    current_cluster: usize,
+    best_cluster: usize,
+    second_cluster: Option<usize>,
+    best_increment: f64,
+    second_increment: f64,
+    margin: f64,
+    moved: bool,
 }
 
 /// Run one iteration of fast local moving.
@@ -24,12 +56,31 @@ pub fn improve_clustering(
     rng: &mut impl Rng,
     ws: &mut Workspace,
 ) -> LocalMoveStats {
+    improve_clustering_with_trace(graph, clustering, resolution, rng, ws, None)
+}
+
+pub(crate) fn improve_clustering_with_trace(
+    graph: &Graph,
+    clustering: &mut Clustering,
+    resolution: f64,
+    rng: &mut impl Rng,
+    ws: &mut Workspace,
+    trace_context: Option<LocalMoveTraceContext>,
+) -> LocalMoveStats {
     let n = graph.n_nodes;
     if n <= 1 {
         return LocalMoveStats::default();
     }
 
     let mut moved_nodes = 0usize;
+    let trajectory_trace_enabled = trace_context.is_some() && trace::ddm_trajectory_trace_enabled();
+    let collect_margins = trajectory_trace_enabled;
+    let focus_nodes = if trajectory_trace_enabled {
+        trace::ddm_local_move_focus_nodes()
+    } else {
+        None
+    };
+    let mut margin_events: Vec<LocalMoveMarginEvent> = Vec::new();
 
     let first_nbr = graph.first_neighbor_index.as_ptr();
     let nbr_arr = graph.neighbors.as_ptr();
@@ -168,13 +219,20 @@ pub fn improve_clustering(
         let mut best_cl = cur_cl;
         let mut max_inc =
             unsafe { *ewpc_ptr.add(cur_cl) - node_w * *cw_ptr.add(cur_cl) * resolution };
+        let mut second_best: Option<(usize, f64)> = None;
 
         for idx in 0..nc_buf.len() {
             let nc = unsafe { *nc_buf.get_unchecked(idx) } as usize;
             let inc = unsafe { *ewpc_ptr.add(nc) - node_w * *cw_ptr.add(nc) * resolution };
             if inc > max_inc {
+                second_best = Some((best_cl, max_inc));
                 best_cl = nc;
                 max_inc = inc;
+            } else if nc != best_cl {
+                match second_best {
+                    Some((_, second_inc)) if inc <= second_inc => {}
+                    _ => second_best = Some((nc, inc)),
+                }
             }
             unsafe {
                 *ewpc_ptr.add(nc) = 0.0;
@@ -182,6 +240,45 @@ pub fn improve_clustering(
         }
         unsafe {
             *ewpc_ptr.add(cur_cl) = 0.0;
+        }
+        if collect_margins {
+            if let Some((second_cluster, second_increment)) = second_best {
+                push_local_move_margin_event(
+                    &mut margin_events,
+                    LocalMoveMarginEvent {
+                        node: j,
+                        current_cluster: cur_cl,
+                        best_cluster: best_cl,
+                        second_cluster,
+                        best_increment: max_inc,
+                        second_increment,
+                        margin: max_inc - second_increment,
+                        moved: best_cl != cur_cl,
+                    },
+                );
+            }
+        }
+        if let (Some(context), Some(focus_nodes)) = (trace_context, focus_nodes.as_ref()) {
+            if let Some(role) = focus_nodes.role_for(j) {
+                let second_cluster = second_best.map(|(cluster, _)| cluster);
+                let second_increment = second_best
+                    .map(|(_, increment)| increment)
+                    .unwrap_or(f64::NAN);
+                emit_local_move_focus_node(
+                    context,
+                    LocalMoveFocusEvent {
+                        node: j,
+                        role,
+                        current_cluster: cur_cl,
+                        best_cluster: best_cl,
+                        second_cluster,
+                        best_increment: max_inc,
+                        second_increment,
+                        margin: max_inc - second_increment,
+                        moved: best_cl != cur_cl,
+                    },
+                );
+            }
         }
 
         unsafe {
@@ -254,10 +351,73 @@ pub fn improve_clustering(
     ws.order = order;
     ws.unused = unused;
 
+    if let Some(context) = trace_context {
+        if collect_margins {
+            emit_local_move_margin_events(context, &margin_events);
+        }
+    }
+
     LocalMoveStats {
         improved: moved_nodes > 0,
         moved_nodes,
     }
+}
+
+fn push_local_move_margin_event(
+    events: &mut Vec<LocalMoveMarginEvent>,
+    event: LocalMoveMarginEvent,
+) {
+    const TOP_K: usize = 16;
+    if !event.margin.is_finite() {
+        return;
+    }
+    events.push(event);
+    events.sort_by(|left, right| {
+        left.margin
+            .total_cmp(&right.margin)
+            .then_with(|| left.node.cmp(&right.node))
+    });
+    if events.len() > TOP_K {
+        events.pop();
+    }
+}
+
+fn emit_local_move_margin_events(context: LocalMoveTraceContext, events: &[LocalMoveMarginEvent]) {
+    for (rank, event) in events.iter().enumerate() {
+        trace::emit_ddm_trajectory_trace(format_args!(
+            "{{\"schema\":\"dongdaemun_trajectory_trace.v1\",\"event\":\"local_move_margin\",\"run_id\":{},\"depth\":{},\"iteration\":{},\"rank\":{},\"node\":{},\"current_cluster\":{},\"best_cluster\":{},\"second_cluster\":{},\"best_increment\":{},\"second_increment\":{},\"margin\":{},\"moved\":{}}}",
+            trace::json_string_option(trace::ddm_trajectory_trace_run_id()),
+            context.depth,
+            context.iteration,
+            rank,
+            event.node,
+            event.current_cluster,
+            event.best_cluster,
+            event.second_cluster,
+            trace::json_f64(event.best_increment),
+            trace::json_f64(event.second_increment),
+            trace::json_f64(event.margin),
+            event.moved,
+        ));
+    }
+}
+
+fn emit_local_move_focus_node(context: LocalMoveTraceContext, event: LocalMoveFocusEvent) {
+    trace::emit_ddm_trajectory_trace(format_args!(
+        "{{\"schema\":\"dongdaemun_trajectory_trace.v1\",\"event\":\"local_move_focus_node\",\"run_id\":{},\"depth\":{},\"iteration\":{},\"node\":{},\"role\":{},\"current_cluster\":{},\"best_cluster\":{},\"second_cluster\":{},\"best_increment\":{},\"second_increment\":{},\"margin\":{},\"moved\":{}}}",
+        trace::json_string_option(trace::ddm_trajectory_trace_run_id()),
+        context.depth,
+        context.iteration,
+        event.node,
+        trace::json_string(event.role),
+        event.current_cluster,
+        event.best_cluster,
+        trace::json_usize_option(event.second_cluster),
+        trace::json_f64(event.best_increment),
+        trace::json_f64(event.second_increment),
+        trace::json_f64(event.margin),
+        event.moved,
+    ));
 }
 
 #[cfg(test)]

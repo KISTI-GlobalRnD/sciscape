@@ -6,8 +6,9 @@ Scientific landscape analysis toolkit: multi-layer consensus clustering + hierar
 
 - **Multi-layer consensus**: Combine DC, BC, CC, and embedding edges with top-k filtering, 1/rank normalization, and consensus weighting (edges confirmed by multiple layers get multiplicative boost)
 - **Hierarchical clustering**: nano → micro → meso → macro with auto-gamma per level
-- **Internal hierarchy postprocess**: Optional two-stage level repair (`small-cluster repair → oversize split/trim`) for development runs that need auditable max-size diagnostics
-- **Rust acceleration**: Leiden clustering + keyword extraction hot paths (50-200x speedup)
+- **Rust CPM/Leiden backend**: High-performance Leiden clustering, contraction, projection, and small-cluster postprocess for the main pipeline
+- **SciSci research modules**: Optional diagnostics and hierarchy postprocess helpers for auditable development runs; Dongdaemun surfaces stay development-only
+- **Rust acceleration**: Clustering + keyword extraction hot paths (50-200x speedup)
 - **OpenAlex integration**: Query → fetch → build citation edges → landscape report
 - **Web interface**: FastAPI + D3.js network visualization + Plotly treemap
 - **10-stage keyword extraction**: TF-IDF, cooccurrence, term network, LLM canonicalization
@@ -73,8 +74,8 @@ result = build_hierarchy(
 # nano(~1450) -> micro(~414) -> meso(~152) -> macro(~45)
 
 # Optional internal development mode: after normal small-cluster repair,
-# try to reduce oversized clusters before projecting/contracting the level.
-from sciscape.clustering.hierarchy_postprocess import HierarchyPostprocessConfig
+# run auditable oversize diagnostics before projecting/contracting the level.
+from sciscape.clustering.hierarchy_oversize_postprocess import HierarchyPostprocessConfig
 
 result = build_hierarchy(
     layer_paths={...},
@@ -83,6 +84,8 @@ result = build_hierarchy(
     hierarchy_postprocess=HierarchyPostprocessConfig(
         enabled=True,
         oversize_policy="quality_first",  # default; preserves CPM quality first
+        # use_rust_dongdaemun=True,     # development-only fast path
+        # write_artifacts=False,        # required for the Rust fast path today
     ),
 )
 
@@ -101,7 +104,7 @@ Each layer (BC, CC, DC, Emb)
   -> GCC filter
   -> auto-gamma (binary search, target max < 3%)
   -> Rust Leiden -> postprocess (cascade + greedy + Dijkstra)
-  -> optional hierarchy postprocess (oversize split-repair + boundary trim)
+  -> optional hierarchy oversize postprocess (split-repair + boundary trim)
   -> contraction -> repeat for next hierarchy level
 ```
 
@@ -111,8 +114,10 @@ Each layer (BC, CC, DC, Emb)
 sciscape/
   clustering/
     hierarchical.py        4-level hierarchy (nano->micro->meso->macro)
-    hierarchy_postprocess.py
+    hierarchy_oversize_postprocess.py
                             Internal opt-in oversize postprocess automation
+    hierarchy_postprocess.py
+                            Compatibility import path for older code
     auto_gamma.py          Automatic gamma selection (binary search)
     prepartition.py        Pre-partition (Lego block assembly)
     leiden_rust.py          Rust Leiden backend wrapper
@@ -168,7 +173,12 @@ See `docs/hierarchy_two_stage_postprocess_report.tex` for the two-stage hierarch
 ## Tests
 
 ```bash
-pytest -q   # 987+ tests
+# Use the repo-local uv environment; system python may not have pytest/pip.
+uv run --extra dev python -m pytest -q
+
+# After changing Rust PyO3 bindings, rebuild the editable native extension.
+uv run --extra dev maturin develop --manifest-path rust/Cargo.toml
+uv run --extra dev python -m pytest -q
 ```
 
 ## License
