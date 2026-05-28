@@ -93,6 +93,12 @@ sciscape web
 # Open http://localhost:8000
 ```
 
+This launches the FastAPI-backed query workflow: paste an OpenAlex query,
+run the analysis, stream progress, and inspect network, hierarchy, temporal,
+keyword, quality, and download tabs in the browser. This is separate from
+`sciscape viewer`, which is a static data viewer for existing `data.json` or
+keyword CSV/TSV files.
+
 ### 4. Python API
 
 ```python
@@ -200,9 +206,9 @@ docs/                       LaTeX report + figures
 | `sciscape keywords` | Keyword extraction only |
 | `sciscape visualize` | Turn a keyword table into dashboard/report HTML |
 | `sciscape convert` | Convert WoS/Scopus/OpenAlex/BibTeX -> parquet |
-| `sciscape viewer` | Generate a standalone viewer shell |
+| `sciscape viewer` | Generate a static viewer shell for existing data files |
 | `sciscape export` | Export network files for Gephi/Cytoscape |
-| `sciscape web` | Launch web interface |
+| `sciscape web` | Launch query-to-analysis FastAPI web interface |
 
 ## Research Status
 

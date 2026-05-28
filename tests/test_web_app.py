@@ -59,3 +59,55 @@ def test_output_artifact_route_rejects_path_traversal(tmp_path):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "invalid artifact path"
+
+
+def test_web_homepage_exposes_query_analysis_controls():
+    client = TestClient(app)
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Query OpenAlex" in response.text
+    assert 'id="q-search"' in response.text
+    assert "submitQuery()" in response.text
+    assert "fetch('/api/query'" in response.text
+    assert 'id="file-input"' not in response.text
+
+
+def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
+    def fake_run_job(job_id, req):
+        job = _jobs[job_id]
+        job["status"] = "done"
+        job["progress"].append(f"fake pipeline: {req.query}")
+        job["result"] = {
+            "n_works": req.max_works,
+            "n_edges": {"dc": 0, "bc": 0, "cc": 0},
+            "output_dir": str(tmp_path),
+            "abstracts_path": None,
+            "edges_path": None,
+            "landscape_dir": None,
+        }
+        _jobs.persist(job_id)
+
+    monkeypatch.setattr("sciscape.web.app._run_job", fake_run_job)
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/query",
+        json={
+            "query": "graph neural networks",
+            "years": "2020-2024",
+            "max_works": 12,
+            "edge_types": "dc,bc,cc",
+            "run_landscape": True,
+        },
+    )
+
+    assert response.status_code == 200
+    job_id = response.json()["job_id"]
+    job_response = client.get(f"/api/jobs/{job_id}")
+
+    assert job_response.status_code == 200
+    payload = job_response.json()
+    assert payload["status"] == "done"
+    assert payload["progress"] == ["fake pipeline: graph neural networks"]
+    assert payload["result"]["n_works"] == 12

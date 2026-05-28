@@ -101,6 +101,10 @@ When the job completes, the results tabs show interactive network, hierarchy,
 temporal, cluster, and keyword views, and the Download tab links to the
 generated report/dashboard HTML artifacts.
 
+This is the query-analysis app. The standalone `sciscape viewer` artifact below
+is intentionally static: it visualizes an existing `data.json` or keyword
+CSV/TSV file and does not run OpenAlex or clustering itself.
+
 ## Workflow 2: Local Abstracts And Edges To Viewer
 
 Use this when abstracts and one or more edge layers already exist locally.
