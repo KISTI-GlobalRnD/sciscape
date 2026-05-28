@@ -3,25 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SciScape Keyword Dashboard</title>
+<title>SciScape Demo Viewer</title>
 <script src="https://cdn.plot.ly/plotly-2.27.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
+html,body{max-width:100%;overflow-x:hidden;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;color:#1f2933;}
 .header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);color:#fff;padding:1.2rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;position:relative;overflow:hidden;}
 .header::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#00d4ff,#0d6efd,#7c3aed,#0d6efd,#00d4ff);background-size:200% 100%;animation:headerShimmer 4s linear infinite;}
 @keyframes headerShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .header .brand{display:flex;align-items:center;gap:.75rem;}
-.header .brand h1{font-size:1.4rem;font-weight:700;letter-spacing:-.01em;}
+.header .brand h1{font-size:1.4rem;font-weight:700;letter-spacing:0;}
 .header .brand .subtitle{font-size:.75rem;opacity:.55;font-weight:400;letter-spacing:.03em;}
 .header .stats{display:flex;gap:1.5rem;font-size:.85rem;opacity:.85;}
 .header .stats .stat-item{display:flex;flex-direction:column;align-items:center;}
 .header .stats .stat-value{font-weight:700;font-size:1.1rem;color:#00d4ff;}
 .header .stats .stat-label{font-size:.7rem;opacity:.6;text-transform:uppercase;letter-spacing:.04em;}
 .controls{background:#fff;border-bottom:1px solid #dee2e6;padding:.75rem 2rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,.05);}
+.cluster-controls{display:flex;align-items:center;gap:.5rem;min-width:0;}
 .controls label{font-weight:600;font-size:.9rem;}
-.controls select{padding:.4rem .8rem;border:1px solid #ced4da;border-radius:4px;font-size:.9rem;min-width:20rem;}
+.controls select{padding:.4rem .8rem;border:1px solid #ced4da;border-radius:4px;font-size:.9rem;min-width:20rem;max-width:100%;}
 .tabs{display:flex;gap:0;border-bottom:2px solid #dee2e6;padding:0 2rem;background:#fff;}
 .tab{padding:.7rem 1.2rem;cursor:pointer;font-size:.9rem;font-weight:500;color:#6c757d;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;}
 .tab:hover{color:#212529;background:#f8f9fa;}
@@ -38,8 +40,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .cluster-meta .meta-item{flex:1;min-width:140px;}
 .cluster-meta .meta-label{font-weight:600;color:#6c757d;font-size:.8rem;text-transform:uppercase;}
 .cluster-meta .meta-value{font-size:1.1rem;font-weight:600;margin-top:.2rem;}
-#network-container{width:100%;height:600px;position:relative;overflow:hidden;}
+#network-container{width:100%;height:560px;position:relative;overflow:hidden;}
 #network-container svg{width:100%;height:100%;}
+.network-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,420px);gap:1rem;align-items:start;}
+.network-layout.evidence-hidden{grid-template-columns:minmax(0,1fr);}
+.network-panel{min-width:0;}
 .node-label{font-size:11px;pointer-events:none;text-anchor:middle;}
 .merge-table{width:100%;border-collapse:collapse;font-size:.9rem;}
 .merge-table th{background:#343a40;color:#fff;padding:.6rem 1rem;text-align:left;font-size:.85rem;position:sticky;top:0;}
@@ -54,6 +59,50 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .badge{display:inline-block;padding:.15rem .45rem;border-radius:10px;font-size:.75rem;font-weight:600;margin-left:.3rem;}
 .badge-vocab{background:#d4edda;color:#155724;}
 .badge-norm{background:#cce5ff;color:#004085;}
+.keyword-scope-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.85rem;}
+.keyword-scope-block{border:1px solid #e9ecef;border-radius:6px;padding:.75rem;background:#fbfcfd;}
+.keyword-scope-title{font-size:.78rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.45rem;}
+.keyword-chip{display:inline-flex;align-items:center;gap:.3rem;margin:.15rem .2rem .15rem 0;padding:.18rem .45rem;border-radius:12px;background:#eef2f7;color:#1f2933;font-size:.8rem;line-height:1.35;}
+.keyword-chip small{color:#6c757d;font-size:.72rem;}
+.keyword-chip.tier-primary{background:#e7f1ff;color:#084298;border:1px solid #b6d4fe;}
+.keyword-chip.tier-supporting{background:#f1f3f5;color:#343a40;border:1px solid #dee2e6;}
+.keyword-chip.tier-review{background:#fff3cd;color:#664d03;border:1px solid #ffecb5;}
+.keyword-tier-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.85rem;}
+.keyword-tier-block{border:1px solid #e9ecef;border-radius:6px;padding:.75rem;background:#fbfcfd;}
+.keyword-tier-block.primary{border-left:4px solid #0d6efd;}
+.keyword-tier-block.supporting{border-left:4px solid #6c757d;}
+.keyword-tier-block.review{border-left:4px solid #ffc107;}
+.keyword-tier-head{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-bottom:.45rem;}
+.keyword-tier-title{font-size:.78rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;}
+.keyword-tier-count{font-size:.78rem;font-weight:700;color:#6c757d;white-space:nowrap;}
+.keyword-family-section{margin-top:.9rem;border-top:1px solid #e9ecef;padding-top:.85rem;}
+.keyword-family-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.6rem;}
+.keyword-family-row{border:1px solid #e9ecef;border-radius:6px;padding:.55rem .65rem;background:#fff;}
+.keyword-family-parent{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;font-size:.86rem;}
+.keyword-family-parent small{white-space:nowrap;color:#495057;font-weight:600;}
+.keyword-family-children{margin-top:.35rem;color:#6c757d;font-size:.78rem;line-height:1.45;}
+.keyword-family-child{display:inline-block;margin:.05rem .35rem .05rem 0;}
+.cooc-evidence{min-width:0;border-left:1px solid #e9ecef;padding-left:1rem;}
+.cooc-evidence-head{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;margin-bottom:.55rem;}
+.cooc-evidence-title{font-size:.82rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;}
+.cooc-evidence-note{font-size:.78rem;color:#6c757d;}
+.cooc-relation{display:inline-block;padding:.12rem .4rem;border-radius:10px;font-size:.72rem;font-weight:700;white-space:nowrap;}
+.cooc-primary-supporting{background:#e7f1ff;color:#084298;}
+.cooc-primary-primary{background:#d1e7dd;color:#0f5132;}
+.cooc-supporting-supporting{background:#e9ecef;color:#495057;}
+.cooc-review-edge{background:#fff3cd;color:#664d03;}
+.cooc-list{display:flex;flex-direction:column;gap:.55rem;max-height:520px;overflow:auto;padding-right:.15rem;}
+.cooc-row{display:grid;grid-template-columns:1.6rem minmax(0,1fr) auto;gap:.55rem;align-items:start;border:1px solid #e9ecef;border-radius:6px;padding:.55rem .6rem;background:#fff;}
+.cooc-rank{font-size:.78rem;font-weight:700;color:#6c757d;text-align:right;padding-top:.15rem;}
+.cooc-pair{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;font-size:.86rem;line-height:1.25;}
+.cooc-arrow{color:#adb5bd;font-weight:700;}
+.cooc-meta{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;margin-top:.25rem;}
+.cooc-primary-evidence{margin-top:.3rem;color:#6c757d;font-size:.76rem;line-height:1.35;}
+.cooc-weight{font-size:.82rem;font-weight:700;color:#1f2933;white-space:nowrap;padding-top:.1rem;}
+.tier-label{display:inline-block;padding:.12rem .38rem;border-radius:8px;font-size:.72rem;font-weight:700;white-space:nowrap;}
+.tier-label.primary{background:#e7f1ff;color:#084298;}
+.tier-label.supporting{background:#f1f3f5;color:#343a40;}
+.tier-label.review{background:#fff3cd;color:#664d03;}
 .footer{text-align:center;padding:1.5rem 2rem;font-size:.8rem;color:#6c757d;border-top:1px solid #e9ecef;margin-top:2rem;display:flex;align-items:center;justify-content:center;gap:.5rem;}
 .footer svg{opacity:.5;transition:opacity .2s;}
 .footer:hover svg{opacity:.8;}
@@ -75,6 +124,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .note-indicator{cursor:pointer;color:#f0ad4e;font-size:.85rem;}
 .note-cell{cursor:pointer;min-width:80px;max-width:200px;color:#495057;font-size:.85rem;}
 .note-cell:empty::after{content:"click to add";color:#ccc;font-style:italic;}
+@media (max-width: 760px){
+  .header{padding:1rem;align-items:flex-start;}
+  .header .brand{min-width:0;}
+  .header .brand h1{font-size:1.2rem;line-height:1.15;}
+  .header .stats{width:100%;justify-content:flex-start;padding-left:3.5rem;}
+  .controls{position:static;padding:.75rem 1rem;gap:.75rem;align-items:stretch;}
+  .cluster-controls{width:100%;flex-direction:column;align-items:flex-start;gap:.35rem;}
+  .controls select,.controls .search-box{width:100%;min-width:0;max-width:none;}
+  .export-btn{align-self:flex-start;}
+  .tabs{padding:0 .75rem;overflow-x:auto;white-space:nowrap;}
+  .tab,.tab-group-label{flex:0 0 auto;}
+  .tab{padding:.65rem .85rem;}
+  .container{padding:1rem;}
+  .cluster-meta{display:grid;grid-template-columns:1fr;gap:1rem;padding:1rem 1.5rem;}
+  .keyword-tier-grid,.keyword-scope-grid,.keyword-family-list{grid-template-columns:1fr;}
+  .network-layout{grid-template-columns:1fr;}
+  #network-container{height:460px;}
+  .cooc-evidence{border-left:0;border-top:1px solid #e9ecef;padding-left:0;padding-top:.85rem;}
+}
 </style>
 </head>
 <body>
@@ -83,7 +151,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="brand">
     <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAbTklEQVR42u2cd3hd1Znuf7uc3nR0pKMuq1jNkmVj3E0xtuk4DKkECCmTm2GYFELITObmzg2TSWZCCDc3DMlNMjCBBDKE3j2AMTbg3qusbnXpNJ1ed5k/jiRsA3ku2MYk4/U8fny0z97rrP3ub33v+33fWlvQdV3nXPvATTwHwSkDeM4Az1ngOQDPAXgOwHPtHIBnC0DhHArnLPCDtdMRQ/y3BlAQhD9vANM5hVROOTeF/3+bquWn1PTEyqkaOVV9xzH9HIB5/3M8EJquE89kOR4ti0HCapCnLwBgPBpH1bQT+tHOYj7kQ4+Fp+81ns2RVdQTjk8Z4Awgv9s7xP07BvLWqedHqqjaDPg6kMwphJIZdD1vwbquk8rmZvrUzzyAH66MmfbbJxuNJAoz30079029ft7o8wN6/ntAFARkUUQgP/KZz8J0HwLj0SSariMI+XPOZMZOPtOAabqOMj3ldNDQERCmfFt++um6jq5DJqcQFwXMBpnt/QG8ZhFZktjS52NBlYd0TiGezhKMp5BFAQ1hhmRGwwl6fJN5UCWRrKJilGU8djNOs/HMGcSZTqiqmkZW1fKWMD09dUhkc8iigCxJM1MylsrgMBuZiKXY0uenqtBOMqegaxrlLiuVLiuj4TglTiuSmHffWVVjR/84FQV2SgvslLisxJJpSl12sqrGWDiBoutUFtgwydKfBolouk52ij0lUcRikDEbZCwGGZvRgM1kwGyQsZmMOM1GXBYTTrOJQpuZeE7nK08dwmyQafQ68FiNOEwG7njmECkFKt02ygrsM//6/BEaSgpYPrsclwyvbt3HvU+s53cvbyYciTLL46A/EMUXS72r6/hoAqjpKKp2gtoPJlLovM28iqrlnf6UZaqahq5DOptjSaWTQDLDlv4Q2wfCjE0maSqyMhZOIArCDPm81TWE12GmvcrLtoOdPPD8RqpLi9EQWNzWwDNb9vPmviOsbCxH0zTSOQVBOMsAvteM14/Tajr6CUypT4F6snyZ/jRNCKmcwmAoztoWL3NKXOwaDLFnaJLzKgsoMGhs7hkHwCTLHB4NYjHItFYUc/jYGLs6+vj0mqUsaJzF7Z+5gpFjvezetZ0Bf5SjA2N4nRYSmdwJ4zwrAL5X+DMNAlNMKQpvs6YASIKAwNvHJfFtNmXK8R8LxHBbjbitJkYmE8wrtXPHJQ28eHAYURQIJdIMh+KIosDIZJLza8sA2HrgKBfNb2ZWmZdIIsV/PPEkz/3iO3zumtVcurCFjXuPYDEYkI5j79PIwvpp6TKrqnmNBuQUlayqklU19CnWDSTSCFNSBCCcymCWZUwGCU3TMRlkxmJpekIphiaTrKr3EE7laK/0sOHoOK8cGeDbV7Twwp5+YqkcdUU2hkNRJFGkZ2KSQyNBvu0u4Jlth/FlZWouvYW6xlbuefJV1FwWXzRBNJ0jkclhNcm4reaPlg8UBQFZEpFFEUkUkQQBgyxhkCSMkoRJFjFIIgZZwihLiKKYP18SKbCa+P7Lh3ls/yjzygtA01hRX4IgCDy+u5/WMjvnVbrwRZIkNZ1P/uRZLLKExWjAajJQ6XHxhdXnMx4I8p3fv45itHPDtVfjtRm46eLzKHJYsJoM2E0GrCYZ42lk49OmA2Xx7WeRn67622EYYDXI2E1v6zFbTsUoiThMRg4MB0mn0vz18nrGJqNc2VJKoc3M9qEw4USWB248n25fhFA0hUlXueemFTz21mG+ee1yUjmVSxa00Nt3jKe2HubfvriaNYtb8RY4GQ9Osm3fYdacPweDJGE3C9hNho9uJDJNMJquz4Rl+pRQzmo6WUWdCdOyiorFIDEwmeDu147yncvb8DgsfO+Vbi6bU0GPL0JLsZWL6jy8fHgEj8PM4aEgoiRR6LQhSyJbOgaQBJ0idwFVpV6WNJSzuKWWnz7xOns6+3h6407qK0tpri4nkkhhlMTTHtqdNh/4XgST710gl1NYedc6fnXzMuZUFGIzygTjab7/wj76wlmKHVbWbevh2vYKnts/RInDyNq51UxEkrzVM4qqaRwZnqSx0kNvKE7/RJhUJovFZCSUSLKytZ7KEg+v7+lAFgUO9w5y+bL51JV7OeabxOOwvmPq6rr+7mN+j+PvAeCZiYWPt0ZZFNjYMY4vmuLN7nHmVnlI5VR+9Mph2kocfO3iMrb0jLOwys3CKp39IxEqCixIAoSSKXTgWDDJ339yEV3DkxhliVc7xriouZLusSCXzK1FEKDE4+b6S5cTiCYoctpmxmGQpXfVf++pKN6HWDzlUO7ktBRAOquQzik4zEYMssS2rhF+s+koy5sryKgaZpORoVCCj82fRTaXwx9Lcl51MVuOhdgz4OeOS+fQ64vwVq+f4ckkDSU23DYD/b44gq5T7XUwEozTPx5GS6ep87q4/drl+Zg44ufvX7qbf7zsG1S7K1B0hdFQDJfFjMNiekdiQxLFs0sikVSGdE5BnHpqqpbP66mahtkgsatvnJFgnHmzPMyrLsQgCdz6h/2sairCbRG5b1s/l7VW0B+Ict/Go1zRWk7HaBibycDW/iDJbIpr5pcRS+eo9NjY3edHFAWcViPL51TgC0V5YdcggcxW2mdBT/wQBdYC3urbxeJKCbvRQZ8viMNiotBqPSHctJmMlBc6P0rJhLf96UgozOuHRsipGo3lHoZCMa5f1sjfPb6DljI3Kjo/fLmTq1o83LamjVKnlR1944iiyMrmCo4Fomzt9dM12c+c0gqMohmDBKmsysaOMSyySEuVB7NsxBcN8suXD3Dt4gJaauDyxosZj0zwfOcmGr3VXDprDQV2M+LpzyWcHh04negEgZd293DvCzvYeGCQgYlJDAYDtz26myKHmf0DfoaCSYZCSVrLXFxYV8AtFzcRS2V59cgwhXYL9V4XT+/txx9LsXR2KS5TIf64D5vRQDqnouoaFoPMYzv7QE3jtsYpLQjysy81UVqcZmXdMkKpMD/d+gh1nmr6AyPsGNnJS50b8cWDU9aXF/wfmaqcpmnIkkgoluQXL+2mczyCokNtqRs0hRuWzuJbj+1F1eH3t6xkUU0Bsgg1hVYe3jFEMJ7mrvVdbOjx0+uPcvuTB0jmdCwyFFqd6LrMlv5egrEcLoOZlXNsPPW1y4nqB3ho/4MYDTKBVIRIOkIgHubwSCeNhbNo9zawpHI+BVYn+0YP88iuZ9EBURBB19+VPt8vqNKdd95556lmXiRR5Nh4kC1HjnHTyrm8dWQIl8XEZy6Yw1g4gSRAod1EucuCIIqkcypLZ5dxdCLGQ1t78ToMfHVlE03FNhbVevmL+VVomsYTe4/RG4jSVlpCgS3BpxbMpbncSTgVwGHR8Fg9rKxdjCRKvNKzFV1XuOn8j+FXdeoLSphf0YQOrO/czCx3OVe0XMyW/r1UuLwYZQPauzDu+y11npIPVNS85Q35w7y6+yjttWUcGAxS7nFSXexiS9coJlni2sUNDAYiNJcXsbN/gn3Dk8iSxKqmEiKpLAPBBNsHArSUFfD5pQ30B6IMheIMh1PkNIWWkkJyWgSHFfzxCF3+AcodborsbmxGCy6zjdHIBOWuEo5OdFPR9QLM/yztNQvJ5FJs6NnJs0df56b51+C1FdIx0c/K2YtwWRxomoooih9YC58SC8uSSN9YkIde2c7cukoMBgMrWiopsJl5avcgd71wgJf/9ipGwkm6Aymc1kQ++A8kea1rnIsaSyl12TCIAle1V/OxX25ifcc431zVwtK6EsaiCUCgzOng0KjEvW8+QCA9ym0rbuK88ibMBiMm2cj+0S5aS+oYzuXwHX2Ni7qeRSsoZ1iSeW58gBq7h1sXf4an9r/MvIpm3FY3646+yRVNF1BgdZ5SKPG+LTB/tk40mWFPzwiPv7Gfa5fOYUVbDXaLmUF/mNcODlLrdeJL5ChzmTjqS/HzN7r50bXtLKwppi8wSSIrcHTcT1uZh/XdAUrsJgotRiRJpNgmM9vrQtVlcqqG0RBhMDyGoulIgoAkShSYnTSV1JDJZVl3+HU8RbUYAp20H3sN6ldCJkpG1zHaijHVX0xA1QnEgwQSk0SSUbp9g4zGJ7h9/iqqi2eDxYXwAaB83wBOT9tfrdvBt+//T7732YtYuaCFUCyFoihs7h7nhZ19bPnn67GajLx+dJi6YiedY3EqC40cCezlsK+f/736L5mIZBiLhdnSn2DvgI+vXtxIPJ0jntEYCWfYMfo6HkeWmxdeRV1hJUY5P2GS2TSjUT8dY708ffgVrp6/llUuJ8YdDyAt/HwejGwCMjEku5fk+h9idHgxt3+CbCaFKmhkM2Ge2LOHhs7HWbH2DsRFX0LQVN6v1nnfJCII+fJjc2URN6+aRyIySSAU4sK5dbTXlrKwzovLKjM2mSCSytBc5iEQTaMIAZKqn1QmQzIbZywexmmT0VSZIpvApc21tFa4qfY4kAwJBCmELiQpcrgoMDuQJBGnOR+eGSQZVdMIJEL4Vbiuqp6CrfeR9HVjv+BW4k9/FdvSL5MN9GDwNiNYnCiyBaFqMUZvNSnRw4ajCWTjbJat/RvMtYsQJeNUzfV9W6Cmn2o8fKB7gC37O5hdVcaaJfM4NDJJbZGd3rEIXb5RCtwpyhxFeO2FPLz7BXyxIJfPuZAdgwdZNquV0UiWrvEo1y9sI5KOoWk6zd5ZJHMZVE3FbrLS5R8incuQUTPkVIVYOsmCWe14AweRk0F0cwFasBfBUUZu14MYFn4BY/l8lMkBBHsxFk85GNxs2HmII32DLGtv5vyWurNX1jxeiIqCgKppbNh5CF9gEpu7kFmVJYhGPweGRlAEBU3N0OCpIpnLsLppCYOhcTrGe3FYHDhMZu556xFcVic3zr2COaV1uC0OhsIT6EClq5hjoTEOjHby6N511Jc2cWXzcqon9uJ841+w3vwkSiJEtm8TsrcZubgR2e4l0b8NKTmOJAr0O5fz1uExKjwOLlt+HgZZzhffZ4r9wocL4HulfyKxBPe/to9f7+7lKxcZ+fjiC+gaH+Cp/ev556u/Tk9ghCWz2vK1jIGD9PqHCKciXNGygjpPJaMRP0d8/YSTUeJqBhCoshdT5vQwu2w2ZiA4vJ/I8C6KR3cgLflrBCVFdvQgxrI2dCWNDthmrwJgvGs76mM30tfyDZpXf4HiAsdMLCyehhLdaY2FVU1DEkVUYGvnMKMDw1hMEmsvWMhIYpxjAR+N3moEBA6N96Kjk8gkuWrOBdz2/N2U24pY1bAUi8GIoqqMJoIkMkmqHF5cjiLKR7djSE9iKJ+PGh4Cz2wIdpN45uvYv/A05sqFhHY+TMGsuaiFbby6dQ/jMYUrK+OUzVkIsntK952+oPi0r0w4WQhs3neErv4xbKUiSVOMtuJ6IskErWX1lDo99IdGiKbiaLpGKBnFJJvw2Fy0lNQSTcVRdB1ZFNk4cIj67fdSU+BFmPtJBNmEpWohyY4XkY02shqYDBKC/xDdGQ8bfF7mVBZyyaI2EMR81HFSovR0JFTP2NIOVdMRhTxrZ7MKv3jjCV48solPzFnDJectIJJIoGoaOTXH3Zse5Jbln2ZuSQP+eJCB8AQDoRHCuThug4ml1Quo8dZRanOSi/uJv3Uf5upF5Mb2onvbsJS2YiTFkb3bULf9ClvTSoo+9iOcFmPeT+sawilEG2d1bYymaYiiiI5G3+gYO/f1YbTIXLb4PBQpy5befZhMZgYDxyh3liIYTGQyCSwmG/snR3Grab5U3YBisKFlEqQGdyBXLSK792GIjuK+7ifEoik27O9nPCFy2cIGaqtKQLLN/PaZbMLZ2K25p6OP3+x6gqwpy+cWXUOZs5ickiXt72BW1XzcrnIAMjvvJz05AEUtqNkE2vb7EcracVz1L+hKCtkgsXNIZee+IyyYU8+K9tnv6kb+bACcrtCJokiHv4d9HQOoMYG2NhetlY3EEnGGNv8CuyzjnL0GqX8jci6FVLkYNTqKqigY3BUYU+NkEyHWBesRC2q5Ylk7NqtlSlZN+y/hzw/A41Ngopi/wQH/EL/Y+DOK1WbWXnAJFYIf39HXqFn1XdTJfnRBxuCuIrb/CZzzriU+GeTVdU/TOvIwJZ/6v7hqFr2jzw+znVEA/xjLTQvx6aJOR98oW/d30Fhfz9JGF8pkN6LsQddV5NQoYnErm7tCHOgeYGF7KwuaKpBPEbj3w7YfKQs8UfZMV44hpyis37aXQX+M5VUK9W4ZSc3QFxXZNGSkrMDC5csXYDYZP2RP9xEG8Pgq2XRkEJiMsG5nJ82ddyOisb/+Dq5c3ERZUeFpjSL+rAA8WfYARN68F01TcV/8zXd891Fpp6ewrusnyIfpmzx5D4co5FfRT58//fnk6wVBmCr+5P9XFRWmiuAnRxLTrH78Me2kgpFw3O+efLvT350VAP+YEz7VaXY6wqzTTRintSai6/mnNzoR4EhPP7LBiKqq2MxGlsxvRRQEBkbGONo/jCAIiMCK8+diMZsYGp1AEAUqS73Ekyl2Huhg2mZEUWBJewsWs4lILM7OA51oen699fyW2Xg9bjQtvwckmUrT2TfIgrammXElkikOdfeTTGcQBBF0jfNbG3HYbQyP++kfHEGdsrxcJkvL7BoqSos/MMDyB/VTgiiyt6OHr9z5MxorvRjNVlKZDGVuB0vmt7Jhx36+/oN/ZV5TLSaTmXA0zu0/+TXbfv8zfvn4S0iSwHe/cgNrb/1feFxOHHYbOUVBANoaavBPhvn4175HXXUVdouJVCbDzh/cxyN3/R2L2lsQBIG7HniUH9z7EP/54N1ctiKvBzfvPcTN37mLNcsXgSAQCYUIJVNs+Pe7uefBP/D65j2c1z4HRdXIxON85YaPUVFajKbn6y0fDoC6jgy8vHkXNeVFPHLPP7zjnAeeXMct16/lqzdcO3Ps7gceJRJPYjSZsFmMDI5NMDLh5/UH73nH9T/97VO0NdXx4A//dubYf7y4gXAsiSgIHBuZ4JWte3j4p9/l+798hDXLFiKKAol0hssvWsJDP/z2zHWXfPFbHOjswWiy8K2/upHPXbP6nbWND0hOHwhAURDRdZ3rVi/n2Q2bWf3FO7CYjGi6wGUrFnDbzZ9AEsBilMnmFFRNRRIlvv2X1+eLQqkUAhq1FWU01ddwwY3fwOWwoes6c2bXcNftX86zr8N+wvWfvXrVzBju/d0TXLdqOTdccymPrtvE4+te49NXrcZkNHG4Z5DfPvsquiCQTKYYHPNRXuzBYDTxw58/zBPrXiejgd1k4N/+8Zu4Xc4PdwpPK/+m2mq2/v5fGZnwkc4qRBMpPvutf+KqCxdhsVoxm80YDfLMzwyMjOFxu7CYTaiKhizLPH/f9/GHJonEk2RyCl//wX08+eobOB1WhAnhhOtD4QhZRcVps/Lgc+u5cEEbX/6HexiZ8POT3z3DZ65egyxCLBrhUM8xNB2UbIZ7/+fXqCgtIRgM8fmPX87n1q6eKpfKuF3OGTb+0Cxw+mmNB0Ic7urH4bCDrqGoKpLBBIJAQ1Upv3lmPWVFhQjkd1De+oOfs+k3d6EqKjlFQVEU1m/dg9NuQxQlpKmUXTan0lpfy/956Bkuf2snBllC1+GOu3/FnbfeyO6j/Vx94VK+eN1lJFIpblq7htt+/CuefW0zNquZ2TXV/Phb/+MdpJfOZBgaHWPEF0BVNXRVJZfLUVNR+iGTyJTDHRiZ4Nd/eAGT1YqmqqSTCb762bU01lTxV5/2EIrE+X+PPo8oQDan8A+33MisijKaZpVht1pIZ3M8+MwrCIKIwWAgm0mzfP4crluzApvFwt9cfw2/fPR5TGYTuWyOT12xkqsuXsYbuw7yo29+iYrS4pkx/fi2L3C4u5+rLlnBqqXnkVOU/HbXKe1nNBq4dPlCnn3lTX7+++cQRIlUNMqN111GTUXpByYR4U/97W1nOzo5ZSGtahoCAkd6+xkYmUAURarLvGzedQCn086VFy8lMBmhs3cQBB2HzUrP4DgVJR6K3U6Gx3yYzGZWLGgjHI1hNBjYtGMf1eUljPmDqKrGBQvb2b73EIIAZd4iZFlmdMxHQ30N9VVlvLplFyIC9bWVCLrOuD9EIplmzYqFvPzmdnLpDM1Nszna049/PMAFy8+nrqosb3WSdEqC/5QWFwmCMEP/0zeeyKq0z67mjR17cRcWsmReK5Io8uiLr3HFyiX0j/rYfagLTde56qLFdB8bprV+FmaTkf1d/fiDYV7auIW1q1fw2ra9lBcX0VRTyYsbtyJKEquWLcDtdLB55wECsTg1FSU8+sJ6/IFJvnzDX9DR2cuwL8C85kZ0XWfL3kOUewoJJVJ0HRvi0OFuBJNMQ00e7FNNSpyy7U873wNdx7CYzZS4HZzf1khrQx0uu42y4kKODY2wfH4zvUPjLJ03hyKHBYdRptLrQdHg5bd2MTw2QaHDTjQWx2qxoCgq7Q21mESBWCJJRZkXHRgPRREFgfLSYhwWM7mcgtfjYW5DDSUFThbNbaa5sgLQyWSylBQVsWnXQWZXlSHJBsbHJsipU7H3ce9eOKvZGF3XSWezyKLErkNHWXZevnC+90gXbQ11GKZ2LHX2D+H1FHCwo5tEKsOCtiYSqQyqquJy2PB63ADsOtSJyWjEabOQTqUpKy0mmUojSRL+yQg2swlFUbFazZQVe3hl807EnMKSRe04bDayuRwHO3tZ0NpE98AwAgIFTjt7j3QzMTLG/PmtzG2qf0//edbLmkNjE5gMBkLhCKquE4klKS0qxGm3oGk60USSAqeDUDiC2+kAAYrdBQQj0ZkbcNqsxBIpbFYLyXQaAJ8/hM1iwmAwksllqSorwRecxOWwEQzHyGSz5HIKoFNV5iUaT+J2Oclkc/iCIRpqqj46yYQ/ltq6/7EXiCWTZLIKV160hHAszsGj3Wzdc5CaqnJqq8oZ8YUYHBnDbrOiaBr/9PUvce9vn8Rhs9DdP0htVQXhaIyiwgKWL5jLrgMdSAKM+YJ4PIVEYzE+c80a/v2x58gpOtXlJVjMRsaDkzgtJiSDAUky4HG7mIxEyGSyfOPzn0LVNGRJOm2ZmdO/MkHXGZkIEI7FmYzGqPAW4XG7iCcSjPmClHmL8AUnMRoM+bdqCAKSJOFy2IjGk8TiCVwOO4HJCMWFBUxMnVvqyS/LGBj1UVFSxMiEn5bZNUSicWRZIhpPoig5MjkVu8WMNiVxUukMOUXBZrGwoLXxzz8j/afWzshrT46vugnC25usp/+eeWbHTSOBt5cPT59zcvZ6ug8EIb9N4YTs9HROm7f71qdz3FPL8M6A4P7oW+A0YGfoQf/JlzX/1Nu5V4CeA/AcgOcA/G8O4DkOOWeBZ7H9F5JKG6IKFQHWAAAAAElFTkSuQmCC" width="44" height="44" alt="SciScape" style="border-radius:6px;">
     <div>
-      <h1>SciScape Keyword Dashboard</h1>
+      <h1>SciScape Demo Viewer</h1>
       <div class="subtitle">Scientific Landscape Explorer</div>
     </div>
   </div>
@@ -138,10 +206,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       선택하지 않으면 전체 클러스터의 Top 키워드를 요약합니다.
     </div>
     <div id="keywords-global" style="display:none;">
+      <div class="chart-card"><div id="keywords-global-scope"></div></div>
       <div class="chart-card"><div id="chart-keywords-global" style="width:100%;min-height:500px;"></div></div>
       <div class="chart-card"><div id="keywords-global-table" style="max-height:600px;overflow:auto;"></div></div>
     </div>
     <div id="keywords-cluster" style="display:none;">
+      <div class="chart-card"><div id="keywords-tier-summary"></div></div>
+      <div class="chart-card"><div id="keywords-scope-summary"></div></div>
       <div class="chart-card"><div id="chart-keywords" style="width:100%;min-height:500px;"></div></div>
     </div>
   </div>
@@ -201,12 +272,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <div class="dict-subtab active" data-view="cluster">Cluster Network</div>
         <div class="dict-subtab" data-view="keyword">Keyword Network</div>
       </div>
-      <div style="margin-bottom:.5rem;display:flex;align-items:center;gap:1rem;">
-        <label style="font-size:.85rem;">Min edge weight:</label>
-        <input type="range" id="network-edge-slider" min="0" max="100" value="0" style="flex:1;max-width:300px;">
-        <span id="network-edge-value" style="font-size:.85rem;min-width:3rem;">0</span>
+      <div class="network-layout evidence-hidden">
+        <div class="network-panel">
+          <div style="margin-bottom:.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <label style="font-size:.85rem;">Min edge weight:</label>
+            <input type="range" id="network-edge-slider" min="0" max="100" value="0" style="flex:1;max-width:300px;">
+            <span id="network-edge-value" style="font-size:.85rem;min-width:3rem;">0</span>
+          </div>
+          <div id="network-container" style="position:relative;"><svg id="network-svg"></svg></div>
+        </div>
+        <div id="cooccurrence-evidence" class="cooc-evidence"></div>
       </div>
-      <div id="network-container" style="position:relative;"><svg id="network-svg"></svg></div>
     </div>
   </div>
 
@@ -255,13 +331,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div id="drop-zone" style="border:3px dashed #00d4ff;border-radius:16px;padding:4rem 3rem;text-align:center;max-width:560px;width:90%;cursor:pointer;transition:background .2s;">
     <div style="font-size:3rem;margin-bottom:1rem;">&#128194;</div>
     <h2 style="color:#fff;font-size:1.5rem;margin-bottom:.5rem;">SciScape Viewer</h2>
-    <p style="color:#adb5bd;font-size:1rem;margin-bottom:1.5rem;">Drop a file here or click to browse</p>
+    <p style="color:#adb5bd;font-size:1rem;margin-bottom:1.5rem;">Drop a file here, click to browse, or host <b>data.json</b> next to this viewer</p>
     <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem;">
       <span style="background:#2d2d44;padding:.3rem .7rem;border-radius:4px;color:#00d4ff;font-size:.85rem;">data.json</span>
       <span style="background:#2d2d44;padding:.3rem .7rem;border-radius:4px;color:#4ecdc4;font-size:.85rem;">keywords.csv</span>
       <span style="background:#2d2d44;padding:.3rem .7rem;border-radius:4px;color:#4ecdc4;font-size:.85rem;">keywords.tsv</span>
     </div>
-    <p style="color:#6c757d;font-size:.85rem;">CSV/TSV: requires <b>cluster_id</b>, <b>term</b>, <b>score</b> columns (tab or comma separated)</p>
+    <p style="color:#6c757d;font-size:.85rem;">CSV/TSV: requires <b>cluster_id</b> and <b>term</b>. Use <b>?data=path/to/data.json</b> for explicit hosted data.</p>
     <input type="file" id="file-input" accept=".json,.csv,.tsv,.txt" style="display:none;">
     <div id="upload-error" style="color:#ff6b6b;margin-top:1rem;display:none;"></div>
   </div>
@@ -272,18 +348,28 @@ let DATA = null;
 
 // ── Upload / Viewer mode ──
 let VOCAB_MERGES = {}, NORM_MERGES = {}, CROSS_CLUSTER_TERMS = null;
+let COMMON_KEYWORDS = [], SHARED_KEYWORDS = [];
+let ABBREVIATION_EVIDENCE = [], ABBREVIATION_EVIDENCE_TOTAL = 0;
 let TREND_SCORES = {}, CENTRALITY = {}, PIPELINE_CONFIG = {};
 
 function _extractGlobals() {
   VOCAB_MERGES = DATA["_vocab_merges"] || {};
   NORM_MERGES = DATA["_norm_merges"] || {};
   CROSS_CLUSTER_TERMS = DATA["_cross_cluster_terms"] || null;
+  ABBREVIATION_EVIDENCE = DATA["_abbreviation_evidence"] || [];
+  ABBREVIATION_EVIDENCE_TOTAL = DATA["_abbreviation_evidence_total"] || ABBREVIATION_EVIDENCE.length;
+  COMMON_KEYWORDS = DATA["_common_keywords"] || [];
+  SHARED_KEYWORDS = DATA["_shared_keywords"] || [];
   TREND_SCORES = DATA["_trend_scores"] || {};
   CENTRALITY = DATA["_centrality"] || {};
   PIPELINE_CONFIG = DATA["_pipeline_config"] || {};
   delete DATA["_vocab_merges"];
   delete DATA["_norm_merges"];
   delete DATA["_cross_cluster_terms"];
+  delete DATA["_abbreviation_evidence"];
+  delete DATA["_abbreviation_evidence_total"];
+  delete DATA["_common_keywords"];
+  delete DATA["_shared_keywords"];
   delete DATA["_trend_scores"];
   delete DATA["_centrality"];
   delete DATA["_pipeline_config"];
@@ -380,6 +466,8 @@ function _loadCSV(text, filename) {
     const sep = (filename.endsWith(".tsv") || text.split("\n")[0].split("\t").length > 2) ? "\t" : ",";
     DATA = _parseCSV(text, sep);
     VOCAB_MERGES = {}; NORM_MERGES = {}; CROSS_CLUSTER_TERMS = null;
+    ABBREVIATION_EVIDENCE = []; ABBREVIATION_EVIDENCE_TOTAL = 0;
+    COMMON_KEYWORDS = []; SHARED_KEYWORDS = [];
     TREND_SCORES = {}; CENTRALITY = {}; PIPELINE_CONFIG = {};
     _initClusters();
     overlay.style.display = "none";
@@ -411,6 +499,35 @@ function _handleFile(file) {
   reader.readAsText(file);
 }
 
+async function _loadHostedData(url, showErrors) {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const text = await response.text();
+    const cleanName = String(url).split("?")[0].toLowerCase();
+    if (cleanName.endsWith(".csv") || cleanName.endsWith(".tsv") || cleanName.endsWith(".txt")) {
+      _loadCSV(text, cleanName);
+    } else {
+      _loadJSON(text);
+    }
+  } catch (e) {
+    if (showErrors) {
+      uploadError.textContent = "Could not load hosted data: " + e.message;
+      uploadError.style.display = "block";
+    }
+  }
+}
+
+function _hostedDataCandidates() {
+  const params = new URLSearchParams(window.location.search);
+  const explicit = params.get("data") || params.get("src");
+  if (explicit) return [{ url: explicit, showErrors: true }];
+  if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+    return [{ url: "data.json", showErrors: false }];
+  }
+  return [];
+}
+
 if (dropZone) {
   dropZone.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", (e) => _handleFile(e.target.files[0]));
@@ -425,6 +542,10 @@ if (DATA) {
   _initClusters();
 } else {
   overlay.style.display = "flex";
+  const candidates = _hostedDataCandidates();
+  if (candidates.length) {
+    _loadHostedData(candidates[0].url, candidates[0].showErrors);
+  }
 }
 
 // Tab switching
@@ -531,9 +652,13 @@ function updateMeta() {
   const nEdges = currentCluster.network_edges ? currentCluster.network_edges.length : 0;
   const nSub = currentCluster.subphrase_tree ? currentCluster.subphrase_tree.length : 0;
   const nNorm = Object.keys(currentCluster.norm_merges || {}).length;
+  const nFamilies = currentCluster.keyword_family_count != null
+    ? currentCluster.keyword_family_count
+    : (currentCluster.keyword_families || []).length;
 
   metaEl.innerHTML = `
     <div class="meta-item"><div class="meta-label">Keywords</div><div class="meta-value">${kws.length}</div></div>
+    <div class="meta-item"><div class="meta-label">Families</div><div class="meta-value">${nFamilies}</div></div>
     <div class="meta-item"><div class="meta-label">Avg Score</div><div class="meta-value">${avgScore}</div></div>
     <div class="meta-item"><div class="meta-label">Avg Frequency</div><div class="meta-value">${avgFreq}</div></div>
     <div class="meta-item"><div class="meta-label">Depth</div><div class="meta-value">${depthStr}</div></div>
@@ -555,6 +680,148 @@ function renderCurrentTab() {
 
 const depthNames = { 0: "Broad", 1: "Mid", 2: "Specific" };
 const depthColors = { 0: "#636EFA", 1: "#EF553B", 2: "#00CC96" };
+const keywordScopeLabels = {
+  cluster_specific: "Cluster-specific",
+  shared: "Shared",
+  common: "Common"
+};
+const keywordTierLabels = {
+  primary: "Primary labels",
+  supporting: "Supporting terms",
+  review: "Review artifacts"
+};
+const keywordTierColors = {
+  primary: "#0d6efd",
+  supporting: "#6c757d",
+  review: "#ffc107"
+};
+const coocRelationLabels = {
+  primary_supporting: "Primary-Support",
+  primary_primary: "Primary-Primary",
+  supporting_supporting: "Support-Support",
+  review_edge: "Review Edge"
+};
+const coocRelationColors = {
+  primary_supporting: "#0d6efd",
+  primary_primary: "#198754",
+  supporting_supporting: "#adb5bd",
+  review_edge: "#ffc107"
+};
+
+function escHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function csvCell(value) {
+  return '"' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
+}
+
+function keywordTierCategory(tier) {
+  const value = String(tier || "");
+  if (value.startsWith("primary")) return "primary";
+  if (value.startsWith("review")) return "review";
+  return "supporting";
+}
+
+function keywordTierBadge(k) {
+  const cat = keywordTierCategory(k && k.keyword_label_tier);
+  const label = (k && k.keyword_label_tier) ? String(k.keyword_label_tier).replace(/_/g, " ") : keywordTierLabels[cat];
+  return `<span class="tier-label ${cat}">${escHtml(label)}</span>`;
+}
+
+function coocEdgeKey(a, b) {
+  return [String(a || ""), String(b || "")].sort().join("\u0000");
+}
+
+function keywordScopeGroupsFromKeywords(keywords) {
+  const groups = { cluster_specific: [], shared: [], common: [] };
+  (keywords || []).forEach(k => {
+    const scope = groups[k.keyword_scope] ? k.keyword_scope : "cluster_specific";
+    groups[scope].push(k);
+  });
+  return groups;
+}
+
+function keywordCountLabel(n) {
+  const count = Number.isFinite(Number(n)) ? Number(n) : 1;
+  return `${count.toLocaleString()} keyword${count === 1 ? "" : "s"}`;
+}
+
+function renderKeywordTierBlocks(targetId, cluster) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (!cluster) { el.innerHTML = ""; return; }
+  const groups = cluster.keyword_tier_groups || {};
+  const counts = cluster.keyword_tier_counts || {};
+  const order = ["primary", "supporting", "review"];
+  const html = order.map(tier => {
+    const values = (groups[tier] || []).slice(0, tier === "review" ? 8 : 12);
+    const chips = values.map(k => {
+      const meta = [];
+      if (k.member_count != null) meta.push(keywordCountLabel(k.member_count));
+      if (k.abbreviation_status && k.abbreviation_status !== "not_abbreviation") meta.push(k.abbreviation_status);
+      if (tier === "review" && k.quality_flags) meta.push(String(k.quality_flags).split("|").slice(0, 2).join(", "));
+      return `<span class="keyword-chip tier-${tier}"><b>${escHtml(k.term)}</b>${meta.length ? `<small>${escHtml(meta.join(" · "))}</small>` : ""}</span>`;
+    }).join("");
+    const count = Number(counts[tier] || 0).toLocaleString();
+    const more = (groups[tier] || []).length > values.length ? `<small>+${(groups[tier].length - values.length).toLocaleString()} more</small>` : "";
+    return `<div class="keyword-tier-block ${tier}">
+      <div class="keyword-tier-head"><div class="keyword-tier-title">${keywordTierLabels[tier]}</div><div class="keyword-tier-count">${count}</div></div>
+      ${chips || `<span style="color:#adb5bd;font-size:.85rem;">No terms</span>`}${more ? `<div style="margin-top:.3rem;color:#6c757d;">${more}</div>` : ""}
+    </div>`;
+  }).join("");
+  el.innerHTML = `<div class="keyword-tier-grid">${html}</div>`;
+}
+
+function renderKeywordScopeBlocks(targetId, groups, emptyText) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const order = ["cluster_specific", "shared", "common"];
+  const html = order.map(scope => {
+    const values = (groups && groups[scope]) ? groups[scope].slice(0, 12) : [];
+    const chips = values.map(k => {
+      const ratio = k.keyword_cluster_ratio != null ? `${(k.keyword_cluster_ratio * 100).toFixed(0)}%` :
+        k.cluster_ratio != null ? `${(k.cluster_ratio * 100).toFixed(0)}%` : "";
+      const count = k.member_count != null ? keywordCountLabel(k.member_count) : "";
+      const meta = [count, ratio].filter(Boolean).join(" · ");
+      const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
+        ` <small>${k.abbreviation_status}</small>` : "";
+      return `<span class="keyword-chip"><b>${k.term}</b>${meta ? `<small>${meta}</small>` : ""}${abbr}</span>`;
+    }).join("");
+    return `<div class="keyword-scope-block"><div class="keyword-scope-title">${keywordScopeLabels[scope]}</div>${chips || `<span style="color:#adb5bd;font-size:.85rem;">${emptyText}</span>`}</div>`;
+  }).join("");
+  el.innerHTML = `<div class="keyword-scope-grid">${html}</div>`;
+}
+
+function renderKeywordFamiliesSummary(targetId, families) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const values = (families || []).slice(0, 12);
+  if (!values.length) return;
+  const rows = values.map(f => {
+    const children = (f.children || []).slice(0, 5);
+    const childHtml = children.length
+      ? children.map(ch => `<span class="keyword-family-child">${ch.term} <small>(${keywordCountLabel(ch.member_count)})</small></span>`).join("")
+      : `<span style="color:#adb5bd;">No derivatives</span>`;
+    const aliasText = f.raw_alias_count ? ` · ${f.raw_alias_count.toLocaleString()} aliases` : "";
+    return `<div class="keyword-family-row">
+      <div class="keyword-family-parent"><b>${f.term}</b><small>${keywordCountLabel(f.member_count)}${aliasText}</small></div>
+      <div class="keyword-family-children">${childHtml}</div>
+    </div>`;
+  }).join("");
+  const more = (families || []).length > values.length
+    ? `<div style="font-size:.78rem;color:#6c757d;margin-top:.35rem;">Showing ${values.length} of ${families.length} families.</div>`
+    : "";
+  el.insertAdjacentHTML("beforeend", `
+    <div class="keyword-family-section">
+      <div class="keyword-scope-title">Keyword Families (${(families || []).length.toLocaleString()})</div>
+      <div class="keyword-family-list">${rows}</div>
+      ${more}
+    </div>
+  `);
+}
 
 // ---- Tab 1: Keywords ----
 function renderKeywords() {
@@ -569,6 +836,13 @@ function renderKeywords() {
   }
   globalEl.style.display = "none";
   clusterEl.style.display = "block";
+  renderKeywordTierBlocks("keywords-tier-summary", currentCluster);
+  renderKeywordScopeBlocks(
+    "keywords-scope-summary",
+    currentCluster.keyword_groups || keywordScopeGroupsFromKeywords(currentCluster.keywords),
+    "No terms"
+  );
+  renderKeywordFamiliesSummary("keywords-scope-summary", currentCluster.keyword_families || []);
 
   const kws = currentCluster.keywords.slice(0, 30);
   const terms = kws.map(k => k.term).reverse();
@@ -576,6 +850,9 @@ function renderKeywords() {
   const colors = kws.map(k => depthColors[k.depth_level] || "#adb5bd").reverse();
   const hoverText = kws.map(k => {
     let h = `<b>${k.term}</b><br>Score: ${k.score.toFixed(4)}<br>Freq: ${k.frequency.toLocaleString()}<br>Doc coverage: ${k.doc_coverage.toLocaleString()}`;
+    if (k.keyword_label_tier) h += `<br>Tier: ${k.keyword_label_tier.replace(/_/g, " ")}`;
+    if (k.representative_role) h += `<br>Role: ${k.representative_role.replace(/_/g, " ")}`;
+    if (k.quality_flags) h += `<br>Flags: ${k.quality_flags}`;
     if (k.depth_level != null) h += `<br>Depth: ${depthNames[k.depth_level] || "L"+k.depth_level} (${k.depth_score.toFixed(3)})`;
     if (k.cross_cluster_count > 1) h += `<br>Cross-cluster: ${k.cross_cluster_count}`;
     const ts = TREND_SCORES[k.term];
@@ -601,6 +878,11 @@ function renderKeywords() {
 
 function renderKeywordsGlobal() {
   const topN = 5;
+  renderKeywordScopeBlocks(
+    "keywords-global-scope",
+    { cluster_specific: [], shared: SHARED_KEYWORDS || [], common: COMMON_KEYWORDS || [] },
+    "No terms"
+  );
   // Collect top keywords per cluster
   const rows = [];
   const traces = [];
@@ -1384,11 +1666,67 @@ function renderNetworkKeywordGlobal() {
   });
 }
 
+function renderCooccurrenceEvidence() {
+  const el = document.getElementById("cooccurrence-evidence");
+  if (!el) return;
+  const layout = document.querySelector(".network-layout");
+  if (!currentCluster) {
+    el.innerHTML = "";
+    el.style.display = "none";
+    if (layout) layout.classList.add("evidence-hidden");
+    return;
+  }
+  el.style.display = "";
+  if (layout) layout.classList.remove("evidence-hidden");
+  const rows = currentCluster.cooccurrence_table || [];
+  if (!rows.length) {
+    el.innerHTML = '<div class="cooc-evidence-head"><div class="cooc-evidence-title">Co-occurrence Evidence</div><div class="cooc-evidence-note">No evidence table available</div></div>';
+    return;
+  }
+  const shown = rows.slice(0, 30);
+  const body = shown.map((r, i) => {
+    const relation = r.relation || "supporting_supporting";
+    const relationClass = "cooc-" + String(relation).replace(/_/g, "-");
+    const primary = r.primary_term || "";
+    const support = r.support_term || "";
+    const evidence = primary ? `${escHtml(primary)} \u2192 ${escHtml(support)}` : "";
+    return `<div class="cooc-row">
+      <div class="cooc-rank">${i + 1}</div>
+      <div>
+        <div class="cooc-pair">
+          <b>${escHtml(r.source)}</b>
+          <span class="cooc-arrow">\u2192</span>
+          <b>${escHtml(r.target)}</b>
+        </div>
+        <div class="cooc-meta">
+          ${keywordTierBadge({ keyword_label_tier: r.source_tier })}
+          ${keywordTierBadge({ keyword_label_tier: r.target_tier })}
+          <span class="cooc-relation ${relationClass}">${coocRelationLabels[relation] || relation}</span>
+        </div>
+        ${evidence ? `<div class="cooc-primary-evidence">${evidence}</div>` : ""}
+      </div>
+      <div class="cooc-weight">${Number(r.weight || 0).toLocaleString(undefined, { maximumFractionDigits: 3 })}</div>
+    </div>`;
+  }).join("");
+  const more = rows.length > shown.length
+    ? `<div class="cooc-evidence-note" style="margin-top:.45rem;">Showing ${shown.length} of ${rows.length} co-occurrence rows.</div>`
+    : "";
+  el.innerHTML = `
+    <div class="cooc-evidence-head">
+      <div class="cooc-evidence-title">Co-occurrence Evidence</div>
+      <div class="cooc-evidence-note">Primary labels are linked to supporting/review terms by observed co-occurrence.</div>
+    </div>
+    <div class="cooc-list">${body}</div>
+    ${more}`;
+}
+
 function renderNetwork() {
   const subtabsEl = document.getElementById("network-subtabs");
   const descEl = document.getElementById("network-desc");
+  renderCooccurrenceEvidence();
   if (!currentCluster) {
     subtabsEl.style.display = "flex";
+    renderCooccurrenceEvidence();
     if (networkView === "keyword") {
       descEl.innerHTML = '전체 클러스터의 키워드를 합산한 <b>키워드 공출현 네트워크</b>입니다. 노드 색상은 가장 빈번한 클러스터를 나타냅니다.';
       renderNetworkKeywordGlobal();
@@ -1399,7 +1737,7 @@ function renderNetwork() {
     return;
   }
   subtabsEl.style.display = "none";
-  descEl.innerHTML = '키워드 간 <b>실제 공출현(co-occurrence) 네트워크</b>입니다. 동일 문헌에서 함께 등장한 빈도를 기반으로 엣지가 생성됩니다. 엣지 두께는 공출현 빈도에, 노드 크기는 점수에 비례합니다. 색상은 깊이 수준(Broad=파랑, Mid=빨강, Specific=초록)입니다.';
+  descEl.innerHTML = '키워드 간 <b>실제 공출현(co-occurrence) 네트워크</b>입니다. 엣지 색상은 primary/support/review 관계, 노드 테두리는 label tier를 나타냅니다. 엣지 두께는 공출현 빈도에, 노드 크기는 점수에 비례합니다.';
   const svg = d3.select("#network-svg");
   svg.selectAll("*").remove();
   // Remove any existing info panels
@@ -1412,6 +1750,10 @@ function renderNetwork() {
 
   const kws = currentCluster.keywords;
   const rawEdges = currentCluster.network_edges || [];
+  const relationByEdge = {};
+  (currentCluster.cooccurrence_table || []).forEach(r => {
+    relationByEdge[coocEdgeKey(r.source, r.target)] = r.relation || "supporting_supporting";
+  });
 
   if (!rawEdges.length) {
     svg.append("text").attr("x", width/2).attr("y", height/2)
@@ -1421,7 +1763,10 @@ function renderNetwork() {
   }
 
   // Take top edges to avoid overcrowding
-  const edges = rawEdges.slice(0, 80).map(e => ({...e}));
+  const edges = rawEdges.slice(0, 80).map(e => ({
+    ...e,
+    relation: e.relation || relationByEdge[coocEdgeKey(e.source, e.target)] || "supporting_supporting",
+  }));
 
   // Build node set: all keywords (including isolated ones without edges)
   const kwMap = {};
@@ -1434,6 +1779,8 @@ function renderNetwork() {
     score: k.score || 0,
     frequency: k.frequency || 0,
     depth_level: k.depth_level,
+    keyword_label_tier: k.keyword_label_tier || "",
+    tier_category: keywordTierCategory(k.keyword_label_tier),
     isolated: !connectedSet.has(k.term),
   }));
 
@@ -1476,13 +1823,13 @@ function renderNetwork() {
   const link = g.selectAll(".link")
     .data(edges).join("line")
     .attr("class", "link")
-    .attr("stroke", "#adb5bd")
+    .attr("stroke", d => coocRelationColors[d.relation] || "#adb5bd")
     .attr("stroke-opacity", d => 0.3 + 0.7 * Math.min(1, d.weight / maxWeight))
     .attr("stroke-width", d => 1 + 4 * (d.weight / maxWeight))
     .style("transition", "opacity 0.2s");
 
   // Edge tooltips
-  link.append("title").text(d => `${d.source.id || d.source} \u2014 ${d.target.id || d.target}\nCo-occurrence: ${d.weight}`);
+  link.append("title").text(d => `${d.source.id || d.source} \u2014 ${d.target.id || d.target}\nCo-occurrence: ${d.weight}\nRelation: ${coocRelationLabels[d.relation] || d.relation}`);
 
   const node = g.selectAll(".node")
     .data(nodes).join("circle")
@@ -1490,8 +1837,8 @@ function renderNetwork() {
     .attr("r", d => d.isolated ? 4 : Math.sqrt(d.score / maxScore) * 20 + 5)
     .attr("fill", d => d.depth_level != null ? (depthColors[d.depth_level] || "#AB63FA") : "#adb5bd")
     .attr("fill-opacity", d => d.isolated ? 0.5 : 1)
-    .attr("stroke", d => d.isolated ? "#adb5bd" : "#fff")
-    .attr("stroke-width", d => d.isolated ? 0.5 : 1.5)
+    .attr("stroke", d => keywordTierColors[d.tier_category] || "#fff")
+    .attr("stroke-width", d => d.tier_category === "primary" ? 3 : d.tier_category === "review" ? 2.5 : 1.4)
     .attr("stroke-dasharray", d => d.isolated ? "2,2" : "none")
     .style("cursor", "pointer")
     .style("transition", "opacity 0.2s")
@@ -1512,12 +1859,12 @@ function renderNetwork() {
     }).attr("stroke", l => {
       const sid = typeof l.source === "object" ? l.source.id : l.source;
       const tid = typeof l.target === "object" ? l.target.id : l.target;
-      return (sid === d.id || tid === d.id) ? "#0d6efd" : "#adb5bd";
+      return (sid === d.id || tid === d.id) ? (coocRelationColors[l.relation] || "#0d6efd") : (coocRelationColors[l.relation] || "#adb5bd");
     });
     label.style("opacity", n => (n.id === d.id || neighbors.has(n.id)) ? 1 : 0.1);
   }).on("mouseleave", () => {
     node.style("opacity", d => d.isolated ? 0.5 : 1);
-    link.style("opacity", 1).attr("stroke", "#adb5bd");
+    link.style("opacity", 1).attr("stroke", d => coocRelationColors[d.relation] || "#adb5bd");
     label.style("opacity", 1);
   });
 
@@ -1529,14 +1876,23 @@ function renderNetwork() {
     const kw = kwMap[d.id] || {};
     const ts = TREND_SCORES[d.id];
     const ct = CENTRALITY[d.id];
+    const coocEvidence = (currentCluster.cooccurrence_map || {})[d.id] || [];
     let infoHtml = '<span class="info-close">&times;</span>';
-    infoHtml += "<div><strong>" + d.id + "</strong></div>";
+    infoHtml += "<div><strong>" + escHtml(d.id) + "</strong></div>";
+    if (kw.keyword_label_tier) infoHtml += "<div>Tier: " + keywordTierBadge(kw) + "</div>";
+    if (kw.representative_role) infoHtml += "<div>Role: " + escHtml(kw.representative_role.replace(/_/g, " ")) + "</div>";
     infoHtml += "<div>Score: " + (kw.score || d.score).toFixed(4) + "</div>";
     infoHtml += "<div>Frequency: " + (kw.frequency || d.frequency).toLocaleString() + "</div>";
     if (kw.depth_level != null) infoHtml += "<div>Depth: " + (depthNames[kw.depth_level] || "L" + kw.depth_level) + "</div>";
     if (ts != null) infoHtml += "<div>Trend: " + (ts > 0 ? "\u25b2" : "\u25bc") + " " + ts.toFixed(3) + "</div>";
     if (ct) infoHtml += "<div>Centrality: " + ct.degree.toFixed(2) + "</div>";
-    if (neighbors.size) infoHtml += "<div style='margin-top:.3rem;font-size:.8rem;'>Neighbors: " + [...neighbors].slice(0, 10).join(", ") + (neighbors.size > 10 ? "..." : "") + "</div>";
+    if (coocEvidence.length) {
+      infoHtml += "<div style='margin-top:.3rem;font-size:.8rem;'><b>Evidence:</b> " +
+        coocEvidence.slice(0, 8).map(e => escHtml(e.term) + " (" + Number(e.weight || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ")").join(", ") +
+        (coocEvidence.length > 8 ? "..." : "") + "</div>";
+    } else if (neighbors.size) {
+      infoHtml += "<div style='margin-top:.3rem;font-size:.8rem;'>Neighbors: " + [...neighbors].slice(0, 10).map(escHtml).join(", ") + (neighbors.size > 10 ? "..." : "") + "</div>";
+    }
 
     const panel = document.createElement("div");
     panel.className = "network-info-panel";
@@ -1604,21 +1960,35 @@ function renderNetwork() {
   }
 
   // Legend (fixed position, not affected by zoom)
-  const legend = svg.append("g").attr("transform", `translate(15, ${height - 95})`);
-  legend.append("rect").attr("x", -8).attr("y", -8).attr("width", 145).attr("height", 90)
+  const legend = svg.append("g").attr("transform", `translate(15, ${height - 155})`);
+  legend.append("rect").attr("x", -8).attr("y", -8).attr("width", 190).attr("height", 150)
     .attr("fill", "#fff").attr("stroke", "#dee2e6").attr("rx", 4).attr("opacity", 0.9);
+  legend.append("text").attr("x", 0).attr("y", 2).text("Node fill: depth")
+    .attr("font-size", "10px").attr("font-weight", "700").attr("fill", "#495057");
   const legendItems = [
     { label: "Broad", color: depthColors[0] },
     { label: "Mid", color: depthColors[1] },
     { label: "Specific", color: depthColors[2] },
   ];
   legendItems.forEach((item, i) => {
-    legend.append("circle").attr("cx", 8).attr("cy", 10 + i * 22).attr("r", 6).attr("fill", item.color);
-    legend.append("text").attr("x", 22).attr("y", 14 + i * 22).text(item.label)
+    legend.append("circle").attr("cx", 8).attr("cy", 18 + i * 18).attr("r", 5).attr("fill", item.color);
+    legend.append("text").attr("x", 22).attr("y", 22 + i * 18).text(item.label)
       .attr("font-size", "11px").attr("fill", "#1f2933");
   });
+  legend.append("text").attr("x", 0).attr("y", 78).text("Edge: relation")
+    .attr("font-size", "10px").attr("font-weight", "700").attr("fill", "#495057");
+  [
+    ["Primary-Support", "primary_supporting"],
+    ["Primary-Primary", "primary_primary"],
+    ["Review Edge", "review_edge"],
+  ].forEach((item, i) => {
+    legend.append("line").attr("x1", 4).attr("x2", 18).attr("y1", 94 + i * 16).attr("y2", 94 + i * 16)
+      .attr("stroke", coocRelationColors[item[1]] || "#adb5bd").attr("stroke-width", 3);
+    legend.append("text").attr("x", 24).attr("y", 98 + i * 16).text(item[0])
+      .attr("font-size", "10px").attr("fill", "#1f2933");
+  });
   const nIsolated = nodes.filter(d => d.isolated).length;
-  legend.append("text").attr("x", 0).attr("y", 80).text(`${nodes.length} nodes (${nIsolated} isolated), ${edges.length} edges`)
+  legend.append("text").attr("x", 0).attr("y", 138).text(`${nodes.length} nodes (${nIsolated} isolated), ${edges.length} edges`)
     .attr("font-size", "10px").attr("fill", "#6c757d");
 }
 
@@ -1652,17 +2022,27 @@ function renderDictKeywordsGlobal(container, searchBox) {
 
   function buildTable(filter) {
     const fl = (filter || "").toLowerCase();
-    const filtered = fl ? allKws.filter(k => k.term.toLowerCase().includes(fl) || (`C${k.cluster}`).includes(fl) || k.clusterLabel.toLowerCase().includes(fl)) : allKws;
+    const filtered = fl ? allKws.filter(k =>
+      k.term.toLowerCase().includes(fl) ||
+      (`C${k.cluster}`).includes(fl) ||
+      k.clusterLabel.toLowerCase().includes(fl) ||
+      (k.keyword_label_tier || "").toLowerCase().includes(fl) ||
+      (k.representative_role || "").toLowerCase().includes(fl) ||
+      (k.quality_flags || "").toLowerCase().includes(fl)
+    ) : allKws;
     const shown = filtered.slice(0, 200);
-    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
+    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Tier</th><th>Count</th><th>Scope</th><th>Abbrev</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
     shown.forEach((k, i) => {
       const depth = k.depth_level != null ? `${depthNames[k.depth_level]||"L"+k.depth_level} (${(k.depth_score||0).toFixed(2)})` : "";
+      const scope = keywordScopeLabels[k.keyword_scope] || "-";
+      const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
+        `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       html += `<tr style="cursor:pointer" onclick="document.getElementById('cluster-select').value='${k.cluster}';document.getElementById('cluster-select').dispatchEvent(new Event('change'))">`;
-      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${k.score.toFixed(4)}</td>`;
+      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${escHtml(k.term)}</b></td><td>${keywordTierBadge(k)}</td><td>${keywordCountLabel(k.member_count)}</td><td>${scope}</td><td>${escHtml(abbr)}</td><td>${k.score.toFixed(4)}</td>`;
       html += `<td>${(k.frequency||0).toLocaleString()}</td><td>${(k.doc_coverage||0).toLocaleString()}</td>`;
       html += `<td>${depth}</td><td>${k.cross_cluster_count > 1 ? k.cross_cluster_count : ""}</td></tr>`;
     });
-    if (filtered.length > 200) html += `<tr><td colspan="8" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
+    if (filtered.length > 200) html += `<tr><td colspan="12" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
     html += '</tbody></table>';
     container.innerHTML = html;
   }
@@ -1682,30 +2062,42 @@ function renderDictKeywords(container, searchBox) {
     const filtered = fl
       ? kws.filter(k => k.term.toLowerCase().includes(fl) ||
                         (k.expanded_from || "").toLowerCase().includes(fl) ||
+                        (k.keyword_label_tier || "").toLowerCase().includes(fl) ||
+                        (k.representative_role || "").toLowerCase().includes(fl) ||
+                        (k.quality_flags || "").toLowerCase().includes(fl) ||
+                        (k.abbreviation_status || "").toLowerCase().includes(fl) ||
+                        (k.abbreviation_target || "").toLowerCase().includes(fl) ||
                         (k.source_terms || []).join(" ").toLowerCase().includes(fl) ||
                         (normMerges[k.term] || []).join(" ").toLowerCase().includes(fl))
       : kws;
 
     let html = `<table class="merge-table">
       <thead><tr>
-        <th>#</th><th>Term</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
-        <th>Depth</th><th>Cross-CL</th><th>Expanded From</th><th>Norm Merged From</th><th>Notes</th>
+        <th>#</th><th>Term</th><th>Tier</th><th>Role</th><th>Count</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
+        <th>Depth</th><th>Cross-CL</th><th>Scope</th><th>Abbrev</th><th>Expanded From</th><th>Norm Merged From</th><th>Notes</th>
       </tr></thead><tbody>`;
 
     filtered.forEach((k, i) => {
       const dl = k.depth_level != null ? `${depthNames[k.depth_level] || "L"+k.depth_level} (${k.depth_score.toFixed(3)})` : "-";
       const cc = k.cross_cluster_count > 1 ? k.cross_cluster_count : "-";
+      const scope = keywordScopeLabels[k.keyword_scope] || "-";
+      const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
+        `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       const ef = k.expanded_from || "-";
       const nm = normMerges[k.term];
-      const nmStr = nm ? nm.map(t => `<span class="badge badge-norm">${t}</span>`).join(" ") : "-";
+      const nmStr = nm ? nm.map(t => `<span class="badge badge-norm">${escHtml(t)}</span>`).join(" ") : "-";
+      const role = k.representative_role ? k.representative_role.replace(/_/g, " ") : "-";
       const noteKey = "sciscape_notes_" + k.term;
       const existingNote = localStorage.getItem(noteKey) || "";
       const noteIndicator = existingNote ? ' <span class="note-indicator">\ud83d\udcdd</span>' : "";
       html += `<tr>
-        <td>${i + 1}</td><td><strong>${k.term}</strong>${noteIndicator}</td>
+        <td>${i + 1}</td><td><strong>${escHtml(k.term)}</strong>${noteIndicator}</td>
+        <td>${keywordTierBadge(k)}</td>
+        <td>${escHtml(role)}</td>
+        <td>${keywordCountLabel(k.member_count)}</td>
         <td>${k.score.toFixed(4)}</td><td>${k.frequency.toLocaleString()}</td>
         <td>${k.doc_coverage.toLocaleString()}</td>
-        <td>${dl}</td><td>${cc}</td><td>${ef}</td><td>${nmStr}</td>
+        <td>${dl}</td><td>${cc}</td><td>${scope}</td><td>${escHtml(abbr)}</td><td>${escHtml(ef)}</td><td>${nmStr}</td>
         <td class="note-cell" contenteditable="true" data-term="${k.term.replace(/"/g, '&quot;')}">${existingNote}</td>
       </tr>`;
     });
@@ -2191,20 +2583,42 @@ function exportCurrentData() {
     }
     filename = "temporal_C" + currentClusterId + ".csv";
   } else if (currentTab === "network" && currentCluster) {
-    const edges = currentCluster.network_edges || [];
-    csv = "source,target,weight\n";
-    edges.forEach(e => {
-      csv += '"' + e.source.replace(/"/g, '""') + '","' + e.target.replace(/"/g, '""') + '",' + e.weight + "\n";
-    });
-    filename = "network_C" + currentClusterId + ".csv";
+    const coocRows = currentCluster.cooccurrence_table || [];
+    if (coocRows.length) {
+      csv = "source,target,weight,source_tier,target_tier,relation,primary_term,support_term\n";
+      coocRows.forEach(e => {
+        csv += [
+          csvCell(e.source), csvCell(e.target), e.weight,
+          csvCell(e.source_tier), csvCell(e.target_tier), csvCell(e.relation),
+          csvCell(e.primary_term), csvCell(e.support_term)
+        ].join(",") + "\n";
+      });
+      filename = "cooccurrence_evidence_C" + currentClusterId + ".csv";
+    } else {
+      const edges = currentCluster.network_edges || [];
+      csv = "source,target,weight\n";
+      edges.forEach(e => {
+        csv += csvCell(e.source) + "," + csvCell(e.target) + "," + e.weight + "\n";
+      });
+      filename = "network_C" + currentClusterId + ".csv";
+    }
   } else if (currentCluster) {
     // Keywords / dictionary export
     const kws = currentCluster.keywords;
-    csv = "term,score,frequency,doc_coverage,depth_level,cross_cluster_count\n";
+    csv = "term,raw_term,keyword_label_tier,representative_role,score,frequency,doc_coverage,depth_level,cross_cluster_count,quality_flags\n";
     kws.forEach(k => {
-      csv += '"' + k.term.replace(/"/g, '""') + '",' + k.score.toFixed(6) + "," + k.frequency + "," +
-        k.doc_coverage + "," + (k.depth_level != null ? k.depth_level : "") + "," +
-        (k.cross_cluster_count || "") + "\n";
+      csv += [
+        csvCell(k.term),
+        csvCell(k.raw_term || ""),
+        csvCell(k.keyword_label_tier || ""),
+        csvCell(k.representative_role || ""),
+        k.score.toFixed(6),
+        k.frequency,
+        k.doc_coverage,
+        k.depth_level != null ? k.depth_level : "",
+        k.cross_cluster_count || "",
+        csvCell(k.quality_flags || "")
+      ].join(",") + "\n";
     });
     filename = "keywords_C" + currentClusterId + ".csv";
   }

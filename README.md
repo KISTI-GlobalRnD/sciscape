@@ -38,10 +38,19 @@ diagnostic-only names for basin/adaptive-refinement probes.
 
 - `docs/workflows.md`: supported end-to-end workflows from source data to
   landscapes, keywords, reports, and viewer artifacts.
+- `docs/project_structure.md`: repo map for source code, demos, generated
+  outputs, research files, and the static viewer bundle.
 - `docs/modules.md`: lifecycle module map across ingest, network, landscape,
   clustering, keywords, visualization, and evaluation.
 - `docs/io_schema.md`: table-level input/output schemas.
 - `docs/release_readiness.md`: local validation gate and artifact policy.
+
+## Repository Map
+
+Use `sciscape/` for package implementation. Use `viewer/` for the curated
+static demo bundle (`index.html` plus `data.json`). Local run products such as
+`examples_output/`, `output/`, and `sciscape_web_output/` are generated
+artifacts, not source. See `docs/project_structure.md` for the full map.
 
 ## Install
 

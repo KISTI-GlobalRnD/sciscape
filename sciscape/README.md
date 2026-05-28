@@ -6,6 +6,10 @@
 
 ## 구성
 
+저장소 전체 구조와 산출물 위치는
+[`../docs/project_structure.md`](../docs/project_structure.md)를 기준으로 봅니다.
+패키지 구현의 source of truth는 이 `sciscape/` 디렉토리입니다.
+
 ```
 sciscape/
 ├── clustering/              # CPM Leiden 클러스터링
