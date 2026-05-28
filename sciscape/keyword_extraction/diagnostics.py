@@ -7,7 +7,8 @@ payload that downstream notebooks/HTML reports can visualise.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 import json
 import math
 import random
@@ -140,6 +141,79 @@ def _token_jaccard_redundancy_ratio(
     return sum(1 for f in redundant_flags if f), n
 
 
+def _pipe_flag_set(value: object) -> set[str]:
+    if value is None or (isinstance(value, float) and math.isnan(value)):  # type: ignore[arg-type]
+        return set()
+    return {flag.strip() for flag in str(value).split("|") if flag.strip()}
+
+
+def _value_counts(series: pd.Series) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for raw in series.dropna().astype(str):
+        value = raw.strip()
+        if value:
+            counts[value] += 1
+    return dict(sorted(counts.items()))
+
+
+def _ratio_from_mask(mask: Sequence[bool]) -> Optional[float]:
+    if not mask:
+        return None
+    return float(sum(1 for value in mask if value) / len(mask))
+
+
+def _family_compression_ratio(terms: Sequence[str], *, min_parent_tokens: int = 2) -> Optional[float]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        label = str(term).strip().lower()
+        if not label or label in seen:
+            continue
+        seen.add(label)
+        cleaned.append(label)
+    if not cleaned:
+        return None
+
+    token_sets = [set(term.split()) for term in cleaned]
+    child_terms = 0
+    for idx, tokens in enumerate(token_sets):
+        if not tokens:
+            continue
+        for parent_idx, parent_tokens in enumerate(token_sets):
+            if idx == parent_idx or len(parent_tokens) < min_parent_tokens:
+                continue
+            if len(parent_tokens) < len(tokens) and parent_tokens < tokens:
+                child_terms += 1
+                break
+    return child_terms / len(cleaned)
+
+
+def _representative_diversity_ratio(df: pd.DataFrame, *, top_n: int = 3) -> Optional[float]:
+    if "cluster_id" not in df.columns:
+        return None
+    label_col = "display_label" if "display_label" in df.columns else "term"
+    if label_col not in df.columns:
+        return None
+    if "representative_rank" in df.columns:
+        sort_cols = ["cluster_id", "representative_rank"]
+        ascending = [True, True]
+    elif "representative_score" in df.columns:
+        sort_cols = ["cluster_id", "representative_score"]
+        ascending = [True, False]
+    elif "score" in df.columns:
+        sort_cols = ["cluster_id", "score"]
+        ascending = [True, False]
+    else:
+        return None
+
+    labels: list[str] = []
+    for _, group in df.sort_values(sort_cols, ascending=ascending, kind="mergesort").groupby("cluster_id", sort=False):
+        labels.extend(group[label_col].dropna().astype(str).head(top_n).tolist())
+    if not labels:
+        return None
+    return float(len(set(labels)) / len(labels))
+
+
 @dataclass(frozen=True)
 class KeywordDiagnostics:
     n_rows: int
@@ -151,6 +225,14 @@ class KeywordDiagnostics:
     single_year_term_ratio: Optional[float]
     redundancy_subphrase_ratio: Optional[float]
     redundancy_token_jaccard_ratio: Optional[float]
+    scope_counts: dict[str, int] = field(default_factory=dict)
+    scope_ratios: dict[str, float] = field(default_factory=dict)
+    abbreviation_status_counts: dict[str, int] = field(default_factory=dict)
+    unresolved_short_form_ratio: Optional[float] = None
+    review_flag_ratio: Optional[float] = None
+    representative_role_counts: dict[str, int] = field(default_factory=dict)
+    representative_diversity_ratio: Optional[float] = None
+    family_compression_ratio: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -163,6 +245,14 @@ class KeywordDiagnostics:
             "single_year_term_ratio": None if self.single_year_term_ratio is None else float(self.single_year_term_ratio),
             "redundancy_subphrase_ratio": None if self.redundancy_subphrase_ratio is None else float(self.redundancy_subphrase_ratio),
             "redundancy_token_jaccard_ratio": None if self.redundancy_token_jaccard_ratio is None else float(self.redundancy_token_jaccard_ratio),
+            "scope_counts": dict(self.scope_counts),
+            "scope_ratios": dict(self.scope_ratios),
+            "abbreviation_status_counts": dict(self.abbreviation_status_counts),
+            "unresolved_short_form_ratio": None if self.unresolved_short_form_ratio is None else float(self.unresolved_short_form_ratio),
+            "review_flag_ratio": None if self.review_flag_ratio is None else float(self.review_flag_ratio),
+            "representative_role_counts": dict(self.representative_role_counts),
+            "representative_diversity_ratio": None if self.representative_diversity_ratio is None else float(self.representative_diversity_ratio),
+            "family_compression_ratio": None if self.family_compression_ratio is None else float(self.family_compression_ratio),
         }
 
 
@@ -227,6 +317,42 @@ def keyword_diagnostics(
         if not values.empty:
             score["mean"] = float(values.mean())
 
+    scope_counts: dict[str, int] = {}
+    scope_ratios: dict[str, float] = {}
+    if "keyword_scope" in out_df.columns:
+        scope_counts = _value_counts(out_df["keyword_scope"])
+        denom = max(1, sum(scope_counts.values()))
+        scope_ratios = {scope: count / denom for scope, count in scope_counts.items()}
+
+    abbreviation_status_counts: dict[str, int] = {}
+    unresolved_short_form_ratio: Optional[float] = None
+    if "abbreviation_status" in out_df.columns:
+        abbreviation_status_counts = _value_counts(out_df["abbreviation_status"])
+        unresolved_short_form_ratio = _ratio_from_mask([
+            status in {"candidate_short_form", "unlinked_short_form"}
+            for status in out_df["abbreviation_status"].fillna("").astype(str).tolist()
+        ])
+
+    review_flag_ratio: Optional[float] = None
+    if "quality_flags" in out_df.columns:
+        review_flags = {
+            "ambiguous_expansion",
+            "artifact_formula",
+            "artifact_like",
+            "candidate_short_form",
+            "low_support_expansion",
+            "unlinked_short_form",
+        }
+        review_flag_ratio = _ratio_from_mask([
+            bool(_pipe_flag_set(value) & review_flags)
+            for value in out_df["quality_flags"].tolist()
+        ])
+
+    representative_role_counts: dict[str, int] = {}
+    if "representative_role" in out_df.columns:
+        representative_role_counts = _value_counts(out_df["representative_role"])
+    representative_diversity = _representative_diversity_ratio(out_df)
+
     # Year-series sparsity
     years_per_term: dict[str, float] = {}
     single_year_ratio: Optional[float] = None
@@ -246,21 +372,30 @@ def keyword_diagnostics(
         subphrase_red_total = 0
         token_red_total = 0
         term_total = 0
+        family_sum = 0.0
+        family_count = 0
 
         for cid in sampled:
             group = out_df[out_df["cluster_id"].astype(int) == int(cid)]
             terms = group["term"].astype(str).tolist()
             sub_red, sub_total = _subphrase_redundancy_ratio(terms)
             tok_red, tok_total = _token_jaccard_redundancy_ratio(terms, threshold=float(token_jaccard_threshold))
+            family_ratio = _family_compression_ratio(terms)
 
             # Use the token total as the denominator for both (same unique term count).
             subphrase_red_total += int(sub_red)
             token_red_total += int(tok_red)
             term_total += int(tok_total)
+            if family_ratio is not None:
+                family_sum += float(family_ratio)
+                family_count += 1
 
         if term_total > 0:
             redundancy_subphrase_ratio = subphrase_red_total / term_total
             redundancy_token_ratio = token_red_total / term_total
+        family_compression = family_sum / family_count if family_count else None
+    else:
+        family_compression = None
 
     return KeywordDiagnostics(
         n_rows=n_rows,
@@ -272,6 +407,14 @@ def keyword_diagnostics(
         single_year_term_ratio=single_year_ratio,
         redundancy_subphrase_ratio=redundancy_subphrase_ratio,
         redundancy_token_jaccard_ratio=redundancy_token_ratio,
+        scope_counts=scope_counts,
+        scope_ratios=scope_ratios,
+        abbreviation_status_counts=abbreviation_status_counts,
+        unresolved_short_form_ratio=unresolved_short_form_ratio,
+        review_flag_ratio=review_flag_ratio,
+        representative_role_counts=representative_role_counts,
+        representative_diversity_ratio=representative_diversity,
+        family_compression_ratio=family_compression,
     )
 
 
@@ -296,6 +439,8 @@ def score_before_after(
         "redundancy": 25.0,
         "coverage": 15.0,
         "temporal_sparsity": 10.0,
+        "review_load": 10.0,
+        "representative_diversity": 10.0,
     }
     if weights:
         w.update({str(k): float(v) for k, v in weights.items()})
@@ -327,6 +472,10 @@ def score_before_after(
     after_cov = diag_after.doc_coverage.get("p50")
     before_single_year = diag_before.single_year_term_ratio
     after_single_year = diag_after.single_year_term_ratio
+    before_review = diag_before.review_flag_ratio
+    after_review = diag_after.review_flag_ratio
+    before_diversity = diag_before.representative_diversity_ratio
+    after_diversity = diag_after.representative_diversity_ratio
 
     components: dict[str, Any] = {}
     baseline = 50.0
@@ -373,6 +522,39 @@ def score_before_after(
         }
     else:
         components["temporal_sparsity"] = {"weight": w["temporal_sparsity"], "before_single_year_ratio": before_single_year, "after_single_year_ratio": after_single_year, "contribution": 0.0}
+
+    if before_review is not None and after_review is not None:
+        denom = before_review if before_review > 1e-12 else 1.0
+        delta = (before_review - after_review) / denom
+        contrib = w["review_load"] * _clamp(delta, -1.0, 1.0)
+        total += contrib
+        components["review_load"] = {
+            "weight": w["review_load"],
+            "before_review_flag_ratio": before_review,
+            "after_review_flag_ratio": after_review,
+            "contribution": contrib,
+        }
+    else:
+        components["review_load"] = {"weight": w["review_load"], "before_review_flag_ratio": before_review, "after_review_flag_ratio": after_review, "contribution": 0.0}
+
+    if before_diversity is not None and after_diversity is not None:
+        denom = before_diversity if before_diversity > 1e-12 else 1.0
+        delta = (after_diversity - before_diversity) / denom
+        contrib = w["representative_diversity"] * _clamp(delta, -1.0, 1.0)
+        total += contrib
+        components["representative_diversity"] = {
+            "weight": w["representative_diversity"],
+            "before_representative_diversity_ratio": before_diversity,
+            "after_representative_diversity_ratio": after_diversity,
+            "contribution": contrib,
+        }
+    else:
+        components["representative_diversity"] = {
+            "weight": w["representative_diversity"],
+            "before_representative_diversity_ratio": before_diversity,
+            "after_representative_diversity_ratio": after_diversity,
+            "contribution": 0.0,
+        }
 
     total_clamped = float(_clamp(total, 0.0, 100.0))
 

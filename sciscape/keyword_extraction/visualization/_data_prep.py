@@ -425,6 +425,14 @@ def prepare_cluster_data(
                     kw["representative_flags"] = representative_flags
             if "quality_flags" in r.index and pd.notna(r["quality_flags"]):
                 kw["quality_flags"] = str(r["quality_flags"])
+            if "quality_decision_trace" in r.index and pd.notna(r["quality_decision_trace"]):
+                trace_value = r["quality_decision_trace"]
+                if isinstance(trace_value, str):
+                    try:
+                        trace_value = json.loads(trace_value)
+                    except (json.JSONDecodeError, ValueError):
+                        trace_value = trace_value
+                kw["quality_decision_trace"] = trace_value
             if "quality_multiplier" in r.index and pd.notna(r["quality_multiplier"]):
                 kw["quality_multiplier"] = round(float(r["quality_multiplier"]), 6)
             if "network_role" in r.index and pd.notna(r["network_role"]):

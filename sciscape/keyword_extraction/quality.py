@@ -8,6 +8,7 @@ specificity, redundancy with longer phrases, and artifact-like shape.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import json
 import math
 import re
 from typing import Any, Iterable, Mapping, Sequence
@@ -318,6 +319,26 @@ def _safe_float(value: object, default: float = 0.0) -> float:
     if math.isnan(number):
         return default
     return number
+
+
+def _quality_adjustment(name: str, factor: float, reason: str, **evidence: object) -> dict[str, object]:
+    entry: dict[str, object] = {
+        "name": str(name),
+        "factor": round(float(factor), 6),
+        "reason": str(reason),
+    }
+    for key, value in evidence.items():
+        if value is None:
+            continue
+        if isinstance(value, float):
+            entry[key] = round(float(value), 6)
+        else:
+            entry[key] = value
+    return entry
+
+
+def _decision_trace_json(payload: Mapping[str, Any]) -> str:
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
 def _keyword_scope(cluster_count: int, cluster_ratio: float, *, threshold: float) -> str:
@@ -799,6 +820,7 @@ def annotate_keyword_quality(
     representative_multipliers: list[float] = []
     representative_roles: list[str] = []
     representative_flag_values: list[str] = []
+    quality_decision_traces: list[str] = []
 
     raw_scores = out[score_col] if score_col in out.columns else pd.Series(1.0, index=out.index)
     base_scores = pd.to_numeric(raw_scores, errors="coerce").fillna(0.0).reset_index(drop=True)
@@ -819,6 +841,7 @@ def annotate_keyword_quality(
         )
         flags: list[str] = []
         multiplier = 1.0
+        adjustment_trace: list[dict[str, object]] = []
 
         cluster_count = int(term_cluster_counts.get(term, 1))
         cluster_ratio = cluster_count / n_clusters
@@ -835,18 +858,51 @@ def annotate_keyword_quality(
 
         if cluster_count == 1:
             flags.append("cluster_specific")
-            multiplier *= 1.0 + float(cluster_specific_bonus)
+            factor = 1.0 + float(cluster_specific_bonus)
+            multiplier *= factor
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "scope",
+                    factor,
+                    "cluster_specific",
+                    cluster_count=cluster_count,
+                    cluster_ratio=float(cluster_ratio),
+                )
+            )
         elif cluster_ratio >= float(global_term_threshold):
             flags.append("too_global")
-            multiplier *= 1.0 - float(global_term_penalty) * min(1.0, cluster_ratio)
-            multiplier *= 1.0 - float(entropy_penalty) * min(1.0, term_entropy)
+            factor = 1.0 - float(global_term_penalty) * min(1.0, cluster_ratio)
+            multiplier *= factor
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "scope",
+                    factor,
+                    "too_global",
+                    cluster_count=cluster_count,
+                    cluster_ratio=float(cluster_ratio),
+                )
+            )
+            factor = 1.0 - float(entropy_penalty) * min(1.0, term_entropy)
+            multiplier *= factor
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "cluster_entropy",
+                    factor,
+                    "distributed_across_clusters",
+                    entropy=float(term_entropy),
+                )
+            )
 
         if term in METADATA_TERMS:
             flags.extend(["artifact_like", "low_information"])
-            multiplier *= 1.0 - float(artifact_demotion_weight)
+            factor = 1.0 - float(artifact_demotion_weight)
+            multiplier *= factor
+            adjustment_trace.append(_quality_adjustment("term_shape", factor, "metadata_term"))
         elif term in LOW_INFORMATION_TERMS:
             flags.append("low_information")
-            multiplier *= 1.0 - max(0.0, float(artifact_demotion_weight) * 0.5)
+            factor = 1.0 - max(0.0, float(artifact_demotion_weight) * 0.5)
+            multiplier *= factor
+            adjustment_trace.append(_quality_adjustment("term_shape", factor, "low_information_term"))
 
         expansion = expansions.get((cluster_id, term))
         corpus_abbreviation = _lookup_abbreviation_evidence(
@@ -865,13 +921,19 @@ def annotate_keyword_quality(
             flags.append("formula_like")
             if material_formula_like:
                 flags.append("material_formula")
-                multiplier *= 1.0 - min(0.1, float(formula_demotion_weight) * 0.2)
+                factor = 1.0 - min(0.1, float(formula_demotion_weight) * 0.2)
+                multiplier *= factor
+                adjustment_trace.append(_quality_adjustment("formula", factor, "material_formula"))
             else:
                 flags.append("artifact_formula")
-                multiplier *= 1.0 - float(formula_demotion_weight)
+                factor = 1.0 - float(formula_demotion_weight)
+                multiplier *= factor
+                adjustment_trace.append(_quality_adjustment("formula", factor, "artifact_formula"))
         if acronym_like:
             flags.append("acronym_like")
-            multiplier *= 1.0 - float(acronym_demotion_weight)
+            factor = 1.0 - float(acronym_demotion_weight)
+            multiplier *= factor
+            adjustment_trace.append(_quality_adjustment("short_form_shape", factor, "acronym_like"))
 
         network_role = str(role_hint.get("role", "neutral"))
         network_flags = [str(flag) for flag in role_hint.get("flags", []) if str(flag)]
@@ -904,6 +966,15 @@ def annotate_keyword_quality(
         if abbreviation_status == "duplicate_expansion":
             flags.append("duplicate_label")
             multiplier *= 0.15
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "abbreviation",
+                    0.15,
+                    "duplicate_expansion",
+                    target=abbreviation_target,
+                    confidence=abbreviation_confidence,
+                )
+            )
         abbreviation_statuses.append(abbreviation_status)
         abbreviation_targets.append(abbreviation_target)
         abbreviation_confidences.append(abbreviation_confidence)
@@ -935,20 +1006,68 @@ def annotate_keyword_quality(
                         shadow_penalty *= 0.25
                     elif network_role == "linked_unigram":
                         shadow_penalty *= 0.55
-                    multiplier *= 1.0 - shadow_penalty
+                    factor = 1.0 - shadow_penalty
+                    multiplier *= factor
+                    adjustment_trace.append(
+                        _quality_adjustment(
+                            "phrase_shadow",
+                            factor,
+                            "longer_phrase_contains_unigram",
+                            longer_phrase=longer,
+                            network_role=network_role,
+                        )
+                    )
                     break
         elif n_tokens >= 2:
             flags.append("phrase")
             phrase_bonus = min(3, n_tokens - 1) / 3.0
-            multiplier *= 1.0 + float(phrase_preference_weight) * phrase_bonus
+            factor = 1.0 + float(phrase_preference_weight) * phrase_bonus
+            multiplier *= factor
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "phrase_specificity",
+                    factor,
+                    "multi_token_phrase",
+                    n_tokens=n_tokens,
+                )
+            )
 
         if not flags:
             flags.append("neutral")
 
+        pre_clamp_multiplier = multiplier
         multiplier = max(float(min_multiplier), multiplier)
+        if multiplier != pre_clamp_multiplier:
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "floor",
+                    multiplier / pre_clamp_multiplier if pre_clamp_multiplier else multiplier,
+                    "quality_min_multiplier",
+                    min_multiplier=float(min_multiplier),
+                )
+            )
         if network_roles_enabled:
-            multiplier *= max(float(min_multiplier), network_multiplier)
+            network_factor = max(float(min_multiplier), network_multiplier)
+            multiplier *= network_factor
+            adjustment_trace.append(
+                _quality_adjustment(
+                    "network_role",
+                    network_factor,
+                    network_role,
+                    network_score=float(role_hint.get("score", 0.5)),
+                )
+            )
+            pre_clamp_multiplier = multiplier
             multiplier = max(float(min_multiplier), multiplier)
+            if multiplier != pre_clamp_multiplier:
+                adjustment_trace.append(
+                    _quality_adjustment(
+                        "floor",
+                        multiplier / pre_clamp_multiplier if pre_clamp_multiplier else multiplier,
+                        "quality_min_multiplier_after_network",
+                        min_multiplier=float(min_multiplier),
+                    )
+                )
         base = float(base_scores.iloc[row_index])
         quality_score = base * multiplier
         representative_multiplier, representative_role, representative_flags = _representative_signal(
@@ -959,28 +1078,55 @@ def annotate_keyword_quality(
             network_role=network_role,
             abbreviation_status=abbreviation_status,
         )
+        if abbreviation_status in {"cluster_expanded", "corpus_expanded", "duplicate_expansion"} and abbreviation_target:
+            display_label = abbreviation_target
+        elif expansion:
+            display_label = expansion
+        else:
+            display_label = term
+        representative_score = quality_score * representative_multiplier
         quality_scores.append(quality_score)
         quality_multipliers.append(multiplier)
         quality_flags.append(_flag_string(flags))
-        representative_scores.append(quality_score * representative_multiplier)
+        representative_scores.append(representative_score)
         representative_multipliers.append(representative_multiplier)
         representative_roles.append(representative_role)
         representative_flag_values.append(representative_flags)
         network_role_values.append(network_role)
         network_scores.append(float(role_hint.get("score", 0.5)))
         network_flag_values.append(_flag_string(network_flags))
-
-        if abbreviation_status in {"cluster_expanded", "corpus_expanded", "duplicate_expansion"} and abbreviation_target:
-            display_labels.append(abbreviation_target)
-        elif expansion:
-            display_labels.append(expansion)
-        else:
-            display_labels.append(term)
+        display_labels.append(display_label)
+        quality_decision_traces.append(
+            _decision_trace_json(
+                {
+                    "term": term,
+                    "display_label": display_label,
+                    "base_score": round(base, 6),
+                    "quality_score": round(float(quality_score), 6),
+                    "quality_multiplier": round(float(multiplier), 6),
+                    "quality_flags": sorted(set(flags)),
+                    "quality_adjustments": adjustment_trace,
+                    "keyword_scope": keyword_scopes[-1],
+                    "keyword_cluster_count": cluster_count,
+                    "keyword_cluster_ratio": round(float(cluster_ratio), 6),
+                    "abbreviation_status": abbreviation_status,
+                    "abbreviation_target": abbreviation_target,
+                    "abbreviation_confidence": round(float(abbreviation_confidence), 6),
+                    "network_role": network_role,
+                    "network_score": round(float(role_hint.get("score", 0.5)), 6),
+                    "representative_score": round(float(representative_score), 6),
+                    "representative_multiplier": round(float(representative_multiplier), 6),
+                    "representative_role": representative_role,
+                    "representative_flags": representative_flags.split("|") if representative_flags else [],
+                }
+            )
+        )
 
     out["display_label"] = display_labels
     out["quality_score"] = quality_scores
     out["quality_multiplier"] = quality_multipliers
     out["quality_flags"] = quality_flags
+    out["quality_decision_trace"] = quality_decision_traces
     out["representative_score"] = representative_scores
     out["representative_multiplier"] = representative_multipliers
     out["representative_role"] = representative_roles

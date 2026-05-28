@@ -217,6 +217,8 @@ class TestKeywordDiagnosticsDataclass:
         assert d["n_clusters"] == 2
         assert isinstance(d["terms_per_cluster"], dict)
         assert d["single_year_term_ratio"] == pytest.approx(0.1)
+        assert d["scope_counts"] == {}
+        assert d["unresolved_short_form_ratio"] is None
 
     def test_to_dict_none_values(self):
         diag = KeywordDiagnostics(
@@ -288,6 +290,65 @@ class TestKeywordDiagnostics:
         assert diag.n_clusters == 0
         assert diag.redundancy_subphrase_ratio is None
 
+    def test_quality_refinement_diagnostics(self):
+        df = pd.DataFrame({
+            "cluster_id": [0, 0, 0, 1, 1],
+            "term": [
+                "traffic flow",
+                "traffic flow prediction",
+                "eeg",
+                "drug drug interaction",
+                "ddi",
+            ],
+            "display_label": [
+                "traffic flow",
+                "traffic flow prediction",
+                "eeg",
+                "drug drug interaction",
+                "drug drug interaction",
+            ],
+            "score": [5.0, 4.0, 3.0, 5.0, 1.0],
+            "keyword_scope": [
+                "cluster_specific",
+                "cluster_specific",
+                "cluster_specific",
+                "cluster_specific",
+                "cluster_specific",
+            ],
+            "abbreviation_status": [
+                "not_abbreviation",
+                "not_abbreviation",
+                "unlinked_short_form",
+                "not_abbreviation",
+                "duplicate_expansion",
+            ],
+            "quality_flags": [
+                "phrase",
+                "phrase",
+                "unlinked_short_form|acronym_like",
+                "phrase",
+                "duplicate_expansion|acronym_like",
+            ],
+            "representative_role": [
+                "representative_phrase",
+                "representative_phrase",
+                "review_short_form",
+                "representative_phrase",
+                "duplicate_expansion",
+            ],
+            "representative_rank": [1, 2, 3, 1, 2],
+        })
+
+        diag = keyword_diagnostics(df, sample_clusters=None)
+
+        assert diag.scope_counts == {"cluster_specific": 5}
+        assert diag.abbreviation_status_counts["unlinked_short_form"] == 1
+        assert diag.unresolved_short_form_ratio == pytest.approx(0.2)
+        assert diag.review_flag_ratio == pytest.approx(0.2)
+        assert diag.representative_role_counts["representative_phrase"] == 3
+        assert diag.representative_diversity_ratio == pytest.approx(4 / 5)
+        assert diag.family_compression_ratio == pytest.approx(1 / 6)
+
 
 # ---------------------------------------------------------------------------
 # score_before_after
@@ -326,6 +387,8 @@ class TestScoreBeforeAfter:
         )
         assert "components" in result
         assert result["components"]["coverage"]["weight"] == 40.0
+        assert "review_load" in result["components"]
+        assert "representative_diversity" in result["components"]
 
     def test_output_structure(self):
         df = pd.DataFrame({

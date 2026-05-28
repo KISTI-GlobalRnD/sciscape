@@ -1,5 +1,7 @@
 """Tests for domain-agnostic keyword quality refinement."""
 
+import json
+
 import pandas as pd
 import pytest
 
@@ -50,10 +52,17 @@ def test_quality_annotation_demotes_global_terms_and_prefers_phrases():
     assert abstract["quality_score"] < abstract["score"]
 
     assert "network_role" in result.columns
+    assert "quality_decision_trace" in result.columns
     assert result[result["term"] == "graph"].iloc[0]["network_role"] == "generic_bridge"
     assert graph_rows["keyword_scope"].eq("common").all()
     traffic = result[result["term"] == "traffic flow prediction"].iloc[0]
     assert traffic["keyword_scope"] == "cluster_specific"
+    trace = json.loads(traffic["quality_decision_trace"])
+    assert trace["term"] == "traffic flow prediction"
+    assert trace["display_label"] == "traffic flow prediction"
+    assert trace["quality_score"] == pytest.approx(traffic["quality_score"])
+    assert trace["representative_role"] == traffic["representative_role"]
+    assert any(step["name"] == "phrase_specificity" for step in trace["quality_adjustments"])
 
 
 def test_quality_annotation_expands_acronym_display_labels():
@@ -749,6 +758,7 @@ def test_pipeline_emits_quality_columns_when_enabled(quality_pipeline_data):
         "display_label",
         "quality_score",
         "quality_flags",
+        "quality_decision_trace",
         "keyword_scope",
         "keyword_cluster_count",
         "keyword_cluster_ratio",

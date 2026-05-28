@@ -144,6 +144,7 @@ tables = run_pipeline(
 | `quality_score` | float | Quality diagnostics | 범용 품질 보정 점수 |
 | `quality_multiplier` | float | Quality diagnostics | 원점수 대비 보정 배율 |
 | `quality_flags` | string | Quality diagnostics | `too_global`, `phrase_preferred`, `acronym_like` 등 pipe-delimited reason code |
+| `quality_decision_trace` | JSON string | Quality diagnostics | 점수 보정, 약어, 네트워크 역할, 대표 점수 결정 근거 |
 
 ### 최소 설정
 
