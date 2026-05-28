@@ -15,6 +15,7 @@ from sciscape.keyword_extraction.extraction import (
 )
 from sciscape.keyword_extraction.utils import (
     _edit_distance,
+    _looks_like_metadata_artifact_term,
     _normalize_text_basic,
 )
 
@@ -212,6 +213,23 @@ class TestNormalizeTextBasic:
     def test_html_tags_removed(self):
         assert _normalize_text_basic("hello <b>world</b>") == "hello world"
 
+    def test_encoded_html_tags_removed(self):
+        text = (
+            "&lt;div class=&quot;htmlview paragraph&quot;&gt;Quantum dots&lt;/div&gt; "
+            "Get access Journal Article Articles Author Works Author Vol. 10"
+        )
+        cleaned = _normalize_text_basic(text)
+        lowered = cleaned.lower()
+
+        assert "quantum dots" in lowered
+        assert "htmlview" not in lowered
+        assert "lt div gt" not in lowered
+        assert "get access" not in lowered
+        assert "journal article" not in lowered
+        assert "articles author" not in lowered
+        assert "works author" not in lowered
+        assert "vol" not in lowered
+
     def test_whitespace_collapsed(self):
         assert _normalize_text_basic("  hello   world  ") == "hello world"
 
@@ -224,6 +242,36 @@ class TestNormalizeTextBasic:
 
     def test_normal_text_unchanged(self):
         assert _normalize_text_basic("hello world") == "hello world"
+
+
+class TestMetadataArtifactTerm:
+    @pytest.mark.parametrize(
+        "term",
+        [
+            "class htmlview paragraph",
+            "div class htmlview",
+            "lt div gt",
+            "articles author",
+            "works author gsw",
+            "author gsw google",
+            "urology vol",
+            "doi",
+        ],
+    )
+    def test_detects_html_and_publisher_metadata_terms(self, term):
+        assert _looks_like_metadata_artifact_term(term) is True
+
+    @pytest.mark.parametrize(
+        "term",
+        [
+            "graph neural network",
+            "finite volume method",
+            "author disambiguation",
+            "classification model",
+        ],
+    )
+    def test_keeps_topical_terms(self, term):
+        assert _looks_like_metadata_artifact_term(term) is False
 
 
 # ---------------------------------------------------------------------------

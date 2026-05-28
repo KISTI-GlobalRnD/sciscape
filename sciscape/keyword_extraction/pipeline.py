@@ -41,6 +41,7 @@ from .normalization import normalize_keywords
 from .quality import annotate_keyword_quality
 from .temporal import TemporalMixin
 from .term_network import TermNetwork
+from .utils import _looks_like_metadata_artifact_term
 from .vocab_cleansing import VocabSimGraph, run_vocab_cleansing
 from .vocab_merge import apply_merge_map, build_merge_map
 
@@ -227,6 +228,8 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         if any(pat.search(term) for pat in self._artifact_res):
             return True
         lower = term.lower()
+        if _looks_like_metadata_artifact_term(lower):
+            return True
         # Publisher / copyright boilerplate (any token match)
         tokens = set(lower.split())
         if tokens & _PUBLISHER_TOKENS:
@@ -985,13 +988,17 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             term_str = str(term).strip()
             if not term_str:
                 return False
-            return not self._is_stopword_ngram(term_str)
+            if self._is_stopword_ngram(term_str):
+                return False
+            if self.config.artifact_filter_enabled and self._is_artifact(term_str):
+                return False
+            return True
 
         mask = df["term"].map(_valid)
         filtered = df[mask].reset_index(drop=True)
         dropped = len(df) - len(filtered)
         if dropped > 0:
-            self._log("Final cleanup: dropped %d stopword-only terms", dropped)
+            self._log("Final cleanup: dropped %d stopword/artifact terms", dropped)
         return filtered
 
     def _get_abbreviation_lookup(self) -> Optional[Dict[str, Any]]:

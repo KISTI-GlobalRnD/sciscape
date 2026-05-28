@@ -167,6 +167,79 @@ class TestArtifactFilter:
         pipeline = _make_pipeline_stub()
         assert pipeline._is_artifact("neural network") is False
         assert pipeline._is_artifact("quantum") is False
+        assert pipeline._is_artifact("finite volume method") is False
+
+    @pytest.mark.parametrize(
+        "term",
+        [
+            "class htmlview paragraph",
+            "div class htmlview",
+            "lt div gt",
+            "articles author",
+            "works author gsw",
+            "author gsw google",
+            "urology vol",
+        ],
+    )
+    def test_html_and_publisher_metadata_artifacts(self, term):
+        pipeline = _make_pipeline_stub()
+        assert pipeline._is_artifact(term) is True
+
+    def test_pipeline_filters_encoded_html_and_metadata_fragments(self, tmp_path):
+        abstracts = pd.DataFrame(
+            {
+                "uid": ["D1", "D2", "D3"],
+                "title": [
+                    "Nanoparticle synthesis routes",
+                    "Nanoparticle synthesis mechanisms",
+                    "Quantum dot synthesis",
+                ],
+                "abstract": [
+                    (
+                        "&lt;div class=&quot;htmlview paragraph&quot;&gt;"
+                        "Nanoparticle synthesis improves catalytic stability."
+                        "&lt;/div&gt; Get access Journal Article Articles Author"
+                    ),
+                    (
+                        "Works Author GSW Google pages describe nanoparticle synthesis. "
+                        "Urology vol metadata is not topical."
+                    ),
+                    "Quantum dot synthesis and nanocrystal growth are measured.",
+                ],
+                "pubyear": [2021, 2022, 2023],
+            }
+        )
+        membership = pd.DataFrame({"uid": ["D1", "D2", "D3"], "cluster": [0, 0, 0]})
+        abstract_path = tmp_path / "abstracts.parquet"
+        membership_path = tmp_path / "membership.parquet"
+        abstracts.to_parquet(abstract_path, index=False)
+        membership.to_parquet(membership_path, index=False)
+
+        cfg = _base_config(
+            abstract_path,
+            membership_path,
+            include_title=True,
+            ngram_min=1,
+            ngram_max=3,
+            top_n_keywords=30,
+            scoring_pool_factor=2.0,
+        )
+        keywords = run_keyword_pipeline(cfg)
+        terms = set(keywords["term"].str.lower())
+
+        assert not keywords.empty
+        for bad in {
+            "class htmlview paragraph",
+            "div class htmlview",
+            "lt div gt",
+            "get access",
+            "journal article",
+            "articles author",
+            "works author",
+            "author gsw google",
+            "urology vol",
+        }:
+            assert bad not in terms
 
 
 # ---------------------------------------------------------------------------

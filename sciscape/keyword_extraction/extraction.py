@@ -444,8 +444,8 @@ class _DataSource:
                     {
                         uid: docs[uid].to_numpy(),
                         "cluster_id": docs["cluster_id"].astype(int).to_numpy(),
-                        title_col: docs[title_col].fillna("").astype(str).to_numpy(),
-                        abstract_col: docs[abstract_col].fillna("").astype(str).to_numpy(),
+                        title_col: docs[title_col].fillna("").map(_normalize_text_basic).to_numpy(),
+                        abstract_col: docs[abstract_col].fillna("").map(_normalize_text_basic).to_numpy(),
                     }
                 )
         else:
@@ -460,8 +460,8 @@ class _DataSource:
                 {
                     uid: docs[uid].to_numpy(),
                     "cluster_id": docs["cluster_id"].astype(int).to_numpy(),
-                    title_col: docs[title_col].fillna("").astype(str).to_numpy(),
-                    abstract_col: docs[abstract_col].fillna("").astype(str).to_numpy(),
+                    title_col: docs[title_col].fillna("").map(_normalize_text_basic).to_numpy(),
+                    abstract_col: docs[abstract_col].fillna("").map(_normalize_text_basic).to_numpy(),
                 }
             )
 

@@ -406,6 +406,41 @@ def test_representative_score_demotes_unresolved_formula_fragments_for_labels():
     assert absorber.representative_rank < rows["scaps 1d"].representative_rank
 
 
+def test_quality_annotation_demotes_html_and_publisher_metadata_fragments():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0, 0, 0],
+            "term": [
+                "class htmlview paragraph",
+                "lt div gt",
+                "articles author",
+                "author gsw google",
+                "urology vol",
+                "nanoparticle synthesis",
+            ],
+            "score": [20.0, 19.0, 18.0, 17.0, 16.0, 5.0],
+            "frequency": [50, 48, 46, 44, 42, 20],
+            "doc_coverage": [25, 24, 23, 22, 21, 10],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    rows = {row.term: row for row in result.itertuples(index=False)}
+
+    for term in [
+        "class htmlview paragraph",
+        "lt div gt",
+        "articles author",
+        "author gsw google",
+        "urology vol",
+    ]:
+        assert "metadata_fragment" in rows[term].quality_flags
+        assert rows[term].keyword_label_tier == "review_artifact"
+
+    assert rows["nanoparticle synthesis"].keyword_label_tier == "primary_phrase"
+    assert rows["nanoparticle synthesis"].representative_rank < rows["class htmlview paragraph"].representative_rank
+
+
 def test_representative_score_keeps_supported_material_formulas_labelable():
     df = pd.DataFrame(
         {

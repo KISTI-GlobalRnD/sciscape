@@ -16,6 +16,7 @@ from typing import Any, Iterable, Mapping, Sequence
 import pandas as pd
 
 from .normalization import _normalize_notation, _normalize_spelling, _phrase_singular
+from .utils import _looks_like_metadata_artifact_term
 
 
 METADATA_TERMS: frozenset[str] = frozenset(
@@ -1288,7 +1289,12 @@ def annotate_keyword_quality(
                 )
             )
 
-        if term in METADATA_TERMS:
+        if _looks_like_metadata_artifact_term(term):
+            flags.extend(["artifact_like", "metadata_fragment"])
+            factor = 1.0 - float(artifact_demotion_weight)
+            multiplier *= factor
+            adjustment_trace.append(_quality_adjustment("term_shape", factor, "metadata_fragment"))
+        elif term in METADATA_TERMS:
             flags.extend(["artifact_like", "low_information"])
             factor = 1.0 - float(artifact_demotion_weight)
             multiplier *= factor
