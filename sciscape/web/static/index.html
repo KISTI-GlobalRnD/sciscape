@@ -851,6 +851,7 @@ function resetBtn() {
 /* ── RESULTS ───────────────────────────────────────────── */
 function showResults(result) {
   if (!result) return;
+  window._currentJobId = currentJobId;
   const panel = document.getElementById('results');
   panel.classList.add('active');
 
@@ -890,10 +891,22 @@ function pill(text, accent) {
 }
 
 function dlCard(filename, desc, icon, jobId) {
-  return '<a class="dl-card" href="/api/jobs/' + jobId + '/download/' + filename + '">' +
+  return '<a class="dl-card" href="' + artifactUrl(jobId, 'download', filename) + '">' +
     '<div class="dl-icon">' + icon + '</div>' +
     '<div class="dl-info"><div class="dl-name">' + esc(filename) + '</div>' +
     '<div class="dl-desc">' + esc(desc) + '</div></div></a>';
+}
+
+function viewCard(filename, desc, icon, jobId) {
+  return '<a class="dl-card" target="_blank" rel="noopener" href="' + artifactUrl(jobId, 'view', filename) + '">' +
+    '<div class="dl-icon">' + icon + '</div>' +
+    '<div class="dl-info"><div class="dl-name">' + esc(filename) + '</div>' +
+    '<div class="dl-desc">' + esc(desc) + '</div></div></a>';
+}
+
+function artifactUrl(jobId, mode, filename) {
+  const safePath = String(filename).split('/').map(encodeURIComponent).join('/');
+  return '/api/jobs/' + encodeURIComponent(jobId) + '/' + mode + '/' + safePath;
 }
 
 /* ── TABS ──────────────────────────────────────────────── */
@@ -1026,8 +1039,12 @@ function updateDownloads(result) {
     grid.innerHTML += dlCard(fname, desc, icon, currentJobId);
   }
   if (result.landscape_dir) {
+    grid.innerHTML += viewCard('landscape/report/report.html', 'Open report index', 'REP', currentJobId);
+    grid.innerHTML += viewCard('landscape/report/index.html', 'Open keyword dashboard', 'DASH', currentJobId);
+    grid.innerHTML += viewCard('landscape/report/landscape_detailed.html', 'Open detailed landscape map', 'MAP', currentJobId);
     grid.innerHTML += dlCard('landscape/membership.parquet', 'Cluster membership', 'MEM', currentJobId);
     grid.innerHTML += dlCard('landscape/keywords.parquet', 'Keywords', 'KW', currentJobId);
+    grid.innerHTML += dlCard('landscape/report/data.json', 'Viewer-ready dashboard data', 'JSON', currentJobId);
   }
 }
 

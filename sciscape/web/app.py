@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -129,20 +129,39 @@ async def stream_progress(job_id: str):
     )
 
 
-@app.get("/api/jobs/{job_id}/download/{filename}")
-async def download_file(job_id: str, filename: str):
-    """Download output files from a completed job."""
+def _resolve_job_output_file(job_id: str, filename: str) -> Path:
+    """Resolve an output artifact path inside a completed job directory."""
     job = _jobs.get(job_id)
     if not job or job["status"] != "done":
-        return {"error": "job not done"}
+        raise HTTPException(status_code=400, detail="job not done")
     result = job.get("result", {})
     output_dir = result.get("output_dir")
     if not output_dir:
-        return {"error": "no output directory"}
-    file_path = Path(output_dir) / filename
-    if not file_path.exists():
-        return {"error": f"file not found: {filename}"}
-    return FileResponse(file_path, filename=filename)
+        raise HTTPException(status_code=404, detail="no output directory")
+
+    root = Path(output_dir).resolve()
+    file_path = (root / filename).resolve()
+    try:
+        file_path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid artifact path")
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"file not found: {filename}")
+    return file_path
+
+
+@app.get("/api/jobs/{job_id}/download/{filename:path}")
+async def download_file(job_id: str, filename: str):
+    """Download output files from a completed job."""
+    file_path = _resolve_job_output_file(job_id, filename)
+    return FileResponse(file_path, filename=file_path.name)
+
+
+@app.get("/api/jobs/{job_id}/view/{filename:path}")
+async def view_file(job_id: str, filename: str):
+    """Open an output artifact inline, e.g. generated HTML reports."""
+    file_path = _resolve_job_output_file(job_id, filename)
+    return FileResponse(file_path)
 
 
 @app.get("/api/jobs/{job_id}/network")

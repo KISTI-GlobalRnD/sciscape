@@ -86,6 +86,21 @@ The `perovskite` preset uses the query `perovskite solar cells`. The `gnn`
 preset uses `title_and_abstract.search=graph neural networks` to reduce generic
 search noise.
 
+### Web UI
+
+The same OpenAlex-to-visualization path is available from the local web UI:
+
+```bash
+sciscape web --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000`, paste a query, and click **Analyze**. The web
+surface streams progress while OpenAlex fetch, edge construction, landscape
+clustering, keyword extraction, and report generation run in the background.
+When the job completes, the results tabs show interactive network, hierarchy,
+temporal, cluster, and keyword views, and the Download tab links to the
+generated report/dashboard HTML artifacts.
+
 ## Workflow 2: Local Abstracts And Edges To Viewer
 
 Use this when abstracts and one or more edge layers already exist locally.

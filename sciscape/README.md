@@ -116,6 +116,12 @@ sciscape viewer -o viewer/index.html
 sciscape web --host 127.0.0.1 --port 8000
 ```
 
+브라우저에서 `http://127.0.0.1:8000`을 열고 OpenAlex query를 입력하면
+fetch → edge construction → landscape clustering → keyword extraction →
+report/dashboard 생성까지 백그라운드 job으로 실행됩니다. 완료 후 Web 탭에서
+network, hierarchy, temporal, cluster, keyword view를 바로 확인하고,
+Download 탭에서 생성된 HTML report/dashboard를 열 수 있습니다.
+
 ### `sciscape export` — 네트워크 내보내기
 
 ```bash
