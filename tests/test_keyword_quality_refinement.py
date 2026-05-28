@@ -835,6 +835,47 @@ def test_dashboard_data_groups_label_tiers_and_cooccurrence_evidence():
     assert cluster["cooccurrence_map"]["traffic flow"][0]["term"] == "traffic"
 
 
+def test_dashboard_html_exposes_label_tiers_and_cooccurrence_evidence(tmp_path):
+    from sciscape.keyword_extraction.visualization import export_dashboard
+
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0],
+            "term": ["traffic flow", "traffic", "gnn"],
+            "display_label": ["traffic flow", "traffic", "gnn"],
+            "representative_score": [5.0, 4.0, 3.0],
+            "quality_score": [5.0, 4.0, 3.0],
+            "score": [5.0, 4.0, 3.0],
+            "quality_flags": ["phrase", "phrase_preferred", "candidate_short_form"],
+            "representative_role": ["representative_phrase", "anchor_unigram", "review_short_form"],
+            "keyword_label_tier": ["primary_phrase", "support_unigram", "review_short_form"],
+            "keyword_scope": ["cluster_specific"] * 3,
+            "frequency": [30, 25, 10],
+            "doc_coverage": [15, 12, 5],
+        }
+    )
+    viz_data = {
+        "cooc_edges": [
+            {"source": "traffic flow", "target": "traffic", "weight": 7},
+            {"source": "traffic flow", "target": "gnn", "weight": 2},
+        ]
+    }
+
+    output_path = export_dashboard(
+        df,
+        output_path=str(tmp_path / "dashboard.html"),
+        viz_data=viz_data,
+    )
+    html = (tmp_path / "dashboard.html").read_text(encoding="utf-8")
+
+    assert output_path.endswith("dashboard.html")
+    assert "keywords-tier-summary" in html
+    assert "cooccurrence-evidence" in html
+    assert "keyword_label_tier" in html
+    assert "primary_supporting" in html
+    assert "review_edge" in html
+
+
 def test_dashboard_cluster_labels_use_mmr_for_redundant_representative_terms():
     from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
 

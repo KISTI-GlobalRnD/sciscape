@@ -59,6 +59,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .keyword-scope-title{font-size:.78rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.45rem;}
 .keyword-chip{display:inline-flex;align-items:center;gap:.3rem;margin:.15rem .2rem .15rem 0;padding:.18rem .45rem;border-radius:12px;background:#eef2f7;color:#1f2933;font-size:.8rem;line-height:1.35;}
 .keyword-chip small{color:#6c757d;font-size:.72rem;}
+.keyword-chip.tier-primary{background:#e7f1ff;color:#084298;border:1px solid #b6d4fe;}
+.keyword-chip.tier-supporting{background:#f1f3f5;color:#343a40;border:1px solid #dee2e6;}
+.keyword-chip.tier-review{background:#fff3cd;color:#664d03;border:1px solid #ffecb5;}
+.keyword-tier-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.85rem;}
+.keyword-tier-block{border:1px solid #e9ecef;border-radius:6px;padding:.75rem;background:#fbfcfd;}
+.keyword-tier-block.primary{border-left:4px solid #0d6efd;}
+.keyword-tier-block.supporting{border-left:4px solid #6c757d;}
+.keyword-tier-block.review{border-left:4px solid #ffc107;}
+.keyword-tier-head{display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-bottom:.45rem;}
+.keyword-tier-title{font-size:.78rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;}
+.keyword-tier-count{font-size:.78rem;font-weight:700;color:#6c757d;white-space:nowrap;}
 .keyword-family-section{margin-top:.9rem;border-top:1px solid #e9ecef;padding-top:.85rem;}
 .keyword-family-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.6rem;}
 .keyword-family-row{border:1px solid #e9ecef;border-radius:6px;padding:.55rem .65rem;background:#fff;}
@@ -66,6 +77,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .keyword-family-parent small{white-space:nowrap;color:#495057;font-weight:600;}
 .keyword-family-children{margin-top:.35rem;color:#6c757d;font-size:.78rem;line-height:1.45;}
 .keyword-family-child{display:inline-block;margin:.05rem .35rem .05rem 0;}
+.cooc-evidence{margin-top:1rem;border-top:1px solid #e9ecef;padding-top:.85rem;}
+.cooc-evidence-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.55rem;}
+.cooc-evidence-title{font-size:.82rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;}
+.cooc-evidence-note{font-size:.78rem;color:#6c757d;}
+.cooc-relation{display:inline-block;padding:.12rem .4rem;border-radius:10px;font-size:.72rem;font-weight:700;white-space:nowrap;}
+.cooc-primary-supporting{background:#e7f1ff;color:#084298;}
+.cooc-primary-primary{background:#d1e7dd;color:#0f5132;}
+.cooc-supporting-supporting{background:#e9ecef;color:#495057;}
+.cooc-review-edge{background:#fff3cd;color:#664d03;}
+.tier-label{display:inline-block;padding:.12rem .38rem;border-radius:8px;font-size:.72rem;font-weight:700;white-space:nowrap;}
+.tier-label.primary{background:#e7f1ff;color:#084298;}
+.tier-label.supporting{background:#f1f3f5;color:#343a40;}
+.tier-label.review{background:#fff3cd;color:#664d03;}
 .footer{text-align:center;padding:1.5rem 2rem;font-size:.8rem;color:#6c757d;border-top:1px solid #e9ecef;margin-top:2rem;display:flex;align-items:center;justify-content:center;gap:.5rem;}
 .footer svg{opacity:.5;transition:opacity .2s;}
 .footer:hover svg{opacity:.8;}
@@ -155,6 +179,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <div class="chart-card"><div id="keywords-global-table" style="max-height:600px;overflow:auto;"></div></div>
     </div>
     <div id="keywords-cluster" style="display:none;">
+      <div class="chart-card"><div id="keywords-tier-summary"></div></div>
       <div class="chart-card"><div id="keywords-scope-summary"></div></div>
       <div class="chart-card"><div id="chart-keywords" style="width:100%;min-height:500px;"></div></div>
     </div>
@@ -221,6 +246,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <span id="network-edge-value" style="font-size:.85rem;min-width:3rem;">0</span>
       </div>
       <div id="network-container" style="position:relative;"><svg id="network-svg"></svg></div>
+      <div id="cooccurrence-evidence" class="cooc-evidence"></div>
     </div>
   </div>
 
@@ -590,6 +616,55 @@ const keywordScopeLabels = {
   shared: "Shared",
   common: "Common"
 };
+const keywordTierLabels = {
+  primary: "Primary labels",
+  supporting: "Supporting terms",
+  review: "Review artifacts"
+};
+const keywordTierColors = {
+  primary: "#0d6efd",
+  supporting: "#6c757d",
+  review: "#ffc107"
+};
+const coocRelationLabels = {
+  primary_supporting: "Primary-Support",
+  primary_primary: "Primary-Primary",
+  supporting_supporting: "Support-Support",
+  review_edge: "Review Edge"
+};
+const coocRelationColors = {
+  primary_supporting: "#0d6efd",
+  primary_primary: "#198754",
+  supporting_supporting: "#adb5bd",
+  review_edge: "#ffc107"
+};
+
+function escHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function csvCell(value) {
+  return '"' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
+}
+
+function keywordTierCategory(tier) {
+  const value = String(tier || "");
+  if (value.startsWith("primary")) return "primary";
+  if (value.startsWith("review")) return "review";
+  return "supporting";
+}
+
+function keywordTierBadge(k) {
+  const cat = keywordTierCategory(k && k.keyword_label_tier);
+  const label = (k && k.keyword_label_tier) ? String(k.keyword_label_tier).replace(/_/g, " ") : keywordTierLabels[cat];
+  return `<span class="tier-label ${cat}">${escHtml(label)}</span>`;
+}
+
+function coocEdgeKey(a, b) {
+  return [String(a || ""), String(b || "")].sort().join("\u0000");
+}
 
 function keywordScopeGroupsFromKeywords(keywords) {
   const groups = { cluster_specific: [], shared: [], common: [] };
@@ -603,6 +678,32 @@ function keywordScopeGroupsFromKeywords(keywords) {
 function keywordCountLabel(n) {
   const count = Number.isFinite(Number(n)) ? Number(n) : 1;
   return `${count.toLocaleString()} keyword${count === 1 ? "" : "s"}`;
+}
+
+function renderKeywordTierBlocks(targetId, cluster) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  if (!cluster) { el.innerHTML = ""; return; }
+  const groups = cluster.keyword_tier_groups || {};
+  const counts = cluster.keyword_tier_counts || {};
+  const order = ["primary", "supporting", "review"];
+  const html = order.map(tier => {
+    const values = (groups[tier] || []).slice(0, tier === "review" ? 8 : 12);
+    const chips = values.map(k => {
+      const meta = [];
+      if (k.member_count != null) meta.push(keywordCountLabel(k.member_count));
+      if (k.abbreviation_status && k.abbreviation_status !== "not_abbreviation") meta.push(k.abbreviation_status);
+      if (tier === "review" && k.quality_flags) meta.push(String(k.quality_flags).split("|").slice(0, 2).join(", "));
+      return `<span class="keyword-chip tier-${tier}"><b>${escHtml(k.term)}</b>${meta.length ? `<small>${escHtml(meta.join(" · "))}</small>` : ""}</span>`;
+    }).join("");
+    const count = Number(counts[tier] || 0).toLocaleString();
+    const more = (groups[tier] || []).length > values.length ? `<small>+${(groups[tier].length - values.length).toLocaleString()} more</small>` : "";
+    return `<div class="keyword-tier-block ${tier}">
+      <div class="keyword-tier-head"><div class="keyword-tier-title">${keywordTierLabels[tier]}</div><div class="keyword-tier-count">${count}</div></div>
+      ${chips || `<span style="color:#adb5bd;font-size:.85rem;">No terms</span>`}${more ? `<div style="margin-top:.3rem;color:#6c757d;">${more}</div>` : ""}
+    </div>`;
+  }).join("");
+  el.innerHTML = `<div class="keyword-tier-grid">${html}</div>`;
 }
 
 function renderKeywordScopeBlocks(targetId, groups, emptyText) {
@@ -666,6 +767,7 @@ function renderKeywords() {
   }
   globalEl.style.display = "none";
   clusterEl.style.display = "block";
+  renderKeywordTierBlocks("keywords-tier-summary", currentCluster);
   renderKeywordScopeBlocks(
     "keywords-scope-summary",
     currentCluster.keyword_groups || keywordScopeGroupsFromKeywords(currentCluster.keywords),
@@ -679,6 +781,9 @@ function renderKeywords() {
   const colors = kws.map(k => depthColors[k.depth_level] || "#adb5bd").reverse();
   const hoverText = kws.map(k => {
     let h = `<b>${k.term}</b><br>Score: ${k.score.toFixed(4)}<br>Freq: ${k.frequency.toLocaleString()}<br>Doc coverage: ${k.doc_coverage.toLocaleString()}`;
+    if (k.keyword_label_tier) h += `<br>Tier: ${k.keyword_label_tier.replace(/_/g, " ")}`;
+    if (k.representative_role) h += `<br>Role: ${k.representative_role.replace(/_/g, " ")}`;
+    if (k.quality_flags) h += `<br>Flags: ${k.quality_flags}`;
     if (k.depth_level != null) h += `<br>Depth: ${depthNames[k.depth_level] || "L"+k.depth_level} (${k.depth_score.toFixed(3)})`;
     if (k.cross_cluster_count > 1) h += `<br>Cross-cluster: ${k.cross_cluster_count}`;
     const ts = TREND_SCORES[k.term];
@@ -1492,11 +1597,54 @@ function renderNetworkKeywordGlobal() {
   });
 }
 
+function renderCooccurrenceEvidence() {
+  const el = document.getElementById("cooccurrence-evidence");
+  if (!el) return;
+  if (!currentCluster) { el.innerHTML = ""; return; }
+  const rows = currentCluster.cooccurrence_table || [];
+  if (!rows.length) {
+    el.innerHTML = '<div class="cooc-evidence-head"><div class="cooc-evidence-title">Co-occurrence Evidence</div><div class="cooc-evidence-note">No evidence table available</div></div>';
+    return;
+  }
+  const shown = rows.slice(0, 30);
+  const body = shown.map((r, i) => {
+    const relation = r.relation || "supporting_supporting";
+    const relationClass = "cooc-" + String(relation).replace(/_/g, "-");
+    const primary = r.primary_term || "";
+    const support = r.support_term || "";
+    return `<tr>
+      <td>${i + 1}</td>
+      <td><b>${escHtml(r.source)}</b><br><small>${keywordTierBadge({ keyword_label_tier: r.source_tier })}</small></td>
+      <td><b>${escHtml(r.target)}</b><br><small>${keywordTierBadge({ keyword_label_tier: r.target_tier })}</small></td>
+      <td>${Number(r.weight || 0).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+      <td><span class="cooc-relation ${relationClass}">${coocRelationLabels[relation] || relation}</span></td>
+      <td>${primary ? `${escHtml(primary)} \u2192 ${escHtml(support)}` : "-"}</td>
+    </tr>`;
+  }).join("");
+  const more = rows.length > shown.length
+    ? `<div class="cooc-evidence-note" style="margin-top:.45rem;">Showing ${shown.length} of ${rows.length} co-occurrence rows.</div>`
+    : "";
+  el.innerHTML = `
+    <div class="cooc-evidence-head">
+      <div class="cooc-evidence-title">Co-occurrence Evidence</div>
+      <div class="cooc-evidence-note">Primary labels are linked to supporting/review terms by observed co-occurrence.</div>
+    </div>
+    <div style="max-height:360px;overflow:auto;">
+      <table class="merge-table">
+        <thead><tr><th>#</th><th>Source</th><th>Target</th><th>Weight</th><th>Relation</th><th>Primary Evidence</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    ${more}`;
+}
+
 function renderNetwork() {
   const subtabsEl = document.getElementById("network-subtabs");
   const descEl = document.getElementById("network-desc");
+  renderCooccurrenceEvidence();
   if (!currentCluster) {
     subtabsEl.style.display = "flex";
+    renderCooccurrenceEvidence();
     if (networkView === "keyword") {
       descEl.innerHTML = '전체 클러스터의 키워드를 합산한 <b>키워드 공출현 네트워크</b>입니다. 노드 색상은 가장 빈번한 클러스터를 나타냅니다.';
       renderNetworkKeywordGlobal();
@@ -1507,7 +1655,7 @@ function renderNetwork() {
     return;
   }
   subtabsEl.style.display = "none";
-  descEl.innerHTML = '키워드 간 <b>실제 공출현(co-occurrence) 네트워크</b>입니다. 동일 문헌에서 함께 등장한 빈도를 기반으로 엣지가 생성됩니다. 엣지 두께는 공출현 빈도에, 노드 크기는 점수에 비례합니다. 색상은 깊이 수준(Broad=파랑, Mid=빨강, Specific=초록)입니다.';
+  descEl.innerHTML = '키워드 간 <b>실제 공출현(co-occurrence) 네트워크</b>입니다. 엣지 색상은 primary/support/review 관계, 노드 테두리는 label tier를 나타냅니다. 엣지 두께는 공출현 빈도에, 노드 크기는 점수에 비례합니다.';
   const svg = d3.select("#network-svg");
   svg.selectAll("*").remove();
   // Remove any existing info panels
@@ -1520,6 +1668,10 @@ function renderNetwork() {
 
   const kws = currentCluster.keywords;
   const rawEdges = currentCluster.network_edges || [];
+  const relationByEdge = {};
+  (currentCluster.cooccurrence_table || []).forEach(r => {
+    relationByEdge[coocEdgeKey(r.source, r.target)] = r.relation || "supporting_supporting";
+  });
 
   if (!rawEdges.length) {
     svg.append("text").attr("x", width/2).attr("y", height/2)
@@ -1529,7 +1681,10 @@ function renderNetwork() {
   }
 
   // Take top edges to avoid overcrowding
-  const edges = rawEdges.slice(0, 80).map(e => ({...e}));
+  const edges = rawEdges.slice(0, 80).map(e => ({
+    ...e,
+    relation: e.relation || relationByEdge[coocEdgeKey(e.source, e.target)] || "supporting_supporting",
+  }));
 
   // Build node set: all keywords (including isolated ones without edges)
   const kwMap = {};
@@ -1542,6 +1697,8 @@ function renderNetwork() {
     score: k.score || 0,
     frequency: k.frequency || 0,
     depth_level: k.depth_level,
+    keyword_label_tier: k.keyword_label_tier || "",
+    tier_category: keywordTierCategory(k.keyword_label_tier),
     isolated: !connectedSet.has(k.term),
   }));
 
@@ -1584,13 +1741,13 @@ function renderNetwork() {
   const link = g.selectAll(".link")
     .data(edges).join("line")
     .attr("class", "link")
-    .attr("stroke", "#adb5bd")
+    .attr("stroke", d => coocRelationColors[d.relation] || "#adb5bd")
     .attr("stroke-opacity", d => 0.3 + 0.7 * Math.min(1, d.weight / maxWeight))
     .attr("stroke-width", d => 1 + 4 * (d.weight / maxWeight))
     .style("transition", "opacity 0.2s");
 
   // Edge tooltips
-  link.append("title").text(d => `${d.source.id || d.source} \u2014 ${d.target.id || d.target}\nCo-occurrence: ${d.weight}`);
+  link.append("title").text(d => `${d.source.id || d.source} \u2014 ${d.target.id || d.target}\nCo-occurrence: ${d.weight}\nRelation: ${coocRelationLabels[d.relation] || d.relation}`);
 
   const node = g.selectAll(".node")
     .data(nodes).join("circle")
@@ -1598,8 +1755,8 @@ function renderNetwork() {
     .attr("r", d => d.isolated ? 4 : Math.sqrt(d.score / maxScore) * 20 + 5)
     .attr("fill", d => d.depth_level != null ? (depthColors[d.depth_level] || "#AB63FA") : "#adb5bd")
     .attr("fill-opacity", d => d.isolated ? 0.5 : 1)
-    .attr("stroke", d => d.isolated ? "#adb5bd" : "#fff")
-    .attr("stroke-width", d => d.isolated ? 0.5 : 1.5)
+    .attr("stroke", d => keywordTierColors[d.tier_category] || "#fff")
+    .attr("stroke-width", d => d.tier_category === "primary" ? 3 : d.tier_category === "review" ? 2.5 : 1.4)
     .attr("stroke-dasharray", d => d.isolated ? "2,2" : "none")
     .style("cursor", "pointer")
     .style("transition", "opacity 0.2s")
@@ -1620,12 +1777,12 @@ function renderNetwork() {
     }).attr("stroke", l => {
       const sid = typeof l.source === "object" ? l.source.id : l.source;
       const tid = typeof l.target === "object" ? l.target.id : l.target;
-      return (sid === d.id || tid === d.id) ? "#0d6efd" : "#adb5bd";
+      return (sid === d.id || tid === d.id) ? (coocRelationColors[l.relation] || "#0d6efd") : (coocRelationColors[l.relation] || "#adb5bd");
     });
     label.style("opacity", n => (n.id === d.id || neighbors.has(n.id)) ? 1 : 0.1);
   }).on("mouseleave", () => {
     node.style("opacity", d => d.isolated ? 0.5 : 1);
-    link.style("opacity", 1).attr("stroke", "#adb5bd");
+    link.style("opacity", 1).attr("stroke", d => coocRelationColors[d.relation] || "#adb5bd");
     label.style("opacity", 1);
   });
 
@@ -1637,14 +1794,23 @@ function renderNetwork() {
     const kw = kwMap[d.id] || {};
     const ts = TREND_SCORES[d.id];
     const ct = CENTRALITY[d.id];
+    const coocEvidence = (currentCluster.cooccurrence_map || {})[d.id] || [];
     let infoHtml = '<span class="info-close">&times;</span>';
-    infoHtml += "<div><strong>" + d.id + "</strong></div>";
+    infoHtml += "<div><strong>" + escHtml(d.id) + "</strong></div>";
+    if (kw.keyword_label_tier) infoHtml += "<div>Tier: " + keywordTierBadge(kw) + "</div>";
+    if (kw.representative_role) infoHtml += "<div>Role: " + escHtml(kw.representative_role.replace(/_/g, " ")) + "</div>";
     infoHtml += "<div>Score: " + (kw.score || d.score).toFixed(4) + "</div>";
     infoHtml += "<div>Frequency: " + (kw.frequency || d.frequency).toLocaleString() + "</div>";
     if (kw.depth_level != null) infoHtml += "<div>Depth: " + (depthNames[kw.depth_level] || "L" + kw.depth_level) + "</div>";
     if (ts != null) infoHtml += "<div>Trend: " + (ts > 0 ? "\u25b2" : "\u25bc") + " " + ts.toFixed(3) + "</div>";
     if (ct) infoHtml += "<div>Centrality: " + ct.degree.toFixed(2) + "</div>";
-    if (neighbors.size) infoHtml += "<div style='margin-top:.3rem;font-size:.8rem;'>Neighbors: " + [...neighbors].slice(0, 10).join(", ") + (neighbors.size > 10 ? "..." : "") + "</div>";
+    if (coocEvidence.length) {
+      infoHtml += "<div style='margin-top:.3rem;font-size:.8rem;'><b>Evidence:</b> " +
+        coocEvidence.slice(0, 8).map(e => escHtml(e.term) + " (" + Number(e.weight || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ")").join(", ") +
+        (coocEvidence.length > 8 ? "..." : "") + "</div>";
+    } else if (neighbors.size) {
+      infoHtml += "<div style='margin-top:.3rem;font-size:.8rem;'>Neighbors: " + [...neighbors].slice(0, 10).map(escHtml).join(", ") + (neighbors.size > 10 ? "..." : "") + "</div>";
+    }
 
     const panel = document.createElement("div");
     panel.className = "network-info-panel";
@@ -1712,21 +1878,35 @@ function renderNetwork() {
   }
 
   // Legend (fixed position, not affected by zoom)
-  const legend = svg.append("g").attr("transform", `translate(15, ${height - 95})`);
-  legend.append("rect").attr("x", -8).attr("y", -8).attr("width", 145).attr("height", 90)
+  const legend = svg.append("g").attr("transform", `translate(15, ${height - 155})`);
+  legend.append("rect").attr("x", -8).attr("y", -8).attr("width", 190).attr("height", 150)
     .attr("fill", "#fff").attr("stroke", "#dee2e6").attr("rx", 4).attr("opacity", 0.9);
+  legend.append("text").attr("x", 0).attr("y", 2).text("Node fill: depth")
+    .attr("font-size", "10px").attr("font-weight", "700").attr("fill", "#495057");
   const legendItems = [
     { label: "Broad", color: depthColors[0] },
     { label: "Mid", color: depthColors[1] },
     { label: "Specific", color: depthColors[2] },
   ];
   legendItems.forEach((item, i) => {
-    legend.append("circle").attr("cx", 8).attr("cy", 10 + i * 22).attr("r", 6).attr("fill", item.color);
-    legend.append("text").attr("x", 22).attr("y", 14 + i * 22).text(item.label)
+    legend.append("circle").attr("cx", 8).attr("cy", 18 + i * 18).attr("r", 5).attr("fill", item.color);
+    legend.append("text").attr("x", 22).attr("y", 22 + i * 18).text(item.label)
       .attr("font-size", "11px").attr("fill", "#1f2933");
   });
+  legend.append("text").attr("x", 0).attr("y", 78).text("Edge: relation")
+    .attr("font-size", "10px").attr("font-weight", "700").attr("fill", "#495057");
+  [
+    ["Primary-Support", "primary_supporting"],
+    ["Primary-Primary", "primary_primary"],
+    ["Review Edge", "review_edge"],
+  ].forEach((item, i) => {
+    legend.append("line").attr("x1", 4).attr("x2", 18).attr("y1", 94 + i * 16).attr("y2", 94 + i * 16)
+      .attr("stroke", coocRelationColors[item[1]] || "#adb5bd").attr("stroke-width", 3);
+    legend.append("text").attr("x", 24).attr("y", 98 + i * 16).text(item[0])
+      .attr("font-size", "10px").attr("fill", "#1f2933");
+  });
   const nIsolated = nodes.filter(d => d.isolated).length;
-  legend.append("text").attr("x", 0).attr("y", 80).text(`${nodes.length} nodes (${nIsolated} isolated), ${edges.length} edges`)
+  legend.append("text").attr("x", 0).attr("y", 138).text(`${nodes.length} nodes (${nIsolated} isolated), ${edges.length} edges`)
     .attr("font-size", "10px").attr("fill", "#6c757d");
 }
 
@@ -1760,20 +1940,27 @@ function renderDictKeywordsGlobal(container, searchBox) {
 
   function buildTable(filter) {
     const fl = (filter || "").toLowerCase();
-    const filtered = fl ? allKws.filter(k => k.term.toLowerCase().includes(fl) || (`C${k.cluster}`).includes(fl) || k.clusterLabel.toLowerCase().includes(fl)) : allKws;
+    const filtered = fl ? allKws.filter(k =>
+      k.term.toLowerCase().includes(fl) ||
+      (`C${k.cluster}`).includes(fl) ||
+      k.clusterLabel.toLowerCase().includes(fl) ||
+      (k.keyword_label_tier || "").toLowerCase().includes(fl) ||
+      (k.representative_role || "").toLowerCase().includes(fl) ||
+      (k.quality_flags || "").toLowerCase().includes(fl)
+    ) : allKws;
     const shown = filtered.slice(0, 200);
-    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Count</th><th>Scope</th><th>Abbrev</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
+    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Tier</th><th>Count</th><th>Scope</th><th>Abbrev</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
     shown.forEach((k, i) => {
       const depth = k.depth_level != null ? `${depthNames[k.depth_level]||"L"+k.depth_level} (${(k.depth_score||0).toFixed(2)})` : "";
       const scope = keywordScopeLabels[k.keyword_scope] || "-";
       const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
         `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       html += `<tr style="cursor:pointer" onclick="document.getElementById('cluster-select').value='${k.cluster}';document.getElementById('cluster-select').dispatchEvent(new Event('change'))">`;
-      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${keywordCountLabel(k.member_count)}</td><td>${scope}</td><td>${abbr}</td><td>${k.score.toFixed(4)}</td>`;
+      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${escHtml(k.term)}</b></td><td>${keywordTierBadge(k)}</td><td>${keywordCountLabel(k.member_count)}</td><td>${scope}</td><td>${escHtml(abbr)}</td><td>${k.score.toFixed(4)}</td>`;
       html += `<td>${(k.frequency||0).toLocaleString()}</td><td>${(k.doc_coverage||0).toLocaleString()}</td>`;
       html += `<td>${depth}</td><td>${k.cross_cluster_count > 1 ? k.cross_cluster_count : ""}</td></tr>`;
     });
-    if (filtered.length > 200) html += `<tr><td colspan="11" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
+    if (filtered.length > 200) html += `<tr><td colspan="12" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
     html += '</tbody></table>';
     container.innerHTML = html;
   }
@@ -1793,6 +1980,9 @@ function renderDictKeywords(container, searchBox) {
     const filtered = fl
       ? kws.filter(k => k.term.toLowerCase().includes(fl) ||
                         (k.expanded_from || "").toLowerCase().includes(fl) ||
+                        (k.keyword_label_tier || "").toLowerCase().includes(fl) ||
+                        (k.representative_role || "").toLowerCase().includes(fl) ||
+                        (k.quality_flags || "").toLowerCase().includes(fl) ||
                         (k.abbreviation_status || "").toLowerCase().includes(fl) ||
                         (k.abbreviation_target || "").toLowerCase().includes(fl) ||
                         (k.source_terms || []).join(" ").toLowerCase().includes(fl) ||
@@ -1801,7 +1991,7 @@ function renderDictKeywords(container, searchBox) {
 
     let html = `<table class="merge-table">
       <thead><tr>
-        <th>#</th><th>Term</th><th>Count</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
+        <th>#</th><th>Term</th><th>Tier</th><th>Role</th><th>Count</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
         <th>Depth</th><th>Cross-CL</th><th>Scope</th><th>Abbrev</th><th>Expanded From</th><th>Norm Merged From</th><th>Notes</th>
       </tr></thead><tbody>`;
 
@@ -1813,16 +2003,19 @@ function renderDictKeywords(container, searchBox) {
         `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       const ef = k.expanded_from || "-";
       const nm = normMerges[k.term];
-      const nmStr = nm ? nm.map(t => `<span class="badge badge-norm">${t}</span>`).join(" ") : "-";
+      const nmStr = nm ? nm.map(t => `<span class="badge badge-norm">${escHtml(t)}</span>`).join(" ") : "-";
+      const role = k.representative_role ? k.representative_role.replace(/_/g, " ") : "-";
       const noteKey = "sciscape_notes_" + k.term;
       const existingNote = localStorage.getItem(noteKey) || "";
       const noteIndicator = existingNote ? ' <span class="note-indicator">\ud83d\udcdd</span>' : "";
       html += `<tr>
-        <td>${i + 1}</td><td><strong>${k.term}</strong>${noteIndicator}</td>
+        <td>${i + 1}</td><td><strong>${escHtml(k.term)}</strong>${noteIndicator}</td>
+        <td>${keywordTierBadge(k)}</td>
+        <td>${escHtml(role)}</td>
         <td>${keywordCountLabel(k.member_count)}</td>
         <td>${k.score.toFixed(4)}</td><td>${k.frequency.toLocaleString()}</td>
         <td>${k.doc_coverage.toLocaleString()}</td>
-        <td>${dl}</td><td>${cc}</td><td>${scope}</td><td>${abbr}</td><td>${ef}</td><td>${nmStr}</td>
+        <td>${dl}</td><td>${cc}</td><td>${scope}</td><td>${escHtml(abbr)}</td><td>${escHtml(ef)}</td><td>${nmStr}</td>
         <td class="note-cell" contenteditable="true" data-term="${k.term.replace(/"/g, '&quot;')}">${existingNote}</td>
       </tr>`;
     });
@@ -2308,20 +2501,42 @@ function exportCurrentData() {
     }
     filename = "temporal_C" + currentClusterId + ".csv";
   } else if (currentTab === "network" && currentCluster) {
-    const edges = currentCluster.network_edges || [];
-    csv = "source,target,weight\n";
-    edges.forEach(e => {
-      csv += '"' + e.source.replace(/"/g, '""') + '","' + e.target.replace(/"/g, '""') + '",' + e.weight + "\n";
-    });
-    filename = "network_C" + currentClusterId + ".csv";
+    const coocRows = currentCluster.cooccurrence_table || [];
+    if (coocRows.length) {
+      csv = "source,target,weight,source_tier,target_tier,relation,primary_term,support_term\n";
+      coocRows.forEach(e => {
+        csv += [
+          csvCell(e.source), csvCell(e.target), e.weight,
+          csvCell(e.source_tier), csvCell(e.target_tier), csvCell(e.relation),
+          csvCell(e.primary_term), csvCell(e.support_term)
+        ].join(",") + "\n";
+      });
+      filename = "cooccurrence_evidence_C" + currentClusterId + ".csv";
+    } else {
+      const edges = currentCluster.network_edges || [];
+      csv = "source,target,weight\n";
+      edges.forEach(e => {
+        csv += csvCell(e.source) + "," + csvCell(e.target) + "," + e.weight + "\n";
+      });
+      filename = "network_C" + currentClusterId + ".csv";
+    }
   } else if (currentCluster) {
     // Keywords / dictionary export
     const kws = currentCluster.keywords;
-    csv = "term,score,frequency,doc_coverage,depth_level,cross_cluster_count\n";
+    csv = "term,raw_term,keyword_label_tier,representative_role,score,frequency,doc_coverage,depth_level,cross_cluster_count,quality_flags\n";
     kws.forEach(k => {
-      csv += '"' + k.term.replace(/"/g, '""') + '",' + k.score.toFixed(6) + "," + k.frequency + "," +
-        k.doc_coverage + "," + (k.depth_level != null ? k.depth_level : "") + "," +
-        (k.cross_cluster_count || "") + "\n";
+      csv += [
+        csvCell(k.term),
+        csvCell(k.raw_term || ""),
+        csvCell(k.keyword_label_tier || ""),
+        csvCell(k.representative_role || ""),
+        k.score.toFixed(6),
+        k.frequency,
+        k.doc_coverage,
+        k.depth_level != null ? k.depth_level : "",
+        k.cross_cluster_count || "",
+        csvCell(k.quality_flags || "")
+      ].join(",") + "\n";
     });
     filename = "keywords_C" + currentClusterId + ".csv";
   }
