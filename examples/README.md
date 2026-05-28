@@ -57,3 +57,15 @@ directory is intentionally ignored by git as local generated output.
 Landscape runs now include keyword quality refinement columns in
 `landscape/keywords.parquet`.  Inspect `display_label`, `quality_score`, and
 `quality_flags` when comparing raw extracted terms with report-facing labels.
+
+Compare the current family-aware representative keyword scoring against the
+same pipeline with that scoring disabled:
+
+```bash
+uv run --extra dev python examples/compare_keyword_family_scoring.py \
+  --input-root examples_output/openalex_live
+```
+
+The comparison reuses cached `abstracts_subset.parquet` and
+`membership.parquet` files, then writes ignored local artifacts under
+`examples_output/family_scoring_eval_<timestamp>/`.

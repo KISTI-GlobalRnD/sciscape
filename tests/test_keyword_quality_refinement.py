@@ -423,6 +423,38 @@ def test_representative_score_uses_family_support_for_parent_terms():
     )
 
 
+def test_representative_score_uses_hidden_candidate_family_support():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["traffic flow", "time series"],
+            "score": [8.0, 5.0],
+            "frequency": [30, 14],
+            "doc_coverage": [15, 8],
+            "candidates": [
+                ["traffic flow prediction", "urban traffic flow"],
+                [],
+            ],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    traffic = result[result["term"] == "traffic flow"].iloc[0]
+    trace = json.loads(traffic["quality_decision_trace"])
+
+    assert traffic["representative_family_child_count"] == 2
+    assert traffic["representative_family_member_count"] == 3
+    assert traffic["representative_family_multiplier"] > 1.0
+    assert {child["term"] for child in trace["representative_family_support"]["children"]} == {
+        "traffic flow prediction",
+        "urban traffic flow",
+    }
+    assert all(
+        child["evidence_source"] == "candidate_terms"
+        for child in trace["representative_family_support"]["children"]
+    )
+
+
 def test_quality_annotation_does_not_flag_common_words_as_acronyms():
     df = pd.DataFrame(
         {

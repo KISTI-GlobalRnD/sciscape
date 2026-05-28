@@ -25,6 +25,15 @@ class TestSimpleSingular:
         assert _simple_singular("processes") == "process"
         assert _simple_singular("boxes") == "box"
         assert _simple_singular("matches") == "match"
+        assert _simple_singular("databases") == "database"
+        assert _simple_singular("cases") == "case"
+        assert _simple_singular("phases") == "phase"
+        assert _simple_singular("biases") == "bias"
+
+    def test_irregular_ses_plural(self):
+        assert _simple_singular("analyses") == "analysis"
+        assert _simple_singular("diagnoses") == "diagnosis"
+        assert _simple_singular("hypotheses") == "hypothesis"
 
     def test_short_words_skipped(self):
         assert _simple_singular("as") is None

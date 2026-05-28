@@ -353,12 +353,69 @@ def _family_tokens(label: object) -> set[str]:
     return set(_tokens(_normalise_term(label)))
 
 
+def _iter_family_evidence_terms(value: object) -> Iterable[str]:
+    if value is None:
+        return
+    if isinstance(value, str):
+        if value.strip():
+            yield value
+        return
+    if isinstance(value, Mapping):
+        for key, nested in value.items():
+            if isinstance(key, str) and key.strip():
+                yield key
+            yield from _iter_family_evidence_terms(nested)
+        return
+    if isinstance(value, Iterable):
+        for nested in value:
+            yield from _iter_family_evidence_terms(nested)
+        return
+    if not pd.isna(value):
+        yield str(value)
+
+
+def _collect_family_evidence_terms(
+    df: pd.DataFrame,
+    *,
+    term_col: str,
+    display_labels: Sequence[str],
+) -> list[list[str]]:
+    evidence_columns = (
+        "source_terms",
+        "candidates",
+        "norm_merged_from",
+        "expanded_from",
+    )
+    rows: list[list[str]] = []
+    for row_idx, row in enumerate(df.itertuples(index=False)):
+        terms: set[str] = set()
+        for value in (
+            getattr(row, term_col, None),
+            display_labels[row_idx] if row_idx < len(display_labels) else None,
+        ):
+            for term in _iter_family_evidence_terms(value):
+                normalized = _normalise_term(term)
+                if normalized:
+                    terms.add(normalized)
+        for column in evidence_columns:
+            if column not in df.columns:
+                continue
+            value = getattr(row, column)
+            for term in _iter_family_evidence_terms(value):
+                normalized = _normalise_term(term)
+                if normalized:
+                    terms.add(normalized)
+        rows.append(sorted(terms))
+    return rows
+
+
 def _compute_family_representative_support(
     *,
     cluster_ids: Sequence[Any],
     display_labels: Sequence[str],
     representative_scores: Sequence[float],
     doc_coverages: Sequence[float],
+    family_terms: Sequence[Sequence[str]] | None = None,
     enabled: bool,
     weight: float,
     max_bonus: float,
@@ -378,6 +435,8 @@ def _compute_family_representative_support(
     ]
     if not enabled or n_rows == 0:
         return support
+    if family_terms is None:
+        family_terms = [[] for _ in range(n_rows)]
 
     rows_by_cluster: dict[Any, list[int]] = defaultdict(list)
     for idx, cluster_id in enumerate(cluster_ids):
@@ -391,6 +450,7 @@ def _compute_family_representative_support(
                 label_to_indices[label].append(idx)
 
         canonical_by_label: dict[str, int] = {}
+        evidence_by_label: dict[str, set[str]] = defaultdict(set)
         for label, indices in label_to_indices.items():
             canonical_by_label[label] = max(
                 indices,
@@ -398,6 +458,10 @@ def _compute_family_representative_support(
             )
             canonical_idx = canonical_by_label[label]
             support[canonical_idx]["member_count"] = len(indices)
+            evidence_by_label[label].add(label)
+            for idx in indices:
+                if idx < len(family_terms):
+                    evidence_by_label[label].update(str(term) for term in family_terms[idx] if str(term))
 
         labels = list(canonical_by_label)
         tokens_by_label = {label: _family_tokens(label) for label in labels}
@@ -433,6 +497,39 @@ def _compute_family_representative_support(
                 }
             )
             support[parent_idx]["member_count"] += child_member_count
+
+        label_set = set(labels)
+        for parent_label in labels:
+            parent_tokens = tokens_by_label[parent_label]
+            if len(parent_tokens) < int(min_parent_tokens):
+                continue
+            parent_idx = canonical_by_label[parent_label]
+            seen_children = {
+                _normalise_term(child["term"])
+                for child in support[parent_idx]["children"]
+            }
+            for evidence_terms in evidence_by_label.values():
+                for evidence_label in evidence_terms:
+                    if evidence_label == parent_label:
+                        continue
+                    if evidence_label in label_set:
+                        continue
+                    if evidence_label in seen_children:
+                        continue
+                    evidence_tokens = _family_tokens(evidence_label)
+                    if len(evidence_tokens) <= len(parent_tokens):
+                        continue
+                    if parent_tokens < evidence_tokens:
+                        support[parent_idx]["children"].append(
+                            {
+                                "term": evidence_label,
+                                "member_count": 1,
+                                "doc_coverage": 0.0,
+                                "evidence_source": "candidate_terms",
+                            }
+                        )
+                        support[parent_idx]["member_count"] += 1
+                        seen_children.add(evidence_label)
 
         for info in support:
             children = info["children"]
@@ -1235,6 +1332,11 @@ def annotate_keyword_quality(
         display_labels=display_labels,
         representative_scores=representative_scores,
         doc_coverages=doc_coverage_values,
+        family_terms=_collect_family_evidence_terms(
+            out,
+            term_col=term_col,
+            display_labels=display_labels,
+        ),
         enabled=family_representative_enabled,
         weight=family_representative_weight,
         max_bonus=family_representative_max_bonus,

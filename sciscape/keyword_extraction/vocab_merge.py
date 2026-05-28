@@ -23,6 +23,18 @@ from .config import VocabMergeConfig
 _INVARIANT_PLURALS = frozenset({
     "series", "species", "chassis", "diabetes", "rabies",
 })
+_IRREGULAR_PLURALS = {
+    "analyses": "analysis",
+    "crises": "crisis",
+    "diagnoses": "diagnosis",
+    "hypotheses": "hypothesis",
+    "syntheses": "synthesis",
+    "theses": "thesis",
+}
+_SES_REMOVE_ES = frozenset({
+    "biases",
+    "gases",
+})
 
 # Suffixes that look like they end in "s" but are NOT English plurals.
 # -sis: analysis, synthesis, diagnosis, basis, crisis, thesis, hypothesis
@@ -41,16 +53,22 @@ def _simple_singular(word: str) -> Optional[str]:
     """
     if len(word) <= 3:
         return None
-    if word.lower() in _INVARIANT_PLURALS:
+    lower = word.lower()
+    if lower in _INVARIANT_PLURALS:
         return None
+    if lower in _IRREGULAR_PLURALS:
+        return _IRREGULAR_PLURALS[lower]
     if word.endswith("ies") and len(word) > 4:
         # "batteries" -> "battery"
         candidate = word[:-3] + "y"
         return candidate
     if word.endswith("ses") and len(word) > 4:
-        # "analyses" -> "analysis" is irregular, skip
-        # "processes" -> "process"
-        candidate = word[:-2]
+        if word.endswith("sses") or lower in _SES_REMOVE_ES:
+            # "processes" -> "process", "biases" -> "bias"
+            candidate = word[:-2]
+        else:
+            # "databases" -> "database", "cases" -> "case"
+            candidate = word[:-1]
         return candidate
     if word.endswith("es") and len(word) > 3:
         if word[-3] in ("s", "x", "z", "h"):

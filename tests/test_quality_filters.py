@@ -402,6 +402,7 @@ class TestSpellingVariants:
     def test_phrase_singular(self):
         assert _phrase_singular("point clouds") == "point cloud"
         assert _phrase_singular("neural networks") == "neural network"
+        assert _phrase_singular("materials databases") == "materials database"
         assert _phrase_singular("series") is None  # not a regular plural
 
     def test_phrase_singular_empty(self):
