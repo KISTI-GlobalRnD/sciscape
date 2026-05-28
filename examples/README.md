@@ -75,6 +75,15 @@ uv run --extra dev sciscape visualize sample_keywords.csv \
   -o examples_output/sample_dashboard.html
 ```
 
+For GitHub Pages style static sharing, generate a reusable viewer and place a
+`data.json` next to it. The viewer will also accept `?data=path/to/data.json`.
+
+```bash
+uv run --extra dev sciscape viewer -o examples_output/pages/viewer.html
+cp examples_output/openalex_live/perovskite_solar_cells_2020_2024/visual_report/data.json \
+  examples_output/pages/data.json
+```
+
 Compare the current family-aware representative keyword scoring against the
 same pipeline with that scoring disabled:
 

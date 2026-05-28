@@ -165,6 +165,14 @@ sciscape viewer -o viewer.html
 sciscape export edges.parquet membership.parquet --format gexf -o network.gexf
 ```
 
+Static sharing:
+
+- `sciscape visualize ... --dashboard-only` creates a self-contained HTML file.
+- `sciscape viewer -o viewer.html` creates a reusable shell that auto-loads
+  same-directory `data.json` on GitHub Pages or another static host.
+- `viewer.html?data=path/to/data.json` points the shell at an explicit hosted
+  JSON/CSV/TSV data file.
+
 Python:
 
 ```python
@@ -176,7 +184,7 @@ Outputs:
 
 - report HTML files.
 - dashboard data.
-- standalone viewer HTML.
+- standalone viewer HTML with hosted `data.json` or drag/drop data loading.
 - GEXF or GraphML exports.
 
 ## Evaluation

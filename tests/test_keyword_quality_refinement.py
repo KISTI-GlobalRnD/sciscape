@@ -876,6 +876,23 @@ def test_dashboard_html_exposes_label_tiers_and_cooccurrence_evidence(tmp_path):
     assert "review_edge" in html
 
 
+def test_viewer_html_auto_loads_hosted_data_json(tmp_path):
+    from sciscape.keyword_extraction.visualization import export_viewer
+
+    output_path = export_viewer(
+        output_path=str(tmp_path / "viewer.html"),
+        title="SciScape Static Viewer",
+    )
+    html = (tmp_path / "viewer.html").read_text(encoding="utf-8")
+
+    assert output_path.endswith("viewer.html")
+    assert "let DATA = null;" in html
+    assert "data.json" in html
+    assert "?data=path/to/data.json" in html
+    assert "async function _loadHostedData" in html
+    assert 'url: "data.json"' in html
+
+
 def test_dashboard_cluster_labels_use_mmr_for_redundant_representative_terms():
     from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
 

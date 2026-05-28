@@ -190,11 +190,12 @@ def export_viewer(
     output_path: str = "viewer.html",
     title: str = "SciScape Viewer",
 ) -> str:
-    """Generate a standalone viewer HTML that loads data via file upload.
+    """Generate a standalone viewer HTML that loads hosted or uploaded data.
 
     Deploy this single file to Vercel / GitHub Pages / any static host.
-    Users drag & drop a ``data.json`` (produced by ``export_report``)
-    to explore their results in the browser — no server needed.
+    The viewer auto-loads ``data.json`` from the same directory when hosted
+    over HTTP(S), accepts an explicit ``?data=...`` URL, and also supports
+    drag-and-drop upload of ``data.json`` or keyword CSV/TSV files.
 
     Parameters
     ----------

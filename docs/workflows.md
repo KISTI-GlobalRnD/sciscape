@@ -216,6 +216,16 @@ Generate a blank standalone viewer shell:
 sciscape viewer -o viewer.html
 ```
 
+For GitHub Pages, put the viewer and data file in the same static directory:
+
+```bash
+sciscape viewer -o public/viewer.html
+cp report/data.json public/data.json
+```
+
+The hosted viewer auto-loads same-directory `data.json`. To keep data elsewhere,
+open `viewer.html?data=path/to/data.json` instead.
+
 Launch the local web interface:
 
 ```bash

@@ -331,13 +331,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div id="drop-zone" style="border:3px dashed #00d4ff;border-radius:16px;padding:4rem 3rem;text-align:center;max-width:560px;width:90%;cursor:pointer;transition:background .2s;">
     <div style="font-size:3rem;margin-bottom:1rem;">&#128194;</div>
     <h2 style="color:#fff;font-size:1.5rem;margin-bottom:.5rem;">SciScape Viewer</h2>
-    <p style="color:#adb5bd;font-size:1rem;margin-bottom:1.5rem;">Drop a file here or click to browse</p>
+    <p style="color:#adb5bd;font-size:1rem;margin-bottom:1.5rem;">Drop a file here, click to browse, or host <b>data.json</b> next to this viewer</p>
     <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem;">
       <span style="background:#2d2d44;padding:.3rem .7rem;border-radius:4px;color:#00d4ff;font-size:.85rem;">data.json</span>
       <span style="background:#2d2d44;padding:.3rem .7rem;border-radius:4px;color:#4ecdc4;font-size:.85rem;">keywords.csv</span>
       <span style="background:#2d2d44;padding:.3rem .7rem;border-radius:4px;color:#4ecdc4;font-size:.85rem;">keywords.tsv</span>
     </div>
-    <p style="color:#6c757d;font-size:.85rem;">CSV/TSV: requires <b>cluster_id</b>, <b>term</b>, <b>score</b> columns (tab or comma separated)</p>
+    <p style="color:#6c757d;font-size:.85rem;">CSV/TSV: requires <b>cluster_id</b> and <b>term</b>. Use <b>?data=path/to/data.json</b> for explicit hosted data.</p>
     <input type="file" id="file-input" accept=".json,.csv,.tsv,.txt" style="display:none;">
     <div id="upload-error" style="color:#ff6b6b;margin-top:1rem;display:none;"></div>
   </div>
@@ -499,6 +499,35 @@ function _handleFile(file) {
   reader.readAsText(file);
 }
 
+async function _loadHostedData(url, showErrors) {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const text = await response.text();
+    const cleanName = String(url).split("?")[0].toLowerCase();
+    if (cleanName.endsWith(".csv") || cleanName.endsWith(".tsv") || cleanName.endsWith(".txt")) {
+      _loadCSV(text, cleanName);
+    } else {
+      _loadJSON(text);
+    }
+  } catch (e) {
+    if (showErrors) {
+      uploadError.textContent = "Could not load hosted data: " + e.message;
+      uploadError.style.display = "block";
+    }
+  }
+}
+
+function _hostedDataCandidates() {
+  const params = new URLSearchParams(window.location.search);
+  const explicit = params.get("data") || params.get("src");
+  if (explicit) return [{ url: explicit, showErrors: true }];
+  if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+    return [{ url: "data.json", showErrors: false }];
+  }
+  return [];
+}
+
 if (dropZone) {
   dropZone.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", (e) => _handleFile(e.target.files[0]));
@@ -513,6 +542,10 @@ if (DATA) {
   _initClusters();
 } else {
   overlay.style.display = "flex";
+  const candidates = _hostedDataCandidates();
+  if (candidates.length) {
+    _loadHostedData(candidates[0].url, candidates[0].showErrors);
+  }
 }
 
 // Tab switching

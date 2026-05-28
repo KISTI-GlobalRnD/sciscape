@@ -110,6 +110,10 @@ sciscape convert bibtex references.bib -o abstracts.parquet
 sciscape viewer -o viewer/index.html
 ```
 
+`viewer/index.html`과 `viewer/data.json`을 같은 GitHub Pages 폴더에 두면
+브라우저가 `data.json`을 자동으로 불러옵니다. 다른 위치의 데이터는
+`viewer/index.html?data=path/to/data.json`처럼 지정할 수 있습니다.
+
 ### `sciscape web` — FastAPI 웹 인터페이스
 
 ```bash
@@ -272,11 +276,19 @@ Rust CPM/Leiden 실행, projection, contraction, small-cluster postprocess와 Sc
 
 ## Web Viewer
 
-`report/data.json` 또는 `keywords.csv`를 GitHub Pages 뷰어에 업로드하면 브라우저에서 바로 탐색 가능:
+GitHub Pages 같은 정적 호스팅에서도 서버 없이 바로 탐색할 수 있습니다.
+
+**배포 방식:**
+- 단일 파일: `sciscape visualize ... --dashboard-only -o dashboard.html`로
+  데이터가 포함된 HTML을 만들고 `dashboard.html`만 업로드
+- 분리형 뷰어: `sciscape viewer -o viewer.html`로 만든 `viewer.html`과
+  `report/data.json`을 같은 폴더에 `data.json` 이름으로 업로드
+- 명시 경로: `viewer.html?data=path/to/data.json` 또는 `?data=path/to/keywords.csv`
+- 수동 로드: 브라우저에서 `data.json`, `keywords.csv`, `keywords.tsv`를 drag/drop
 
 **지원 포맷:**
 - `data.json` — 전체 데이터 (네트워크, 시계열, 계층, 필터 이력)
-- `keywords.csv` / `.tsv` — 범용 (`cluster_id`, `term`, `score` 필수열)
+- `keywords.csv` / `.tsv` — 범용 (`cluster_id`, `term` 필수열, `score` 선택)
 
 서버 없음, 데이터 전송 없음. 브라우저 로컬에서만 처리됩니다.
 
@@ -360,7 +372,7 @@ export_dashboard(keywords, "dashboard.html", open_browser=True)
 # 전체 리포트 (대시보드 + 차트 + data.json)
 export_report(keywords, "report/", viz_data=viz_data)
 
-# 빈 뷰어 (GitHub Pages 배포용)
+# 빈 뷰어 (GitHub Pages 배포용: 같은 폴더의 data.json 자동 로드)
 export_viewer("viewer.html")
 ```
 
