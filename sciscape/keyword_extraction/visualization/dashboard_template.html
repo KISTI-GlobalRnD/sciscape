@@ -59,6 +59,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .keyword-scope-title{font-size:.78rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.45rem;}
 .keyword-chip{display:inline-flex;align-items:center;gap:.3rem;margin:.15rem .2rem .15rem 0;padding:.18rem .45rem;border-radius:12px;background:#eef2f7;color:#1f2933;font-size:.8rem;line-height:1.35;}
 .keyword-chip small{color:#6c757d;font-size:.72rem;}
+.keyword-family-section{margin-top:.9rem;border-top:1px solid #e9ecef;padding-top:.85rem;}
+.keyword-family-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.6rem;}
+.keyword-family-row{border:1px solid #e9ecef;border-radius:6px;padding:.55rem .65rem;background:#fff;}
+.keyword-family-parent{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;font-size:.86rem;}
+.keyword-family-parent small{white-space:nowrap;color:#495057;font-weight:600;}
+.keyword-family-children{margin-top:.35rem;color:#6c757d;font-size:.78rem;line-height:1.45;}
+.keyword-family-child{display:inline-block;margin:.05rem .35rem .05rem 0;}
 .footer{text-align:center;padding:1.5rem 2rem;font-size:.8rem;color:#6c757d;border-top:1px solid #e9ecef;margin-top:2rem;display:flex;align-items:center;justify-content:center;gap:.5rem;}
 .footer svg{opacity:.5;transition:opacity .2s;}
 .footer:hover svg{opacity:.8;}
@@ -550,9 +557,13 @@ function updateMeta() {
   const nEdges = currentCluster.network_edges ? currentCluster.network_edges.length : 0;
   const nSub = currentCluster.subphrase_tree ? currentCluster.subphrase_tree.length : 0;
   const nNorm = Object.keys(currentCluster.norm_merges || {}).length;
+  const nFamilies = currentCluster.keyword_family_count != null
+    ? currentCluster.keyword_family_count
+    : (currentCluster.keyword_families || []).length;
 
   metaEl.innerHTML = `
     <div class="meta-item"><div class="meta-label">Keywords</div><div class="meta-value">${kws.length}</div></div>
+    <div class="meta-item"><div class="meta-label">Families</div><div class="meta-value">${nFamilies}</div></div>
     <div class="meta-item"><div class="meta-label">Avg Score</div><div class="meta-value">${avgScore}</div></div>
     <div class="meta-item"><div class="meta-label">Avg Frequency</div><div class="meta-value">${avgFreq}</div></div>
     <div class="meta-item"><div class="meta-label">Depth</div><div class="meta-value">${depthStr}</div></div>
@@ -589,6 +600,11 @@ function keywordScopeGroupsFromKeywords(keywords) {
   return groups;
 }
 
+function keywordCountLabel(n) {
+  const count = Number.isFinite(Number(n)) ? Number(n) : 1;
+  return `${count.toLocaleString()} keyword${count === 1 ? "" : "s"}`;
+}
+
 function renderKeywordScopeBlocks(targetId, groups, emptyText) {
   const el = document.getElementById(targetId);
   if (!el) return;
@@ -596,15 +612,45 @@ function renderKeywordScopeBlocks(targetId, groups, emptyText) {
   const html = order.map(scope => {
     const values = (groups && groups[scope]) ? groups[scope].slice(0, 12) : [];
     const chips = values.map(k => {
-      const ratio = k.keyword_cluster_ratio != null ? ` · ${(k.keyword_cluster_ratio * 100).toFixed(0)}%` :
-        k.cluster_ratio != null ? ` · ${(k.cluster_ratio * 100).toFixed(0)}%` : "";
+      const ratio = k.keyword_cluster_ratio != null ? `${(k.keyword_cluster_ratio * 100).toFixed(0)}%` :
+        k.cluster_ratio != null ? `${(k.cluster_ratio * 100).toFixed(0)}%` : "";
+      const count = k.member_count != null ? keywordCountLabel(k.member_count) : "";
+      const meta = [count, ratio].filter(Boolean).join(" · ");
       const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
         ` <small>${k.abbreviation_status}</small>` : "";
-      return `<span class="keyword-chip"><b>${k.term}</b><small>${ratio}</small>${abbr}</span>`;
+      return `<span class="keyword-chip"><b>${k.term}</b>${meta ? `<small>${meta}</small>` : ""}${abbr}</span>`;
     }).join("");
     return `<div class="keyword-scope-block"><div class="keyword-scope-title">${keywordScopeLabels[scope]}</div>${chips || `<span style="color:#adb5bd;font-size:.85rem;">${emptyText}</span>`}</div>`;
   }).join("");
   el.innerHTML = `<div class="keyword-scope-grid">${html}</div>`;
+}
+
+function renderKeywordFamiliesSummary(targetId, families) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const values = (families || []).slice(0, 12);
+  if (!values.length) return;
+  const rows = values.map(f => {
+    const children = (f.children || []).slice(0, 5);
+    const childHtml = children.length
+      ? children.map(ch => `<span class="keyword-family-child">${ch.term} <small>(${keywordCountLabel(ch.member_count)})</small></span>`).join("")
+      : `<span style="color:#adb5bd;">No derivatives</span>`;
+    const aliasText = f.raw_alias_count ? ` · ${f.raw_alias_count.toLocaleString()} aliases` : "";
+    return `<div class="keyword-family-row">
+      <div class="keyword-family-parent"><b>${f.term}</b><small>${keywordCountLabel(f.member_count)}${aliasText}</small></div>
+      <div class="keyword-family-children">${childHtml}</div>
+    </div>`;
+  }).join("");
+  const more = (families || []).length > values.length
+    ? `<div style="font-size:.78rem;color:#6c757d;margin-top:.35rem;">Showing ${values.length} of ${families.length} families.</div>`
+    : "";
+  el.insertAdjacentHTML("beforeend", `
+    <div class="keyword-family-section">
+      <div class="keyword-scope-title">Keyword Families (${(families || []).length.toLocaleString()})</div>
+      <div class="keyword-family-list">${rows}</div>
+      ${more}
+    </div>
+  `);
 }
 
 // ---- Tab 1: Keywords ----
@@ -625,6 +671,7 @@ function renderKeywords() {
     currentCluster.keyword_groups || keywordScopeGroupsFromKeywords(currentCluster.keywords),
     "No terms"
   );
+  renderKeywordFamiliesSummary("keywords-scope-summary", currentCluster.keyword_families || []);
 
   const kws = currentCluster.keywords.slice(0, 30);
   const terms = kws.map(k => k.term).reverse();
@@ -1715,18 +1762,18 @@ function renderDictKeywordsGlobal(container, searchBox) {
     const fl = (filter || "").toLowerCase();
     const filtered = fl ? allKws.filter(k => k.term.toLowerCase().includes(fl) || (`C${k.cluster}`).includes(fl) || k.clusterLabel.toLowerCase().includes(fl)) : allKws;
     const shown = filtered.slice(0, 200);
-    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Scope</th><th>Abbrev</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
+    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Count</th><th>Scope</th><th>Abbrev</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
     shown.forEach((k, i) => {
       const depth = k.depth_level != null ? `${depthNames[k.depth_level]||"L"+k.depth_level} (${(k.depth_score||0).toFixed(2)})` : "";
       const scope = keywordScopeLabels[k.keyword_scope] || "-";
       const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
         `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       html += `<tr style="cursor:pointer" onclick="document.getElementById('cluster-select').value='${k.cluster}';document.getElementById('cluster-select').dispatchEvent(new Event('change'))">`;
-      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${scope}</td><td>${abbr}</td><td>${k.score.toFixed(4)}</td>`;
+      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${keywordCountLabel(k.member_count)}</td><td>${scope}</td><td>${abbr}</td><td>${k.score.toFixed(4)}</td>`;
       html += `<td>${(k.frequency||0).toLocaleString()}</td><td>${(k.doc_coverage||0).toLocaleString()}</td>`;
       html += `<td>${depth}</td><td>${k.cross_cluster_count > 1 ? k.cross_cluster_count : ""}</td></tr>`;
     });
-    if (filtered.length > 200) html += `<tr><td colspan="10" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
+    if (filtered.length > 200) html += `<tr><td colspan="11" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
     html += '</tbody></table>';
     container.innerHTML = html;
   }
@@ -1754,7 +1801,7 @@ function renderDictKeywords(container, searchBox) {
 
     let html = `<table class="merge-table">
       <thead><tr>
-        <th>#</th><th>Term</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
+        <th>#</th><th>Term</th><th>Count</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
         <th>Depth</th><th>Cross-CL</th><th>Scope</th><th>Abbrev</th><th>Expanded From</th><th>Norm Merged From</th><th>Notes</th>
       </tr></thead><tbody>`;
 
@@ -1772,6 +1819,7 @@ function renderDictKeywords(container, searchBox) {
       const noteIndicator = existingNote ? ' <span class="note-indicator">\ud83d\udcdd</span>' : "";
       html += `<tr>
         <td>${i + 1}</td><td><strong>${k.term}</strong>${noteIndicator}</td>
+        <td>${keywordCountLabel(k.member_count)}</td>
         <td>${k.score.toFixed(4)}</td><td>${k.frequency.toLocaleString()}</td>
         <td>${k.doc_coverage.toLocaleString()}</td>
         <td>${dl}</td><td>${cc}</td><td>${scope}</td><td>${abbr}</td><td>${ef}</td><td>${nmStr}</td>

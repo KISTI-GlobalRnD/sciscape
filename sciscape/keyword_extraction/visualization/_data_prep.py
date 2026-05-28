@@ -146,6 +146,136 @@ def _group_keywords_by_scope(keywords: List[Dict], *, max_per_scope: int = 25) -
     return {scope: values[:max_per_scope] for scope, values in groups.items()}
 
 
+def _keyword_raw_aliases(keyword: Dict) -> List[Dict]:
+    aliases = keyword.get("raw_aliases")
+    return aliases if isinstance(aliases, list) else []
+
+
+def _keyword_family_child_entry(keyword: Dict) -> Dict:
+    raw_alias_count = len(_keyword_raw_aliases(keyword))
+    entry = {
+        "term": keyword["term"],
+        "score": keyword["score"],
+        "frequency": keyword["frequency"],
+        "doc_coverage": keyword["doc_coverage"],
+        "child_count": 0,
+        "raw_alias_count": raw_alias_count,
+        "member_count": 1 + raw_alias_count,
+    }
+    for field in (
+        "keyword_scope",
+        "representative_role",
+        "representative_flags",
+        "quality_flags",
+        "network_role",
+        "abbreviation_status",
+    ):
+        if field in keyword:
+            entry[field] = keyword[field]
+    return entry
+
+
+def _build_keyword_families(keywords: List[Dict], *, min_parent_tokens: int = 2) -> List[Dict]:
+    """Build a two-level parent/derivative view and count represented keywords."""
+    if not keywords:
+        return []
+
+    token_sets = [_label_tokens(keyword.get("term", "")) for keyword in keywords]
+    for keyword in keywords:
+        raw_alias_count = len(_keyword_raw_aliases(keyword))
+        keyword["child_count"] = 0
+        keyword["raw_alias_count"] = raw_alias_count
+        keyword["member_count"] = 1 + raw_alias_count
+
+    child_to_parent: Dict[int, int] = {}
+    for child_idx, child_tokens in enumerate(token_sets):
+        if not child_tokens:
+            continue
+        candidates: list[tuple[float, int, int]] = []
+        for parent_idx, parent_tokens in enumerate(token_sets):
+            if parent_idx == child_idx or len(parent_tokens) < min_parent_tokens:
+                continue
+            if len(parent_tokens) >= len(child_tokens):
+                continue
+            if parent_tokens < child_tokens:
+                parent_score = float(keywords[parent_idx].get("score", 0.0) or 0.0)
+                candidates.append((parent_score, -len(parent_tokens), parent_idx))
+        if candidates:
+            child_to_parent[child_idx] = max(candidates)[2]
+
+    def _root_parent(index: int) -> int:
+        seen = set()
+        while index in child_to_parent and index not in seen:
+            seen.add(index)
+            index = child_to_parent[index]
+        return index
+
+    child_indices_by_root: Dict[int, List[int]] = {}
+    top_level_indices = []
+    for idx in range(len(keywords)):
+        root_idx = _root_parent(idx)
+        if root_idx == idx:
+            top_level_indices.append(idx)
+        else:
+            child_indices_by_root.setdefault(root_idx, []).append(idx)
+
+    families: List[Dict] = []
+    for idx in top_level_indices:
+        keyword = keywords[idx]
+        child_entries = [
+            _keyword_family_child_entry(keywords[child_idx])
+            for child_idx in child_indices_by_root.get(idx, [])
+        ]
+        child_entries.sort(
+            key=lambda item: (
+                -float(item["score"]),
+                -int(item["frequency"]),
+                str(item["term"]),
+            )
+        )
+        root_alias_count = len(_keyword_raw_aliases(keyword))
+        raw_alias_count = root_alias_count + sum(int(child["raw_alias_count"]) for child in child_entries)
+        member_count = 1 + root_alias_count + sum(int(child["member_count"]) for child in child_entries)
+        child_count = len(child_entries)
+        keyword["child_count"] = child_count
+        keyword["raw_alias_count"] = raw_alias_count
+        keyword["member_count"] = member_count
+
+        family = {
+            "term": keyword["term"],
+            "score": keyword["score"],
+            "frequency": keyword["frequency"],
+            "doc_coverage": keyword["doc_coverage"],
+            "child_count": child_count,
+            "raw_alias_count": raw_alias_count,
+            "member_count": member_count,
+            "children": child_entries,
+        }
+        for field in (
+            "keyword_scope",
+            "representative_role",
+            "representative_flags",
+            "quality_flags",
+            "network_role",
+            "abbreviation_status",
+        ):
+            if field in keyword:
+                family[field] = keyword[field]
+        raw_aliases = _keyword_raw_aliases(keyword)
+        if raw_aliases:
+            family["raw_aliases"] = raw_aliases
+        families.append(family)
+
+    families.sort(
+        key=lambda item: (
+            -float(item["score"]),
+            -int(item["member_count"]),
+            str(item["term"]),
+        )
+    )
+    return families
+
+
 def _aggregate_keyword_scope_terms(
     df: pd.DataFrame,
     *,
@@ -183,6 +313,7 @@ def _aggregate_keyword_scope_terms(
                 "clusters": clusters,
                 "score": round(max_score, 6),
                 "frequency": frequency,
+                "member_count": int(len(term_group)),
             }
         )
 
@@ -416,6 +547,7 @@ def prepare_cluster_data(
             edges = _compute_network_edges(edge_terms)
 
         subphrases = subphrase_by_cluster.get(cid, [])
+        keyword_families = _build_keyword_families(keywords)
 
         cluster_norm_merges = {}
         for t, srcs in norm_merges.items():
@@ -429,6 +561,8 @@ def prepare_cluster_data(
             "label": labels[cid],
             "n_keywords": len(keywords),
             "keywords": keywords,
+            "keyword_family_count": len(keyword_families),
+            "keyword_families": keyword_families,
             "keyword_groups": _group_keywords_by_scope(keywords),
             "network_edges": edges,
             "subphrase_tree": subphrases,

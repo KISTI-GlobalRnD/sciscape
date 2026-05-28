@@ -518,6 +518,11 @@ def test_dashboard_data_uses_display_labels_and_preserves_raw_terms():
     assert cluster["keywords"][0]["raw_aliases"][0]["raw_term"] == "ddi"
     assert cluster["keywords"][0]["raw_aliases"][0]["abbreviation_status"] == "duplicate_expansion"
     assert cluster["keywords"][0]["raw_aliases"][0]["abbreviation_target"] == "drug drug interaction"
+    assert cluster["keywords"][0]["member_count"] == 2
+    assert cluster["keywords"][0]["child_count"] == 0
+    assert cluster["keywords"][0]["raw_alias_count"] == 1
+    assert cluster["keyword_families"][0]["member_count"] == 2
+    assert cluster["keyword_families"][0]["raw_alias_count"] == 1
     assert cluster["keyword_groups"]["cluster_specific"][0]["term"] == "drug drug interaction"
 
 
@@ -623,6 +628,58 @@ def test_dashboard_cluster_labels_use_mmr_for_redundant_representative_terms():
     assert label_terms[0] == "traffic flow"
     assert "time series" in label_terms
     assert "traffic flow prediction" not in label_terms
+
+
+def test_dashboard_data_builds_keyword_families_with_counts():
+    from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
+
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0],
+            "term": [
+                "traffic flow",
+                "traffic flow prediction",
+                "traffic flow speed",
+                "time series",
+            ],
+            "display_label": [
+                "traffic flow",
+                "traffic flow prediction",
+                "traffic flow speed",
+                "time series",
+            ],
+            "representative_score": [10.0, 8.0, 7.0, 6.0],
+            "quality_score": [10.0, 8.0, 7.0, 6.0],
+            "score": [10.0, 8.0, 7.0, 6.0],
+            "quality_flags": ["phrase"] * 4,
+            "keyword_scope": ["cluster_specific"] * 4,
+            "keyword_cluster_count": [1] * 4,
+            "keyword_cluster_ratio": [1.0] * 4,
+            "abbreviation_status": ["not_abbreviation"] * 4,
+            "abbreviation_target": [""] * 4,
+            "abbreviation_confidence": [0.0] * 4,
+            "frequency": [30, 24, 18, 12],
+            "doc_coverage": [15, 12, 9, 6],
+        }
+    )
+
+    data = prepare_cluster_data(df)
+    cluster = data[0]
+    families = {family["term"]: family for family in cluster["keyword_families"]}
+    traffic_family = families["traffic flow"]
+
+    assert cluster["keyword_family_count"] == 2
+    assert traffic_family["child_count"] == 2
+    assert traffic_family["raw_alias_count"] == 0
+    assert traffic_family["member_count"] == 3
+    assert {child["term"] for child in traffic_family["children"]} == {
+        "traffic flow prediction",
+        "traffic flow speed",
+    }
+    assert all("member_count" in family for family in cluster["keyword_families"])
+    assert all("child_count" in family for family in cluster["keyword_families"])
+    assert all("raw_alias_count" in family for family in cluster["keyword_families"])
+    assert cluster["keyword_groups"]["cluster_specific"][0]["member_count"] == 3
 
 
 @pytest.fixture
