@@ -306,6 +306,53 @@ def test_network_roles_preserve_cluster_specific_anchor_unigrams():
     assert catalyst["quality_score"] > model["quality_score"]
 
 
+def test_representative_score_prefers_supported_phrases_over_shadowed_unigrams():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0],
+            "term": [
+                "session",
+                "session based recommendation",
+                "item",
+                "user item recommendation",
+            ],
+            "score": [10.0, 5.0, 8.0, 4.5],
+            "frequency": [80, 22, 64, 20],
+            "doc_coverage": [30, 10, 25, 9],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    ranks = dict(zip(result["term"], result["representative_rank"]))
+    roles = dict(zip(result["term"], result["representative_role"]))
+
+    assert ranks["session based recommendation"] < ranks["session"]
+    assert ranks["user item recommendation"] < ranks["item"]
+    assert roles["session"] in {"linked_unigram", "shadowed_unigram"}
+    assert roles["session based recommendation"] == "representative_phrase"
+
+
+def test_representative_score_demotes_unresolved_short_forms_for_labels():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["eeg", "emotion recognition"],
+            "score": [10.0, 7.0],
+            "frequency": [50, 25],
+            "doc_coverage": [8, 7],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    eeg = result[result["term"] == "eeg"].iloc[0]
+    phrase = result[result["term"] == "emotion recognition"].iloc[0]
+
+    assert eeg["abbreviation_status"] in {"candidate_short_form", "unlinked_short_form"}
+    assert eeg["representative_role"] == "review_short_form"
+    assert phrase["representative_rank"] < eeg["representative_rank"]
+    assert phrase["representative_score"] > eeg["representative_score"]
+
+
 def test_quality_annotation_does_not_flag_common_words_as_acronyms():
     df = pd.DataFrame(
         {
@@ -480,6 +527,39 @@ def test_dashboard_data_groups_common_and_cluster_specific_keywords():
     assert data["_common_keywords"][0]["cluster_count"] == 3
 
 
+def test_dashboard_data_uses_representative_score_for_cluster_labels():
+    from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
+
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["session", "session based recommendation"],
+            "display_label": ["session", "session based recommendation"],
+            "quality_score": [10.0, 5.0],
+            "representative_score": [1.0, 7.0],
+            "score": [10.0, 5.0],
+            "quality_flags": ["phrase_preferred", "phrase"],
+            "representative_role": ["shadowed_unigram", "representative_phrase"],
+            "representative_flags": ["shadowed_unigram", "phrase_label"],
+            "keyword_scope": ["cluster_specific", "cluster_specific"],
+            "keyword_cluster_count": [1, 1],
+            "keyword_cluster_ratio": [1.0, 1.0],
+            "abbreviation_status": ["not_abbreviation", "not_abbreviation"],
+            "abbreviation_target": ["", ""],
+            "abbreviation_confidence": [0.0, 0.0],
+            "frequency": [40, 12],
+            "doc_coverage": [20, 8],
+        }
+    )
+
+    data = prepare_cluster_data(df)
+
+    assert data[0]["label"].startswith("session based recommendation")
+    assert data[0]["keywords"][0]["term"] == "session based recommendation"
+    assert data[0]["keywords"][0]["representative_role"] == "representative_phrase"
+    assert data[0]["keywords"][0]["quality_score"] == pytest.approx(5.0)
+
+
 @pytest.fixture
 def quality_pipeline_data(tmp_path):
     abstracts = pd.DataFrame(
@@ -561,6 +641,11 @@ def test_pipeline_emits_quality_columns_when_enabled(quality_pipeline_data):
         "network_role",
         "network_score",
         "network_flags",
+        "representative_score",
+        "representative_multiplier",
+        "representative_rank",
+        "representative_role",
+        "representative_flags",
     ):
         assert column in keywords.columns
     assert keywords["quality_score"].notna().all()

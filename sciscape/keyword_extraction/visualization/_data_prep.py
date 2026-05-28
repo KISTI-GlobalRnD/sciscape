@@ -28,6 +28,8 @@ def _keyword_label_col(df: pd.DataFrame) -> str:
 
 
 def _keyword_score_col(df: pd.DataFrame) -> str:
+    if "representative_score" in df.columns:
+        return "representative_score"
     return "quality_score" if "quality_score" in df.columns else "score"
 
 
@@ -188,6 +190,20 @@ def prepare_cluster_data(
             }
             if score_col != "score" and "score" in r.index:
                 kw["raw_score"] = round(float(r["score"]), 6)
+            if "quality_score" in r.index and pd.notna(r["quality_score"]):
+                kw["quality_score"] = round(float(r["quality_score"]), 6)
+            if "representative_score" in r.index and pd.notna(r["representative_score"]):
+                kw["representative_score"] = round(float(r["representative_score"]), 6)
+            if "representative_multiplier" in r.index and pd.notna(r["representative_multiplier"]):
+                kw["representative_multiplier"] = round(float(r["representative_multiplier"]), 6)
+            if "representative_rank" in r.index and pd.notna(r["representative_rank"]):
+                kw["representative_rank"] = int(r["representative_rank"])
+            if "representative_role" in r.index and pd.notna(r["representative_role"]):
+                kw["representative_role"] = str(r["representative_role"])
+            if "representative_flags" in r.index and pd.notna(r["representative_flags"]):
+                representative_flags = str(r["representative_flags"])
+                if representative_flags.strip():
+                    kw["representative_flags"] = representative_flags
             if "quality_flags" in r.index and pd.notna(r["quality_flags"]):
                 kw["quality_flags"] = str(r["quality_flags"])
             if "quality_multiplier" in r.index and pd.notna(r["quality_multiplier"]):
@@ -282,6 +298,8 @@ def prepare_cluster_data(
                     "abbreviation_source",
                     "abbreviation_ambiguity_type",
                     "quality_flags",
+                    "representative_role",
+                    "representative_flags",
                     "network_role",
                     "network_flags",
                 ):

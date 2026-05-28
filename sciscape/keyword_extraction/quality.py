@@ -322,6 +322,118 @@ def _keyword_scope(cluster_count: int, cluster_ratio: float, *, threshold: float
     return "shared"
 
 
+def _representative_signal(
+    term: str,
+    *,
+    n_tokens: int,
+    flags: Sequence[str],
+    keyword_scope: str,
+    network_role: str,
+    abbreviation_status: str,
+) -> tuple[float, str, str]:
+    """Score how suitable a keyword is for cluster-facing labels.
+
+    ``quality_score`` is deliberately conservative because it also controls
+    whether useful unigrams remain visible.  This display-only score can be
+    stricter: unresolved abbreviations, common bridge terms, and shadowed
+    unigrams are useful audit rows but weak representative labels.
+    """
+
+    flag_set = set(flags)
+    multiplier = 1.0
+    rep_flags: list[str] = []
+    role = "candidate"
+
+    if keyword_scope == "cluster_specific":
+        multiplier *= 1.08
+        rep_flags.append("cluster_specific")
+    elif keyword_scope == "shared":
+        multiplier *= 0.92
+        rep_flags.append("shared")
+    elif keyword_scope == "common":
+        multiplier *= 0.58
+        rep_flags.append("common_term")
+        role = "common_term"
+
+    if n_tokens >= 2:
+        multiplier *= 1.0 + min(0.22, 0.08 + 0.04 * min(3, n_tokens - 1))
+        rep_flags.append("phrase_label")
+        if keyword_scope == "cluster_specific":
+            role = "representative_phrase"
+    elif "phrase_preferred" in flag_set:
+        rep_flags.append("shadowed_unigram")
+        if network_role == "anchor_unigram":
+            multiplier *= 1.04
+            role = "anchor_unigram"
+        elif network_role == "linked_unigram":
+            multiplier *= 0.46
+            role = "linked_unigram"
+        else:
+            multiplier *= 0.36
+            role = "shadowed_unigram"
+    elif term in COMMON_SHORT_WORDS or term in LOW_INFORMATION_TERMS or term in METADATA_TERMS:
+        multiplier *= 0.70
+        rep_flags.append("low_information_unigram")
+        role = "low_information_unigram"
+
+    if network_role == "expansion_phrase":
+        multiplier *= 1.14
+        rep_flags.append("expansion_phrase")
+        role = "expansion_phrase"
+    elif network_role == "representative_phrase":
+        multiplier *= 1.10
+        rep_flags.append("network_representative")
+        if role == "candidate":
+            role = "representative_phrase"
+    elif network_role == "anchor_unigram":
+        multiplier *= 1.12
+        rep_flags.append("network_anchor")
+        if role == "candidate":
+            role = "anchor_unigram"
+    elif network_role == "generic_bridge":
+        multiplier *= 0.62
+        rep_flags.append("generic_bridge")
+        role = "generic_bridge"
+    elif network_role == "unlinked_short_form":
+        multiplier *= 0.64
+        rep_flags.append("unlinked_short_form")
+        role = "review_short_form"
+
+    if abbreviation_status in {"cluster_expanded", "corpus_expanded"}:
+        multiplier *= 1.08
+        rep_flags.append("expanded_short_form")
+        if role == "candidate":
+            role = "expanded_short_form"
+    elif abbreviation_status == "duplicate_expansion":
+        multiplier *= 0.08
+        rep_flags.append("duplicate_expansion")
+        role = "duplicate_expansion"
+    elif abbreviation_status in {
+        "ambiguous_expansion",
+        "candidate_short_form",
+        "low_support_expansion",
+        "unlinked_short_form",
+    }:
+        multiplier *= 0.52
+        rep_flags.append("review_short_form")
+        role = "review_short_form"
+
+    if "artifact_like" in flag_set or "artifact_formula" in flag_set:
+        multiplier *= 0.45
+        rep_flags.append("artifact_demoted")
+        role = "artifact_demoted"
+    elif "material_formula" in flag_set:
+        multiplier *= 1.04
+        rep_flags.append("material_formula")
+        if role == "candidate":
+            role = "material_formula"
+
+    if role == "candidate" and n_tokens >= 2:
+        role = "representative_phrase"
+
+    return max(0.01, multiplier), role, _flag_string(rep_flags)
+
+
 def _abbreviation_evidence(
     term: str,
     *,
@@ -481,10 +593,28 @@ def _network_role_hints(
                 )
 
                 if phrase_neighbors and cluster_count == 1 and len(set(phrase_neighbors)) >= 2:
-                    role = "anchor_unigram"
-                    network_score = min(1.0, 0.62 + 0.08 * len(set(phrase_neighbors)))
-                    flags.extend(["anchor_unigram", "phrase_linked"])
-                    multiplier *= 1.18
+                    head_neighbor_ratio = sum(
+                        1 for phrase in set(phrase_neighbors) if _tokens(phrase)[-1:] == [term]
+                    ) / max(1, len(set(phrase_neighbors)))
+                    low_information_unigram = (
+                        term in COMMON_SHORT_WORDS
+                        or term in LOW_INFORMATION_TERMS
+                        or term in METADATA_TERMS
+                    )
+                    if low_information_unigram or head_neighbor_ratio >= 0.6:
+                        role = "linked_unigram"
+                        network_score = 0.58
+                        flags.append("linked_unigram")
+                        if head_neighbor_ratio >= 0.6:
+                            flags.append("head_unigram")
+                        if low_information_unigram:
+                            flags.append("low_information_unigram")
+                        multiplier *= 0.96
+                    else:
+                        role = "anchor_unigram"
+                        network_score = min(1.0, 0.62 + 0.08 * len(set(phrase_neighbors)))
+                        flags.extend(["anchor_unigram", "phrase_linked"])
+                        multiplier *= 1.18
                 elif phrase_neighbors and cluster_count == 1:
                     role = "linked_unigram"
                     network_score = 0.62
@@ -655,6 +785,10 @@ def annotate_keyword_quality(
     abbreviation_cluster_support_docs_values: list[int] = []
     abbreviation_top_support_ratios: list[float] = []
     abbreviation_ambiguity_types: list[str] = []
+    representative_scores: list[float] = []
+    representative_multipliers: list[float] = []
+    representative_roles: list[str] = []
+    representative_flag_values: list[str] = []
 
     raw_scores = out[score_col] if score_col in out.columns else pd.Series(1.0, index=out.index)
     base_scores = pd.to_numeric(raw_scores, errors="coerce").fillna(0.0).reset_index(drop=True)
@@ -806,9 +940,22 @@ def annotate_keyword_quality(
             multiplier *= max(float(min_multiplier), network_multiplier)
             multiplier = max(float(min_multiplier), multiplier)
         base = float(base_scores.iloc[row_index])
-        quality_scores.append(base * multiplier)
+        quality_score = base * multiplier
+        representative_multiplier, representative_role, representative_flags = _representative_signal(
+            term,
+            n_tokens=n_tokens,
+            flags=flags,
+            keyword_scope=keyword_scopes[-1],
+            network_role=network_role,
+            abbreviation_status=abbreviation_status,
+        )
+        quality_scores.append(quality_score)
         quality_multipliers.append(multiplier)
         quality_flags.append(_flag_string(flags))
+        representative_scores.append(quality_score * representative_multiplier)
+        representative_multipliers.append(representative_multiplier)
+        representative_roles.append(representative_role)
+        representative_flag_values.append(representative_flags)
         network_role_values.append(network_role)
         network_scores.append(float(role_hint.get("score", 0.5)))
         network_flag_values.append(_flag_string(network_flags))
@@ -824,6 +971,10 @@ def annotate_keyword_quality(
     out["quality_score"] = quality_scores
     out["quality_multiplier"] = quality_multipliers
     out["quality_flags"] = quality_flags
+    out["representative_score"] = representative_scores
+    out["representative_multiplier"] = representative_multipliers
+    out["representative_role"] = representative_roles
+    out["representative_flags"] = representative_flag_values
     out["keyword_scope"] = keyword_scopes
     out["keyword_cluster_count"] = keyword_cluster_counts
     out["keyword_cluster_ratio"] = keyword_cluster_ratios
@@ -839,6 +990,18 @@ def annotate_keyword_quality(
         out["network_role"] = network_role_values
         out["network_score"] = network_scores
         out["network_flags"] = network_flag_values
+    if cluster_col in out.columns:
+        out["representative_rank"] = (
+            out.groupby(cluster_col, sort=False)["representative_score"]
+            .rank(method="first", ascending=False)
+            .astype(int)
+        )
+    else:
+        out["representative_rank"] = (
+            out["representative_score"]
+            .rank(method="first", ascending=False)
+            .astype(int)
+        )
 
     if rerank and cluster_col in out.columns:
         out = (
