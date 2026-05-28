@@ -78,6 +78,7 @@ COMMON_SHORT_WORDS: frozenset[str] = frozenset(
         "fuel",
         "gene",
         "heat",
+        "ion",
         "lead",
         "line",
         "load",
@@ -131,6 +132,27 @@ def _tokens(term: str) -> list[str]:
     return [tok for tok in _SPLIT_RE.split(term.lower()) if tok]
 
 
+def _short_form_base(compact: str) -> str:
+    if len(compact) > 3 and compact.endswith("s"):
+        return compact[:-1]
+    return compact
+
+
+def _has_compact_short_form_shape(compact: str, *, max_length: int) -> bool:
+    base = _short_form_base(compact)
+    if len(base) < 2 or len(base) > int(max_length):
+        return False
+    if "rna" in base or "dna" in base:
+        return len(base) <= int(max_length)
+    if not any(ch in base for ch in "aeiou"):
+        return True
+    if len(base) == 3 and base[-1] in {"i", "y"} and not any(ch in base[:-1] for ch in "aeiou"):
+        return True
+    if len(base) <= 3 and len(set(base)) < len(base):
+        return True
+    return False
+
+
 def _is_formula_like(term: str) -> bool:
     tokens = _tokens(term)
     if not tokens:
@@ -148,20 +170,16 @@ def _is_acronym_like(term: str, *, max_length: int, has_expansion: bool = False)
         return False
     if has_expansion:
         return True
-    return len(compact) <= 4 and not any(ch in compact for ch in "aeiou")
+    return len(compact) <= 4 and _has_compact_short_form_shape(compact, max_length=max_length)
 
 
 def _is_abbreviation_candidate(term: str, *, max_length: int) -> bool:
     compact = term.replace(" ", "")
-    if not bool(_SHORT_ALPHA_RE.match(compact)) or len(compact) > min(int(max_length), 4):
+    if not bool(_SHORT_ALPHA_RE.match(compact)) or len(compact) > int(max_length):
         return False
     if compact in COMMON_SHORT_WORDS or compact in LOW_INFORMATION_TERMS or compact in METADATA_TERMS:
         return False
-    if not any(ch in compact for ch in "aeiou"):
-        return True
-    if len(compact) <= 2:
-        return True
-    return len(compact) <= 3 and len(set(compact)) < len(compact)
+    return _has_compact_short_form_shape(compact, max_length=max_length)
 
 
 def _phrase_acronym_variants(phrase: str) -> set[str]:
@@ -370,8 +388,8 @@ def _network_role_hints(
                 short_unexpanded = (
                     bool(_SHORT_ALPHA_RE.match(compact))
                     and len(compact) <= int(acronym_max_length)
-                    and len(compact) <= 4
-                    and not any(ch in compact for ch in "aeiou")
+                    and compact not in COMMON_SHORT_WORDS
+                    and _has_compact_short_form_shape(compact, max_length=acronym_max_length)
                 )
 
                 if phrase_neighbors and cluster_count == 1 and len(set(phrase_neighbors)) >= 2:

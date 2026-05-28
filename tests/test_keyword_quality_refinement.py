@@ -322,6 +322,25 @@ def test_quality_annotation_does_not_flag_common_words_as_acronyms():
     assert result["abbreviation_status"].eq("not_abbreviation").all()
 
 
+def test_quality_annotation_flags_vowel_tolerant_scientific_short_forms():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0],
+            "term": ["hsi", "dtis", "scrna", "zno"],
+            "score": [3.0, 2.5, 2.0, 1.5],
+            "frequency": [10, 9, 8, 7],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    statuses = dict(zip(result["term"], result["abbreviation_status"]))
+
+    assert statuses["hsi"] in {"candidate_short_form", "unlinked_short_form"}
+    assert statuses["dtis"] in {"candidate_short_form", "unlinked_short_form"}
+    assert statuses["scrna"] in {"candidate_short_form", "unlinked_short_form"}
+    assert statuses["zno"] == "not_abbreviation"
+
+
 def test_quality_annotation_marks_unexpanded_short_forms_as_review_candidates():
     df = pd.DataFrame(
         {
@@ -335,8 +354,8 @@ def test_quality_annotation_marks_unexpanded_short_forms_as_review_candidates():
     result = annotate_keyword_quality(df, rerank=True)
     eeg = result[result["term"] == "eeg"].iloc[0]
 
-    assert eeg["abbreviation_status"] == "candidate_short_form"
-    assert "candidate_short_form" in eeg["quality_flags"]
+    assert eeg["abbreviation_status"] in {"candidate_short_form", "unlinked_short_form"}
+    assert any(flag in eeg["quality_flags"] for flag in ("candidate_short_form", "unlinked_short_form"))
 
 
 def test_quality_annotation_can_disable_network_roles():
