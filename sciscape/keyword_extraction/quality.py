@@ -112,6 +112,33 @@ _SPLIT_RE = re.compile(r"[^a-z0-9]+")
 _ALNUM_RE = re.compile(r"(?=.*[a-z])(?=.*\d)[a-z0-9]+")
 _SHORT_ALPHA_RE = re.compile(r"^[a-z]{2,8}$")
 _DIMENSION_TOKENS: frozenset[str] = frozenset({"0d", "1d", "2d", "3d", "4d"})
+_ELEMENT_SYMBOLS: frozenset[str] = frozenset(
+    {
+        "h", "he", "li", "be", "b", "c", "n", "o", "f", "ne",
+        "na", "mg", "al", "si", "p", "s", "cl", "ar", "k", "ca",
+        "sc", "ti", "v", "cr", "mn", "fe", "co", "ni", "cu", "zn",
+        "ga", "ge", "as", "se", "br", "kr", "rb", "sr", "y", "zr",
+        "nb", "mo", "tc", "ru", "rh", "pd", "ag", "cd", "in", "sn",
+        "sb", "te", "i", "xe", "cs", "ba", "la", "ce", "pr", "nd",
+        "pm", "sm", "eu", "gd", "tb", "dy", "ho", "er", "tm", "yb",
+        "lu", "hf", "ta", "w", "re", "os", "ir", "pt", "au", "hg",
+        "tl", "pb", "bi", "po", "at", "rn", "fr", "ra", "ac", "th",
+        "pa", "u", "np", "pu", "am", "cm", "bk", "cf", "es", "fm",
+        "md", "no", "lr", "rf", "db", "sg", "bh", "hs", "mt", "ds",
+        "rg", "cn", "nh", "fl", "mc", "lv", "ts", "og",
+    }
+)
+_NO_DIGIT_MATERIAL_FORMULAS: frozenset[str] = frozenset(
+    {
+        "cds",
+        "gan",
+        "pbs",
+        "sic",
+        "sno",
+        "tio",
+        "zno",
+    }
+)
 
 
 def _normalise_term(term: object) -> str:
@@ -151,6 +178,67 @@ def _has_compact_short_form_shape(compact: str, *, max_length: int) -> bool:
     if len(base) <= 3 and len(set(base)) < len(base):
         return True
     return False
+
+
+def _parse_element_formula(compact: str) -> tuple[bool, int, bool, bool]:
+    if not compact or not compact.isalnum() or compact in COMMON_SHORT_WORDS:
+        return False, 0, False, False
+
+    best: tuple[int, bool, bool] | None = None
+
+    def _walk(pos: int, n_elements: int, has_digit: bool, has_multiletter: bool) -> None:
+        nonlocal best
+        if pos == len(compact):
+            candidate = (n_elements, has_digit, has_multiletter)
+            if best is None or candidate[0] > best[0]:
+                best = candidate
+            return
+        if pos > len(compact):
+            return
+        if not compact[pos].isalpha():
+            return
+        for width in (2, 1):
+            if pos + width > len(compact):
+                continue
+            symbol = compact[pos:pos + width]
+            if symbol not in _ELEMENT_SYMBOLS:
+                continue
+            next_pos = pos + width
+            saw_digit = False
+            while next_pos < len(compact) and compact[next_pos].isdigit():
+                saw_digit = True
+                next_pos += 1
+            _walk(
+                next_pos,
+                n_elements + 1,
+                has_digit or saw_digit,
+                has_multiletter or width == 2,
+            )
+
+    _walk(0, 0, False, False)
+    if best is None:
+        return False, 0, False, False
+    n_elements, has_digit, has_multiletter = best
+    return True, n_elements, has_digit, has_multiletter
+
+
+def _is_material_formula_like(term: str) -> bool:
+    compact = "".join(_tokens(term))
+    if (
+        not compact
+        or compact in COMMON_SHORT_WORDS
+        or compact in LOW_INFORMATION_TERMS
+        or compact in METADATA_TERMS
+        or compact in _DIMENSION_TOKENS
+        or not re.fullmatch(r"[a-z0-9]{2,16}", compact)
+    ):
+        return False
+    parsed, n_elements, has_digit, has_multiletter = _parse_element_formula(compact)
+    if not parsed or n_elements < 2:
+        return False
+    if has_digit:
+        return True
+    return compact in _NO_DIGIT_MATERIAL_FORMULAS and n_elements == 2 and has_multiletter
 
 
 def _is_formula_like(term: str) -> bool:
@@ -622,7 +710,8 @@ def annotate_keyword_quality(
             cluster_id=cluster_id,
             term=term,
         )
-        formula_like = _is_formula_like(term)
+        material_formula_like = _is_material_formula_like(term)
+        formula_like = material_formula_like or _is_formula_like(term)
         acronym_like = _is_acronym_like(
             term,
             max_length=acronym_max_length,
@@ -630,7 +719,12 @@ def annotate_keyword_quality(
         )
         if formula_like:
             flags.append("formula_like")
-            multiplier *= 1.0 - float(formula_demotion_weight)
+            if material_formula_like:
+                flags.append("material_formula")
+                multiplier *= 1.0 - min(0.1, float(formula_demotion_weight) * 0.2)
+            else:
+                flags.append("artifact_formula")
+                multiplier *= 1.0 - float(formula_demotion_weight)
         if acronym_like:
             flags.append("acronym_like")
             multiplier *= 1.0 - float(acronym_demotion_weight)

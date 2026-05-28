@@ -376,19 +376,29 @@ def test_quality_annotation_can_disable_network_roles():
 def test_quality_annotation_keeps_dimension_notation_from_formula_flag():
     df = pd.DataFrame(
         {
-            "cluster_id": [0, 0],
-            "term": ["quasi 2d", "cspbi3"],
-            "score": [3.0, 2.0],
-            "frequency": [10, 8],
+            "cluster_id": [0, 0, 0, 0, 0, 0],
+            "term": ["quasi 2d", "cspbi3", "zno", "abc123", "oer", "ray"],
+            "score": [3.0, 2.0, 1.5, 1.0, 0.9, 0.8],
+            "frequency": [10, 8, 7, 6, 5, 4],
         }
     )
 
     result = annotate_keyword_quality(df, rerank=True)
     quasi = result[result["term"] == "quasi 2d"].iloc[0]
     cspbi = result[result["term"] == "cspbi3"].iloc[0]
+    zno = result[result["term"] == "zno"].iloc[0]
+    artifact = result[result["term"] == "abc123"].iloc[0]
+    oer = result[result["term"] == "oer"].iloc[0]
+    ray = result[result["term"] == "ray"].iloc[0]
 
     assert "formula_like" not in quasi["quality_flags"]
     assert "formula_like" in cspbi["quality_flags"]
+    assert "material_formula" in cspbi["quality_flags"]
+    assert "material_formula" in zno["quality_flags"]
+    assert "artifact_formula" in artifact["quality_flags"]
+    assert "material_formula" not in oer["quality_flags"]
+    assert "material_formula" not in ray["quality_flags"]
+    assert zno["quality_multiplier"] > artifact["quality_multiplier"]
 
 
 def test_quality_flag_counts_counts_pipe_delimited_flags():
