@@ -40,6 +40,16 @@ _TEXT_VOLUME_FRAGMENT_RE = re.compile(
     r"\b(?:vol|volume|issue)\.?\s*\d+[a-z]?\b|\b\d+[a-z]?\s*(?:vol|volume|issue)\b",
     re.IGNORECASE,
 )
+_LATEX_PREAMBLE_RE = re.compile(
+    r"\\?\b(?:usepackage|documentclass|newcommand|renewcommand|providecommand|"
+    r"requirepackage|declaremathoperator|bibliographystyle|texorpdfstring|"
+    r"maketitle)\b(?:\s*\[[^\]]*\])?(?:\s*\{[^{}]*\})*",
+    re.IGNORECASE,
+)
+_LATEX_BEGIN_END_DOCUMENT_RE = re.compile(
+    r"\\?\b(?:begin|end)\s*\{?\s*document\s*\}?",
+    re.IGNORECASE,
+)
 _TERM_TOKEN_RE = re.compile(r"[a-z0-9]+")
 _HTML_RESIDUE_TOKENS = frozenset(
     {
@@ -65,6 +75,20 @@ _METADATA_EXACT_PHRASES = frozenset(
     }
 )
 _METADATA_ID_TOKENS = frozenset({"doi", "issn", "isbn", "pmid", "pmcid"})
+_LATEX_PREAMBLE_TOKENS = frozenset(
+    {
+        "usepackage",
+        "documentclass",
+        "newcommand",
+        "renewcommand",
+        "providecommand",
+        "requirepackage",
+        "declaremathoperator",
+        "bibliographystyle",
+        "texorpdfstring",
+        "maketitle",
+    }
+)
 
 
 def _html_unescape_repeated(text: str, *, max_rounds: int = 3) -> str:
@@ -97,6 +121,10 @@ def _looks_like_metadata_artifact_term(term: object) -> bool:
     phrase = " ".join(tokens)
 
     if phrase in _METADATA_EXACT_PHRASES:
+        return True
+    if token_set & _LATEX_PREAMBLE_TOKENS:
+        return True
+    if {"begin", "document"} <= token_set or {"end", "document"} <= token_set:
         return True
     if token_set & _HTML_RESIDUE_TOKENS:
         return True
@@ -156,4 +184,6 @@ def _normalize_text_basic(text: object) -> str:
     text = _ENCODED_TAG_RESIDUE_RE.sub(" ", text)
     text = _TEXT_METADATA_FRAGMENT_RE.sub(" ", text)
     text = _TEXT_VOLUME_FRAGMENT_RE.sub(" ", text)
+    text = _LATEX_PREAMBLE_RE.sub(" ", text)
+    text = _LATEX_BEGIN_END_DOCUMENT_RE.sub(" ", text)
     return " ".join(text.replace("\r", " ").replace("\n", " ").split())

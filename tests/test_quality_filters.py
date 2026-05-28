@@ -179,6 +179,11 @@ class TestArtifactFilter:
             "works author gsw",
             "author gsw google",
             "urology vol",
+            "usepackage",
+            "usepackage amsmath",
+            "documentclass article",
+            "newcommand foo",
+            "begin document",
         ],
     )
     def test_html_and_publisher_metadata_artifacts(self, term):
@@ -198,11 +203,12 @@ class TestArtifactFilter:
                     (
                         "&lt;div class=&quot;htmlview paragraph&quot;&gt;"
                         "Nanoparticle synthesis improves catalytic stability."
-                        "&lt;/div&gt; Get access Journal Article Articles Author"
+                        "&lt;/div&gt; Get access Journal Article Articles Author "
+                        "\\usepackage{amsmath}"
                     ),
                     (
                         "Works Author GSW Google pages describe nanoparticle synthesis. "
-                        "Urology vol metadata is not topical."
+                        "Urology vol metadata is not topical. documentclass article"
                     ),
                     "Quantum dot synthesis and nanocrystal growth are measured.",
                 ],
@@ -238,6 +244,9 @@ class TestArtifactFilter:
             "works author",
             "author gsw google",
             "urology vol",
+            "usepackage",
+            "usepackage amsmath",
+            "documentclass article",
         }:
             assert bad not in terms
 

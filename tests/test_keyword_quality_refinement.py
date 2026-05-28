@@ -409,18 +409,19 @@ def test_representative_score_demotes_unresolved_formula_fragments_for_labels():
 def test_quality_annotation_demotes_html_and_publisher_metadata_fragments():
     df = pd.DataFrame(
         {
-            "cluster_id": [0, 0, 0, 0, 0, 0],
+            "cluster_id": [0, 0, 0, 0, 0, 0, 0],
             "term": [
                 "class htmlview paragraph",
                 "lt div gt",
                 "articles author",
                 "author gsw google",
                 "urology vol",
+                "usepackage",
                 "nanoparticle synthesis",
             ],
-            "score": [20.0, 19.0, 18.0, 17.0, 16.0, 5.0],
-            "frequency": [50, 48, 46, 44, 42, 20],
-            "doc_coverage": [25, 24, 23, 22, 21, 10],
+            "score": [20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 5.0],
+            "frequency": [50, 48, 46, 44, 42, 40, 20],
+            "doc_coverage": [25, 24, 23, 22, 21, 20, 10],
         }
     )
 
@@ -433,6 +434,7 @@ def test_quality_annotation_demotes_html_and_publisher_metadata_fragments():
         "articles author",
         "author gsw google",
         "urology vol",
+        "usepackage",
     ]:
         assert "metadata_fragment" in rows[term].quality_flags
         assert rows[term].keyword_label_tier == "review_artifact"

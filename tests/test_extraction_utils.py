@@ -230,6 +230,19 @@ class TestNormalizeTextBasic:
         assert "works author" not in lowered
         assert "vol" not in lowered
 
+    def test_latex_preamble_commands_removed(self):
+        text = (
+            r"\documentclass{article} \usepackage[utf8]{inputenc} "
+            r"\newcommand{\foo}{bar} \begin{document} Nanoparticle synthesis"
+        )
+        cleaned = _normalize_text_basic(text).lower()
+
+        assert "nanoparticle synthesis" in cleaned
+        assert "usepackage" not in cleaned
+        assert "documentclass" not in cleaned
+        assert "newcommand" not in cleaned
+        assert "begin document" not in cleaned
+
     def test_whitespace_collapsed(self):
         assert _normalize_text_basic("  hello   world  ") == "hello world"
 
@@ -256,6 +269,11 @@ class TestMetadataArtifactTerm:
             "author gsw google",
             "urology vol",
             "doi",
+            "usepackage",
+            "usepackage amsmath",
+            "documentclass article",
+            "newcommand foo",
+            "begin document",
         ],
     )
     def test_detects_html_and_publisher_metadata_terms(self, term):
