@@ -160,6 +160,7 @@ CLI:
 
 ```bash
 sciscape web
+sciscape visualize keywords.parquet -o report/
 sciscape viewer -o viewer.html
 sciscape export edges.parquet membership.parquet --format gexf -o network.gexf
 ```

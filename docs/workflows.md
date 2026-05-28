@@ -181,6 +181,20 @@ sciscape keywords abstracts.parquet membership.parquet \
   -o keywords.parquet
 ```
 
+Generate dashboard/report artifacts from an existing keyword table:
+
+```bash
+sciscape visualize keywords.parquet -o report/
+```
+
+For a quick one-file sample preview from a minimal CSV:
+
+```bash
+sciscape visualize sample_keywords.csv \
+  --dashboard-only \
+  -o sample_dashboard.html
+```
+
 Generate a blank standalone viewer shell:
 
 ```bash
@@ -214,7 +228,8 @@ keywords.to_parquet("keywords.parquet", index=False)
   - `term` preserves the extracted raw keyword surface used by downstream code.
   - `display_label`, `quality_score`, and `quality_flags` expose the
     domain-agnostic refinement layer for human-facing reports.
-- optional dashboard or viewer artifacts when using visualization helpers.
+- dashboard/report artifacts from `sciscape visualize`.
+- optional blank viewer artifacts from `sciscape viewer`.
 - web UI session artifacts when using `sciscape web`.
 
 ### Modules Involved

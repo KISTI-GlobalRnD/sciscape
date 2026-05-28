@@ -23,7 +23,7 @@ sciscape/
 │   └── ...                  #   vectorization → scoring → normalization → ...
 ├── adapters/                # WoS, Scopus, OpenAlex, BibTeX 입력 변환
 ├── landscape.py             # 엔드투엔드 파이프라인
-├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | viewer | export | web | gui
+├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | visualize | viewer | export | web | gui
 └── gui.py                   # Tkinter GUI
 ```
 
@@ -84,6 +84,16 @@ sciscape cluster edges.zip edges.txt --levels 5,100 80,500 -o membership.parquet
 ```bash
 sciscape keywords abstracts.parquet membership.parquet --enable-all --top-n 100 -o keywords.parquet
 ```
+
+### `sciscape visualize` — 키워드 테이블 시각화
+
+```bash
+sciscape visualize keywords.parquet -o report/
+sciscape visualize keywords.csv -o dashboard.html --dashboard-only
+```
+
+최소 입력 스키마는 `cluster_id`, `term`입니다. `score`, `frequency`,
+`doc_coverage`가 없으면 샘플 확인용 기본값으로 채워 dashboard를 생성합니다.
 
 ### `sciscape convert` — 데이터 변환
 

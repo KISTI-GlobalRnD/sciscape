@@ -198,6 +198,7 @@ docs/                       LaTeX report + figures
 | `sciscape landscape` | Edges -> clustering -> keywords -> report |
 | `sciscape cluster` | Leiden clustering only |
 | `sciscape keywords` | Keyword extraction only |
+| `sciscape visualize` | Turn a keyword table into dashboard/report HTML |
 | `sciscape convert` | Convert WoS/Scopus/OpenAlex/BibTeX -> parquet |
 | `sciscape viewer` | Generate a standalone viewer shell |
 | `sciscape export` | Export network files for Gephi/Cytoscape |

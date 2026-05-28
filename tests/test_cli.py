@@ -2,9 +2,10 @@
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
-from sciscape.cli import _build_parser
+from sciscape.cli import _build_parser, _run_visualize
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ class TestBuildParser:
     def test_returns_parser(self, parser):
         assert parser.prog == "sciscape"
 
-    @pytest.mark.parametrize("cmd", ["cluster", "keywords", "convert", "landscape", "viewer", "gui"])
+    @pytest.mark.parametrize("cmd", ["cluster", "keywords", "convert", "landscape", "visualize", "viewer", "gui"])
     def test_subcommands_exist(self, parser, cmd):
         # Should not raise
         parser.parse_args([cmd] if cmd in ("gui",) else self._minimal_args(cmd))
@@ -40,6 +41,8 @@ class TestBuildParser:
             return ["convert", "wos", "data.txt"]
         if cmd == "landscape":
             return ["landscape", "abs.parquet", "edges.parquet"]
+        if cmd == "visualize":
+            return ["visualize", "keywords.parquet"]
         if cmd == "viewer":
             return ["viewer"]
         if cmd == "gui":
@@ -241,6 +244,66 @@ class TestKeywordsArgs:
         assert args.enable_all is True
         assert args.output == Path("kw.parquet")
         assert args.verbose is True
+
+
+# ---------------------------------------------------------------------------
+# Visualize subcommand
+# ---------------------------------------------------------------------------
+
+class TestVisualizeArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args(["visualize", "keywords.parquet"])
+        assert args.command == "visualize"
+        assert args.keyword_table == Path("keywords.parquet")
+
+    def test_defaults(self, parser):
+        args = parser.parse_args(["visualize", "keywords.parquet"])
+        assert args.output == Path("sciscape_report")
+        assert args.title == "SciScape Keyword Report"
+        assert args.dashboard_only is False
+        assert args.open is False
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "visualize",
+            "keywords.csv",
+            "-o",
+            "dashboard.html",
+            "--title",
+            "Sample Dashboard",
+            "--dashboard-only",
+            "--open",
+        ])
+        assert args.output == Path("dashboard.html")
+        assert args.title == "Sample Dashboard"
+        assert args.dashboard_only is True
+        assert args.open is True
+
+    def test_dashboard_only_generates_html_from_minimal_csv(self, parser, tmp_path):
+        keyword_path = tmp_path / "keywords.csv"
+        pd.DataFrame(
+            {
+                "cluster_id": [0, 0, 1],
+                "term": ["perovskite solar cell", "halide perovskite", "graph neural network"],
+            }
+        ).to_csv(keyword_path, index=False)
+
+        output_path = tmp_path / "dashboard.html"
+        args = parser.parse_args([
+            "visualize",
+            str(keyword_path),
+            "-o",
+            str(output_path),
+            "--title",
+            "Sample Dashboard",
+            "--dashboard-only",
+        ])
+
+        _run_visualize(args)
+
+        html = output_path.read_text(encoding="utf-8")
+        assert "Sample Dashboard" in html
+        assert "perovskite solar cell" in html
 
 
 # ---------------------------------------------------------------------------

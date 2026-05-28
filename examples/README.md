@@ -58,6 +58,23 @@ Landscape runs now include keyword quality refinement columns in
 `landscape/keywords.parquet`.  Inspect `display_label`, `quality_score`, and
 `quality_flags` when comparing raw extracted terms with report-facing labels.
 
+To turn an existing sample keyword table into a shareable report without
+re-running extraction:
+
+```bash
+uv run --extra dev sciscape visualize \
+  examples_output/openalex_live/perovskite_solar_cells_2020_2024/landscape/keywords.parquet \
+  -o examples_output/openalex_live/perovskite_solar_cells_2020_2024/visual_report
+```
+
+For a quick one-file preview from CSV:
+
+```bash
+uv run --extra dev sciscape visualize sample_keywords.csv \
+  --dashboard-only \
+  -o examples_output/sample_dashboard.html
+```
+
 Compare the current family-aware representative keyword scoring against the
 same pipeline with that scoring disabled:
 

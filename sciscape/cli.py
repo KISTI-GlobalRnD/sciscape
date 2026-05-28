@@ -6,6 +6,7 @@ Usage:
     sciscape keywords  <abstract_parquet> <membership_parquet> [options]
     sciscape convert   <source> <input_file> [options]
     sciscape landscape <edge_file> <abstract_parquet> [options]
+    sciscape visualize <keyword_table> [options]
     sciscape viewer    [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape web       [options]
@@ -17,6 +18,7 @@ Examples:
     sciscape keywords abstracts.parquet membership.parquet --top-n 100 --include-title -o keywords.parquet
     sciscape convert wos savedrecs.txt -o abstracts.parquet
     sciscape landscape edges.parquet abstracts.parquet -o output/landscape
+    sciscape visualize keywords.parquet -o report/
 """
 
 from __future__ import annotations
@@ -24,6 +26,8 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+
+import pandas as pd
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -123,6 +127,28 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Output HTML path (default: viewer.html)")
     vw.add_argument("--title", type=str, default="SciScape Viewer", help="Viewer title")
     vw.add_argument("--open", action="store_true", help="Open in browser after generation")
+
+    # ---- visualize ----
+    vz = sub.add_parser("visualize", help="Generate dashboard/report from a keyword table")
+    vz.add_argument(
+        "keyword_table",
+        type=Path,
+        help="Keyword table from sciscape keywords/landscape (.parquet, .csv, .tsv, .json, .jsonl)",
+    )
+    vz.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("sciscape_report"),
+        help="Output report directory, or HTML path with --dashboard-only (default: sciscape_report)",
+    )
+    vz.add_argument("--title", type=str, default="SciScape Keyword Report", help="Report title")
+    vz.add_argument(
+        "--dashboard-only",
+        action="store_true",
+        help="Write one standalone dashboard HTML instead of a multi-page report",
+    )
+    vz.add_argument("--open", action="store_true", help="Open the generated output in a browser")
 
     # ---- export ----
     ex = sub.add_parser("export", help="Export network to GEXF (Gephi) or GraphML (Cytoscape)")
@@ -443,6 +469,85 @@ def _run_viewer(args: argparse.Namespace) -> None:
         webbrowser.open(f"file://{path}")
 
 
+def _read_keyword_table(path: Path) -> pd.DataFrame:
+    suffix = path.suffix.lower()
+    if suffix in {".parquet", ".pq"}:
+        return pd.read_parquet(path)
+    if suffix == ".csv":
+        return pd.read_csv(path)
+    if suffix in {".tsv", ".tab"}:
+        return pd.read_csv(path, sep="\t")
+    if suffix == ".jsonl":
+        return pd.read_json(path, lines=True)
+    if suffix == ".json":
+        return pd.read_json(path)
+    raise ValueError(
+        f"Unsupported keyword table format: {path.suffix!r}. "
+        "Use .parquet, .csv, .tsv, .json, or .jsonl."
+    )
+
+
+def _prepare_keyword_table_for_visualization(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    if "cluster_id" not in df.columns and "cluster" in df.columns:
+        df["cluster_id"] = df["cluster"]
+    if "term" not in df.columns and "display_label" in df.columns:
+        df["term"] = df["display_label"]
+
+    required = {"cluster_id", "term"}
+    missing = sorted(required - set(df.columns))
+    if missing:
+        raise ValueError(
+            "Keyword table is missing required column(s): "
+            + ", ".join(missing)
+            + ". Required minimal schema: cluster_id, term."
+        )
+
+    if "score" not in df.columns:
+        df["score"] = 1.0
+    if "frequency" not in df.columns:
+        df["frequency"] = 1
+    if "doc_coverage" not in df.columns:
+        df["doc_coverage"] = df["frequency"]
+
+    return df
+
+
+def _run_visualize(args: argparse.Namespace) -> None:
+    from sciscape.keyword_extraction.visualization import export_dashboard, export_report
+
+    try:
+        keywords = _prepare_keyword_table_for_visualization(
+            _read_keyword_table(args.keyword_table)
+        )
+    except Exception as exc:
+        print(f"Could not load keyword table: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.dashboard_only:
+        output = args.output
+        if output.suffix.lower() != ".html":
+            output = output / "index.html"
+        path = export_dashboard(
+            keywords,
+            output_path=str(output),
+            title=args.title,
+            open_browser=args.open,
+        )
+        print(f"Dashboard generated: {path}")
+        return
+
+    paths = export_report(
+        keywords,
+        output_dir=str(args.output),
+        title=args.title,
+        open_browser=args.open,
+    )
+    print(f"Report generated: {Path(args.output) / 'report.html'}")
+    print(f"Files written: {len(paths)}")
+
+
 def _run_export(args: argparse.Namespace) -> None:
     import polars as pl
     from sciscape.export import export_gexf, export_graphml
@@ -503,6 +608,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_landscape(args)
     elif args.command == "viewer":
         _run_viewer(args)
+    elif args.command == "visualize":
+        _run_visualize(args)
     elif args.command == "export":
         _run_export(args)
     elif args.command == "query":
