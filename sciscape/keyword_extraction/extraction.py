@@ -414,6 +414,57 @@ class _DataSource:
                 }
             )
 
+    def abbreviation_batch_iter(self) -> Iterator[pd.DataFrame]:
+        """Yield raw-ish title/abstract batches joined to cluster ids.
+
+        This is separate from ``batch_iter`` because abbreviation extraction
+        needs parenthetical punctuation and should inspect titles even when
+        title boosting is disabled for vectorization.
+        """
+        cfg = self.cfg
+        membership = self.membership_map()
+        uid, abstract_col, title_col = cfg.uid_col, cfg.abstract_col, cfg.title_col
+
+        if _HAS_ARROW and cfg.use_pyarrow_streaming:
+            pf = pq.ParquetFile(str(cfg.abstract_path))
+            columns = [uid, abstract_col]
+            has_title = title_col in pf.schema_arrow.names
+            if has_title:
+                columns.append(title_col)
+            for rg in range(pf.num_row_groups):
+                table = pf.read_row_group(rg, columns=columns)
+                docs = table.to_pandas()
+                docs["cluster_id"] = docs[uid].map(membership)
+                docs = docs.dropna(subset=["cluster_id"])
+                if docs.empty:
+                    continue
+                if title_col not in docs.columns:
+                    docs[title_col] = ""
+                yield pd.DataFrame(
+                    {
+                        uid: docs[uid].to_numpy(),
+                        "cluster_id": docs["cluster_id"].astype(int).to_numpy(),
+                        title_col: docs[title_col].fillna("").astype(str).to_numpy(),
+                        abstract_col: docs[abstract_col].fillna("").astype(str).to_numpy(),
+                    }
+                )
+        else:
+            docs = self._read_abbreviation_docs()
+            docs["cluster_id"] = docs[uid].map(membership)
+            docs = docs.dropna(subset=["cluster_id"])
+            if docs.empty:
+                return
+            if title_col not in docs.columns:
+                docs[title_col] = ""
+            yield pd.DataFrame(
+                {
+                    uid: docs[uid].to_numpy(),
+                    "cluster_id": docs["cluster_id"].astype(int).to_numpy(),
+                    title_col: docs[title_col].fillna("").astype(str).to_numpy(),
+                    abstract_col: docs[abstract_col].fillna("").astype(str).to_numpy(),
+                }
+            )
+
     def _read_full_docs(self) -> pd.DataFrame:
         cfg = self.cfg
         uid, abstract_col, title_col, year_col = cfg.uid_col, cfg.abstract_col, cfg.title_col, cfg.year_col
@@ -427,6 +478,21 @@ class _DataSource:
                 table = pl.scan_parquet(str(cfg.abstract_path)).select([uid, abstract_col, year_col]).collect(streaming=False)
             return table.to_pandas()
         return pd.read_parquet(cfg.abstract_path, columns=columns)
+
+    def _read_abbreviation_docs(self) -> pd.DataFrame:
+        cfg = self.cfg
+        uid, abstract_col, title_col = cfg.uid_col, cfg.abstract_col, cfg.title_col
+        columns = [uid, abstract_col]
+        if cfg.use_polars and pl is not None:
+            try:
+                table = pl.scan_parquet(str(cfg.abstract_path)).select([uid, abstract_col, title_col]).collect(streaming=False)
+            except Exception:
+                table = pl.scan_parquet(str(cfg.abstract_path)).select(columns).collect(streaming=False)
+            return table.to_pandas()
+        try:
+            return pd.read_parquet(cfg.abstract_path, columns=[uid, abstract_col, title_col])
+        except (KeyError, ValueError):
+            return pd.read_parquet(cfg.abstract_path, columns=columns)
 
     def _build_text_column(self, df: pd.DataFrame, abstract_col: str, title_col: str) -> pd.Series:
         cfg = self.cfg

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .config import CORE_COLUMNS, TIER2_COLUMNS, TIER3_COLUMNS, KeywordExtractionConfig, KeywordRecord, VocabMergeConfig
+from .abbreviations import build_abbreviation_lookup, extract_parenthetical_abbreviations
 from .cooccurrence import collect_cooccurrence
 from .depth import DepthConfig, estimate_depth
 from .diagnostics import KeywordDiagnostics, keyword_diagnostics, score_before_after
@@ -34,8 +35,10 @@ __all__ = [
     "VocabMergeConfig",
     "VocabSimGraph",
     "annotate_keyword_quality",
+    "build_abbreviation_lookup",
     "collect_cooccurrence",
     "estimate_depth",
+    "extract_parenthetical_abbreviations",
     "keyword_diagnostics",
     "normalize_keywords",
     "export_dashboard",

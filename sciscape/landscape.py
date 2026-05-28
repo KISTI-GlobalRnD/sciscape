@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .clustering.hierarchy_oversize_postprocess import HierarchyPostprocessConfig
 
 import numpy as np
+import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -205,7 +206,7 @@ def _run_keywords(
     membership_path: Path,
     abstract_path: Path,
     cfg: LandscapeConfig,
-) -> Tuple[Any, Optional[Dict]]:
+) -> Tuple[Any, Optional[Dict], Optional[pd.DataFrame]]:
     """Run keyword extraction pipeline on the finest cluster level."""
     from .keyword_extraction import KeywordExtractionConfig
     from .keyword_extraction.depth import DepthConfig
@@ -266,7 +267,7 @@ def _run_keywords(
              len(result), result["cluster_id"].nunique(), elapsed)
 
     viz_data = pipeline.get_visualization_data()
-    return result, viz_data
+    return result, viz_data, pipeline.abbreviation_evidence
 
 
 # ---------------------------------------------------------------------------
@@ -399,6 +400,7 @@ def run_landscape(
     membership_path = output_dir / "membership.parquet"
     abstract_subset_path = output_dir / "abstracts_subset.parquet"
     keywords_path = output_dir / "keywords.parquet"
+    abbreviation_path = output_dir / "abbreviation_pairs.parquet"
     report_dir = output_dir / "report"
 
     # ------------------------------------------------------------------
@@ -485,7 +487,7 @@ def run_landscape(
 
         abstract_df.write_parquet(abstract_subset_path, compression="zstd")
 
-        keywords_df, viz_data = _run_keywords(membership_path, abstract_subset_path, cfg)
+        keywords_df, viz_data, abbreviation_evidence = _run_keywords(membership_path, abstract_subset_path, cfg)
 
         # Save keywords
         save_df = keywords_df.copy()
@@ -498,6 +500,14 @@ def run_landscape(
                 )
         save_df.to_parquet(keywords_path, index=False)
         log.info("Keywords saved: %s", keywords_path)
+        if abbreviation_evidence is not None and not abbreviation_evidence.empty:
+            abbr_df = abbreviation_evidence.copy()
+            if "cluster_supports" in abbr_df.columns:
+                abbr_df["cluster_supports"] = abbr_df["cluster_supports"].apply(
+                    lambda value: json.dumps(value) if isinstance(value, dict) else value
+                )
+            abbr_df.to_parquet(abbreviation_path, index=False)
+            log.info("Abbreviation evidence saved: %s", abbreviation_path)
 
     # ------------------------------------------------------------------
     # Step 4: Report (always regenerate — cheap)

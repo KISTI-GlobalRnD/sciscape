@@ -238,7 +238,7 @@ def _run_cluster(args: argparse.Namespace) -> None:
 
 
 def _run_keywords(args: argparse.Namespace) -> None:
-    from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
+    from sciscape.keyword_extraction import KeywordExtractionConfig, KeywordExtractionPipeline
     from sciscape.keyword_extraction.config import VocabMergeConfig
     from sciscape.keyword_extraction.depth import DepthConfig
     from sciscape.keyword_extraction.term_network import TermNetworkConfig
@@ -282,7 +282,8 @@ def _run_keywords(args: argparse.Namespace) -> None:
 
     print(f"Running keyword extraction: {args.abstract_path}")
     print(f"  cluster_level={args.cluster_level}, top_n={args.top_n}")
-    keywords = run_keyword_pipeline(cfg)
+    pipeline = KeywordExtractionPipeline(cfg)
+    keywords = pipeline.run()
 
     # Serialize dict columns for parquet compatibility
     import json
@@ -297,6 +298,15 @@ def _run_keywords(args: argparse.Namespace) -> None:
 
     save_df.to_parquet(args.output, index=False)
     print(f"Keywords saved: {args.output} ({len(keywords)} rows)")
+    if pipeline.abbreviation_evidence is not None and not pipeline.abbreviation_evidence.empty:
+        abbr_path = args.output.with_name(args.output.stem + "_abbreviations.parquet")
+        abbr_df = pipeline.abbreviation_evidence.copy()
+        if "cluster_supports" in abbr_df.columns:
+            abbr_df["cluster_supports"] = abbr_df["cluster_supports"].apply(
+                lambda value: json.dumps(value) if isinstance(value, dict) else value
+            )
+        abbr_df.to_parquet(abbr_path, index=False)
+        print(f"Abbreviation evidence saved: {abbr_path} ({len(abbr_df)} pairs)")
 
     # Summary
     label_col = "display_label" if "display_label" in keywords.columns else "term"

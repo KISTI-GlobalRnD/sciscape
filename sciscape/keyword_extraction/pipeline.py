@@ -22,6 +22,7 @@ from joblib import Parallel, delayed
 from scipy import sparse as sp
 from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
 
+from .abbreviations import build_abbreviation_lookup, extract_parenthetical_abbreviations
 from .config import KeywordExtractionConfig
 from .extraction import (
     _DataSource,
@@ -157,6 +158,9 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         self.cluster_year_token_denoms: Dict[int, Counter[int]] = defaultdict(Counter)
         self._alias_cache_dir: Optional[Path] = None
         self._builtin_alias_cache: Optional[Dict[str, str]] = None
+        self.abbreviation_evidence: Optional[pd.DataFrame] = None
+        self._abbreviation_lookup: Optional[Dict[str, Any]] = None
+        self._abbreviation_evidence_loaded: bool = False
         self._init_alias_cache()
 
         # Quality filters (P1/P5/P6)
@@ -990,12 +994,46 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             self._log("Final cleanup: dropped %d stopword-only terms", dropped)
         return filtered
 
+    def _get_abbreviation_lookup(self) -> Optional[Dict[str, Any]]:
+        """Build or return cached corpus-level abbreviation evidence."""
+        cfg = self.config
+        if not cfg.abbreviation_dictionary_enabled:
+            return None
+        if self._abbreviation_evidence_loaded:
+            return self._abbreviation_lookup
+
+        self._abbreviation_evidence_loaded = True
+        evidence = extract_parenthetical_abbreviations(
+            self._data.abbreviation_batch_iter(),
+            uid_col=cfg.uid_col,
+            cluster_col="cluster_id",
+            title_col=cfg.title_col,
+            abstract_col=cfg.abstract_col,
+            max_long_form_words=cfg.abbreviation_max_long_form_words,
+        )
+        self.abbreviation_evidence = evidence
+        self._abbreviation_lookup = build_abbreviation_lookup(
+            evidence,
+            min_support_docs=cfg.abbreviation_min_support_docs,
+            min_cluster_support_docs=cfg.abbreviation_min_cluster_support_docs,
+            min_top_support_ratio=cfg.abbreviation_min_top_support_ratio,
+        )
+        if not evidence.empty:
+            usable = sum(1 for value in self._abbreviation_lookup.get("global", {}).values() if value.get("usable"))
+            self._log(
+                "Abbreviation dictionary: extracted %d evidence pairs (%d globally usable)",
+                len(evidence),
+                usable,
+            )
+        return self._abbreviation_lookup
+
     def _stage_quality_refinement(self, top_df: pd.DataFrame, *, rerank: bool) -> pd.DataFrame:
         """Annotate keyword quality and optionally rerank by quality score."""
         cfg = self.config
         if top_df.empty or not cfg.quality_diagnostics_enabled:
             return top_df
 
+        abbreviation_lookup = self._get_abbreviation_lookup()
         result = annotate_keyword_quality(
             top_df,
             rerank=bool(rerank and cfg.quality_rerank_enabled),
@@ -1010,6 +1048,8 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             cluster_specific_bonus=cfg.quality_cluster_specific_bonus,
             min_multiplier=cfg.quality_min_multiplier,
             acronym_max_length=cfg.quality_acronym_max_length,
+            network_roles_enabled=cfg.quality_network_roles_enabled,
+            abbreviation_lookup=abbreviation_lookup,
         )
         if rerank and cfg.quality_rerank_enabled:
             self._log(
@@ -1455,6 +1495,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             to avoid hairball networks.
         """
         data: Dict = {}
+        cfg = self.config
         final_terms = set()
         if self.final_keywords is not None:
             final_terms = set(self.final_keywords["term"].unique())
@@ -1499,6 +1540,55 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
                 if real_sources:
                     norm_merges[term] = real_sources
         data["norm_merges"] = norm_merges
+
+        # Corpus abbreviation evidence — separate dictionary artifact for
+        # downstream inspection and keyword display decisions.
+        if self.abbreviation_evidence is not None and not self.abbreviation_evidence.empty:
+            evidence_df = self.abbreviation_evidence.copy()
+            evidence_df = evidence_df.sort_values(
+                ["support_docs", "short_form", "candidate_rank"],
+                ascending=[False, True, True],
+                kind="mergesort",
+            )
+            data["abbreviation_evidence_total"] = int(len(evidence_df))
+            report_evidence_df = evidence_df[
+                pd.to_numeric(evidence_df["support_docs"], errors="coerce").fillna(0)
+                >= int(cfg.abbreviation_min_support_docs)
+            ].copy()
+
+            def _jsonable_supports(value: object) -> dict[str, int]:
+                if not isinstance(value, dict):
+                    return {}
+                result: dict[str, int] = {}
+                for key, count in value.items():
+                    try:
+                        result[str(int(key))] = int(count)
+                    except (TypeError, ValueError):
+                        result[str(key)] = int(count)
+                return result
+
+            records = []
+            for row in report_evidence_df.itertuples(index=False):
+                records.append(
+                    {
+                        "short_form": str(row.short_form),
+                        "long_form": str(row.long_form),
+                        "support_docs": int(row.support_docs),
+                        "support_occurrences": int(row.support_occurrences),
+                        "cluster_supports": _jsonable_supports(row.cluster_supports),
+                        "candidate_rank": int(row.candidate_rank),
+                        "short_form_candidate_count": int(row.short_form_candidate_count),
+                        "top_support_ratio": float(row.top_support_ratio),
+                        "is_ambiguous": bool(row.is_ambiguous),
+                        "ambiguity_type": str(getattr(row, "ambiguity_type", "none")),
+                        "confidence": float(row.confidence),
+                        "pattern_types": str(row.pattern_types),
+                    }
+                )
+            data["abbreviation_evidence"] = records
+        else:
+            data["abbreviation_evidence_total"] = 0
+            data["abbreviation_evidence"] = []
 
         # Subphrase tree: parent-child containment pairs per cluster
         subphrase_tree = []
@@ -1619,10 +1709,13 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
                 "cross_cluster_penalty": cfg.cross_cluster_penalty_enabled,
                 "fragment_suppression": cfg.fragment_suppression_enabled,
                 "auto_merge": cfg.auto_merge_enabled,
+                "abbreviation_dictionary": cfg.abbreviation_dictionary_enabled,
             },
             "filter_stats": {
                 "vocab_merges_applied": len(getattr(self, "vocab_merge_dict", {})),
                 "norm_merges_applied": len(data.get("norm_merges", {})),
+                "abbreviation_pairs": int(data.get("abbreviation_evidence_total", 0)),
+                "abbreviation_pairs_reported": len(data.get("abbreviation_evidence", [])),
                 "final_keywords": len(final_terms),
             },
         }

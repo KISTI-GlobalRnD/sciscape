@@ -46,6 +46,69 @@ def _build_cluster_labels(df: pd.DataFrame, n: int = 3) -> Dict[int, str]:
     return labels
 
 
+def _group_keywords_by_scope(keywords: List[Dict], *, max_per_scope: int = 25) -> Dict[str, List[Dict]]:
+    groups = {"cluster_specific": [], "shared": [], "common": []}
+    for kw in keywords:
+        scope = str(kw.get("keyword_scope") or "cluster_specific")
+        if scope not in groups:
+            scope = "cluster_specific"
+        groups[scope].append(kw)
+    return {scope: values[:max_per_scope] for scope, values in groups.items()}
+
+
+def _aggregate_keyword_scope_terms(
+    df: pd.DataFrame,
+    *,
+    label_col: str,
+    score_col: str,
+) -> Dict[str, List[Dict]]:
+    groups = {"cluster_specific": [], "shared": [], "common": []}
+    if df.empty or "cluster_id" not in df.columns or label_col not in df.columns:
+        return groups
+
+    n_clusters = max(1, int(df["cluster_id"].nunique()))
+    for label, term_group in df.groupby(label_col, sort=False):
+        clusters = sorted(int(cid) for cid in term_group["cluster_id"].dropna().unique().tolist())
+        cluster_count = len(clusters)
+        cluster_ratio = cluster_count / n_clusters
+        scope_values = set()
+        if "keyword_scope" in term_group.columns:
+            scope_values = set(term_group["keyword_scope"].dropna().astype(str).tolist())
+        if "common" in scope_values:
+            scope = "common"
+        elif "shared" in scope_values or cluster_count > 1:
+            scope = "shared"
+        else:
+            scope = "cluster_specific"
+        if "frequency" in term_group.columns:
+            frequency = int(pd.to_numeric(term_group["frequency"], errors="coerce").fillna(0).sum())
+        else:
+            frequency = 0
+        max_score = float(pd.to_numeric(term_group[score_col], errors="coerce").fillna(0).max())
+        groups[scope].append(
+            {
+                "term": str(label),
+                "cluster_count": int(cluster_count),
+                "cluster_ratio": round(float(cluster_ratio), 6),
+                "clusters": clusters,
+                "score": round(max_score, 6),
+                "frequency": frequency,
+            }
+        )
+
+    for scope, values in groups.items():
+        groups[scope] = sorted(
+            values,
+            key=lambda item: (
+                -int(item["cluster_count"]),
+                -float(item["score"]),
+                -int(item["frequency"]),
+                str(item["term"]),
+            ),
+        )
+    return groups
+
+
 def _compute_network_edges(
     terms: pd.DataFrame,
     min_weight: float = 0.1,
@@ -111,6 +174,7 @@ def prepare_cluster_data(
         raw_to_label = dict(zip(grp_sorted["term"].astype(str), grp_sorted[label_col].astype(str)))
 
         keywords = []
+        keywords_by_label: Dict[str, Dict] = {}
         for _, r in grp_sorted.iterrows():
             raw_term = str(r["term"])
             label = str(r[label_col])
@@ -128,6 +192,42 @@ def prepare_cluster_data(
                 kw["quality_flags"] = str(r["quality_flags"])
             if "quality_multiplier" in r.index and pd.notna(r["quality_multiplier"]):
                 kw["quality_multiplier"] = round(float(r["quality_multiplier"]), 6)
+            if "network_role" in r.index and pd.notna(r["network_role"]):
+                kw["network_role"] = str(r["network_role"])
+            if "network_score" in r.index and pd.notna(r["network_score"]):
+                kw["network_score"] = round(float(r["network_score"]), 6)
+            if "network_flags" in r.index and pd.notna(r["network_flags"]):
+                network_flags = str(r["network_flags"])
+                if network_flags.strip():
+                    kw["network_flags"] = network_flags
+            if "keyword_scope" in r.index and pd.notna(r["keyword_scope"]):
+                kw["keyword_scope"] = str(r["keyword_scope"])
+            if "keyword_cluster_count" in r.index and pd.notna(r["keyword_cluster_count"]):
+                kw["keyword_cluster_count"] = int(r["keyword_cluster_count"])
+            if "keyword_cluster_ratio" in r.index and pd.notna(r["keyword_cluster_ratio"]):
+                kw["keyword_cluster_ratio"] = round(float(r["keyword_cluster_ratio"]), 6)
+            if "abbreviation_status" in r.index and pd.notna(r["abbreviation_status"]):
+                kw["abbreviation_status"] = str(r["abbreviation_status"])
+            if "abbreviation_target" in r.index and pd.notna(r["abbreviation_target"]):
+                abbreviation_target = str(r["abbreviation_target"])
+                if abbreviation_target.strip():
+                    kw["abbreviation_target"] = abbreviation_target
+            if "abbreviation_confidence" in r.index and pd.notna(r["abbreviation_confidence"]):
+                kw["abbreviation_confidence"] = round(float(r["abbreviation_confidence"]), 6)
+            if "abbreviation_source" in r.index and pd.notna(r["abbreviation_source"]):
+                abbreviation_source = str(r["abbreviation_source"])
+                if abbreviation_source.strip():
+                    kw["abbreviation_source"] = abbreviation_source
+            if "abbreviation_support_docs" in r.index and pd.notna(r["abbreviation_support_docs"]):
+                kw["abbreviation_support_docs"] = int(r["abbreviation_support_docs"])
+            if "abbreviation_cluster_support_docs" in r.index and pd.notna(r["abbreviation_cluster_support_docs"]):
+                kw["abbreviation_cluster_support_docs"] = int(r["abbreviation_cluster_support_docs"])
+            if "abbreviation_top_support_ratio" in r.index and pd.notna(r["abbreviation_top_support_ratio"]):
+                kw["abbreviation_top_support_ratio"] = round(float(r["abbreviation_top_support_ratio"]), 6)
+            if "abbreviation_ambiguity_type" in r.index and pd.notna(r["abbreviation_ambiguity_type"]):
+                abbreviation_ambiguity_type = str(r["abbreviation_ambiguity_type"])
+                if abbreviation_ambiguity_type.strip():
+                    kw["abbreviation_ambiguity_type"] = abbreviation_ambiguity_type
 
             if "depth_level" in r.index and pd.notna(r["depth_level"]):
                 kw["depth_level"] = int(r["depth_level"])
@@ -167,6 +267,30 @@ def prepare_cluster_data(
                 if isinstance(st, list) and len(st) > 1:
                     kw["source_terms"] = st
 
+            existing = keywords_by_label.get(label)
+            if existing is not None:
+                alias = {
+                    "raw_term": raw_term,
+                    "score": kw["score"],
+                    "frequency": kw["frequency"],
+                    "doc_coverage": kw["doc_coverage"],
+                }
+                for field in (
+                    "abbreviation_status",
+                    "abbreviation_target",
+                    "abbreviation_confidence",
+                    "abbreviation_source",
+                    "abbreviation_ambiguity_type",
+                    "quality_flags",
+                    "network_role",
+                    "network_flags",
+                ):
+                    if field in kw:
+                        alias[field] = kw[field]
+                existing.setdefault("raw_aliases", []).append(alias)
+                continue
+
+            keywords_by_label[label] = kw
             keywords.append(kw)
 
         if cooc_edges_all:
@@ -199,6 +323,7 @@ def prepare_cluster_data(
             "label": labels[cid],
             "n_keywords": len(keywords),
             "keywords": keywords,
+            "keyword_groups": _group_keywords_by_scope(keywords),
             "network_edges": edges,
             "subphrase_tree": subphrases,
             "norm_merges": cluster_norm_merges,
@@ -207,7 +332,14 @@ def prepare_cluster_data(
     trend_scores = viz_data.get("trend_scores", {}) if viz_data else {}
     centrality = viz_data.get("centrality", {}) if viz_data else {}
     cross_cluster_terms = viz_data.get("cross_cluster_terms", []) if viz_data else []
+    abbreviation_evidence = viz_data.get("abbreviation_evidence", []) if viz_data else []
+    abbreviation_evidence_total = viz_data.get("abbreviation_evidence_total", len(abbreviation_evidence)) if viz_data else 0
     pipeline_config = viz_data.get("pipeline_config", {}) if viz_data else {}
+    keyword_scope_terms = _aggregate_keyword_scope_terms(
+        df,
+        label_col=label_col,
+        score_col=score_col,
+    )
     if label_col != "term":
         raw_to_label_all = dict(zip(df["term"].astype(str), df[label_col].astype(str)))
         trend_scores = dict(trend_scores)
@@ -224,6 +356,10 @@ def prepare_cluster_data(
         "_trend_scores": trend_scores,
         "_centrality": centrality,
         "_cross_cluster_terms": cross_cluster_terms,
+        "_abbreviation_evidence": abbreviation_evidence,
+        "_abbreviation_evidence_total": abbreviation_evidence_total,
+        "_common_keywords": keyword_scope_terms["common"],
+        "_shared_keywords": keyword_scope_terms["shared"],
         "_pipeline_config": pipeline_config,
     }
 

@@ -174,6 +174,12 @@ class KeywordExtractionConfig:
     quality_cluster_specific_bonus: float = 0.08
     quality_min_multiplier: float = 0.05
     quality_acronym_max_length: int = 6
+    quality_network_roles_enabled: bool = True
+    abbreviation_dictionary_enabled: bool = True
+    abbreviation_min_support_docs: int = 2
+    abbreviation_min_cluster_support_docs: int = 2
+    abbreviation_min_top_support_ratio: float = 0.75
+    abbreviation_max_long_form_words: int = 12
 
     # Fragment suppression — suppress truncated n-grams like "supermassive black"
     # when a longer form "supermassive black hole" exists with comparable frequency.
@@ -356,7 +362,13 @@ TIER3_COLUMNS = ["depth_score", "depth_level", "cross_cluster_count",
                  "candidates", "expanded_from",
                  "alias_actions", "alias_notes", "alias_reason",
                  "raw_term", "normalized_term", "display_label",
-                 "quality_score", "quality_multiplier", "quality_flags"]
+                 "quality_score", "quality_multiplier", "quality_flags",
+                 "keyword_scope", "keyword_cluster_count", "keyword_cluster_ratio",
+                 "abbreviation_status", "abbreviation_target", "abbreviation_confidence",
+                 "abbreviation_source", "abbreviation_support_docs",
+                 "abbreviation_cluster_support_docs", "abbreviation_top_support_ratio",
+                 "abbreviation_ambiguity_type",
+                 "network_role", "network_score", "network_flags"]
 
 
 __all__ = [

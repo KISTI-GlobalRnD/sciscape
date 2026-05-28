@@ -166,10 +166,10 @@ sciscape/
     prepartition.py        Pre-partition (Lego block assembly)
     leiden_rust.py          Rust Leiden backend wrapper
     label_pipeline.py      TF-IDF labels + string_grouper dedup
-    abbreviation_dict.py   Auto abbreviation extraction from abstracts
+    abbreviation_dict.py   Compatibility wrapper for conservative abbreviation evidence
     postprocess.py         Cascade gamma + greedy + component Dijkstra
     runner.py              LeidenRunner + RustLeidenRunner
-  keyword_extraction/       10-stage pipeline
+  keyword_extraction/       10-stage pipeline + keyword quality/abbreviation evidence
   linkage/
     combine.py             Multi-layer consensus combination
     filters.py             top-k, GCC, weight normalization

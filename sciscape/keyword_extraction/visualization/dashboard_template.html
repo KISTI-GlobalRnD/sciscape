@@ -54,6 +54,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .badge{display:inline-block;padding:.15rem .45rem;border-radius:10px;font-size:.75rem;font-weight:600;margin-left:.3rem;}
 .badge-vocab{background:#d4edda;color:#155724;}
 .badge-norm{background:#cce5ff;color:#004085;}
+.keyword-scope-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.85rem;}
+.keyword-scope-block{border:1px solid #e9ecef;border-radius:6px;padding:.75rem;background:#fbfcfd;}
+.keyword-scope-title{font-size:.78rem;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.45rem;}
+.keyword-chip{display:inline-flex;align-items:center;gap:.3rem;margin:.15rem .2rem .15rem 0;padding:.18rem .45rem;border-radius:12px;background:#eef2f7;color:#1f2933;font-size:.8rem;line-height:1.35;}
+.keyword-chip small{color:#6c757d;font-size:.72rem;}
 .footer{text-align:center;padding:1.5rem 2rem;font-size:.8rem;color:#6c757d;border-top:1px solid #e9ecef;margin-top:2rem;display:flex;align-items:center;justify-content:center;gap:.5rem;}
 .footer svg{opacity:.5;transition:opacity .2s;}
 .footer:hover svg{opacity:.8;}
@@ -138,10 +143,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       선택하지 않으면 전체 클러스터의 Top 키워드를 요약합니다.
     </div>
     <div id="keywords-global" style="display:none;">
+      <div class="chart-card"><div id="keywords-global-scope"></div></div>
       <div class="chart-card"><div id="chart-keywords-global" style="width:100%;min-height:500px;"></div></div>
       <div class="chart-card"><div id="keywords-global-table" style="max-height:600px;overflow:auto;"></div></div>
     </div>
     <div id="keywords-cluster" style="display:none;">
+      <div class="chart-card"><div id="keywords-scope-summary"></div></div>
       <div class="chart-card"><div id="chart-keywords" style="width:100%;min-height:500px;"></div></div>
     </div>
   </div>
@@ -272,18 +279,28 @@ let DATA = {{DATA_JSON}};
 
 // ── Upload / Viewer mode ──
 let VOCAB_MERGES = {}, NORM_MERGES = {}, CROSS_CLUSTER_TERMS = null;
+let COMMON_KEYWORDS = [], SHARED_KEYWORDS = [];
+let ABBREVIATION_EVIDENCE = [], ABBREVIATION_EVIDENCE_TOTAL = 0;
 let TREND_SCORES = {}, CENTRALITY = {}, PIPELINE_CONFIG = {};
 
 function _extractGlobals() {
   VOCAB_MERGES = DATA["_vocab_merges"] || {};
   NORM_MERGES = DATA["_norm_merges"] || {};
   CROSS_CLUSTER_TERMS = DATA["_cross_cluster_terms"] || null;
+  ABBREVIATION_EVIDENCE = DATA["_abbreviation_evidence"] || [];
+  ABBREVIATION_EVIDENCE_TOTAL = DATA["_abbreviation_evidence_total"] || ABBREVIATION_EVIDENCE.length;
+  COMMON_KEYWORDS = DATA["_common_keywords"] || [];
+  SHARED_KEYWORDS = DATA["_shared_keywords"] || [];
   TREND_SCORES = DATA["_trend_scores"] || {};
   CENTRALITY = DATA["_centrality"] || {};
   PIPELINE_CONFIG = DATA["_pipeline_config"] || {};
   delete DATA["_vocab_merges"];
   delete DATA["_norm_merges"];
   delete DATA["_cross_cluster_terms"];
+  delete DATA["_abbreviation_evidence"];
+  delete DATA["_abbreviation_evidence_total"];
+  delete DATA["_common_keywords"];
+  delete DATA["_shared_keywords"];
   delete DATA["_trend_scores"];
   delete DATA["_centrality"];
   delete DATA["_pipeline_config"];
@@ -380,6 +397,8 @@ function _loadCSV(text, filename) {
     const sep = (filename.endsWith(".tsv") || text.split("\n")[0].split("\t").length > 2) ? "\t" : ",";
     DATA = _parseCSV(text, sep);
     VOCAB_MERGES = {}; NORM_MERGES = {}; CROSS_CLUSTER_TERMS = null;
+    ABBREVIATION_EVIDENCE = []; ABBREVIATION_EVIDENCE_TOTAL = 0;
+    COMMON_KEYWORDS = []; SHARED_KEYWORDS = [];
     TREND_SCORES = {}; CENTRALITY = {}; PIPELINE_CONFIG = {};
     _initClusters();
     overlay.style.display = "none";
@@ -555,6 +574,38 @@ function renderCurrentTab() {
 
 const depthNames = { 0: "Broad", 1: "Mid", 2: "Specific" };
 const depthColors = { 0: "#636EFA", 1: "#EF553B", 2: "#00CC96" };
+const keywordScopeLabels = {
+  cluster_specific: "Cluster-specific",
+  shared: "Shared",
+  common: "Common"
+};
+
+function keywordScopeGroupsFromKeywords(keywords) {
+  const groups = { cluster_specific: [], shared: [], common: [] };
+  (keywords || []).forEach(k => {
+    const scope = groups[k.keyword_scope] ? k.keyword_scope : "cluster_specific";
+    groups[scope].push(k);
+  });
+  return groups;
+}
+
+function renderKeywordScopeBlocks(targetId, groups, emptyText) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const order = ["cluster_specific", "shared", "common"];
+  const html = order.map(scope => {
+    const values = (groups && groups[scope]) ? groups[scope].slice(0, 12) : [];
+    const chips = values.map(k => {
+      const ratio = k.keyword_cluster_ratio != null ? ` · ${(k.keyword_cluster_ratio * 100).toFixed(0)}%` :
+        k.cluster_ratio != null ? ` · ${(k.cluster_ratio * 100).toFixed(0)}%` : "";
+      const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
+        ` <small>${k.abbreviation_status}</small>` : "";
+      return `<span class="keyword-chip"><b>${k.term}</b><small>${ratio}</small>${abbr}</span>`;
+    }).join("");
+    return `<div class="keyword-scope-block"><div class="keyword-scope-title">${keywordScopeLabels[scope]}</div>${chips || `<span style="color:#adb5bd;font-size:.85rem;">${emptyText}</span>`}</div>`;
+  }).join("");
+  el.innerHTML = `<div class="keyword-scope-grid">${html}</div>`;
+}
 
 // ---- Tab 1: Keywords ----
 function renderKeywords() {
@@ -569,6 +620,11 @@ function renderKeywords() {
   }
   globalEl.style.display = "none";
   clusterEl.style.display = "block";
+  renderKeywordScopeBlocks(
+    "keywords-scope-summary",
+    currentCluster.keyword_groups || keywordScopeGroupsFromKeywords(currentCluster.keywords),
+    "No terms"
+  );
 
   const kws = currentCluster.keywords.slice(0, 30);
   const terms = kws.map(k => k.term).reverse();
@@ -601,6 +657,11 @@ function renderKeywords() {
 
 function renderKeywordsGlobal() {
   const topN = 5;
+  renderKeywordScopeBlocks(
+    "keywords-global-scope",
+    { cluster_specific: [], shared: SHARED_KEYWORDS || [], common: COMMON_KEYWORDS || [] },
+    "No terms"
+  );
   // Collect top keywords per cluster
   const rows = [];
   const traces = [];
@@ -1654,15 +1715,18 @@ function renderDictKeywordsGlobal(container, searchBox) {
     const fl = (filter || "").toLowerCase();
     const filtered = fl ? allKws.filter(k => k.term.toLowerCase().includes(fl) || (`C${k.cluster}`).includes(fl) || k.clusterLabel.toLowerCase().includes(fl)) : allKws;
     const shown = filtered.slice(0, 200);
-    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
+    let html = '<table class="merge-table"><thead><tr><th>#</th><th>Cluster</th><th>Term</th><th>Scope</th><th>Abbrev</th><th>Score</th><th>Freq</th><th>Doc Cov</th><th>Depth</th><th>Cross-CL</th></tr></thead><tbody>';
     shown.forEach((k, i) => {
       const depth = k.depth_level != null ? `${depthNames[k.depth_level]||"L"+k.depth_level} (${(k.depth_score||0).toFixed(2)})` : "";
+      const scope = keywordScopeLabels[k.keyword_scope] || "-";
+      const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
+        `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       html += `<tr style="cursor:pointer" onclick="document.getElementById('cluster-select').value='${k.cluster}';document.getElementById('cluster-select').dispatchEvent(new Event('change'))">`;
-      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${k.score.toFixed(4)}</td>`;
+      html += `<td>${i+1}</td><td>C${k.cluster}</td><td><b>${k.term}</b></td><td>${scope}</td><td>${abbr}</td><td>${k.score.toFixed(4)}</td>`;
       html += `<td>${(k.frequency||0).toLocaleString()}</td><td>${(k.doc_coverage||0).toLocaleString()}</td>`;
       html += `<td>${depth}</td><td>${k.cross_cluster_count > 1 ? k.cross_cluster_count : ""}</td></tr>`;
     });
-    if (filtered.length > 200) html += `<tr><td colspan="8" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
+    if (filtered.length > 200) html += `<tr><td colspan="10" style="text-align:center;color:#6c757d;font-style:italic;">Showing 200 of ${filtered.length} keywords. Use search to filter.</td></tr>`;
     html += '</tbody></table>';
     container.innerHTML = html;
   }
@@ -1682,6 +1746,8 @@ function renderDictKeywords(container, searchBox) {
     const filtered = fl
       ? kws.filter(k => k.term.toLowerCase().includes(fl) ||
                         (k.expanded_from || "").toLowerCase().includes(fl) ||
+                        (k.abbreviation_status || "").toLowerCase().includes(fl) ||
+                        (k.abbreviation_target || "").toLowerCase().includes(fl) ||
                         (k.source_terms || []).join(" ").toLowerCase().includes(fl) ||
                         (normMerges[k.term] || []).join(" ").toLowerCase().includes(fl))
       : kws;
@@ -1689,12 +1755,15 @@ function renderDictKeywords(container, searchBox) {
     let html = `<table class="merge-table">
       <thead><tr>
         <th>#</th><th>Term</th><th>Score</th><th>Freq</th><th>Doc Cov</th>
-        <th>Depth</th><th>Cross-CL</th><th>Expanded From</th><th>Norm Merged From</th><th>Notes</th>
+        <th>Depth</th><th>Cross-CL</th><th>Scope</th><th>Abbrev</th><th>Expanded From</th><th>Norm Merged From</th><th>Notes</th>
       </tr></thead><tbody>`;
 
     filtered.forEach((k, i) => {
       const dl = k.depth_level != null ? `${depthNames[k.depth_level] || "L"+k.depth_level} (${k.depth_score.toFixed(3)})` : "-";
       const cc = k.cross_cluster_count > 1 ? k.cross_cluster_count : "-";
+      const scope = keywordScopeLabels[k.keyword_scope] || "-";
+      const abbr = k.abbreviation_status && k.abbreviation_status !== "not_abbreviation" ?
+        `${k.abbreviation_status}${k.abbreviation_target ? " → " + k.abbreviation_target : ""}` : "-";
       const ef = k.expanded_from || "-";
       const nm = normMerges[k.term];
       const nmStr = nm ? nm.map(t => `<span class="badge badge-norm">${t}</span>`).join(" ") : "-";
@@ -1705,7 +1774,7 @@ function renderDictKeywords(container, searchBox) {
         <td>${i + 1}</td><td><strong>${k.term}</strong>${noteIndicator}</td>
         <td>${k.score.toFixed(4)}</td><td>${k.frequency.toLocaleString()}</td>
         <td>${k.doc_coverage.toLocaleString()}</td>
-        <td>${dl}</td><td>${cc}</td><td>${ef}</td><td>${nmStr}</td>
+        <td>${dl}</td><td>${cc}</td><td>${scope}</td><td>${abbr}</td><td>${ef}</td><td>${nmStr}</td>
         <td class="note-cell" contenteditable="true" data-term="${k.term.replace(/"/g, '&quot;')}">${existingNote}</td>
       </tr>`;
     });
