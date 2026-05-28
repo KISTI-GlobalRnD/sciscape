@@ -307,11 +307,12 @@ def _is_compact_formula_fragment_token(token: str) -> bool:
     # Domain formulas sometimes carry a short organic-cation prefix that the
     # pure element parser cannot segment, e.g. "fapbi" -> "fa" + "pbi".
     # Treat this only as representative-label risk; the keyword row remains.
-    for start in range(1, min(3, len(compact) - 2) + 1):
-        suffix = compact[start:]
-        parsed, n_elements, has_digit, has_multiletter = _parse_element_formula(suffix)
-        if parsed and not has_digit and (n_elements >= 3 or (n_elements >= 2 and has_multiletter)):
-            return True
+    if len(compact) <= 6:
+        for start in range(1, min(3, len(compact) - 2) + 1):
+            suffix = compact[start:]
+            parsed, n_elements, has_digit, has_multiletter = _parse_element_formula(suffix)
+            if parsed and not has_digit and (n_elements >= 3 or (n_elements >= 2 and has_multiletter)):
+                return True
     return False
 
 
@@ -371,6 +372,60 @@ def _representative_artifact_flags(term: str, *, abbreviation_status: str) -> li
     if short_form_tokens:
         flags.append("unresolved_compact_short_form")
     return flags
+
+
+def _keyword_label_tier(
+    *,
+    term: str,
+    display_label: str,
+    flags: Sequence[str],
+    representative_role: str,
+    abbreviation_status: str,
+) -> str:
+    """Classify whether a keyword should be a primary label or support evidence."""
+    flag_set = set(flags)
+    label_tokens = _tokens(display_label)
+    is_phrase_label = len(label_tokens) >= 2
+
+    if representative_role == "review_artifact" or flag_set & {
+        "artifact_formula",
+        "artifact_like",
+        "compact_formula_fragment",
+        "dimension_fragment",
+        "mixed_formula_fragment",
+        "unresolved_compact_short_form",
+    }:
+        return "review_artifact"
+
+    if representative_role == "review_short_form" or abbreviation_status in {
+        "ambiguous_expansion",
+        "candidate_short_form",
+        "low_support_expansion",
+        "unlinked_short_form",
+    }:
+        return "review_short_form"
+
+    if abbreviation_status in {"cluster_expanded", "corpus_expanded"} and is_phrase_label:
+        return "primary_phrase"
+
+    if "material_formula" in flag_set:
+        return "support_formula"
+
+    if is_phrase_label and representative_role in {
+        "expanded_short_form",
+        "expansion_phrase",
+        "representative_phrase",
+    }:
+        return "primary_phrase"
+    if is_phrase_label and "phrase" in flag_set:
+        return "primary_phrase"
+
+    if abbreviation_status in {"cluster_expanded", "corpus_expanded", "duplicate_expansion", "expanded"}:
+        return "support_abbreviation"
+
+    if len(_tokens(term)) <= 1:
+        return "support_unigram"
+    return "support_phrase"
 
 
 def _is_acronym_like(term: str, *, max_length: int, has_expansion: bool = False) -> bool:
@@ -1155,6 +1210,7 @@ def annotate_keyword_quality(
     representative_multipliers: list[float] = []
     representative_roles: list[str] = []
     representative_flag_values: list[str] = []
+    keyword_label_tiers: list[str] = []
     quality_decision_traces: list[str] = []
     row_cluster_ids: list[Any] = []
     doc_coverage_values: list[float] = []
@@ -1424,6 +1480,13 @@ def annotate_keyword_quality(
             display_label = expansion
         else:
             display_label = term
+        keyword_label_tier = _keyword_label_tier(
+            term=term,
+            display_label=display_label,
+            flags=flags,
+            representative_role=representative_role,
+            abbreviation_status=abbreviation_status,
+        )
         representative_score = quality_score * representative_multiplier
         quality_scores.append(quality_score)
         quality_multipliers.append(multiplier)
@@ -1432,6 +1495,7 @@ def annotate_keyword_quality(
         representative_multipliers.append(representative_multiplier)
         representative_roles.append(representative_role)
         representative_flag_values.append(representative_flags)
+        keyword_label_tiers.append(keyword_label_tier)
         network_role_values.append(network_role)
         network_scores.append(float(role_hint.get("score", 0.5)))
         network_flag_values.append(_flag_string(network_flags))
@@ -1458,6 +1522,7 @@ def annotate_keyword_quality(
                     "representative_multiplier": round(float(representative_multiplier), 6),
                     "representative_role": representative_role,
                     "representative_flags": representative_flags.split("|") if representative_flags else [],
+                    "keyword_label_tier": keyword_label_tier,
                 }
             )
         )
@@ -1524,6 +1589,7 @@ def annotate_keyword_quality(
     out["representative_multiplier"] = representative_multipliers
     out["representative_role"] = representative_roles
     out["representative_flags"] = representative_flag_values
+    out["keyword_label_tier"] = keyword_label_tiers
     out["representative_family_child_count"] = representative_family_child_counts
     out["representative_family_member_count"] = representative_family_member_counts
     out["representative_family_avg_child_coverage"] = representative_family_avg_child_coverages

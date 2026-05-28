@@ -358,6 +358,8 @@ def test_representative_score_demotes_unresolved_short_forms_for_labels():
 
     assert eeg["abbreviation_status"] in {"candidate_short_form", "unlinked_short_form"}
     assert eeg["representative_role"] == "review_short_form"
+    assert eeg["keyword_label_tier"] == "review_short_form"
+    assert phrase["keyword_label_tier"] == "primary_phrase"
     assert phrase["representative_rank"] < eeg["representative_rank"]
     assert phrase["representative_score"] > eeg["representative_score"]
 
@@ -365,17 +367,19 @@ def test_representative_score_demotes_unresolved_short_forms_for_labels():
 def test_representative_score_demotes_unresolved_formula_fragments_for_labels():
     df = pd.DataFrame(
         {
-            "cluster_id": [0, 0, 0, 0, 0],
+            "cluster_id": [0, 0, 0, 0, 0, 0, 0],
             "term": [
                 "scap",
                 "cs agbibr",
                 "black phase fapbi",
                 "scaps 1d",
+                "organic solar cell",
+                "database",
                 "perovskite absorber",
             ],
-            "score": [11.0, 10.0, 9.0, 8.0, 5.0],
-            "frequency": [55, 50, 45, 35, 25],
-            "doc_coverage": [22, 20, 18, 16, 12],
+            "score": [11.0, 10.0, 9.0, 8.0, 7.0, 6.0, 5.0],
+            "frequency": [55, 50, 45, 35, 30, 28, 25],
+            "doc_coverage": [22, 20, 18, 16, 14, 13, 12],
         }
     )
 
@@ -387,10 +391,15 @@ def test_representative_score_demotes_unresolved_formula_fragments_for_labels():
     assert "mixed_formula_fragment" in rows["cs agbibr"].quality_flags
     assert "mixed_formula_fragment" in rows["black phase fapbi"].quality_flags
     assert "dimension_fragment" in rows["scaps 1d"].quality_flags
+    assert "mixed_formula_fragment" not in rows["organic solar cell"].quality_flags
+    assert "compact_formula_fragment" not in rows["database"].quality_flags
     assert rows["scap"].representative_role == "review_artifact"
     assert rows["cs agbibr"].representative_role == "review_artifact"
     assert rows["black phase fapbi"].representative_role == "review_artifact"
     assert rows["scaps 1d"].representative_role == "review_artifact"
+    assert rows["scap"].keyword_label_tier == "review_artifact"
+    assert rows["cs agbibr"].keyword_label_tier == "review_artifact"
+    assert absorber.keyword_label_tier == "primary_phrase"
     assert absorber.representative_rank < rows["scap"].representative_rank
     assert absorber.representative_rank < rows["cs agbibr"].representative_rank
     assert absorber.representative_rank < rows["black phase fapbi"].representative_rank
@@ -414,6 +423,7 @@ def test_representative_score_keeps_supported_material_formulas_labelable():
     assert "material_formula" in zno["quality_flags"]
     assert "compact_formula_fragment" not in zno["quality_flags"]
     assert zno["representative_role"] == "material_formula"
+    assert zno["keyword_label_tier"] == "support_formula"
 
 
 def test_representative_score_demotes_shared_unigram_labels():
@@ -722,6 +732,72 @@ def test_dashboard_data_uses_representative_score_for_cluster_labels():
     assert data[0]["keywords"][0]["quality_score"] == pytest.approx(5.0)
 
 
+def test_dashboard_data_groups_label_tiers_and_cooccurrence_evidence():
+    from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
+
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0],
+            "term": ["traffic flow", "traffic", "gnn", "zno"],
+            "display_label": ["traffic flow", "traffic", "gnn", "zno"],
+            "representative_score": [5.0, 10.0, 4.0, 6.0],
+            "quality_score": [5.0, 10.0, 4.0, 6.0],
+            "score": [5.0, 10.0, 4.0, 6.0],
+            "quality_flags": ["phrase", "phrase_preferred", "candidate_short_form", "material_formula"],
+            "representative_role": [
+                "representative_phrase",
+                "anchor_unigram",
+                "review_short_form",
+                "material_formula",
+            ],
+            "keyword_label_tier": [
+                "primary_phrase",
+                "support_unigram",
+                "review_short_form",
+                "support_formula",
+            ],
+            "keyword_scope": ["cluster_specific"] * 4,
+            "keyword_cluster_count": [1] * 4,
+            "keyword_cluster_ratio": [1.0] * 4,
+            "abbreviation_status": [
+                "not_abbreviation",
+                "not_abbreviation",
+                "candidate_short_form",
+                "not_abbreviation",
+            ],
+            "abbreviation_target": [""] * 4,
+            "abbreviation_confidence": [0.0] * 4,
+            "frequency": [30, 50, 12, 20],
+            "doc_coverage": [15, 25, 6, 10],
+        }
+    )
+    viz_data = {
+        "cooc_edges": [
+            {"source": "traffic flow", "target": "traffic", "weight": 7},
+            {"source": "traffic flow", "target": "gnn", "weight": 2},
+            {"source": "traffic", "target": "zno", "weight": 4},
+        ]
+    }
+
+    data = prepare_cluster_data(df, viz_data=viz_data)
+    cluster = data[0]
+
+    assert cluster["label"].startswith("traffic flow")
+    assert cluster["keyword_tier_counts"] == {"primary": 1, "supporting": 2, "review": 1}
+    assert cluster["keyword_tier_groups"]["primary"][0]["term"] == "traffic flow"
+    assert {kw["term"] for kw in cluster["keyword_tier_groups"]["supporting"]} == {"traffic", "zno"}
+    assert cluster["keyword_tier_groups"]["review"][0]["term"] == "gnn"
+
+    table = cluster["cooccurrence_table"]
+    primary_support = [row for row in table if row["relation"] == "primary_supporting"]
+    review_edges = [row for row in table if row["relation"] == "review_edge"]
+    assert primary_support[0]["primary_term"] == "traffic flow"
+    assert primary_support[0]["support_term"] == "traffic"
+    assert review_edges[0]["primary_term"] == "traffic flow"
+    assert review_edges[0]["support_term"] == "gnn"
+    assert cluster["cooccurrence_map"]["traffic flow"][0]["term"] == "traffic"
+
+
 def test_dashboard_cluster_labels_use_mmr_for_redundant_representative_terms():
     from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
 
@@ -902,6 +978,7 @@ def test_pipeline_emits_quality_columns_when_enabled(quality_pipeline_data):
         "representative_rank",
         "representative_role",
         "representative_flags",
+        "keyword_label_tier",
         "representative_family_child_count",
         "representative_family_member_count",
         "representative_family_avg_child_coverage",

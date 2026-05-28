@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -127,7 +128,12 @@ def _build_cluster_labels(df: pd.DataFrame, n: int = 3) -> Dict[int, str]:
     label_col = _keyword_label_col(df)
     score_col = _keyword_score_col(df)
     for cid, grp in df.groupby("cluster_id"):
-        candidate_rows = grp.nlargest(max(n * 6, n), score_col)
+        candidate_source = grp
+        if "keyword_label_tier" in grp.columns:
+            primary = grp[grp["keyword_label_tier"].fillna("").astype(str).str.startswith("primary")]
+            if not primary.empty:
+                candidate_source = primary
+        candidate_rows = candidate_source.nlargest(max(n * 6, n), score_col)
         label_scores = [
             (str(row[label_col]), float(row[score_col]))
             for _, row in candidate_rows.iterrows()
@@ -144,6 +150,29 @@ def _group_keywords_by_scope(keywords: List[Dict], *, max_per_scope: int = 25) -
             scope = "cluster_specific"
         groups[scope].append(kw)
     return {scope: values[:max_per_scope] for scope, values in groups.items()}
+
+
+def _tier_category(tier: object) -> str:
+    value = str(tier or "").strip()
+    if value.startswith("primary"):
+        return "primary"
+    if value.startswith("review"):
+        return "review"
+    return "supporting"
+
+
+def _group_keywords_by_tier(keywords: List[Dict], *, max_per_tier: int = 25) -> Dict[str, List[Dict]]:
+    groups = {"primary": [], "supporting": [], "review": []}
+    for kw in keywords:
+        groups[_tier_category(kw.get("keyword_label_tier"))].append(kw)
+    return {tier: values[:max_per_tier] for tier, values in groups.items()}
+
+
+def _keyword_tier_counts(keywords: List[Dict]) -> Dict[str, int]:
+    counts = {"primary": 0, "supporting": 0, "review": 0}
+    for kw in keywords:
+        counts[_tier_category(kw.get("keyword_label_tier"))] += 1
+    return counts
 
 
 def _keyword_raw_aliases(keyword: Dict) -> List[Dict]:
@@ -365,6 +394,113 @@ def _compute_network_edges(
     return edges
 
 
+def _cooccurrence_relation(source_tier: str, target_tier: str) -> str:
+    source_cat = _tier_category(source_tier)
+    target_cat = _tier_category(target_tier)
+    if "review" in {source_cat, target_cat}:
+        return "review_edge"
+    if source_cat == "primary" and target_cat == "primary":
+        return "primary_primary"
+    if "primary" in {source_cat, target_cat}:
+        return "primary_supporting"
+    return "supporting_supporting"
+
+
+def _aggregate_edges(edges: List[Dict]) -> List[Dict]:
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for edge in edges:
+        source = str(edge.get("source", "")).strip()
+        target = str(edge.get("target", "")).strip()
+        if not source or not target or source == target:
+            continue
+        key = tuple(sorted((source, target)))
+        weight = float(edge.get("weight", 0.0) or 0.0)
+        current = merged.get(key)
+        if current is None:
+            merged[key] = {"source": key[0], "target": key[1], "weight": weight}
+        else:
+            current["weight"] = float(current["weight"]) + weight
+    return sorted(merged.values(), key=lambda item: (-float(item["weight"]), item["source"], item["target"]))
+
+
+def _build_cooccurrence_evidence(edges: List[Dict], keywords: List[Dict], *, max_rows: int = 80) -> tuple[List[Dict], Dict[str, List[Dict]]]:
+    """Build a primary-label centered co-occurrence table and lookup map."""
+    keyword_by_term = {str(keyword.get("term", "")): keyword for keyword in keywords}
+    aggregated_edges = _aggregate_edges(edges)
+    rows: List[Dict] = []
+    cooc_map: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
+    for edge in aggregated_edges:
+        source = str(edge["source"])
+        target = str(edge["target"])
+        source_kw = keyword_by_term.get(source, {})
+        target_kw = keyword_by_term.get(target, {})
+        source_tier = str(source_kw.get("keyword_label_tier") or "support_unigram")
+        target_tier = str(target_kw.get("keyword_label_tier") or "support_unigram")
+        relation = _cooccurrence_relation(source_tier, target_tier)
+        source_cat = _tier_category(source_tier)
+        target_cat = _tier_category(target_tier)
+
+        primary_term = ""
+        support_term = ""
+        support_tier = ""
+        if source_cat == "primary" and target_cat != "primary":
+            primary_term, support_term, support_tier = source, target, target_tier
+        elif target_cat == "primary" and source_cat != "primary":
+            primary_term, support_term, support_tier = target, source, source_tier
+        elif source_cat == "primary" and target_cat == "primary":
+            primary_term, support_term, support_tier = source, target, target_tier
+
+        row = {
+            "source": source,
+            "target": target,
+            "weight": round(float(edge["weight"]), 6),
+            "source_tier": source_tier,
+            "target_tier": target_tier,
+            "relation": relation,
+            "primary_term": primary_term,
+            "support_term": support_term,
+            "support_tier": support_tier,
+        }
+        rows.append(row)
+
+        if primary_term and support_term:
+            cooc_map[primary_term].append(
+                {
+                    "term": support_term,
+                    "tier": support_tier,
+                    "weight": row["weight"],
+                    "relation": relation,
+                }
+            )
+            if relation == "primary_primary":
+                cooc_map[support_term].append(
+                    {
+                        "term": primary_term,
+                        "tier": source_tier,
+                        "weight": row["weight"],
+                        "relation": relation,
+                    }
+                )
+
+    def _row_priority(row: Dict) -> tuple[int, float, str, str]:
+        priority = {
+            "primary_supporting": 0,
+            "primary_primary": 1,
+            "supporting_supporting": 2,
+            "review_edge": 3,
+        }.get(str(row["relation"]), 9)
+        return (priority, -float(row["weight"]), str(row["source"]), str(row["target"]))
+
+    rows = sorted(rows, key=_row_priority)[:max_rows]
+    for term, values in cooc_map.items():
+        cooc_map[term] = sorted(
+            values,
+            key=lambda item: (-float(item["weight"]), str(item["term"])),
+        )[:max_rows]
+    return rows, dict(cooc_map)
+
+
 def prepare_cluster_data(
     df: pd.DataFrame,
     viz_data: Optional[Dict] = None,
@@ -423,6 +559,8 @@ def prepare_cluster_data(
                 representative_flags = str(r["representative_flags"])
                 if representative_flags.strip():
                     kw["representative_flags"] = representative_flags
+            if "keyword_label_tier" in r.index and pd.notna(r["keyword_label_tier"]):
+                kw["keyword_label_tier"] = str(r["keyword_label_tier"])
             if "representative_family_child_count" in r.index and pd.notna(r["representative_family_child_count"]):
                 kw["representative_family_child_count"] = int(r["representative_family_child_count"])
             if "representative_family_member_count" in r.index and pd.notna(r["representative_family_member_count"]):
@@ -556,14 +694,19 @@ def prepare_cluster_data(
                 for e in cooc_edges_all
                 if e["source"] in cluster_terms and e["target"] in cluster_terms
             ]
-            edges = edges[:max_edges_per_cluster]
+            edges = _aggregate_edges(edges)[:max_edges_per_cluster]
         else:
             edge_terms = grp_sorted.copy()
             edge_terms["term"] = edge_terms[label_col].astype(str)
-            edges = _compute_network_edges(edge_terms)
+            edges = _aggregate_edges(_compute_network_edges(edge_terms))[:max_edges_per_cluster]
 
         subphrases = subphrase_by_cluster.get(cid, [])
         keyword_families = _build_keyword_families(keywords)
+        cooccurrence_table, cooccurrence_map = _build_cooccurrence_evidence(
+            edges,
+            keywords,
+            max_rows=max_edges_per_cluster,
+        )
 
         cluster_norm_merges = {}
         for t, srcs in norm_merges.items():
@@ -580,7 +723,11 @@ def prepare_cluster_data(
             "keyword_family_count": len(keyword_families),
             "keyword_families": keyword_families,
             "keyword_groups": _group_keywords_by_scope(keywords),
+            "keyword_tier_counts": _keyword_tier_counts(keywords),
+            "keyword_tier_groups": _group_keywords_by_tier(keywords),
             "network_edges": edges,
+            "cooccurrence_table": cooccurrence_table,
+            "cooccurrence_map": cooccurrence_map,
             "subphrase_tree": subphrases,
             "norm_merges": cluster_norm_merges,
         }
