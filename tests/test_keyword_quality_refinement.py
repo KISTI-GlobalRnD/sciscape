@@ -385,6 +385,44 @@ def test_representative_score_demotes_shared_unigram_labels():
     assert phrase["representative_score"] > session["representative_score"]
 
 
+def test_representative_score_uses_family_support_for_parent_terms():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0],
+            "term": [
+                "traffic flow",
+                "traffic flow prediction",
+                "traffic flow speed",
+                "time series",
+            ],
+            "score": [8.0, 7.0, 6.0, 5.0],
+            "frequency": [30, 20, 18, 14],
+            "doc_coverage": [15, 10, 9, 8],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    traffic = result[result["term"] == "traffic flow"].iloc[0]
+    prediction = result[result["term"] == "traffic flow prediction"].iloc[0]
+    trace = json.loads(traffic["quality_decision_trace"])
+
+    assert traffic["representative_family_child_count"] == 2
+    assert traffic["representative_family_member_count"] == 3
+    assert traffic["representative_family_avg_child_coverage"] == pytest.approx(9.5)
+    assert traffic["representative_family_multiplier"] > 1.0
+    assert traffic["representative_score"] == pytest.approx(
+        traffic["quality_score"]
+        * traffic["representative_multiplier"]
+    )
+    assert prediction["representative_family_child_count"] == 0
+    assert prediction["representative_family_member_count"] == 1
+    assert trace["representative_family_support"]["child_count"] == 2
+    assert any(
+        step["name"] == "representative_family_support"
+        for step in trace["quality_adjustments"]
+    )
+
+
 def test_quality_annotation_does_not_flag_common_words_as_acronyms():
     df = pd.DataFrame(
         {
@@ -778,6 +816,10 @@ def test_pipeline_emits_quality_columns_when_enabled(quality_pipeline_data):
         "representative_rank",
         "representative_role",
         "representative_flags",
+        "representative_family_child_count",
+        "representative_family_member_count",
+        "representative_family_avg_child_coverage",
+        "representative_family_multiplier",
     ):
         assert column in keywords.columns
     assert keywords["quality_score"].notna().all()

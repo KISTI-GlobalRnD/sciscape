@@ -423,6 +423,14 @@ def prepare_cluster_data(
                 representative_flags = str(r["representative_flags"])
                 if representative_flags.strip():
                     kw["representative_flags"] = representative_flags
+            if "representative_family_child_count" in r.index and pd.notna(r["representative_family_child_count"]):
+                kw["representative_family_child_count"] = int(r["representative_family_child_count"])
+            if "representative_family_member_count" in r.index and pd.notna(r["representative_family_member_count"]):
+                kw["representative_family_member_count"] = int(r["representative_family_member_count"])
+            if "representative_family_avg_child_coverage" in r.index and pd.notna(r["representative_family_avg_child_coverage"]):
+                kw["representative_family_avg_child_coverage"] = round(float(r["representative_family_avg_child_coverage"]), 6)
+            if "representative_family_multiplier" in r.index and pd.notna(r["representative_family_multiplier"]):
+                kw["representative_family_multiplier"] = round(float(r["representative_family_multiplier"]), 6)
             if "quality_flags" in r.index and pd.notna(r["quality_flags"]):
                 kw["quality_flags"] = str(r["quality_flags"])
             if "quality_decision_trace" in r.index and pd.notna(r["quality_decision_trace"]):

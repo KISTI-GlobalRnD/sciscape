@@ -1050,6 +1050,9 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             acronym_max_length=cfg.quality_acronym_max_length,
             network_roles_enabled=cfg.quality_network_roles_enabled,
             abbreviation_lookup=abbreviation_lookup,
+            family_representative_enabled=cfg.quality_family_representative_enabled,
+            family_representative_weight=cfg.quality_family_representative_weight,
+            family_representative_max_bonus=cfg.quality_family_representative_max_bonus,
         )
         if rerank and cfg.quality_rerank_enabled:
             self._log(

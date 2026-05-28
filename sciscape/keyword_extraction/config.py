@@ -175,6 +175,9 @@ class KeywordExtractionConfig:
     quality_min_multiplier: float = 0.05
     quality_acronym_max_length: int = 6
     quality_network_roles_enabled: bool = True
+    quality_family_representative_enabled: bool = True
+    quality_family_representative_weight: float = 0.08
+    quality_family_representative_max_bonus: float = 0.15
     abbreviation_dictionary_enabled: bool = True
     abbreviation_min_support_docs: int = 2
     abbreviation_min_cluster_support_docs: int = 2
@@ -291,6 +294,8 @@ class KeywordExtractionConfig:
             "quality_formula_demotion_weight",
             "quality_single_token_shadow_penalty",
             "quality_cluster_specific_bonus",
+            "quality_family_representative_weight",
+            "quality_family_representative_max_bonus",
         ):
             value = float(getattr(self, name))
             if not (0.0 <= value <= 1.0):
@@ -366,6 +371,8 @@ TIER3_COLUMNS = ["depth_score", "depth_level", "cross_cluster_count",
                  "quality_decision_trace",
                  "representative_score", "representative_multiplier",
                  "representative_rank", "representative_role", "representative_flags",
+                 "representative_family_child_count", "representative_family_member_count",
+                 "representative_family_avg_child_coverage", "representative_family_multiplier",
                  "keyword_scope", "keyword_cluster_count", "keyword_cluster_ratio",
                  "abbreviation_status", "abbreviation_target", "abbreviation_confidence",
                  "abbreviation_source", "abbreviation_support_docs",

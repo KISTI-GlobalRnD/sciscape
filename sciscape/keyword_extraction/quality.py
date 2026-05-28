@@ -349,6 +349,107 @@ def _keyword_scope(cluster_count: int, cluster_ratio: float, *, threshold: float
     return "shared"
 
 
+def _family_tokens(label: object) -> set[str]:
+    return set(_tokens(_normalise_term(label)))
+
+
+def _compute_family_representative_support(
+    *,
+    cluster_ids: Sequence[Any],
+    display_labels: Sequence[str],
+    representative_scores: Sequence[float],
+    doc_coverages: Sequence[float],
+    enabled: bool,
+    weight: float,
+    max_bonus: float,
+    min_parent_tokens: int = 2,
+) -> list[dict[str, Any]]:
+    """Return per-row support from exact aliases and contained derivative phrases."""
+    n_rows = len(display_labels)
+    support = [
+        {
+            "child_count": 0,
+            "member_count": 1,
+            "avg_child_coverage": 0.0,
+            "multiplier": 1.0,
+            "children": [],
+        }
+        for _ in range(n_rows)
+    ]
+    if not enabled or n_rows == 0:
+        return support
+
+    rows_by_cluster: dict[Any, list[int]] = defaultdict(list)
+    for idx, cluster_id in enumerate(cluster_ids):
+        rows_by_cluster[cluster_id].append(idx)
+
+    for row_indices in rows_by_cluster.values():
+        label_to_indices: dict[str, list[int]] = defaultdict(list)
+        for idx in row_indices:
+            label = _normalise_term(display_labels[idx])
+            if label:
+                label_to_indices[label].append(idx)
+
+        canonical_by_label: dict[str, int] = {}
+        for label, indices in label_to_indices.items():
+            canonical_by_label[label] = max(
+                indices,
+                key=lambda i: (float(representative_scores[i]), float(doc_coverages[i]), -i),
+            )
+            canonical_idx = canonical_by_label[label]
+            support[canonical_idx]["member_count"] = len(indices)
+
+        labels = list(canonical_by_label)
+        tokens_by_label = {label: _family_tokens(label) for label in labels}
+        child_to_parent: dict[str, str] = {}
+        for child_label in labels:
+            child_tokens = tokens_by_label[child_label]
+            if not child_tokens:
+                continue
+            candidates: list[tuple[float, int, str]] = []
+            for parent_label in labels:
+                if parent_label == child_label:
+                    continue
+                parent_tokens = tokens_by_label[parent_label]
+                if len(parent_tokens) < int(min_parent_tokens):
+                    continue
+                if len(parent_tokens) >= len(child_tokens):
+                    continue
+                if parent_tokens < child_tokens:
+                    parent_idx = canonical_by_label[parent_label]
+                    candidates.append((float(representative_scores[parent_idx]), -len(parent_tokens), parent_label))
+            if candidates:
+                child_to_parent[child_label] = max(candidates)[2]
+
+        for child_label, parent_label in child_to_parent.items():
+            parent_idx = canonical_by_label[parent_label]
+            child_idx = canonical_by_label[child_label]
+            child_member_count = int(support[child_idx]["member_count"])
+            support[parent_idx]["children"].append(
+                {
+                    "term": display_labels[child_idx],
+                    "member_count": child_member_count,
+                    "doc_coverage": round(float(doc_coverages[child_idx]), 6),
+                }
+            )
+            support[parent_idx]["member_count"] += child_member_count
+
+        for info in support:
+            children = info["children"]
+            child_count = len(children)
+            info["child_count"] = child_count
+            if child_count:
+                info["avg_child_coverage"] = sum(float(child["doc_coverage"]) for child in children) / child_count
+            member_extras = max(0, int(info["member_count"]) - 1)
+            if child_count or member_extras:
+                child_signal = min(1.0, child_count / 4.0)
+                member_signal = min(1.0, member_extras / 8.0)
+                bonus = min(float(max_bonus), float(weight) * (0.65 * child_signal + 0.35 * member_signal))
+                info["multiplier"] = 1.0 + max(0.0, bonus)
+
+    return support
+
+
 def _representative_signal(
     term: str,
     *,
@@ -714,6 +815,9 @@ def annotate_keyword_quality(
     acronym_max_length: int = 6,
     network_roles_enabled: bool = True,
     abbreviation_lookup: Mapping[str, Any] | None = None,
+    family_representative_enabled: bool = True,
+    family_representative_weight: float = 0.08,
+    family_representative_max_bonus: float = 0.15,
 ) -> pd.DataFrame:
     """Add quality audit columns and optionally rerank by quality score.
 
@@ -821,6 +925,8 @@ def annotate_keyword_quality(
     representative_roles: list[str] = []
     representative_flag_values: list[str] = []
     quality_decision_traces: list[str] = []
+    row_cluster_ids: list[Any] = []
+    doc_coverage_values: list[float] = []
 
     raw_scores = out[score_col] if score_col in out.columns else pd.Series(1.0, index=out.index)
     base_scores = pd.to_numeric(raw_scores, errors="coerce").fillna(0.0).reset_index(drop=True)
@@ -830,6 +936,8 @@ def annotate_keyword_quality(
         toks = _tokens(term)
         n_tokens = len(toks)
         cluster_id = row[cluster_col] if cluster_col in out.columns else 0
+        row_cluster_ids.append(cluster_id)
+        doc_coverage_values.append(_safe_float(row.get(doc_coverage_col, row.get(frequency_col, 0.0))))
         role_hint = network_roles.get(
             (cluster_id, term),
             {
@@ -1122,6 +1230,54 @@ def annotate_keyword_quality(
             )
         )
 
+    family_support = _compute_family_representative_support(
+        cluster_ids=row_cluster_ids,
+        display_labels=display_labels,
+        representative_scores=representative_scores,
+        doc_coverages=doc_coverage_values,
+        enabled=family_representative_enabled,
+        weight=family_representative_weight,
+        max_bonus=family_representative_max_bonus,
+    )
+    representative_family_child_counts: list[int] = []
+    representative_family_member_counts: list[int] = []
+    representative_family_avg_child_coverages: list[float] = []
+    representative_family_multipliers: list[float] = []
+    for idx, info in enumerate(family_support):
+        family_multiplier = float(info["multiplier"])
+        representative_scores[idx] *= family_multiplier
+        representative_multipliers[idx] *= family_multiplier
+        child_count = int(info["child_count"])
+        member_count = int(info["member_count"])
+        avg_child_coverage = float(info["avg_child_coverage"])
+        representative_family_child_counts.append(child_count)
+        representative_family_member_counts.append(member_count)
+        representative_family_avg_child_coverages.append(avg_child_coverage)
+        representative_family_multipliers.append(family_multiplier)
+
+        trace = json.loads(quality_decision_traces[idx])
+        trace["representative_score"] = round(float(representative_scores[idx]), 6)
+        trace["representative_multiplier"] = round(float(representative_multipliers[idx]), 6)
+        trace["representative_family_support"] = {
+            "child_count": child_count,
+            "member_count": member_count,
+            "avg_child_coverage": round(avg_child_coverage, 6),
+            "multiplier": round(family_multiplier, 6),
+            "children": info["children"],
+        }
+        if family_multiplier > 1.0:
+            trace.setdefault("quality_adjustments", []).append(
+                _quality_adjustment(
+                    "representative_family_support",
+                    family_multiplier,
+                    "parent_label_has_derivatives_or_aliases",
+                    child_count=child_count,
+                    member_count=member_count,
+                    avg_child_coverage=avg_child_coverage,
+                )
+            )
+        quality_decision_traces[idx] = _decision_trace_json(trace)
+
     out["display_label"] = display_labels
     out["quality_score"] = quality_scores
     out["quality_multiplier"] = quality_multipliers
@@ -1131,6 +1287,10 @@ def annotate_keyword_quality(
     out["representative_multiplier"] = representative_multipliers
     out["representative_role"] = representative_roles
     out["representative_flags"] = representative_flag_values
+    out["representative_family_child_count"] = representative_family_child_counts
+    out["representative_family_member_count"] = representative_family_member_counts
+    out["representative_family_avg_child_coverage"] = representative_family_avg_child_coverages
+    out["representative_family_multiplier"] = representative_family_multipliers
     out["keyword_scope"] = keyword_scopes
     out["keyword_cluster_count"] = keyword_cluster_counts
     out["keyword_cluster_ratio"] = keyword_cluster_ratios

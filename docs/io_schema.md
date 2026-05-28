@@ -145,6 +145,10 @@ tables = run_pipeline(
 | `quality_multiplier` | float | Quality diagnostics | 원점수 대비 보정 배율 |
 | `quality_flags` | string | Quality diagnostics | `too_global`, `phrase_preferred`, `acronym_like` 등 pipe-delimited reason code |
 | `quality_decision_trace` | JSON string | Quality diagnostics | 점수 보정, 약어, 네트워크 역할, 대표 점수 결정 근거 |
+| `representative_family_child_count` | int | Quality diagnostics | 대표 후보가 포함하는 파생 키워드 수 |
+| `representative_family_member_count` | int | Quality diagnostics | 대표 후보가 대표하는 전체 표현 수 |
+| `representative_family_avg_child_coverage` | float | Quality diagnostics | 파생 키워드의 평균 문서 coverage |
+| `representative_family_multiplier` | float | Quality diagnostics | family support 기반 대표 점수 보정 배율 |
 
 ### 최소 설정
 
