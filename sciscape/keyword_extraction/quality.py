@@ -52,9 +52,13 @@ LOW_INFORMATION_TERMS: frozenset[str] = frozenset(
         "research",
         "result",
         "results",
+        "standard",
         "system",
         "systems",
+        "table",
+        "tables",
         "technique",
+        "version",
         "work",
     }
 )
@@ -174,6 +178,8 @@ def _has_compact_short_form_shape(compact: str, *, max_length: int) -> bool:
     if not any(ch in base for ch in "aeiou"):
         return True
     if len(base) == 3 and base[-1] in {"i", "y"} and not any(ch in base[:-1] for ch in "aeiou"):
+        return True
+    if len(base) == 3 and base.endswith("q"):
         return True
     if len(base) <= 3 and len(set(base)) < len(base):
         return True
@@ -350,6 +356,10 @@ def _representative_signal(
     elif keyword_scope == "shared":
         multiplier *= 0.92
         rep_flags.append("shared")
+        if n_tokens == 1:
+            multiplier *= 0.52
+            rep_flags.append("shared_unigram")
+            role = "shared_unigram"
     elif keyword_scope == "common":
         multiplier *= 0.58
         rep_flags.append("common_term")
@@ -363,7 +373,7 @@ def _representative_signal(
     elif "phrase_preferred" in flag_set:
         rep_flags.append("shadowed_unigram")
         if network_role == "anchor_unigram":
-            multiplier *= 1.04
+            multiplier *= 0.72
             role = "anchor_unigram"
         elif network_role == "linked_unigram":
             multiplier *= 0.46
@@ -386,7 +396,7 @@ def _representative_signal(
         if role == "candidate":
             role = "representative_phrase"
     elif network_role == "anchor_unigram":
-        multiplier *= 1.12
+        multiplier *= 1.05
         rep_flags.append("network_anchor")
         if role == "candidate":
             role = "anchor_unigram"

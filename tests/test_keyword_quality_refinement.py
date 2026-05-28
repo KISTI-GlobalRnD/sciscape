@@ -353,6 +353,29 @@ def test_representative_score_demotes_unresolved_short_forms_for_labels():
     assert phrase["representative_score"] > eeg["representative_score"]
 
 
+def test_representative_score_demotes_shared_unigram_labels():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 1, 2],
+            "term": ["session", "sequential recommendation", "session", "traffic flow"],
+            "score": [10.0, 5.0, 10.0, 4.0],
+            "frequency": [40, 20, 40, 12],
+            "doc_coverage": [4, 8, 4, 6],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True, global_term_threshold=0.8)
+    session = result[
+        (result["cluster_id"] == 0) & (result["term"] == "session")
+    ].iloc[0]
+    phrase = result[
+        (result["cluster_id"] == 0) & (result["term"] == "sequential recommendation")
+    ].iloc[0]
+
+    assert session["representative_role"] == "shared_unigram"
+    assert phrase["representative_score"] > session["representative_score"]
+
+
 def test_quality_annotation_does_not_flag_common_words_as_acronyms():
     df = pd.DataFrame(
         {
@@ -372,10 +395,10 @@ def test_quality_annotation_does_not_flag_common_words_as_acronyms():
 def test_quality_annotation_flags_vowel_tolerant_scientific_short_forms():
     df = pd.DataFrame(
         {
-            "cluster_id": [0, 0, 0, 0],
-            "term": ["hsi", "dtis", "scrna", "zno"],
-            "score": [3.0, 2.5, 2.0, 1.5],
-            "frequency": [10, 9, 8, 7],
+            "cluster_id": [0, 0, 0, 0, 0],
+            "term": ["hsi", "dtis", "scrna", "seq", "zno"],
+            "score": [3.0, 2.5, 2.0, 1.8, 1.5],
+            "frequency": [10, 9, 8, 7, 6],
         }
     )
 
@@ -385,6 +408,7 @@ def test_quality_annotation_flags_vowel_tolerant_scientific_short_forms():
     assert statuses["hsi"] in {"candidate_short_form", "unlinked_short_form"}
     assert statuses["dtis"] in {"candidate_short_form", "unlinked_short_form"}
     assert statuses["scrna"] in {"candidate_short_form", "unlinked_short_form"}
+    assert statuses["seq"] in {"candidate_short_form", "unlinked_short_form"}
     assert statuses["zno"] == "not_abbreviation"
 
 
@@ -558,6 +582,47 @@ def test_dashboard_data_uses_representative_score_for_cluster_labels():
     assert data[0]["keywords"][0]["term"] == "session based recommendation"
     assert data[0]["keywords"][0]["representative_role"] == "representative_phrase"
     assert data[0]["keywords"][0]["quality_score"] == pytest.approx(5.0)
+
+
+def test_dashboard_cluster_labels_use_mmr_for_redundant_representative_terms():
+    from sciscape.keyword_extraction.visualization._data_prep import prepare_cluster_data
+
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0],
+            "term": [
+                "traffic flow",
+                "traffic flow prediction",
+                "traffic forecasting",
+                "time series",
+            ],
+            "display_label": [
+                "traffic flow",
+                "traffic flow prediction",
+                "traffic forecasting",
+                "time series",
+            ],
+            "representative_score": [10.0, 8.0, 7.2, 6.8],
+            "quality_score": [10.0, 8.0, 7.2, 6.8],
+            "score": [10.0, 8.0, 7.2, 6.8],
+            "quality_flags": ["phrase"] * 4,
+            "keyword_scope": ["cluster_specific"] * 4,
+            "keyword_cluster_count": [1] * 4,
+            "keyword_cluster_ratio": [1.0] * 4,
+            "abbreviation_status": ["not_abbreviation"] * 4,
+            "abbreviation_target": [""] * 4,
+            "abbreviation_confidence": [0.0] * 4,
+            "frequency": [30, 24, 21, 20],
+            "doc_coverage": [15, 12, 10, 10],
+        }
+    )
+
+    data = prepare_cluster_data(df)
+    label_terms = [term.strip() for term in data[0]["label"].split(",")]
+
+    assert label_terms[0] == "traffic flow"
+    assert "time series" in label_terms
+    assert "traffic flow prediction" not in label_terms
 
 
 @pytest.fixture

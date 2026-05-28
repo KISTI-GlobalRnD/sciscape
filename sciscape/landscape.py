@@ -522,7 +522,11 @@ def run_landscape(
     n_clusters = keywords_df["cluster_id"].nunique()
     log.info("DONE — %d clusters, %d keywords", n_clusters, len(keywords_df))
     label_col = "display_label" if "display_label" in keywords_df.columns else "term"
-    score_col = "quality_score" if "quality_score" in keywords_df.columns else "score"
+    score_col = (
+        "representative_score"
+        if "representative_score" in keywords_df.columns
+        else "quality_score" if "quality_score" in keywords_df.columns else "score"
+    )
     for cid in sorted(keywords_df["cluster_id"].unique())[:10]:
         grp = keywords_df[keywords_df["cluster_id"] == cid]
         top3 = grp.nlargest(3, score_col)[label_col].astype(str).tolist()

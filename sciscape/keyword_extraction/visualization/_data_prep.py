@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
@@ -33,18 +34,105 @@ def _keyword_score_col(df: pd.DataFrame) -> str:
     return "quality_score" if "quality_score" in df.columns else "score"
 
 
+_LABEL_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+def _label_tokens(label: object) -> set[str]:
+    return set(_LABEL_TOKEN_RE.findall(str(label).lower()))
+
+
+def _label_similarity(left: object, right: object) -> float:
+    left_tokens = _label_tokens(left)
+    right_tokens = _label_tokens(right)
+    if not left_tokens or not right_tokens:
+        return 0.0
+    if left_tokens == right_tokens:
+        return 1.0
+    overlap = len(left_tokens & right_tokens)
+    if overlap == 0:
+        return 0.0
+    jaccard = overlap / len(left_tokens | right_tokens)
+    containment = overlap / min(len(left_tokens), len(right_tokens))
+    return min(1.0, max(jaccard, containment * 0.85))
+
+
+def _is_containment_duplicate(label: str, selected: List[str]) -> bool:
+    label_tokens = _label_tokens(label)
+    if not label_tokens:
+        return False
+    for other in selected:
+        other_tokens = _label_tokens(other)
+        if not other_tokens:
+            continue
+        if label_tokens < other_tokens or other_tokens < label_tokens:
+            return True
+    return False
+
+
+def _select_diverse_labels(
+    label_scores: List[Tuple[str, float]],
+    *,
+    n: int,
+    relevance_weight: float = 0.72,
+) -> List[str]:
+    """Select readable cluster labels with light MMR-style de-duplication."""
+
+    if n <= 0:
+        return []
+
+    deduped: list[tuple[str, float]] = []
+    seen: set[str] = set()
+    for label, score in label_scores:
+        label = str(label).strip()
+        if not label or label in seen:
+            continue
+        seen.add(label)
+        deduped.append((label, float(score)))
+    if len(deduped) <= n:
+        return [label for label, _ in deduped[:n]]
+
+    max_score = max((score for _, score in deduped), default=0.0)
+    if max_score <= 0:
+        max_score = 1.0
+
+    selected: list[str] = []
+    remaining = deduped.copy()
+    while remaining and len(selected) < n:
+        candidate_pool = [
+            (index, label, score)
+            for index, (label, score) in enumerate(remaining)
+            if not _is_containment_duplicate(label, selected)
+        ]
+        if not candidate_pool:
+            candidate_pool = [
+                (index, label, score)
+                for index, (label, score) in enumerate(remaining)
+            ]
+        best_index = 0
+        best_value = float("-inf")
+        for index, label, score in candidate_pool:
+            relevance = score / max_score
+            redundancy = max((_label_similarity(label, other) for other in selected), default=0.0)
+            value = relevance_weight * relevance - (1.0 - relevance_weight) * redundancy
+            if value > best_value:
+                best_index = index
+                best_value = value
+        selected.append(remaining.pop(best_index)[0])
+
+    return selected
+
+
 def _build_cluster_labels(df: pd.DataFrame, n: int = 3) -> Dict[int, str]:
     labels = {}
     label_col = _keyword_label_col(df)
     score_col = _keyword_score_col(df)
     for cid, grp in df.groupby("cluster_id"):
-        top = []
-        for label in grp.nlargest(max(n * 2, n), score_col)[label_col].astype(str).tolist():
-            if label not in top:
-                top.append(label)
-            if len(top) >= n:
-                break
-        labels[int(cid)] = ", ".join(top[:n])
+        candidate_rows = grp.nlargest(max(n * 6, n), score_col)
+        label_scores = [
+            (str(row[label_col]), float(row[score_col]))
+            for _, row in candidate_rows.iterrows()
+        ]
+        labels[int(cid)] = ", ".join(_select_diverse_labels(label_scores, n=n))
     return labels
 
 
