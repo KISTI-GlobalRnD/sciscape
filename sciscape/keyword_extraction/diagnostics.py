@@ -340,7 +340,11 @@ def keyword_diagnostics(
             "artifact_formula",
             "artifact_like",
             "candidate_short_form",
+            "compact_formula_fragment",
+            "dimension_fragment",
             "low_support_expansion",
+            "mixed_formula_fragment",
+            "unresolved_compact_short_form",
             "unlinked_short_form",
         }
         review_flag_ratio = _ratio_from_mask([

@@ -40,6 +40,19 @@ LANDSCAPE_CANDIDATES = (
     "landscape",
 )
 
+REVIEW_FLAGS = {
+    "ambiguous_expansion",
+    "artifact_formula",
+    "artifact_like",
+    "candidate_short_form",
+    "compact_formula_fragment",
+    "dimension_fragment",
+    "low_support_expansion",
+    "mixed_formula_fragment",
+    "unresolved_compact_short_form",
+    "unlinked_short_form",
+}
+
 
 @dataclass(frozen=True)
 class RunInput:
@@ -212,6 +225,39 @@ def _top_labels(df: pd.DataFrame, cluster_id: int, n: int) -> list[str]:
     return [str(value) for value in group["report_label"].tolist()]
 
 
+def _flag_set(value: object) -> set[str]:
+    if value is None:
+        return set()
+    return {flag for flag in str(value).split("|") if flag}
+
+
+def _top_review_stats(df: pd.DataFrame, *, top_n: int = 3) -> dict[str, Any]:
+    if "quality_flags" not in df.columns:
+        return {"top_review_rows": 0, "top_review_ratio": 0.0, "top_review_terms": []}
+    top_df = df[df["rank"] <= int(top_n)].copy()
+    if top_df.empty:
+        return {"top_review_rows": 0, "top_review_ratio": 0.0, "top_review_terms": []}
+    review_mask = top_df["quality_flags"].map(lambda value: bool(_flag_set(value) & REVIEW_FLAGS))
+    review_rows = top_df[review_mask]
+    terms = []
+    for row in review_rows.itertuples(index=False):
+        terms.append(
+            {
+                "cluster_id": int(row.cluster_id),
+                "rank": int(row.rank),
+                "term": str(row.term),
+                "label": str(row.report_label),
+                "quality_flags": str(row.quality_flags),
+                "representative_role": str(getattr(row, "representative_role", "")),
+            }
+        )
+    return {
+        "top_review_rows": int(review_mask.sum()),
+        "top_review_ratio": float(review_mask.mean()),
+        "top_review_terms": terms,
+    }
+
+
 def _family_stats(df: pd.DataFrame) -> dict[str, Any]:
     if "representative_family_multiplier" not in df.columns:
         return {
@@ -331,6 +377,8 @@ def _compare_keywords(off: pd.DataFrame, on: pd.DataFrame) -> tuple[dict[str, An
         "avg_top3_jaccard": float(np.mean(top3_jaccards)) if top3_jaccards else 1.0,
         "family_stats": _family_stats(on_ranked),
         "rank_delta": _rank_delta_summary(off_ranked, on_ranked),
+        "top_review_stats_off": _top_review_stats(off_ranked),
+        "top_review_stats_on": _top_review_stats(on_ranked),
         "top_family_boosted_terms": _top_family_terms(on_ranked),
     }
     return summary, changes
@@ -460,8 +508,8 @@ def _write_report(output_root: Path, results: list[dict[str, Any]]) -> Path:
         "Family-aware representative scoring was toggled on/off while reusing the",
         "same cached abstracts and memberships from the OpenAlex demo landscapes.",
         "",
-        "| Dataset | Clusters | Top-1 changed | Avg top-3 Jaccard | Boosted terms | Boosted ranked up | Diagnostic score |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Dataset | Clusters | Top-1 changed | Avg top-3 Jaccard | Top-review rows | Boosted terms | Boosted ranked up | Diagnostic score |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for result in results:
         rank_delta = result["rank_delta"]
@@ -471,6 +519,8 @@ def _write_report(output_root: Path, results: list[dict[str, Any]]) -> Path:
             f"{result['n_clusters']} | "
             f"{result['top1_changed_clusters']}/{result['n_clusters']} | "
             f"{result['avg_top3_jaccard']:.3f} | "
+            f"{result['top_review_stats_off']['top_review_rows']} -> "
+            f"{result['top_review_stats_on']['top_review_rows']} | "
             f"{result['family_stats']['boosted_terms']} | "
             f"{rank_delta.get('boosted_terms_ranked_up', 0)}/"
             f"{rank_delta.get('boosted_shared_terms', 0)} | "
@@ -487,6 +537,9 @@ def _write_report(output_root: Path, results: list[dict[str, Any]]) -> Path:
                 f"- Output: `{result['output_dir']}`",
                 f"- Top-1 changed clusters: {result['top1_changed_clusters']} / {result['n_clusters']}",
                 f"- Avg top-3 Jaccard: {result['avg_top3_jaccard']:.3f}",
+                f"- Top-3 review rows: "
+                f"{result['top_review_stats_off']['top_review_rows']} -> "
+                f"{result['top_review_stats_on']['top_review_rows']}",
                 f"- Family boosted terms: {result['family_stats']['boosted_terms']} "
                 f"({_format_ratio(result['family_stats']['boosted_ratio'])})",
                 f"- Max family multiplier: {_format_ratio(result['family_stats']['multiplier_max'])}",
@@ -509,6 +562,16 @@ def _write_report(output_root: Path, results: list[dict[str, Any]]) -> Path:
                     f"cluster {row['cluster_id']} rank {row['rank']}: "
                     f"{row['report_label']} "
                     f"(x{float(row['representative_family_multiplier']):.3f})"
+                )
+            lines.append("")
+        review_terms = result.get("top_review_stats_on", {}).get("top_review_terms", [])[:5]
+        if review_terms:
+            lines.extend(["Top review-risk labels after scoring:", ""])
+            for row in review_terms:
+                lines.append(
+                    "- "
+                    f"cluster {row['cluster_id']} rank {row['rank']}: "
+                    f"{row['label']} ({row['quality_flags']})"
                 )
             lines.append("")
 

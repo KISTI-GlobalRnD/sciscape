@@ -362,6 +362,60 @@ def test_representative_score_demotes_unresolved_short_forms_for_labels():
     assert phrase["representative_score"] > eeg["representative_score"]
 
 
+def test_representative_score_demotes_unresolved_formula_fragments_for_labels():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0, 0],
+            "term": [
+                "scap",
+                "cs agbibr",
+                "black phase fapbi",
+                "scaps 1d",
+                "perovskite absorber",
+            ],
+            "score": [11.0, 10.0, 9.0, 8.0, 5.0],
+            "frequency": [55, 50, 45, 35, 25],
+            "doc_coverage": [22, 20, 18, 16, 12],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    rows = {row.term: row for row in result.itertuples(index=False)}
+    absorber = rows["perovskite absorber"]
+
+    assert "unresolved_compact_short_form" in rows["scap"].quality_flags
+    assert "mixed_formula_fragment" in rows["cs agbibr"].quality_flags
+    assert "mixed_formula_fragment" in rows["black phase fapbi"].quality_flags
+    assert "dimension_fragment" in rows["scaps 1d"].quality_flags
+    assert rows["scap"].representative_role == "review_artifact"
+    assert rows["cs agbibr"].representative_role == "review_artifact"
+    assert rows["black phase fapbi"].representative_role == "review_artifact"
+    assert rows["scaps 1d"].representative_role == "review_artifact"
+    assert absorber.representative_rank < rows["scap"].representative_rank
+    assert absorber.representative_rank < rows["cs agbibr"].representative_rank
+    assert absorber.representative_rank < rows["black phase fapbi"].representative_rank
+    assert absorber.representative_rank < rows["scaps 1d"].representative_rank
+
+
+def test_representative_score_keeps_supported_material_formulas_labelable():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["zno", "oxide film"],
+            "score": [10.0, 3.0],
+            "frequency": [50, 15],
+            "doc_coverage": [20, 8],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    zno = result[result["term"] == "zno"].iloc[0]
+
+    assert "material_formula" in zno["quality_flags"]
+    assert "compact_formula_fragment" not in zno["quality_flags"]
+    assert zno["representative_role"] == "material_formula"
+
+
 def test_representative_score_demotes_shared_unigram_labels():
     df = pd.DataFrame(
         {

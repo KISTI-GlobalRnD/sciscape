@@ -117,6 +117,30 @@ _SPLIT_RE = re.compile(r"[^a-z0-9]+")
 _ALNUM_RE = re.compile(r"(?=.*[a-z])(?=.*\d)[a-z0-9]+")
 _SHORT_ALPHA_RE = re.compile(r"^[a-z]{2,8}$")
 _DIMENSION_TOKENS: frozenset[str] = frozenset({"0d", "1d", "2d", "3d", "4d"})
+_FORMULA_FRAGMENT_SYMBOLS: frozenset[str] = frozenset(
+    {
+        "ag",
+        "as",
+        "bi",
+        "br",
+        "cd",
+        "co",
+        "cs",
+        "cu",
+        "fe",
+        "ga",
+        "in",
+        "mn",
+        "ni",
+        "pb",
+        "sb",
+        "se",
+        "sn",
+        "te",
+        "ti",
+        "zn",
+    }
+)
 _ELEMENT_SYMBOLS: frozenset[str] = frozenset(
     {
         "h", "he", "li", "be", "b", "c", "n", "o", "f", "ne",
@@ -257,6 +281,96 @@ def _is_formula_like(term: str) -> bool:
     short_tokens = sum(1 for tok in tokens if len(tok) <= 2)
     long_dense_tokens = sum(1 for tok in tokens if len(tok) >= 5 and re.search(r"[bcfhiknopsuvwyz]{4,}", tok))
     return short_tokens > 0 and long_dense_tokens > 0
+
+
+def _is_compact_formula_fragment_token(token: str) -> bool:
+    compact = _normalise_term(token).replace(" ", "")
+    if (
+        len(compact) < 3
+        or len(compact) > 8
+        or compact in COMMON_SHORT_WORDS
+        or compact in LOW_INFORMATION_TERMS
+        or compact in METADATA_TERMS
+        or compact in _DIMENSION_TOKENS
+        or not compact.isalpha()
+        or _is_material_formula_like(compact)
+    ):
+        return False
+    formula_symbol_count = sum(1 for symbol in _FORMULA_FRAGMENT_SYMBOLS if symbol in compact)
+    if formula_symbol_count < 2:
+        return False
+
+    parsed, n_elements, has_digit, has_multiletter = _parse_element_formula(compact)
+    if parsed and n_elements >= 3 and has_multiletter and not has_digit:
+        return True
+
+    # Domain formulas sometimes carry a short organic-cation prefix that the
+    # pure element parser cannot segment, e.g. "fapbi" -> "fa" + "pbi".
+    # Treat this only as representative-label risk; the keyword row remains.
+    for start in range(1, min(3, len(compact) - 2) + 1):
+        suffix = compact[start:]
+        parsed, n_elements, has_digit, has_multiletter = _parse_element_formula(suffix)
+        if parsed and not has_digit and (n_elements >= 3 or (n_elements >= 2 and has_multiletter)):
+            return True
+    return False
+
+
+def _is_unresolved_compact_short_form_fragment(token: str) -> bool:
+    compact = _normalise_term(token).replace(" ", "")
+    if (
+        len(compact) < 3
+        or len(compact) > 5
+        or compact in COMMON_SHORT_WORDS
+        or compact in LOW_INFORMATION_TERMS
+        or compact in METADATA_TERMS
+        or compact in _DIMENSION_TOKENS
+        or not compact.isalpha()
+    ):
+        return False
+    base = _short_form_base(compact)
+    vowel_count = sum(1 for char in base if char in "aeiou")
+    if not any(char in base for char in "aeiou"):
+        return True
+    if len(base) <= 4 and vowel_count <= 1 and base[-1] in {"p", "q", "x"}:
+        return True
+    return False
+
+
+def _representative_artifact_flags(term: str, *, abbreviation_status: str) -> list[str]:
+    if abbreviation_status in {"cluster_expanded", "corpus_expanded", "duplicate_expansion"}:
+        return []
+    tokens = _tokens(term)
+    if not tokens:
+        return []
+
+    flags: list[str] = []
+    formula_tokens = [tok for tok in tokens if _is_compact_formula_fragment_token(tok)]
+    short_form_tokens = [
+        tok
+        for tok in tokens
+        if _is_unresolved_compact_short_form_fragment(tok)
+    ]
+    has_dimension = any(tok in _DIMENSION_TOKENS for tok in tokens)
+    compact_dimension_tokens = [
+        tok
+        for tok in tokens
+        if tok not in _DIMENSION_TOKENS
+        and 3 <= len(tok) <= 5
+        and tok.endswith("s")
+        and tok not in COMMON_SHORT_WORDS
+        and tok not in LOW_INFORMATION_TERMS
+        and tok not in METADATA_TERMS
+    ]
+    if has_dimension and (formula_tokens or short_form_tokens or compact_dimension_tokens):
+        flags.append("dimension_fragment")
+    if formula_tokens:
+        if len(tokens) == 1:
+            flags.append("compact_formula_fragment")
+        else:
+            flags.append("mixed_formula_fragment")
+    if short_form_tokens:
+        flags.append("unresolved_compact_short_form")
+    return flags
 
 
 def _is_acronym_like(term: str, *, max_length: int, has_expansion: bool = False) -> bool:
@@ -656,6 +770,26 @@ def _representative_signal(
         rep_flags.append("material_formula")
         if role == "candidate":
             role = "material_formula"
+
+    representative_artifacts = flag_set & {
+        "compact_formula_fragment",
+        "dimension_fragment",
+        "mixed_formula_fragment",
+        "unresolved_compact_short_form",
+    }
+    if representative_artifacts:
+        if "dimension_fragment" in representative_artifacts:
+            factor = 0.18
+        elif "mixed_formula_fragment" in representative_artifacts:
+            factor = 0.22
+        elif "unresolved_compact_short_form" in representative_artifacts:
+            factor = 0.28
+        else:
+            factor = 0.30
+        multiplier *= factor
+        rep_flags.extend(sorted(representative_artifacts))
+        rep_flags.append("representative_artifact")
+        role = "review_artifact"
 
     if role == "candidate" and n_tokens >= 2:
         role = "representative_phrase"
@@ -1200,6 +1334,7 @@ def annotate_keyword_quality(
             "unlinked_short_form",
         }:
             flags.append(abbreviation_status)
+        flags.extend(_representative_artifact_flags(term, abbreviation_status=abbreviation_status))
 
         if n_tokens == 1:
             for longer in longer_terms_by_cluster.get(cluster_id, []):
