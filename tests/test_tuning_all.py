@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import clustering.tuning as tuning
+import sciscape.clustering.tuning as tuning
 
 
 def test_tuning_all_exports_expected_symbols() -> None:

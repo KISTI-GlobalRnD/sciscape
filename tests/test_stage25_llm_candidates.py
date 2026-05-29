@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from keyword_extraction.keyword_extraction import KeywordExtractionConfig, KeywordExtractionPipeline
+from sciscape.keyword_extraction import KeywordExtractionConfig, KeywordExtractionPipeline
 
 
 def _make_pipeline(**overrides) -> KeywordExtractionPipeline:
@@ -105,4 +105,3 @@ def test_load_only_rebuild_uses_cached_candidates_even_with_custom_column(tmp_pa
     assert item["action"] == "keep"
     assert item["canonical"] == "hiv"
     assert "specifier_mismatch" in str(item.get("reason", ""))
-

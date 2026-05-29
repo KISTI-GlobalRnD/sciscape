@@ -57,15 +57,20 @@ These directories are useful locally, but should not be treated as source:
 Most of these are ignored by `.gitignore`. Promote an artifact into the repo
 only when it is a small curated demo or documented release artifact.
 
-## Legacy And Research Areas
+## Research And Auxiliary Areas
 
 | Path | Role | Rule |
 |---|---|---|
-| `clustering/` | Legacy top-level clustering module snapshot, not installed by current packaging | Prefer `sciscape/clustering/` |
-| `keyword_extraction/` | Legacy top-level keyword module snapshot, not installed by current packaging | Prefer `sciscape/keyword_extraction/` |
 | `research/` | Development and manuscript research artifacts | Do not mix with package cleanup unless explicitly scoped |
 | `experiments/` | Experiment scripts and exploratory evaluations | Keep separate from package APIs |
 | `cpm-dendro/`, `leiden_rust/` | Historical or auxiliary backend workspaces | Check before changing |
+
+## Removed Top-Level Legacy Packages
+
+The former top-level `clustering/`, `keyword_extraction/`, and root
+`__init__.py` entries were removed from the source tree. Use
+`sciscape.clustering`, `sciscape.keyword_extraction`, or the `sos.*`
+compatibility shim where compatibility is required.
 
 ## Cleanup Rule
 
@@ -76,3 +81,5 @@ When adding a new file, decide which bucket it belongs to before writing it:
 3. Static viewer demos go under `viewer/`.
 4. Generated run outputs stay under ignored output directories.
 5. Research-only material stays under `research/` or `experiments/`.
+6. Top-level package-like directories should not be added outside `sciscape/`
+   or `sos/`.
