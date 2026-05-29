@@ -40,7 +40,7 @@ class OpenAlexPipelineConfig:
     min_shared_refs: int = 1
 
     # ── Output ──
-    output_dir: Path = Path("openalex_output")
+    output_dir: Path = Path("workspace/openalex_output")
 
     # ── Landscape (forwarded) ──
     run_landscape: bool = True

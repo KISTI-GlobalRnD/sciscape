@@ -109,28 +109,28 @@ def main():
 
     # 1. Field_12: BC+CC+DC boosted
     all_results.extend(run_sweep(
-        "data/linktype_edges_gcc/field_12",
+        "workspace/data/linktype_edges_gcc/field_12",
         ["bc_cosine", "cc_cosine", "dc_fractional"],
         "boosted", "f12_boosted",
     ))
 
     # 2. Field_12: BC+CC+DC sum (for comparison)
     all_results.extend(run_sweep(
-        "data/linktype_edges_gcc/field_12",
+        "workspace/data/linktype_edges_gcc/field_12",
         ["bc_cosine", "cc_cosine", "dc_fractional"],
         "sum", "f12_sum",
     ))
 
     # 3. Field_15: BC+CC+DC+Emb boosted (4 layers)
     all_results.extend(run_sweep(
-        "data/linktype_edges_gcc/field_15",
+        "workspace/data/linktype_edges_gcc/field_15",
         ["bc_cosine", "cc_cosine", "dc_fractional", "emb_bg_knn30"],
         "boosted", "f15_4layer_boosted",
     ))
 
     # 4. Field_15: BC+CC+DC+Emb sum (4 layers, comparison)
     all_results.extend(run_sweep(
-        "data/linktype_edges_gcc/field_15",
+        "workspace/data/linktype_edges_gcc/field_15",
         ["bc_cosine", "cc_cosine", "dc_fractional", "emb_bg_knn30"],
         "sum", "f15_4layer_sum",
     ))

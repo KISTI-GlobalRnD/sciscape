@@ -62,7 +62,7 @@ pip install ".[dev]"          # + 개발/테스트
 ### `sciscape landscape` — 전체 파이프라인
 
 ```bash
-sciscape landscape abstracts.parquet edges.parquet -o output/ [options]
+sciscape landscape abstracts.parquet edges.parquet -o workspace/output/landscape [options]
 ```
 
 | 옵션 | 기본값 | 설명 |
@@ -147,7 +147,7 @@ sciscape gui
 `sciscape landscape` 실행 후 output 디렉토리 구조:
 
 ```
-output/
+workspace/output/landscape/
 ├── membership.parquet       # uid + cluster_nano + cluster_micro
 ├── nano/, micro/, ...       # 계층별 membership.parquet, meta.json
 │   └── postprocess/         # 내부 opt-in 활성화 시 summary/move diagnostics
@@ -215,7 +215,7 @@ from sciscape.clustering.hierarchical import build_hierarchy
 
 result = build_hierarchy(
     layer_paths={...},
-    cache_dir="output/field_15",
+    cache_dir="workspace/output/field_15",
     n_levels=4,
     hierarchy_postprocess=HierarchyPostprocessConfig(
         enabled=True,
@@ -306,7 +306,7 @@ from sciscape.landscape import LandscapeConfig, run_landscape
 result = run_landscape(
     "edges.parquet",
     "abstracts.parquet",
-    "output/",
+    "workspace/output/landscape",
     config=LandscapeConfig(
         min_docs_per_cluster=500,
         gamma_block="auto",

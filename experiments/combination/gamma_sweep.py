@@ -31,7 +31,7 @@ from sciscape.clustering.leiden_rust import run_leiden_rust, postprocess_small_c
 from sciscape.clustering.integer_remap import integer_remap, join_back_uids
 
 
-EDGE_DIR = Path("data/linktype_edges_gcc/field_15")
+EDGE_DIR = Path("workspace/data/linktype_edges_gcc/field_15")
 LAYERS = ["bc_cosine", "cc_cosine", "dc_fractional"]
 OUT = Path("experiments/combination/results")
 OUT.mkdir(parents=True, exist_ok=True)

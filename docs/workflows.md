@@ -29,7 +29,7 @@ sciscape query "machine learning" \
   --years 2020-2024 \
   --email you@example.org \
   --max-works 5000 \
-  -o openalex_output
+  -o workspace/openalex_output/machine_learning
 ```
 
 ### Python API
@@ -44,7 +44,7 @@ cfg = OpenAlexPipelineConfig(
     max_works=5000,
     email="you@example.org",
     edge_types=["dc", "bc"],
-    output_dir=Path("openalex_output"),
+    output_dir=Path("workspace/openalex_output/machine_learning"),
     run_landscape=True,
     progress=print,
 )
@@ -120,19 +120,19 @@ This is the normal end-to-end workflow for a prepared field dataset.
 
 ```bash
 sciscape landscape abstracts.parquet \
-  --layers bc=data/bc.parquet,cc=data/cc.parquet,dc=data/dc.parquet,emb=data/emb.parquet \
+  --layers bc=workspace/data/bc.parquet,cc=workspace/data/cc.parquet,dc=workspace/data/dc.parquet,emb=workspace/data/emb.parquet \
   --combine-strategy consensus \
   --combine-top-k auto \
   --auto-gamma \
-  -o landscape_output
+  -o workspace/output/landscape
 ```
 
 ### CLI: Single Edge Table
 
 ```bash
-sciscape landscape abstracts.parquet data/edges.parquet \
+sciscape landscape abstracts.parquet workspace/data/edges.parquet \
   --gamma-range 1e-6,1e-3 \
-  -o landscape_output
+  -o workspace/output/landscape
 ```
 
 ### Python API
@@ -143,10 +143,10 @@ from sciscape.landscape import LandscapeConfig, run_landscape
 
 cfg = LandscapeConfig(
     layer_paths={
-        "bc": Path("data/bc.parquet"),
-        "cc": Path("data/cc.parquet"),
-        "dc": Path("data/dc.parquet"),
-        "emb": Path("data/emb.parquet"),
+        "bc": Path("workspace/data/bc.parquet"),
+        "cc": Path("workspace/data/cc.parquet"),
+        "dc": Path("workspace/data/dc.parquet"),
+        "emb": Path("workspace/data/emb.parquet"),
     },
     combine_strategy="consensus",
     combine_top_k="auto",
@@ -155,9 +155,9 @@ cfg = LandscapeConfig(
 )
 
 result = run_landscape(
-    Path("landscape_output/combined_edges.parquet"),
+    Path("workspace/output/landscape/combined_edges.parquet"),
     Path("abstracts.parquet"),
-    Path("landscape_output"),
+    Path("workspace/output/landscape"),
     config=cfg,
 )
 ```

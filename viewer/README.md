@@ -15,14 +15,14 @@ viewer/
 The current bundled `data.json` is copied from:
 
 ```text
-examples_output/keyword_representative_mmr_20260528_102627/graph_neural_networks_2020_2024/landscape/report/data.json
+workspace/examples_output/keyword_representative_mmr_20260528_102627/graph_neural_networks_2020_2024/landscape/report/data.json
 ```
 
 To refresh the bundle:
 
 ```bash
 uv run --extra dev sciscape viewer -o viewer/index.html --title "SciScape Demo Viewer"
-cp examples_output/keyword_representative_mmr_20260528_102627/graph_neural_networks_2020_2024/landscape/report/data.json viewer/data.json
+cp workspace/examples_output/keyword_representative_mmr_20260528_102627/graph_neural_networks_2020_2024/landscape/report/data.json viewer/data.json
 ```
 
 To smoke test locally:

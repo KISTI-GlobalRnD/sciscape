@@ -55,7 +55,7 @@ def main():
     mem_sum = json.load(open(OUT / f"mem_sum_g{g_str}.json"))
     mem_boost = json.load(open(OUT / f"mem_boosted_g{g_str}.json"))
 
-    abs_df = pl.read_parquet("data/openalex_metadata/field_15/works_text.parquet").rename({"work_id": "uid"})
+    abs_df = pl.read_parquet("workspace/data/openalex_metadata/field_15/works_text.parquet").rename({"work_id": "uid"})
     uid_to_abs = {r["uid"]: r for r in abs_df.iter_rows(named=True)}
 
     from openai import OpenAI

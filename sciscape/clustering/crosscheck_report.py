@@ -464,7 +464,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "May be passed multiple times. Overrides --preset."
         ),
     )
-    parser.add_argument("--output-dir", type=Path, default=Path("output/leiden_crosscheck_report"))
+    parser.add_argument("--output-dir", type=Path, default=Path("workspace/output/leiden_crosscheck_report"))
     parser.add_argument("--seeds", type=parse_seeds, default=[0, 1, 2])
     parser.add_argument("--jar-path", type=Path, default=None)
     parser.add_argument("--java-cmd", default="java")

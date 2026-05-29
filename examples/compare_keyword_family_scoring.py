@@ -587,14 +587,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--input-root",
         type=Path,
-        default=Path("examples_output/keyword_representative_mmr_20260528_102627"),
+        default=Path("workspace/examples_output/keyword_representative_mmr_20260528_102627"),
         help="Root containing demo preset directories.",
     )
     parser.add_argument(
         "--output-root",
         type=Path,
         default=None,
-        help="Directory for comparison artifacts. Defaults to examples_output/family_scoring_eval_<timestamp>.",
+        help="Directory for comparison artifacts. Defaults to workspace/examples_output/family_scoring_eval_<timestamp>.",
     )
     parser.add_argument(
         "--preset",
@@ -647,7 +647,7 @@ def main() -> None:
 
     slugs = list(PRESET_SLUGS) if args.preset == "both" else [args.preset]
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_root = args.output_root or Path("examples_output") / f"family_scoring_eval_{timestamp}"
+    output_root = args.output_root or Path("workspace/examples_output") / f"family_scoring_eval_{timestamp}"
     output_root.mkdir(parents=True, exist_ok=True)
 
     inputs = _find_inputs(args.input_root, slugs, fallback_top_n=args.top_n_keywords or 30)

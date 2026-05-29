@@ -7,7 +7,7 @@ across two extreme fields (citation-rich vs citation-poor).
 Usage:
     python experiments/combination/run_comparison.py \
         --fields 15 12 \
-        --edge-dir data/linktype_edges_gcc \
+        --edge-dir workspace/data/linktype_edges_gcc \
         --output experiments/combination/results
 
 Steps:
@@ -240,7 +240,7 @@ def run_one_config(
 def main():
     parser = argparse.ArgumentParser(description="Multi-layer combination comparison")
     parser.add_argument("--fields", nargs="+", default=["15", "12"])
-    parser.add_argument("--edge-dir", type=Path, default=Path("data/linktype_edges_gcc"))
+    parser.add_argument("--edge-dir", type=Path, default=Path("workspace/data/linktype_edges_gcc"))
     parser.add_argument("--output", type=Path, default=Path("experiments/combination/results"))
     parser.add_argument("--gamma", type=float, default=1e-6)
     parser.add_argument("--min-size", type=int, default=100)

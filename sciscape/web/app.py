@@ -842,7 +842,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
         job["progress"].append(msg)
 
     try:
-        output_dir = Path("sciscape_web_output") / job_id
+        output_dir = Path("workspace/web_output") / job_id
         filters = {}
         if req.years:
             filters["publication_year"] = req.years

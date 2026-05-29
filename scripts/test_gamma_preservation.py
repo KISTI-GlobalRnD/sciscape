@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger("gamma_test")
 
 # ── 데이터 로드 ──────────────────────────────────────────────
-DATA = "/home/kimyoungjin06/Desktop/Workspace/1.4.4.Sciscape/data/linktype_edges/field_34"
+DATA = "/home/kimyoungjin06/Desktop/Workspace/1.4.4.Sciscape/workspace/data/linktype_edges/field_34"
 df = pl.read_parquet(f"{DATA}/bc_raw.parquet")
 
 src_arr = df["src"].to_list()

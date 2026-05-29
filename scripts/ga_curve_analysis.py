@@ -33,7 +33,7 @@ SHORT = {"bc_assoc_strength": "BC", "cc_assoc_strength": "CC",
          "dc_fractional": "DC", "extdc_waltman": "ExtDC"}
 
 
-def load_ga_data(field_id: int, data_dir: str = "data/eval_results") -> dict:
+def load_ga_data(field_id: int, data_dir: str = "workspace/data/eval_results") -> dict:
     """Load (n_clusters, bm25) pairs for each key link type."""
     path = Path(data_dir) / f"field_{field_id}" / "text_quality_results.parquet"
     df = pl.read_parquet(path)

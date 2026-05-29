@@ -17,7 +17,7 @@ from sciscape.clustering.leiden_rust import run_leiden_rust, postprocess_small_c
 from sciscape.clustering.integer_remap import integer_remap
 
 OUT = Path("experiments/combination/results")
-edge_dir = Path("data/linktype_edges_gcc/field_15")
+edge_dir = Path("workspace/data/linktype_edges_gcc/field_15")
 GAMMAS = [1e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4]
 
 def log(m): print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)

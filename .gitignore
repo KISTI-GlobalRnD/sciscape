@@ -28,11 +28,18 @@ rust/dist/
 # Lock files
 uv.lock
 
-# Local data / output / experiments
-data/
-output/
-examples_output/
-reports/
+# Local workspace
+workspace/*
+!workspace/README.md
+
+# Legacy local data / output paths kept ignored during migration.
+/data/
+/output/
+/examples_output/
+/reports/
+/openalex_output/
+/sciscape_report/
+/sciscape_web_output/
 pilot_*.html
 pilot_*.parquet
 *.parquet
@@ -42,9 +49,6 @@ pilot_*.parquet
 # Existing curated tracked files under research/**/results remain tracked.
 # Add new result artifacts only after DATA_RETENTION_PLAN review, usually with git add -f.
 research/**/results/**
-
-# Web output (temporary job results)
-sciscape_web_output/
 
 # Generated API docs (rebuild with: make docs)
 docs/api/

@@ -17,6 +17,7 @@ artifacts belong.
 | `docs/` | User, research, and development documentation | Keep navigable |
 | `examples/` | Reproducible example scripts/notebooks | Keep small and source-like |
 | `viewer/` | Curated GitHub Pages/static viewer demo | Keep directly openable |
+| `workspace/` | Ignored local inputs, caches, runs, and web jobs | Do not commit generated contents |
 
 ## Current Data Entry Points
 
@@ -24,7 +25,7 @@ Use these as the user-facing mental model.
 
 | User wants to... | Input | Command or location | Output to inspect/share |
 |---|---|---|---|
-| Run from a search query | OpenAlex query string | `sciscape web` or `sciscape query` | `landscape/report/`, `data.json` |
+| Run from a search query | OpenAlex query string | `sciscape web` or `sciscape query` | `workspace/openalex_output/`, `workspace/web_output/`, `data.json` |
 | Visualize an existing SciScape result | `data.json` | `viewer/index.html` beside `viewer/data.json` | Browser viewer |
 | Visualize a keyword table | `keywords.parquet`, `.csv`, or `.tsv` | `sciscape visualize keywords.parquet -o report/` | `report/data.json`, `report/index.html` |
 | Run the local pipeline | `abstracts.parquet` plus `edges.parquet` or layer edges | `sciscape landscape ...` | membership, keywords, report bundle |
@@ -40,22 +41,25 @@ viewer/
 
 `index.html` auto-loads same-directory `data.json` over HTTP(S).
 
-## Generated Or Local-Only Outputs
+## Local Workspace Outputs
 
-These directories are useful locally, but should not be treated as source:
+These paths are useful locally, but should not be treated as source:
 
 | Path | Meaning |
 |---|---|
-| `examples_output/` | Example run outputs |
-| `output/` | Ad hoc local pipeline outputs |
-| `sciscape_web_output/` | FastAPI web job outputs |
-| `data/` | Local input/cache data |
-| `reports/` | Local generated reports |
+| `workspace/data/` | Local input/cache data |
+| `workspace/output/` | Ad hoc local pipeline outputs |
+| `workspace/examples_output/` | Example run outputs |
+| `workspace/reports/` | Local generated reports |
+| `workspace/web_output/` | FastAPI web job outputs |
 | `build/`, `dist/`, `*.egg-info/` | Packaging artifacts |
 | `docs/api/` | Generated API docs |
 
 Most of these are ignored by `.gitignore`. Promote an artifact into the repo
 only when it is a small curated demo or documented release artifact.
+The former top-level `data/`, `output/`, `examples_output/`, `reports/`, and
+`sciscape_web_output/` paths are legacy local paths and remain ignored during
+migration.
 
 ## Research And Auxiliary Areas
 
@@ -79,7 +83,7 @@ When adding a new file, decide which bucket it belongs to before writing it:
 1. Package code goes under `sciscape/`.
 2. Public examples go under `examples/`.
 3. Static viewer demos go under `viewer/`.
-4. Generated run outputs stay under ignored output directories.
+4. Generated run outputs stay under `workspace/`.
 5. Research-only material stays under `research/` or `experiments/`.
 6. Top-level package-like directories should not be added outside `sciscape/`
    or `sos/`.

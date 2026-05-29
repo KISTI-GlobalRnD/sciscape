@@ -777,7 +777,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "May be passed multiple times. Overrides --preset."
         ),
     )
-    parser.add_argument("--output-dir", type=Path, default=Path("output/leiden_profile_report"))
+    parser.add_argument("--output-dir", type=Path, default=Path("workspace/output/leiden_profile_report"))
     parser.add_argument("--overwrite-remap", action="store_true")
     parser.add_argument("--trace", choices=["0", "summary", "verbose"], default=None)
     parser.add_argument("--trace-rss", action="store_true")

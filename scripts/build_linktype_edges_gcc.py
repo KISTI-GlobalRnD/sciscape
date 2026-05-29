@@ -4,7 +4,7 @@
 For each field, loads citation edges + GCC node set, then uses
 sciscape.linkage.builders to compute DC/BC/CC with all normalizations.
 
-Outputs go to data/linktype_edges_gcc/field_{id}/ with one parquet per
+Outputs go to workspace/data/linktype_edges_gcc/field_{id}/ with one parquet per
 link-type variant (e.g., bc_assoc_strength.parquet).
 
 Usage:
@@ -34,7 +34,7 @@ log = logging.getLogger("build_linktype_gcc")
 HDD = Path.home() / "Desktop/HDD/local_map_analysis_data/processed/outputs/data"
 GCC_DIR = HDD / "oa26_gcc_only"
 CIT_DIR = HDD / "oa26_citation_edges"
-OUT_ROOT = Path("data/linktype_edges_gcc")
+OUT_ROOT = Path("workspace/data/linktype_edges_gcc")
 
 
 def load_gcc_node_ids(field_id: int) -> set[str]:

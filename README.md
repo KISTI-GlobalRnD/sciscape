@@ -49,8 +49,9 @@ diagnostic-only names for basin/adaptive-refinement probes.
 
 Use `sciscape/` for package implementation. Use `viewer/` for the curated
 static demo bundle (`index.html` plus `data.json`). Local run products such as
-`examples_output/`, `output/`, and `sciscape_web_output/` are generated
-artifacts, not source. See `docs/project_structure.md` for the full map.
+`workspace/data/`, `workspace/output/`, `workspace/examples_output/`, and
+`workspace/web_output/` are generated artifacts, not source. See
+`docs/project_structure.md` for the full map.
 
 ## Install
 
@@ -79,17 +80,17 @@ For a pre-push or local release gate, run:
 ### 1. OpenAlex Query (all-in-one)
 
 ```bash
-sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o results/
+sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o workspace/openalex_output/ml
 ```
 
 ### 2. Landscape Pipeline
 
 ```bash
 sciscape landscape abstracts.parquet \
-    --layers bc=data/bc.parquet,cc=data/cc.parquet,dc=data/dc.parquet \
+    --layers bc=workspace/data/bc.parquet,cc=workspace/data/cc.parquet,dc=workspace/data/dc.parquet \
     --combine-strategy consensus \
     --auto-gamma \
-    -o output/
+    -o workspace/output/
 ```
 
 This produces hierarchy membership, keyword tables, network/report artifacts,
@@ -115,12 +116,12 @@ from sciscape.clustering.hierarchical import build_hierarchy
 
 result = build_hierarchy(
     layer_paths={
-        "bc": "data/bc_cosine.parquet",
-        "cc": "data/cc_cosine.parquet",
-        "dc": "data/dc_fractional.parquet",
-        "emb": "data/emb_bg_knn30.parquet",
+        "bc": "workspace/data/bc_cosine.parquet",
+        "cc": "workspace/data/cc_cosine.parquet",
+        "dc": "workspace/data/dc_fractional.parquet",
+        "emb": "workspace/data/emb_bg_knn30.parquet",
     },
-    cache_dir="output/field_15",
+    cache_dir="workspace/output/field_15",
     n_levels=4,
     progress=print,
 )
@@ -132,7 +133,7 @@ from sciscape.clustering.hierarchy_oversize_postprocess import HierarchyPostproc
 
 result = build_hierarchy(
     layer_paths={...},
-    cache_dir="output/field_15",
+    cache_dir="workspace/output/field_15",
     n_levels=4,
     hierarchy_postprocess=HierarchyPostprocessConfig(
         enabled=True,

@@ -99,7 +99,7 @@ def main():
     mem_boost = json.load(open(boost_path))
 
     # Load abstracts
-    abs_df = pl.read_parquet("data/openalex_metadata/field_15/works_text.parquet").rename({"work_id": "uid"})
+    abs_df = pl.read_parquet("workspace/data/openalex_metadata/field_15/works_text.parquet").rename({"work_id": "uid"})
     uid_to_abs = {r["uid"]: r for r in abs_df.iter_rows(named=True)}
 
     # Stats

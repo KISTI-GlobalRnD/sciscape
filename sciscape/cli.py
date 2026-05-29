@@ -13,12 +13,12 @@ Usage:
     sciscape gui
 
 Examples:
-    sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o ml_output/
+    sciscape query "machine learning" --years 2020-2024 --email you@univ.edu -o workspace/openalex_output/ml
     sciscape cluster edges.zip edges.txt --levels 5,100 80,500
     sciscape keywords abstracts.parquet membership.parquet --top-n 100 --include-title -o keywords.parquet
     sciscape convert wos savedrecs.txt -o abstracts.parquet
-    sciscape landscape edges.parquet abstracts.parquet -o output/landscape
-    sciscape visualize keywords.parquet -o report/
+    sciscape landscape edges.parquet abstracts.parquet -o workspace/output/landscape
+    sciscape visualize keywords.parquet -o workspace/reports/keywords
 """
 
 from __future__ import annotations
@@ -174,7 +174,7 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Edge types to build (default: dc,bc)")
     qa.add_argument("--no-landscape", action="store_true",
                      help="Skip landscape pipeline (only fetch + edges)")
-    qa.add_argument("-o", "--output", type=Path, default=Path("openalex_output"),
+    qa.add_argument("-o", "--output", type=Path, default=Path("workspace/openalex_output"),
                      help="Output directory")
     qa.add_argument("-v", "--verbose", action="store_true")
 

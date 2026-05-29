@@ -51,8 +51,8 @@ uv run --extra dev python examples/openalex_live_demo.py \
   --email you@example.org
 ```
 
-Outputs are written under `examples_output/openalex_live/` by default. This
-directory is intentionally ignored by git as local generated output.
+Outputs are written under `workspace/examples_output/openalex_live/` by default.
+This directory is intentionally ignored by git as local generated output.
 
 Landscape runs now include keyword quality refinement columns in
 `landscape/keywords.parquet`.  Inspect `display_label`, `quality_score`, and
@@ -63,8 +63,8 @@ re-running extraction:
 
 ```bash
 uv run --extra dev sciscape visualize \
-  examples_output/openalex_live/perovskite_solar_cells_2020_2024/landscape/keywords.parquet \
-  -o examples_output/openalex_live/perovskite_solar_cells_2020_2024/visual_report
+  workspace/examples_output/openalex_live/perovskite_solar_cells_2020_2024/landscape/keywords.parquet \
+  -o workspace/examples_output/openalex_live/perovskite_solar_cells_2020_2024/visual_report
 ```
 
 For a quick one-file preview from CSV:
@@ -72,16 +72,16 @@ For a quick one-file preview from CSV:
 ```bash
 uv run --extra dev sciscape visualize sample_keywords.csv \
   --dashboard-only \
-  -o examples_output/sample_dashboard.html
+  -o workspace/examples_output/sample_dashboard.html
 ```
 
 For GitHub Pages style static sharing, generate a reusable viewer and place a
 `data.json` next to it. The viewer will also accept `?data=path/to/data.json`.
 
 ```bash
-uv run --extra dev sciscape viewer -o examples_output/pages/viewer.html
-cp examples_output/openalex_live/perovskite_solar_cells_2020_2024/visual_report/data.json \
-  examples_output/pages/data.json
+uv run --extra dev sciscape viewer -o workspace/examples_output/pages/viewer.html
+cp workspace/examples_output/openalex_live/perovskite_solar_cells_2020_2024/visual_report/data.json \
+  workspace/examples_output/pages/data.json
 ```
 
 Compare the current family-aware representative keyword scoring against the
@@ -89,9 +89,9 @@ same pipeline with that scoring disabled:
 
 ```bash
 uv run --extra dev python examples/compare_keyword_family_scoring.py \
-  --input-root examples_output/openalex_live
+  --input-root workspace/examples_output/openalex_live
 ```
 
 The comparison reuses cached `abstracts_subset.parquet` and
 `membership.parquet` files, then writes ignored local artifacts under
-`examples_output/family_scoring_eval_<timestamp>/`.
+`workspace/examples_output/family_scoring_eval_<timestamp>/`.

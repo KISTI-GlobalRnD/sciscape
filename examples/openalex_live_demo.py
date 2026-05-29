@@ -79,7 +79,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("examples_output/openalex_live"),
+        default=Path("workspace/examples_output/openalex_live"),
         help="Root directory for demo outputs.",
     )
     parser.add_argument(

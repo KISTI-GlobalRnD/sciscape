@@ -64,7 +64,7 @@ wait_for_extract_or_restart() {
 run_filtered_knn() {
   local field="$1"
   local works_text="${OUT_ROOT}/field_${field}/works_text.parquet"
-  local out_parquet="${REPO_ROOT}/data/linktype_edges_gcc/field_${field}/emb_full_knn${K}_textfilt_txt${MIN_TEXT_LEN}_abs${MIN_ABSTRACT_LEN}_reqabs.parquet"
+  local out_parquet="${REPO_ROOT}/workspace/data/linktype_edges_gcc/field_${field}/emb_full_knn${K}_textfilt_txt${MIN_TEXT_LEN}_abs${MIN_ABSTRACT_LEN}_reqabs.parquet"
 
   if [[ -f "${out_parquet}" ]]; then
     echo "[field_${field}] filtered knn already exists: ${out_parquet}"

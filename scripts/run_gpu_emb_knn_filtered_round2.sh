@@ -12,7 +12,7 @@ MIN_TITLE_LEN="${MIN_TITLE_LEN:-0}"
 MIN_METADATA_MATCH="${MIN_METADATA_MATCH:-0.95}"
 REQUIRE_ABSTRACT="${REQUIRE_ABSTRACT:-1}"
 K="${K:-30}"
-OUT_ROOT="${OUT_ROOT:-${REPO_ROOT}/data/linktype_edges_gcc}"
+OUT_ROOT="${OUT_ROOT:-${REPO_ROOT}/workspace/data/linktype_edges_gcc}"
 LOG_DIR="${LOG_DIR:-${REPO_ROOT}/research/consensus/results/logs_gpu_emb}"
 
 if [[ -z "${ALIGNED_TEXT_ROOT}" ]]; then
