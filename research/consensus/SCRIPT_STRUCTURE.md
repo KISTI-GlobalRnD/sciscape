@@ -34,7 +34,8 @@ semantically misleading. Prefer a second-level split inside the bucket instead.
 | `leiden_basin/materialization/` | Cache, membership, prepare, join, and materialization scripts |
 | `leiden_basin/hysteresis/` | Leiden hysteresis runs, monitors, and graph materialization |
 
-The inventory command computes the target path for each script. Use that output
+The inventory command computes the target path for each script and includes
+both root-level scripts and scripts already moved into buckets. Use that output
 as the move manifest rather than hand-sorting files.
 
 ### Leiden Basin Third-Level Buckets
@@ -122,6 +123,11 @@ Safe movement requires:
    by path;
 4. no movement of uncommitted research work unless that work is intentionally
    included in the same commit.
+
+When moving a script that computes `REPO_ROOT`, avoid fixed parent indexes such
+as `Path(__file__).resolve().parents[3]`. Bucket depth differs across the new
+layout, so moved scripts should locate the repo root from a stable marker such
+as `pyproject.toml`.
 
 ## Recommended Phases
 

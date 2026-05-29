@@ -154,7 +154,11 @@ def git_states(root: Path) -> dict[str, str]:
 
 
 def script_files(root: Path) -> list[Path]:
-    return sorted(path for path in root.glob("*.py") if path.is_file())
+    return sorted(
+        path
+        for path in root.rglob("*.py")
+        if path.is_file() and not is_ignored(path)
+    )
 
 
 def action_name(script_name: str) -> str:
@@ -498,21 +502,24 @@ def iter_scan_files() -> list[Path]:
 
 
 def reference_counts(root: Path, scripts: list[Path]) -> dict[str, int]:
-    names = {script.name for script in scripts}
-    counts = dict.fromkeys(names, 0)
+    counts = dict.fromkeys((display_path(script) for script in scripts), 0)
     repo_prefix = f"{display_path(root)}/"
     needles = {
-        name: (f"{repo_prefix}{name}", f"scripts/{name}")
-        for name in names
+        display_path(script): (
+            display_path(script),
+            f"{repo_prefix}{script.name}",
+            f"scripts/{script.name}",
+        )
+        for script in scripts
     }
     for path in iter_scan_files():
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        for name, patterns in needles.items():
+        for rel, patterns in needles.items():
             if any(pattern in text for pattern in patterns):
-                counts[name] += 1
+                counts[rel] += 1
     return counts
 
 
@@ -536,7 +543,7 @@ def build_records(root: Path) -> list[ScriptRecord]:
                 target_path=target_path(root, script.name, bucket, sub_bucket, detail_bucket),
                 action=action_name(script.name),
                 git_state=states.get(rel, "unknown"),
-                reference_count=refs.get(script.name, 0),
+                reference_count=refs.get(rel, 0),
             )
         )
     return records
