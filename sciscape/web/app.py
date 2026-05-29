@@ -273,17 +273,76 @@ def _display_local_path(path: Path) -> str:
         return path.as_posix()
 
 
+def _looks_like_landscape_dir(path: Path) -> bool:
+    if not path.is_dir():
+        return False
+    if path.name != "landscape" and not path.name.startswith("landscape_"):
+        return False
+    if (path / "report").is_dir():
+        return True
+    if any(path.glob("keywords*.parquet")):
+        return True
+    if any(path.glob("membership*.parquet")):
+        return True
+    return False
+
+
+def _landscape_score(path: Path) -> tuple[int, int, str]:
+    score = 0
+    if path.name == "landscape":
+        score += 10
+    if (path / "report" / "data.json").exists():
+        score += 4
+    if any(path.glob("keywords*.parquet")):
+        score += 3
+    if any(path.glob("membership*.parquet")):
+        score += 2
+    if (path / "report").is_dir():
+        score += 1
+    try:
+        mtime = int(path.stat().st_mtime)
+    except FileNotFoundError:
+        mtime = 0
+    return (score, mtime, path.name)
+
+
+def _find_landscape_dirs(output_dir: Path) -> list[Path]:
+    if not output_dir.exists() or not output_dir.is_dir():
+        return []
+    return [child for child in output_dir.iterdir() if _looks_like_landscape_dir(child)]
+
+
+def _infer_landscape_dir(output_dir: Path, selected_path: Path | None = None) -> Path | None:
+    """Infer the landscape artifact directory, preferring the selected variant."""
+    if selected_path is not None:
+        current = selected_path if selected_path.is_dir() else selected_path.parent
+        for candidate in [current, *current.parents]:
+            if candidate == output_dir.parent:
+                break
+            if _looks_like_landscape_dir(candidate):
+                return candidate
+
+    exact = output_dir / "landscape"
+    if _looks_like_landscape_dir(exact):
+        return exact
+
+    landscapes = _find_landscape_dirs(output_dir)
+    if not landscapes:
+        return None
+    return max(landscapes, key=_landscape_score)
+
+
 def _infer_output_dir(path: Path) -> Path | None:
     """Infer the containing SciScape output directory for a local artifact."""
     current = path if path.is_dir() else path.parent
     candidates = [current, *current.parents]
     for candidate in candidates:
-        if (candidate / "landscape").is_dir():
+        if _looks_like_landscape_dir(candidate):
+            return candidate.parent
+        if _find_landscape_dirs(candidate):
             return candidate
         if (candidate / "edges.parquet").exists() or (candidate / "abstracts.parquet").exists():
             return candidate
-        if candidate.name == "report" and candidate.parent.name == "landscape":
-            return candidate.parent.parent
     return None
 
 
@@ -293,12 +352,15 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     if output_dir is None:
         raise HTTPException(status_code=400, detail="could not infer SciScape output directory")
 
-    landscape_dir = output_dir / "landscape"
+    landscape_dir = _infer_landscape_dir(output_dir, selected_path=path)
     result: dict[str, Any] = {
         "output_dir": str(output_dir),
         "abstracts_path": None,
         "edges_path": None,
-        "landscape_dir": str(landscape_dir) if landscape_dir.exists() else None,
+        "landscape_dir": str(landscape_dir) if landscape_dir else None,
+        "landscape_rel_path": (
+            landscape_dir.relative_to(output_dir).as_posix() if landscape_dir else None
+        ),
         "n_edges": {},
     }
     abstracts = output_dir / "abstracts.parquet"
@@ -322,7 +384,7 @@ def _artifact_role(path: Path) -> str:
         return "report"
     if name == "index.html" and path.parent.name == "report":
         return "dashboard"
-    if path.is_dir() and (path / "landscape").is_dir():
+    if path.is_dir() and _find_landscape_dirs(path):
         return "output_dir"
     return "artifact"
 
@@ -331,7 +393,7 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
     output_dir = _infer_output_dir(path)
     relative_path = _display_local_path(path)
     artifact_id = hashlib.sha1(relative_path.encode("utf-8")).hexdigest()[:12]
-    landscape_dir = output_dir / "landscape" if output_dir is not None else None
+    landscape_dir = _infer_landscape_dir(output_dir, selected_path=path) if output_dir is not None else None
     data_json = landscape_dir / "report" / "data.json" if landscape_dir else None
     keywords = landscape_dir / "keywords.parquet" if landscape_dir else None
     membership = landscape_dir / "membership.parquet" if landscape_dir else None
@@ -343,6 +405,8 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
         "size_bytes": _path_size(path),
         "modified": int(path.stat().st_mtime),
         "output_dir": _display_local_path(output_dir) if output_dir else None,
+        "landscape_dir": _display_local_path(landscape_dir) if landscape_dir else None,
+        "landscape_name": landscape_dir.name if landscape_dir else None,
         "has_web_result": output_dir is not None,
         "has_data_json": bool(data_json and data_json.exists()),
         "has_keywords": bool(keywords and keywords.exists()),
@@ -611,7 +675,7 @@ async def get_bridge(job_id: str, cluster_a: int = 0, cluster_b: int = 1):
 
 
 @app.get("/api/jobs/{job_id}/term-network")
-async def get_term_network(job_id: str, top_k: int = 10, max_terms: int = 150):
+async def get_term_network(job_id: str, top_k: int = 10, max_terms: int = 150, min_cooc: int = 1):
     """Get term co-occurrence network data for D3 visualization."""
     job = _jobs.get(job_id)
     if not job or job["status"] != "done":
@@ -634,8 +698,9 @@ async def get_term_network(job_id: str, top_k: int = 10, max_terms: int = 150):
     try:
         return build_term_network_json(
             kw_path,
-            top_k_per_cluster=top_k,
-            max_terms=max_terms,
+            top_k_per_cluster=max(1, top_k),
+            max_terms=max(1, max_terms),
+            min_cooc=max(1, min_cooc),
         )
     except Exception as e:
         return {"error": str(e)}

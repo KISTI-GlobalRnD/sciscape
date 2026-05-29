@@ -1063,10 +1063,20 @@ class TermCooccurrenceNetwork {
   async load(jobId) {
     this.jobId = jobId;
     this.container.innerHTML = '';
-    const resp = await fetch(`/api/jobs/${jobId}/term-network`);
-    this.data = await resp.json();
+    let resp;
+    try {
+      resp = await fetch(`/api/jobs/${jobId}/term-network?min_cooc=1`);
+      this.data = await resp.json();
+    } catch (e) {
+      this.container.innerHTML = `<div style="padding:2rem;color:#64748b;text-align:center;">Could not load term co-occurrence data: ${this._esc(e.message)}</div>`;
+      return;
+    }
     if (this.data.error) {
-      this.container.innerHTML = `<div style="padding:2rem;color:#64748b;text-align:center;">${this.data.error}</div>`;
+      this.container.innerHTML = `<div style="padding:2rem;color:#64748b;text-align:center;">${this._esc(this.data.error)}</div>`;
+      return;
+    }
+    if (!this.data.nodes || this.data.nodes.length === 0) {
+      this.container.innerHTML = '<div style="padding:2rem;color:#64748b;text-align:center;">No keyword terms were available for co-occurrence.</div>';
       return;
     }
     this._render();

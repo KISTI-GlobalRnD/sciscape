@@ -5,19 +5,30 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
-from sciscape.web.app import _jobs, app
+import sciscape.web.app as web_app
+from sciscape.web.jobstore import JobStore
+
+app = web_app.app
+
+
+@pytest.fixture(autouse=True)
+def isolated_job_store(monkeypatch, tmp_path):
+    store = JobStore(tmp_path / "sciscape_test_jobs.db")
+    monkeypatch.setattr(web_app, "_jobs", store)
+    yield
 
 
 def _register_done_job(job_id: str, output_dir: Path) -> None:
-    _jobs.create(job_id, {"query": "test query"})
-    job = _jobs.get(job_id)
+    web_app._jobs.create(job_id, {"query": "test query"})
+    job = web_app._jobs.get(job_id)
     assert job is not None
     job["status"] = "done"
     job["progress"] = []
     job["result"] = {"output_dir": str(output_dir)}
-    _jobs.persist(job_id)
+    web_app._jobs.persist(job_id)
 
 
 def test_download_route_supports_nested_output_artifacts(tmp_path):
@@ -77,7 +88,7 @@ def test_web_homepage_exposes_query_analysis_controls():
 
 def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
     def fake_run_job(job_id, req):
-        job = _jobs[job_id]
+        job = web_app._jobs[job_id]
         job["status"] = "done"
         job["progress"].append(f"fake pipeline: {req.query}")
         job["result"] = {
@@ -88,7 +99,7 @@ def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
             "edges_path": None,
             "landscape_dir": None,
         }
-        _jobs.persist(job_id)
+        web_app._jobs.persist(job_id)
 
     monkeypatch.setattr("sciscape.web.app._run_job", fake_run_job)
 
@@ -169,6 +180,68 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["output_dir"] == str(output_dir)
     assert job_payload["result"]["edges_path"] == str(output_dir / "edges.parquet")
     assert job_payload["result"]["landscape_dir"] == str(landscape_dir)
+    assert job_payload["result"]["landscape_rel_path"] == "landscape"
+
+
+def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):
+    output_dir = tmp_path / "workspace" / "examples_output" / "demo"
+    default_landscape = output_dir / "landscape"
+    selected_landscape = output_dir / "landscape_representative_latest"
+    (default_landscape / "report").mkdir(parents=True)
+    (selected_landscape / "report").mkdir(parents=True)
+    (default_landscape / "report" / "data.json").write_text("{}", encoding="utf-8")
+    selected_data = selected_landscape / "report" / "data.json"
+    selected_data.write_text("{}", encoding="utf-8")
+    (default_landscape / "keywords.parquet").write_bytes(b"default-keywords")
+    (selected_landscape / "keywords.parquet").write_bytes(b"selected-keywords")
+
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "examples_output"],
+    )
+
+    client = TestClient(app)
+    response = client.post("/api/local-data/open", json={"path": str(selected_data)})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["result"]["output_dir"] == str(output_dir)
+    assert payload["result"]["landscape_dir"] == str(selected_landscape)
+    assert payload["result"]["landscape_rel_path"] == "landscape_representative_latest"
+
+
+def test_term_network_endpoint_uses_single_cluster_cooccurrence_by_default(tmp_path):
+    import polars as pl
+
+    job_id = f"testterm{uuid.uuid4().hex[:8]}"
+    output_dir = tmp_path / "demo"
+    landscape_dir = output_dir / "landscape"
+    landscape_dir.mkdir(parents=True)
+    pl.DataFrame(
+        {
+            "cluster_id": [0, 0, 1, 1],
+            "display_label": ["alpha beta", "gamma delta", "alpha beta", "epsilon zeta"],
+            "score": [0.9, 0.8, 0.7, 0.6],
+        }
+    ).write_parquet(landscape_dir / "keywords.parquet")
+
+    web_app._jobs.create(job_id, {"query": "term network test"})
+    job = web_app._jobs.get(job_id)
+    assert job is not None
+    job["status"] = "done"
+    job["progress"] = []
+    job["result"] = {"output_dir": str(output_dir), "landscape_dir": str(landscape_dir)}
+    web_app._jobs.persist(job_id)
+
+    client = TestClient(app)
+    response = client.get(f"/api/jobs/{job_id}/term-network?top_k=2")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "error" not in payload
+    assert len(payload["nodes"]) == 3
+    assert len(payload["edges"]) == 2
+    assert {edge["weight"] for edge in payload["edges"]} == {1}
 
 
 def test_open_local_data_rejects_paths_outside_allowed_roots(monkeypatch, tmp_path):

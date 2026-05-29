@@ -998,6 +998,7 @@ async function loadLocalData() {
 function localDataCard(item) {
   const badges = [
     item.role,
+    item.landscape_name,
     item.has_data_json ? 'data.json' : null,
     item.has_keywords ? 'keywords' : null,
     item.has_membership ? 'membership' : null,
@@ -1110,7 +1111,11 @@ async function switchNetMode(mode) {
 }
 
 async function loadTermNetwork(jobId) {
-  if (!window.TermCooccurrenceNetwork) return;
+  if (!window.TermCooccurrenceNetwork) {
+    document.getElementById('network-container').innerHTML =
+      '<div style="padding:2rem;color:var(--silver);text-align:center;">Network script is not loaded yet.</div>';
+    return;
+  }
   document.getElementById('viz-placeholder').style.display = 'none';
   termNetViz = new TermCooccurrenceNetwork('network-container');
   await termNetViz.load(jobId);
@@ -1164,12 +1169,13 @@ function updateDownloads(result) {
     grid.innerHTML += dlCard(fname, desc, icon, currentJobId);
   }
   if (result.landscape_dir) {
-    grid.innerHTML += viewCard('landscape/report/report.html', 'Open report index', 'REP', currentJobId);
-    grid.innerHTML += viewCard('landscape/report/index.html', 'Open keyword dashboard', 'DASH', currentJobId);
-    grid.innerHTML += viewCard('landscape/report/landscape_detailed.html', 'Open detailed landscape map', 'MAP', currentJobId);
-    grid.innerHTML += dlCard('landscape/membership.parquet', 'Cluster membership', 'MEM', currentJobId);
-    grid.innerHTML += dlCard('landscape/keywords.parquet', 'Keywords', 'KW', currentJobId);
-    grid.innerHTML += dlCard('landscape/report/data.json', 'Viewer-ready dashboard data', 'JSON', currentJobId);
+    const landscapePath = result.landscape_rel_path || 'landscape';
+    grid.innerHTML += viewCard(landscapePath + '/report/report.html', 'Open report index', 'REP', currentJobId);
+    grid.innerHTML += viewCard(landscapePath + '/report/index.html', 'Open keyword dashboard', 'DASH', currentJobId);
+    grid.innerHTML += viewCard(landscapePath + '/report/landscape_detailed.html', 'Open detailed landscape map', 'MAP', currentJobId);
+    grid.innerHTML += dlCard(landscapePath + '/membership.parquet', 'Cluster membership', 'MEM', currentJobId);
+    grid.innerHTML += dlCard(landscapePath + '/keywords.parquet', 'Keywords', 'KW', currentJobId);
+    grid.innerHTML += dlCard(landscapePath + '/report/data.json', 'Viewer-ready dashboard data', 'JSON', currentJobId);
   }
 }
 
