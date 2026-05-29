@@ -15,6 +15,15 @@ This folder is organized as an executable research package rather than a note du
 - `figures/` stores paper-ready charts generated from the result JSON files.
 - The current code supports E1-E7 directly.
 
+Script reorganization should follow
+[`SCRIPT_STRUCTURE.md`](./SCRIPT_STRUCTURE.md). The script directory has many
+path references in docs, tests, and artifact metadata, so run the inventory
+check before moving files:
+
+```bash
+uv run --extra dev python scripts/inventory_research_scripts.py --fail-on-unclassified
+```
+
 ## Manuscript Package
 
 The current writing package is aligned to `Journal of Informetrics`.

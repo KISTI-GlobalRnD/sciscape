@@ -123,3 +123,5 @@ When adding a new file, decide which bucket it belongs to before writing it:
    or `sos/`.
 7. Documentation parents should pass the six-entry fanout check or be split
    into topic subfolders with a local index.
+8. Large research script directories should get an inventory and reference
+   migration plan before files are moved.
