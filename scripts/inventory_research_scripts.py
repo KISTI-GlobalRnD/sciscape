@@ -73,6 +73,8 @@ class ScriptRecord:
     path: str
     name: str
     bucket: str
+    sub_bucket: str
+    target_path: str
     action: str
     git_state: str
     reference_count: int
@@ -214,6 +216,94 @@ def classify(script_name: str) -> str:
     return "unclassified"
 
 
+def classify_leiden_sub_bucket(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if "hysteresis" in stem:
+        return "hysteresis"
+
+    if any(
+        token in stem
+        for token in (
+            "direct_pair",
+            "pathway",
+            "route",
+            "transition",
+            "tunneling",
+            "wall_route",
+        )
+    ):
+        return "transition_routes"
+
+    if any(
+        token in stem
+        for token in (
+            "attachment_margin",
+            "branch_candidate",
+            "elbow",
+            "gate",
+            "handle",
+            "joint_bundle",
+            "polish",
+            "post_gate",
+            "recovery",
+            "selector",
+            "target_unit",
+        )
+    ):
+        return "operator_probes"
+
+    if any(
+        token in stem
+        for token in (
+            "cache",
+            "join_",
+            "materialize",
+            "pending_membership",
+            "prepare_",
+        )
+    ):
+        return "materialization"
+
+    if any(
+        token in stem
+        for token in (
+            "audit",
+            "calibrate",
+            "current_results",
+            "definition",
+            "evidence",
+            "field34",
+            "freeze",
+            "phase1",
+            "relation",
+            "review",
+            "taxonomy",
+            "triage",
+            "wall",
+        )
+    ):
+        return "evidence_panels"
+
+    return "basin_signatures"
+
+
+def target_sub_bucket(script_name: str, bucket: str) -> str:
+    if bucket == "leiden_basin":
+        return classify_leiden_sub_bucket(script_name)
+    return ""
+
+
+def target_path(root: Path, script_name: str, bucket: str, sub_bucket: str) -> str:
+    if bucket == "unclassified":
+        return display_path(root / script_name)
+    parts = [root, Path(bucket)]
+    if sub_bucket:
+        parts.append(Path(sub_bucket))
+    parts.append(Path(script_name))
+    return display_path(Path(*parts))
+
+
 def iter_scan_files() -> list[Path]:
     files: list[Path] = []
     for root in SCAN_ROOTS:
@@ -262,11 +352,15 @@ def build_records(root: Path) -> list[ScriptRecord]:
     records: list[ScriptRecord] = []
     for script in scripts:
         rel = display_path(script)
+        bucket = classify(script.name)
+        sub_bucket = target_sub_bucket(script.name, bucket)
         records.append(
             ScriptRecord(
                 path=rel,
                 name=script.name,
-                bucket=classify(script.name),
+                bucket=bucket,
+                sub_bucket=sub_bucket,
+                target_path=target_path(root, script.name, bucket, sub_bucket),
                 action=action_name(script.name),
                 git_state=states.get(rel, "unknown"),
                 reference_count=refs.get(script.name, 0),
@@ -287,6 +381,13 @@ def action_counts(records: list[ScriptRecord]) -> Counter[str]:
     return Counter(record.action for record in records)
 
 
+def sub_bucket_counts(records: list[ScriptRecord]) -> Counter[str]:
+    return Counter(
+        f"{record.bucket}/{record.sub_bucket}" if record.sub_bucket else record.bucket
+        for record in records
+    )
+
+
 def grouped_records(records: list[ScriptRecord]) -> dict[str, list[ScriptRecord]]:
     grouped: dict[str, list[ScriptRecord]] = defaultdict(list)
     for record in records:
@@ -301,6 +402,10 @@ def print_text(records: list[ScriptRecord], top_references: int) -> None:
     for bucket, count in bucket_counts(records).most_common():
         print(f"- {bucket}: {count}")
     print()
+    print("Target sub-bucket counts:")
+    for bucket, count in sub_bucket_counts(records).most_common():
+        print(f"- {bucket}: {count}")
+    print()
     print("Git state counts:")
     for state, count in git_state_counts(records).most_common():
         print(f"- {state}: {count}")
@@ -311,7 +416,10 @@ def print_text(records: list[ScriptRecord], top_references: int) -> None:
     print()
     print(f"Top referenced scripts (top {top_references}):")
     for record in sorted(records, key=lambda item: (-item.reference_count, item.name))[:top_references]:
-        print(f"- {record.reference_count:>3} refs | {record.bucket:<20} | {record.path}")
+        print(
+            f"- {record.reference_count:>3} refs | {record.bucket:<20} | "
+            f"{record.path} -> {record.target_path}"
+        )
 
 
 def print_markdown(records: list[ScriptRecord], top_references: int) -> None:
@@ -326,6 +434,13 @@ def print_markdown(records: list[ScriptRecord], top_references: int) -> None:
     for bucket, count in bucket_counts(records).most_common():
         print(f"| `{bucket}` | {count} |")
     print()
+    print("## Target Sub-Bucket Counts")
+    print()
+    print("| Target | Count |")
+    print("|---|---:|")
+    for bucket, count in sub_bucket_counts(records).most_common():
+        print(f"| `{bucket}` | {count} |")
+    print()
     print("## Git State Counts")
     print()
     print("| State | Count |")
@@ -335,16 +450,20 @@ def print_markdown(records: list[ScriptRecord], top_references: int) -> None:
     print()
     print(f"## Top Referenced Scripts")
     print()
-    print("| References | Bucket | Path |")
-    print("|---:|---|---|")
+    print("| References | Bucket | Current path | Target path |")
+    print("|---:|---|---|---|")
     for record in sorted(records, key=lambda item: (-item.reference_count, item.name))[:top_references]:
-        print(f"| {record.reference_count} | `{record.bucket}` | `{record.path}` |")
+        print(
+            f"| {record.reference_count} | `{record.bucket}` | "
+            f"`{record.path}` | `{record.target_path}` |"
+        )
 
 
 def print_json(records: list[ScriptRecord]) -> None:
     payload = {
         "total": len(records),
         "bucket_counts": dict(bucket_counts(records)),
+        "sub_bucket_counts": dict(sub_bucket_counts(records)),
         "git_state_counts": dict(git_state_counts(records)),
         "action_counts": dict(action_counts(records)),
         "records": [asdict(record) for record in records],

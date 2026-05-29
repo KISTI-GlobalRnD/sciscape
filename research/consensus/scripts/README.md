@@ -17,3 +17,13 @@ The target split is:
 - `leiden_basin/`
 - `dongdaemun_hierarchy/`
 - `artifacts_reporting/`
+
+`leiden_basin/` has its own second-level split because it is the dominant
+script family:
+
+- `leiden_basin/basin_signatures/`
+- `leiden_basin/transition_routes/`
+- `leiden_basin/operator_probes/`
+- `leiden_basin/evidence_panels/`
+- `leiden_basin/materialization/`
+- `leiden_basin/hysteresis/`

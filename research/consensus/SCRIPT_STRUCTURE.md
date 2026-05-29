@@ -21,6 +21,22 @@ Use at most six top-level script buckets when this directory is split:
 Do not create a seventh top-level bucket unless an existing bucket would become
 semantically misleading. Prefer a second-level split inside the bucket instead.
 
+## Leiden Basin Second-Level Buckets
+
+`leiden_basin/` is the largest target bucket, so it must be split further:
+
+| Bucket | Intended content |
+|---|---|
+| `leiden_basin/basin_signatures/` | Basin signatures, selector contracts, mode tradeoff, and general basin diagnostics |
+| `leiden_basin/transition_routes/` | Transition, route, wall-route, pathway, tunneling, and direct-pair scripts |
+| `leiden_basin/operator_probes/` | Attachment-margin, aligned-core, handle, selector, gate, recovery, and polish probes |
+| `leiden_basin/evidence_panels/` | Reviews, audits, field eligibility, relation taxonomy, phase panels, and claim evidence |
+| `leiden_basin/materialization/` | Cache, membership, prepare, join, and materialization scripts |
+| `leiden_basin/hysteresis/` | Leiden hysteresis runs, monitors, and graph materialization |
+
+The inventory command computes the target path for each script. Use that output
+as the move manifest rather than hand-sorting files.
+
 ## Migration Rule
 
 Before moving any script, run:
