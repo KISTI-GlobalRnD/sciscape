@@ -9,7 +9,7 @@
 - **OpenAlex integration**: `sciscape query` (CLI) + `sciscape web` (FastAPI)
 - Landscape pipeline: `sciscape.landscape.run_landscape()` (multi-layer edges → clustering → keywords → report)
 - Visualization: D3.js network (cluster + term co-occurrence), dashboard, hierarchy
-- CPM dendrogram research path: `cpm-dendro/`, `sciscape.clustering.dendrogram`, `constrained_cut`, and `research/dendrogram/`
+- CPM dendrogram research path: `research/auxiliary/cpm-dendro/`, `sciscape.clustering.dendrogram`, `constrained_cut`, and `research/dendrogram/`
 - Consensus validation research path: `research/consensus/` with corrected local-review, taxonomy, regime, and coverage-aware boundary protocols
 - CLI: `sciscape cluster | keywords | convert | landscape | query | web`
 - Tests: 800+ Python tests plus Rust crate tests (`pytest -q`, `cargo test --manifest-path rust/Cargo.toml`)

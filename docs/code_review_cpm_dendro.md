@@ -61,7 +61,7 @@
 ## Phase 7 — 정리 ✅
 
 - Dead code 제거 (`_persistence()`, recursive `_collect_leaves()`) ✅
-- `.gitignore`에 `cpm-dendro/target/` 추가 ✅
+- `.gitignore`에 `research/auxiliary/cpm-dendro/target/` 추가 ✅
 - `__init__.py` export 등록 ✅
 - `// SAFETY:` 코멘트 추가 ✅
 - Stale entry tolerance 단순화 (재계산 density 직접 사용) ✅

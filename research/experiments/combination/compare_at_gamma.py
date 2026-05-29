@@ -5,8 +5,8 @@ Picks disagreement nodes (different cluster in sum vs boosted),
 samples neighbors from each, asks LLM which cluster is more cohesive.
 
 Usage:
-    python experiments/combination/compare_at_gamma.py --gamma 5e-5
-    python experiments/combination/compare_at_gamma.py --auto  # pick from sweep_summary
+    python research/experiments/combination/compare_at_gamma.py --gamma 5e-5
+    python research/experiments/combination/compare_at_gamma.py --auto  # pick from sweep_summary
 
 Requires: sweep_summary.json + mem_*.json from gamma_sweep.py
 """
@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from sciscape.evaluation.reviewer import review_comparison
 
 
-OUT = Path("experiments/combination/results")
+OUT = Path("research/experiments/combination/results")
 
 
 def load_env_key():

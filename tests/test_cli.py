@@ -258,7 +258,7 @@ class TestVisualizeArgs:
 
     def test_defaults(self, parser):
         args = parser.parse_args(["visualize", "keywords.parquet"])
-        assert args.output == Path("sciscape_report")
+        assert args.output == Path("workspace/reports/sciscape_report")
         assert args.title == "SciScape Keyword Report"
         assert args.dashboard_only is False
         assert args.open is False

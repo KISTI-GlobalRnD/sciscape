@@ -4,7 +4,7 @@
 Uses adaptive per-layer k (matching sparsest layer's avg degree)
 to equalize edge contribution before boosted combination.
 
-nohup nice -n 19 python experiments/combination/balanced_4layer.py &
+nohup nice -n 19 python research/experiments/combination/balanced_4layer.py &
 """
 import json, sys, tempfile, time
 from collections import Counter
@@ -16,7 +16,7 @@ from sciscape.linkage.combine import load_and_combine
 from sciscape.clustering.leiden_rust import run_leiden_rust, postprocess_small_clusters_rust
 from sciscape.clustering.integer_remap import integer_remap
 
-OUT = Path("experiments/combination/results")
+OUT = Path("research/experiments/combination/results")
 edge_dir = Path("workspace/data/linktype_edges_gcc/field_15")
 GAMMAS = [1e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4]
 

@@ -139,8 +139,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "-o",
         "--output",
         type=Path,
-        default=Path("sciscape_report"),
-        help="Output report directory, or HTML path with --dashboard-only (default: sciscape_report)",
+        default=Path("workspace/reports/sciscape_report"),
+        help="Output report directory, or HTML path with --dashboard-only (default: workspace/reports/sciscape_report)",
     )
     vz.add_argument("--title", type=str, default="SciScape Keyword Report", help="Report title")
     vz.add_argument(

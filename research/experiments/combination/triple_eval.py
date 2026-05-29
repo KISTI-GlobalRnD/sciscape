@@ -7,7 +7,7 @@ For each disagreement node between sum and boosted:
   3. Outlier detection: how many outliers in each cluster?
 
 Usage:
-    python experiments/combination/triple_eval.py --gamma 1e-4 --n 10
+    python research/experiments/combination/triple_eval.py --gamma 1e-4 --n 10
 """
 
 import argparse
@@ -26,7 +26,7 @@ from sciscape.evaluation.reviewer import (
     review_belonging, review_group_cohesion, review_outliers,
 )
 
-OUT = Path("experiments/combination/results")
+OUT = Path("research/experiments/combination/results")
 
 
 def load_env_key():

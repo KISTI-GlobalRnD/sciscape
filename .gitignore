@@ -9,6 +9,7 @@ __pycache__/
 cpm-dendro/target/
 rust/target/
 rust-text/target/
+research/auxiliary/**/target/
 
 # Build artifacts
 build/

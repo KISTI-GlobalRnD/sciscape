@@ -5,7 +5,7 @@
 This document is now mostly a historical implementation plan. The core pieces
 described below exist in the repository:
 
-- `cpm-dendro/` Rust crate with PyO3 bindings
+- `research/auxiliary/cpm-dendro/` Rust crate with PyO3 bindings
 - `sciscape/clustering/dendrogram.py`
 - `sciscape/clustering/constrained_cut.py`
 - `tests/test_constrained_cut.py`
@@ -44,7 +44,7 @@ sciscape/clustering/
 ├── constrained_cut.py     # Pure Python O(n) DP (Rust 불필요)
 └── ...
 
-cpm-dendro/                 # 독립 Rust crate
+research/auxiliary/cpm-dendro/  # 독립 Rust crate
 ├── Cargo.toml
 ├── pyproject.toml          # maturin 빌드 설정
 ├── src/
@@ -115,7 +115,7 @@ result = constrained_cut(linkage, min_size=1000)  # Python (밀리초)
 ### 빌드
 
 ```bash
-cd cpm-dendro && maturin develop --release
+cd research/auxiliary/cpm-dendro && maturin develop --release
 ```
 
 ---

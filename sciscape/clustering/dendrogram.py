@@ -93,7 +93,7 @@ def build_dendrogram(
     except ImportError:
         raise ImportError(
             "cpm_dendro Rust extension not found. "
-            "Build it with: cd cpm-dendro && maturin develop --release"
+            "Build it with: cd research/auxiliary/cpm-dendro && maturin develop --release"
         ) from None
 
     _valid_modes = ("cpm", "triadic_cpm", "internal_density", "triadic_internal_density")

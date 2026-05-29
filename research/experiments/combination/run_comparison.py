@@ -5,10 +5,10 @@ Compares Step1 (normalization) × Step2 (combination) strategies
 across two extreme fields (citation-rich vs citation-poor).
 
 Usage:
-    python experiments/combination/run_comparison.py \
+    python research/experiments/combination/run_comparison.py \
         --fields 15 12 \
         --edge-dir workspace/data/linktype_edges_gcc \
-        --output experiments/combination/results
+        --output research/experiments/combination/results
 
 Steps:
 1. For each (field, normalization, combination) triple:
@@ -241,7 +241,7 @@ def main():
     parser = argparse.ArgumentParser(description="Multi-layer combination comparison")
     parser.add_argument("--fields", nargs="+", default=["15", "12"])
     parser.add_argument("--edge-dir", type=Path, default=Path("workspace/data/linktype_edges_gcc"))
-    parser.add_argument("--output", type=Path, default=Path("experiments/combination/results"))
+    parser.add_argument("--output", type=Path, default=Path("research/experiments/combination/results"))
     parser.add_argument("--gamma", type=float, default=1e-6)
     parser.add_argument("--min-size", type=int, default=100)
     parser.add_argument("--max-edges", type=int, default=500_000,

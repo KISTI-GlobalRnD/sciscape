@@ -2,7 +2,7 @@
 """Field_12 validation + Emb layer addition test.
 
 Batch script — run with nohup:
-    nohup nice -n 19 python experiments/combination/field12_and_emb.py &
+    nohup nice -n 19 python research/experiments/combination/field12_and_emb.py &
 
 Tests:
 1. Field_12 (citation-poor): top-30 + 1/rank + boosted (BC+CC+DC)
@@ -23,7 +23,7 @@ from sciscape.linkage.combine import load_and_combine
 from sciscape.clustering.leiden_rust import run_leiden_rust, postprocess_small_clusters_rust
 from sciscape.clustering.integer_remap import integer_remap, join_back_uids
 
-OUT = Path("experiments/combination/results")
+OUT = Path("research/experiments/combination/results")
 OUT.mkdir(parents=True, exist_ok=True)
 
 GAMMAS = [1e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4]

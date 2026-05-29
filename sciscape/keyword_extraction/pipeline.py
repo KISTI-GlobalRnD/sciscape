@@ -203,7 +203,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             return
         if cfg.alias_cache_path is None:
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-            cfg.alias_cache_path = Path("artifacts") / "canonicalise" / timestamp
+            cfg.alias_cache_path = Path("workspace/artifacts") / "canonicalise" / timestamp
         base = Path(cfg.alias_cache_path)
         base.mkdir(parents=True, exist_ok=True)
         self._alias_cache_dir = base

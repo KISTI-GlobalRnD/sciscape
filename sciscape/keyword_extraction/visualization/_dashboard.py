@@ -67,7 +67,7 @@ def export_dashboard(
 
 def export_report(
     df: pd.DataFrame,
-    output_dir: str = "sciscape_report",
+    output_dir: str = "workspace/reports/sciscape_report",
     title: str = "SciScape Keyword Report",
     viz_data: Optional[Dict] = None,
     open_browser: bool = False,

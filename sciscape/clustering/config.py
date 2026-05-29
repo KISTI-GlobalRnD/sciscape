@@ -74,7 +74,7 @@ class EnsembleConfig:
     parallel: bool = False
     workers: int | None = None
     start_method: str = "spawn"  # 'spawn' or 'fork'
-    output_dir: Path | None = Path("ensemble_output")
+    output_dir: Path | None = Path("workspace/output/ensemble_output")
     progress: Callable[[str], None] | None = None
     progress_log_path: Path | None = None
     log_dir: Path | None = None

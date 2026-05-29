@@ -3,10 +3,10 @@
 
 Saves combined edges + membership for each (strategy, γ) pair.
 Run with nohup for long jobs:
-    nohup python experiments/combination/gamma_sweep.py &
+    nohup python research/experiments/combination/gamma_sweep.py &
 
 Output:
-    experiments/combination/results/
+    research/experiments/combination/results/
         combined_sum.parquet
         combined_boosted.parquet
         mem_sum_g{gamma}.json
@@ -33,7 +33,7 @@ from sciscape.clustering.integer_remap import integer_remap, join_back_uids
 
 EDGE_DIR = Path("workspace/data/linktype_edges_gcc/field_15")
 LAYERS = ["bc_cosine", "cc_cosine", "dc_fractional"]
-OUT = Path("experiments/combination/results")
+OUT = Path("research/experiments/combination/results")
 OUT.mkdir(parents=True, exist_ok=True)
 
 GAMMAS = [1e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4]

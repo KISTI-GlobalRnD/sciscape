@@ -66,8 +66,8 @@ migration.
 | Path | Role | Rule |
 |---|---|---|
 | `research/` | Development and manuscript research artifacts | Do not mix with package cleanup unless explicitly scoped |
-| `experiments/` | Experiment scripts and exploratory evaluations | Keep separate from package APIs |
-| `cpm-dendro/`, `leiden_rust/` | Historical or auxiliary backend workspaces | Check before changing |
+| `research/experiments/` | Experiment scripts and exploratory evaluations | Keep separate from package APIs |
+| `research/auxiliary/` | Historical or auxiliary backend workspaces | Check before changing |
 
 ## Removed Top-Level Legacy Packages
 
@@ -84,6 +84,6 @@ When adding a new file, decide which bucket it belongs to before writing it:
 2. Public examples go under `examples/`.
 3. Static viewer demos go under `viewer/`.
 4. Generated run outputs stay under `workspace/`.
-5. Research-only material stays under `research/` or `experiments/`.
+5. Research-only material stays under `research/`.
 6. Top-level package-like directories should not be added outside `sciscape/`
    or `sos/`.

@@ -562,14 +562,14 @@ def run_pipeline(
 
     # ── Backend dispatch ──────────────────────────────────────
     if backend == "rust":
-        output_dir = Path(config.log_dir or ".") / (config.run_id or "leiden_rust")
+        output_dir = Path(config.log_dir or "workspace/output") / (config.run_id or "leiden_rust")
         return _run_rust_backend(
             edges, config,
             output_dir=output_dir,
             progress_log_path=progress_log_path,
         )
     if backend == "java":
-        output_dir = Path(config.log_dir or ".") / (config.run_id or "leiden_java")
+        output_dir = Path(config.log_dir or "workspace/output") / (config.run_id or "leiden_java")
         return _run_java_backend(
             edges, config,
             output_dir=output_dir,

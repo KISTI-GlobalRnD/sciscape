@@ -202,7 +202,7 @@ sciscape/
 
 rust/                       Rust Leiden backend (sciscape-leiden)
 rust-text/                  Rust keyword extraction (sciscape-text)
-experiments/                Research experiment scripts
+research/                   Research plans, experiments, and auxiliary workspaces
 docs/                       LaTeX report + figures
 ```
 
