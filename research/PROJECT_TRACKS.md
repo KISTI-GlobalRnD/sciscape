@@ -284,6 +284,7 @@ calibration universe has no walls.
 - `docs/research/leiden_basin/README.md`
 - `docs/research/leiden_basin/leiden_basin_cartography_redesign.md`
 - `docs/research/leiden_basin/leiden_basin_existing_data_review.md`
+- `docs/research/leiden_basin/leiden_basin_methodology_v0_design.md`
 - `docs/research/leiden_basin/leiden_basin_data_inventory.md`
 - `research/consensus/TODO_SCISCI_ADAPTIVE_REFINEMENT.md`
 - `research/consensus/results/adaptive_refinement/leiden_basin_existence_assumption_audit_20260529/`
@@ -317,6 +318,19 @@ Reopen Track C route or operator execution only if at least one condition is met
    polish reversion.
 4. Quality/cost evaluation is explicitly deferred until after basin and wall
    gates pass.
+
+### Next Methodology Target
+
+The next Track C target is `basin_methodology_v0`, not operator replay:
+
+- freeze primitive basin objects as endpoint identity, global observed basin,
+  support-local basin candidate, basin-pair relation, and wall/pathway relation;
+- select a precommitted non-field34 panel from the broader calibration universe
+  before route execution;
+- require wall/pathway evidence such as failed direct transition, objective
+  debt/recovery, polish reversion, or support incompatibility before route
+  labels are promoted;
+- keep quality and cost out of the basin definition and wall-promotion gates.
 
 ### Merge Into This Track
 

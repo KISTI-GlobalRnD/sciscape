@@ -9,6 +9,8 @@ documents are guardrails or exploratory evidence, not default product claims.
   diagnostics redesign.
 - `leiden_basin_existing_data_review.md`: primitive-basin review of existing
   Track C artifacts.
+- `leiden_basin_methodology_v0_design.md`: next basin-definition, precommitted
+  non-field34 panel, and wall/pathway evidence contract.
 - `leiden_basin_data_inventory.md`: basin-first inventory of current adaptive
   refinement artifacts and generated Phase 1 outputs.
 

@@ -167,6 +167,7 @@ Core docs and code:
 - `docs/research/leiden_basin/leiden_basin_cartography_redesign.md`
 - `docs/research/leiden_basin/leiden_basin_data_inventory.md`
 - `docs/research/leiden_basin/leiden_basin_existing_data_review.md`
+- `docs/research/leiden_basin/leiden_basin_methodology_v0_design.md`
 - `docs/leiden_multibasin_research_guardrails.md`
 - `docs/dongdaemun_basin_transition_operator_design.md`
 - `sciscape/clustering/leiden_basin_profile.py`
