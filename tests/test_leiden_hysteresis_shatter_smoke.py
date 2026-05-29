@@ -9,7 +9,7 @@ import numpy as np
 def _load_smoke_module():
     path = (
         Path(__file__).resolve().parents[1]
-        / "research/consensus/scripts/run_leiden_hysteresis_shatter_smoke.py"
+        / "research/consensus/scripts/leiden_basin/hysteresis/run_leiden_hysteresis_shatter_smoke.py"
     )
     spec = importlib.util.spec_from_file_location(
         "leiden_hysteresis_shatter_smoke", path

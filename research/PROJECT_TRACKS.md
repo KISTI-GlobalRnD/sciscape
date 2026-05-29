@@ -287,6 +287,7 @@ calibration universe has no walls.
 - `docs/research/leiden_basin/leiden_basin_methodology_v0_design.md`
 - `docs/research/leiden_basin/leiden_basin_data_inventory.md`
 - `research/consensus/TODO_SCISCI_ADAPTIVE_REFINEMENT.md`
+- `research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
 - `research/consensus/results/adaptive_refinement/leiden_basin_existence_assumption_audit_20260529/`
 - `research/consensus/results/adaptive_refinement/leiden_basin_cycle_closure_writeup_20260529/`
 - `sciscape/clustering/leiden_basin_profile.py`
@@ -331,6 +332,11 @@ The next Track C target is `basin_methodology_v0`, not operator replay:
   debt/recovery, polish reversion, or support incompatibility before route
   labels are promoted;
 - keep quality and cost out of the basin definition and wall-promotion gates.
+
+The first M1 materialization now passes the panel-shape gates with 7
+non-field34 cases across 3 fields and 3 method families. It creates 142
+accepted distinct pair candidates for M3 schema review, but does not execute
+routes or promote wall claims.
 
 ### Merge Into This Track
 

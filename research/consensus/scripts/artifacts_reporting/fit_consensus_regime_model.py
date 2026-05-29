@@ -15,10 +15,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import numpy as np
@@ -34,7 +36,6 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 
 from _common import save_json
 
-
 def _consensus_side(payload: dict[str, Any]) -> tuple[str, str, str]:
     label_a = payload["label_a"]
     label_b = payload["label_b"]
@@ -44,11 +45,9 @@ def _consensus_side(payload: dict[str, Any]) -> tuple[str, str, str]:
         return ("B", label_b, label_a)
     raise ValueError(f"Review does not contain a consensus label: {label_a}, {label_b}")
 
-
 def _field_prefix(field_name: str) -> str:
     parts = field_name.split("_")
     return "_".join(parts[:2]) if len(parts) >= 2 else field_name
-
 
 def _build_rows(review_paths: list[Path]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -90,7 +89,6 @@ def _build_rows(review_paths: list[Path]) -> list[dict[str, Any]]:
             )
     return rows
 
-
 def _feature_matrix(rows: list[dict[str, Any]]) -> tuple[pd.DataFrame, np.ndarray]:
     X = pd.DataFrame(
         [
@@ -114,7 +112,6 @@ def _feature_matrix(rows: list[dict[str, Any]]) -> tuple[pd.DataFrame, np.ndarra
     )
     y = np.asarray([row["consensus_wins"] for row in rows], dtype=int)
     return X, y
-
 
 def _make_logistic_pipeline() -> Pipeline:
     numeric_features = [
@@ -163,7 +160,6 @@ def _make_logistic_pipeline() -> Pipeline:
         ]
     )
 
-
 def _fit_tree(rows: pd.DataFrame, y: np.ndarray) -> dict[str, Any]:
     numeric_features = [
         "top_k",
@@ -201,7 +197,6 @@ def _fit_tree(rows: pd.DataFrame, y: np.ndarray) -> dict[str, Any]:
         "feature_importances": importances,
         "rules": export_text(tree, feature_names=feature_names),
     }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -249,7 +244,6 @@ def main() -> None:
     out_path = args.output / f"{args.stem}.json"
     save_json(summary, out_path)
     print(f"Saved → {out_path}")
-
 
 if __name__ == "__main__":
     main()

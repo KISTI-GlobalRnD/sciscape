@@ -17,10 +17,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import (
@@ -39,13 +41,11 @@ log = logging.getLogger(__name__)
 
 VALID_METHODS = ("sum", "consensus", "rank", "max", "vote")
 
-
 def _parse_layer_list(value: str | None) -> list[str] | None:
     if value is None:
         return None
     items = [item.strip() for item in value.split(",") if item.strip()]
     return items or None
-
 
 def _parse_uid_list(value: str | None) -> list[str] | None:
     if value is None:
@@ -53,12 +53,10 @@ def _parse_uid_list(value: str | None) -> list[str] | None:
     items = [item.strip() for item in value.split(",") if item.strip()]
     return items or None
 
-
 def _is_usable_record(record: dict[str, Any] | None) -> bool:
     if not record:
         return False
     return bool(str(record.get("title", "") or "").strip() and str(record.get("abstract", "") or "").strip())
-
 
 def _docs_from_uids(uids: list[str], meta: dict[str, dict]) -> list[dict]:
     docs = []
@@ -76,7 +74,6 @@ def _docs_from_uids(uids: list[str], meta: dict[str, dict]) -> list[dict]:
         )
     return docs
 
-
 def _resolve_top_k(layer_names: list[str], *, top_k: int, effective_k: int | None) -> int | dict[str, int]:
     if effective_k is None:
         return top_k
@@ -84,21 +81,17 @@ def _resolve_top_k(layer_names: list[str], *, top_k: int, effective_k: int | Non
         return effective_k
     return allocate_effective_k(layer_names, effective_k)
 
-
 def _protocol_name(*, effective_k: int | None) -> str:
     return "candidate_budget_matched" if effective_k is not None else "practical_top_k"
-
 
 def _resolve_output_path(output_arg: Path, field: str) -> Path:
     if output_arg.suffix == ".json":
         return output_arg
     return output_arg / f"{field}_boundary_coverage_v2_review.json"
 
-
 def _sample_uid_order(payload: dict) -> list[str]:
     rows = payload.get("population_cases", []) + payload.get("diagnostic_cases", [])
     return list(dict.fromkeys(row["target_uid"] for row in rows))
-
 
 def _resume_compatible(existing_payload: dict, current_payload: dict) -> bool:
     keys = (
@@ -128,7 +121,6 @@ def _resume_compatible(existing_payload: dict, current_payload: dict) -> bool:
         return False
     return _sample_uid_order(existing_payload) == _sample_uid_order(current_payload)
 
-
 def _serialize_gold(result) -> dict:
     return {
         "decision": result.decision,
@@ -144,7 +136,6 @@ def _serialize_gold(result) -> dict:
         "swapped": result.swapped,
     }
 
-
 def _serialize_unary(result) -> dict:
     return {
         "decision": result.decision,
@@ -153,13 +144,11 @@ def _serialize_unary(result) -> dict:
         "method": result.method,
     }
 
-
 def _unique_selected_cases(payload: dict) -> list[dict]:
     by_uid: dict[str, dict] = {}
     for case in payload.get("population_cases", []) + payload.get("diagnostic_cases", []):
         by_uid.setdefault(case["target_uid"], case)
     return list(by_uid.values())
-
 
 def _merge_reviews(cases: list[dict], reviewed_by_uid: dict[str, dict]) -> list[dict]:
     merged = []
@@ -172,7 +161,6 @@ def _merge_reviews(cases: list[dict], reviewed_by_uid: dict[str, dict]) -> list[
         merged.append(row)
     return merged
 
-
 def _review_complete(case: dict) -> bool:
     state = case.get("coverage_state")
     if state == "both_reviewable":
@@ -182,7 +170,6 @@ def _review_complete(case: dict) -> bool:
     if state == "B_only_reviewable":
         return bool(case.get("unary_review_b") or case.get("review_error"))
     return True
-
 
 def _refresh_summary(payload: dict, *, label_a: str, label_b: str) -> None:
     reviewed_by_uid = {case["target_uid"]: case for case in payload.get("reviewed_cases", [])}
@@ -207,7 +194,6 @@ def _refresh_summary(payload: dict, *, label_a: str, label_b: str) -> None:
             else None
         ),
     }
-
 
 def _review_payload(
     output_payload: dict,
@@ -318,7 +304,6 @@ def _review_payload(
     _refresh_summary(output_payload, label_a=label_a, label_b=label_b)
     save_json(output_payload, out_path)
     log.info("Saved review -> %s", out_path)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -480,7 +465,6 @@ def main() -> None:
 
     out_path = _resolve_output_path(args.output, args.field)
     _review_payload(output_payload, out_path=out_path, meta=meta, args=args, label_a=label_a, label_b=label_b)
-
 
 if __name__ == "__main__":
     main()

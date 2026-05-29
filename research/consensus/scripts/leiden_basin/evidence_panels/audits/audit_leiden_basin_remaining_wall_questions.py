@@ -14,9 +14,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -24,6 +22,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_TRIAGE_DIR = BASE_RESULT_DIR / "leiden_basin_route_label_blocker_triage_20260529"
 DEFAULT_CURRENT_REVIEW_DIR = BASE_RESULT_DIR / "leiden_basin_current_results_review_20260529"
@@ -52,13 +60,11 @@ CLAIM_BOUNDARY = (
     "change, basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -68,23 +74,19 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_str(value: Any) -> str:
     if pd.isna(value):
         return ""
     return str(value)
 
-
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
-
 
 def _decision_for_row(
     row: pd.Series,
@@ -224,7 +226,6 @@ def _decision_for_row(
         "decision_reason": "No accepted route or wall action follows from the current gates.",
     }
 
-
 def _remaining_rows(
     *,
     triage_dir: Path,
@@ -308,7 +309,6 @@ def _remaining_rows(
         ascending=[False, True, True],
     )
 
-
 def _decision_counts(rows: pd.DataFrame) -> pd.DataFrame:
     group_cols = ["remaining_wall_question_class", "route_execution_decision", "wall_promotion_decision"]
     return (
@@ -318,7 +318,6 @@ def _decision_counts(rows: pd.DataFrame) -> pd.DataFrame:
         .sort_values(["remaining_wall_question_class", "row_count"])
         .reset_index(drop=True)
     )
-
 
 def _summary(
     *,
@@ -377,7 +376,6 @@ def _summary(
         },
         "claim_boundary": CLAIM_BOUNDARY,
     }
-
 
 def _write_report(
     path: Path,
@@ -464,7 +462,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines), encoding="utf-8")
 
-
 def run(
     *,
     triage_dir: Path,
@@ -516,7 +513,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, decision_counts, remaining_rows)
     return summary
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--triage-dir", type=Path, default=DEFAULT_TRIAGE_DIR)
@@ -526,7 +522,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--field34-audit-dir", type=Path, default=DEFAULT_FIELD34_AUDIT_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     return parser
-
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -540,7 +535,6 @@ def main() -> int:
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

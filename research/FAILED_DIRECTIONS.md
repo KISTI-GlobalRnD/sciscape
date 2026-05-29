@@ -94,7 +94,7 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/run_leiden_basin_transition_closure_operator_pilot.py`
+- `research/consensus/scripts/leiden_basin/transition_routes/transition_operators/run_leiden_basin_transition_closure_operator_pilot.py`
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_closure_operator_pilot_field34_cc/`
 
 ### F3. Label-Internal Repair As A Main Basin Operator
@@ -125,7 +125,7 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/run_leiden_basin_transition_label_internal_repair_pilot.py`
+- `research/consensus/scripts/leiden_basin/transition_routes/closure_context/run_leiden_basin_transition_label_internal_repair_pilot.py`
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_label_internal_repair_pilot_field34_cc/`
 
 ### F4. Sequential Stage2 Recovery After Compact Target Move
@@ -158,7 +158,7 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/run_leiden_basin_attachment_margin_stage2_recovery.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/run_leiden_basin_attachment_margin_stage2_recovery.py`
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_attachment_margin_stage2_recovery_field34_cc_c0_p6_p8_p10_v2/`
 
 ### F5. Broad Gate-Only Context Release As The Operator
@@ -189,8 +189,8 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/profile_leiden_basin_post_gate_gate_trace.py`
-- `research/consensus/scripts/run_leiden_basin_gate_release_operator_probe.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/profile_leiden_basin_post_gate_gate_trace.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/gate_release/run_leiden_basin_gate_release_operator_probe.py`
 
 ### F6. Low-Wall Side Routes As Finished Operators
 
@@ -220,9 +220,9 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/profile_leiden_basin_side_route_expansion.py`
-- `research/consensus/scripts/profile_leiden_basin_pathway_debt_area.py`
-- `research/consensus/scripts/profile_leiden_basin_tunneling_evidence.py`
+- `research/consensus/scripts/leiden_basin/transition_routes/route_wall/profile_leiden_basin_side_route_expansion.py`
+- `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/profile_leiden_basin_pathway_debt_area.py`
+- `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/profile_leiden_basin_tunneling_evidence.py`
 
 ### F7. Repeated c2 p6/p8 Selector Replay Without Readiness
 
@@ -252,8 +252,8 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/screen_leiden_basin_selector_sources.py`
-- `research/consensus/scripts/run_leiden_basin_selector_source_screen_batch.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/selector_sources/screen_leiden_basin_selector_sources.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/selector_sources/run_leiden_basin_selector_source_screen_batch.py`
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_selector_source_screen_batch_field34_cc_non_c0_v0/`
 
 ### F8. Raw Exact Changed-Node Counts As Basin Evidence
@@ -284,8 +284,8 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/audit_leiden_basin_evaluation_metrics.py`
-- `research/consensus/scripts/summarize_leiden_basin_recomputed_operator_metrics.py`
+- `research/consensus/scripts/leiden_basin/evidence_panels/audits/audit_leiden_basin_evaluation_metrics.py`
+- `research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/summarize_leiden_basin_recomputed_operator_metrics.py`
 
 ### F9. Naive Pull-Ranked Unit Growth
 
@@ -314,8 +314,8 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/profile_leiden_basin_target_units.py`
-- `research/consensus/scripts/search_leiden_basin_transitions.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/profile_leiden_basin_target_units.py`
+- `research/consensus/scripts/leiden_basin/transition_routes/closure_context/search_leiden_basin_transitions.py`
 
 ### F10. Raw Max-Gap Elbow Without Pull-Fraction Guard
 
@@ -343,9 +343,9 @@ Revisit only if:
 
 Primary anchors:
 
-- `research/consensus/scripts/profile_leiden_basin_target_elbows.py`
-- `research/consensus/scripts/evaluate_leiden_basin_target_elbow_polish.py`
-- `research/consensus/scripts/search_leiden_basin_branch_target_growth.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/profile_leiden_basin_target_elbows.py`
+- `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/evaluate_leiden_basin_target_elbow_polish.py`
+- `research/consensus/scripts/leiden_basin/basin_signatures/branch_growth/search_leiden_basin_branch_target_growth.py`
 
 ## Dongdaemun-Post And Hierarchy Repair Boundaries
 

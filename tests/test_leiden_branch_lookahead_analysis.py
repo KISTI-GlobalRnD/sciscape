@@ -13,6 +13,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "basin_signatures"
+    / "branch_growth"
     / "analyze_leiden_branch_lookahead.py"
 )
 

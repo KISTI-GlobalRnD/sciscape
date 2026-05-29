@@ -14,20 +14,20 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import save_json
-
 
 def _infer_review_labels(payload: dict[str, Any]) -> tuple[str, str]:
     label_a = payload.get("label_a") or payload.get("method_a")
     label_b = payload.get("label_b") or payload.get("method_b")
     return str(label_a), str(label_b)
-
 
 def _parse_slice_key(field: str) -> tuple[str, int]:
     if "_k" not in field:
@@ -41,13 +41,11 @@ def _parse_slice_key(field: str) -> tuple[str, int]:
             break
     return prefix, int("".join(digits)) if digits else 0
 
-
 def _method_map_from_ablation(path: Path) -> tuple[tuple[str, int], dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     field, top_k = _parse_slice_key(payload["field"])
     result_map = {row["method"]: row for row in payload["results"]}
     return (field, top_k), result_map
-
 
 def _review_summary(path: Path) -> tuple[tuple[str, int], dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -62,13 +60,11 @@ def _review_summary(path: Path) -> tuple[tuple[str, int], dict[str, Any]]:
         "summary": payload.get("summary", {}),
     }
 
-
 def _winner_string(summary: dict[str, Any]) -> str:
     comparison = summary.get("comparison", {})
     a = comparison.get("method_a_wins", 0)
     b = comparison.get("method_b_wins", 0)
     return f"{a}:{b}"
-
 
 def _pairwise_lookup(reviews: list[dict[str, Any]], label_left: str, label_right: str) -> dict[str, Any] | None:
     for review in reviews:
@@ -77,7 +73,6 @@ def _pairwise_lookup(reviews: list[dict[str, Any]], label_left: str, label_right
         if (left, right) == (label_left, label_right):
             return review
     return None
-
 
 def _pick_ablated_consensus_review(reviews: list[dict[str, Any]]) -> dict[str, Any] | None:
     preferred = [
@@ -94,7 +89,6 @@ def _pick_ablated_consensus_review(reviews: list[dict[str, Any]]) -> dict[str, A
         if "consensus" in review["label_a"] or "consensus" in review["label_b"]
     ]
     return fallback[0] if fallback else None
-
 
 def _render_markdown(rows: list[dict[str, Any]]) -> str:
     lines = [
@@ -116,7 +110,6 @@ def _render_markdown(rows: list[dict[str, Any]]) -> str:
             )
         )
     return "\n".join(lines) + "\n"
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -186,7 +179,6 @@ def main() -> None:
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_md.write_text(_render_markdown(rows), encoding="utf-8")
     print(f"Saved → {out_md}")
-
 
 if __name__ == "__main__":
     main()

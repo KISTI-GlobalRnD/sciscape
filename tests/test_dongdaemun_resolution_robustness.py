@@ -13,6 +13,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "trajectory_analysis"
     / "analyze_dongdaemun_resolution_robustness.py"
 )
 

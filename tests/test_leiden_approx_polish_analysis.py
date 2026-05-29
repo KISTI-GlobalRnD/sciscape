@@ -10,7 +10,7 @@ import pandas as pd
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "research" / "consensus" / "scripts"
-ANALYSIS_PATH = SCRIPT_DIR / "analyze_leiden_approx_polish_candidates.py"
+ANALYSIS_PATH = Path(__file__).resolve().parents[1] / "research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/analyze_leiden_approx_polish_candidates.py"
 
 
 def _load_script(path: Path, module_name: str):

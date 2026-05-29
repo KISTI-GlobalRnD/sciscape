@@ -12,6 +12,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "transition_routes"
+    / "closure_context"
     / "analyze_leiden_basin_transition_boundaries.py"
 )
 

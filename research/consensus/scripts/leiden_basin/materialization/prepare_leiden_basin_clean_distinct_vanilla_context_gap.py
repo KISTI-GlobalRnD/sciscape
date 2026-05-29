@@ -11,27 +11,31 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
+import sys
 
-import pandas as pd
-
-
-SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = next(
     parent
     for parent in Path(__file__).resolve().parents
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-sys.path.insert(0, str(SCRIPT_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
+
+import pandas as pd
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 from collect_leiden_vanilla_reachability_sweep import (  # noqa: E402
     _parse_n_iterations_value,
     collect_sweep,
 )
-
 
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_OUTPUT_DIR = (
@@ -76,24 +80,20 @@ TARGET_SPECS = (
     },
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(path)
     return pd.read_csv(path)
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _target_manifest() -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     rows: list[pd.Series] = []
@@ -121,7 +121,6 @@ def _target_manifest() -> tuple[pd.DataFrame, list[dict[str, Any]]]:
             }
         )
     return pd.DataFrame([row.to_dict() for row in rows]), specs
-
 
 def _write_report(
     path: Path,
@@ -186,7 +185,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(output_dir: Path, *, run_vanilla: bool, resume: bool) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest, specs = _target_manifest()
@@ -241,7 +239,6 @@ def run(output_dir: Path, *, run_vanilla: bool, resume: bool) -> dict[str, Any]:
     )
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -258,7 +255,6 @@ def main() -> None:
             indent=2,
         )
     )
-
 
 if __name__ == "__main__":
     main()

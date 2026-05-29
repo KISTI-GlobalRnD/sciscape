@@ -13,9 +13,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_PHASE1_DIR = BASE_RESULT_DIR / "leiden_basin_phase1_index_20260528"
 DEFAULT_OUTPUT_DIR = BASE_RESULT_DIR / "leiden_basin_phase1_review_20260528"
@@ -71,13 +79,11 @@ ENDPOINT_TAU = 0.02
 SAME_SUPPORT_MAX = 0.5
 DISTINCT_SUPPORT_MIN = 0.75
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -87,11 +93,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
@@ -101,15 +105,12 @@ def _safe_int(value: Any, default: int = 0) -> int:
     except (TypeError, ValueError):
         return default
 
-
 def _case_tail(case: str) -> str:
     marker = "20260514_"
     return case.split(marker, 1)[1] if marker in case else case
 
-
 def _case_id(case: str, candidate_budget: int) -> str:
     return f"{_case_tail(case)}_budget{candidate_budget}"
-
 
 def _component_count(pair_rows: pd.DataFrame, *, support_tau: float) -> int:
     if pair_rows.empty:
@@ -136,7 +137,6 @@ def _component_count(pair_rows: pd.DataFrame, *, support_tau: float) -> int:
             union(row["left_candidate_index"], row["right_candidate_index"])
     return len({find(node) for node in nodes})
 
-
 def _load_pairwise_rows() -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     for source_label, path in PAIRWISE_SOURCES:
@@ -156,7 +156,6 @@ def _load_pairwise_rows() -> pd.DataFrame:
         )
         frames.append(frame)
     return pd.concat(frames, ignore_index=True, sort=False) if frames else pd.DataFrame()
-
 
 def _load_candidate_rows() -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
@@ -178,7 +177,6 @@ def _load_candidate_rows() -> pd.DataFrame:
             frames.append(frame)
     return pd.concat(frames, ignore_index=True, sort=False) if frames else pd.DataFrame()
 
-
 def _quality_column_leaks(phase1_dir: Path) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for path in sorted(phase1_dir.glob("*.csv")):
@@ -194,7 +192,6 @@ def _quality_column_leaks(phase1_dir: Path) -> pd.DataFrame:
                     }
                 )
     return pd.DataFrame(rows, columns=["file", "column", "status"])
-
 
 def _consistency_checks(phase1_dir: Path, pairwise: pd.DataFrame) -> pd.DataFrame:
     landscape = _read_csv(phase1_dir / "landscape_case_index.csv")
@@ -262,7 +259,6 @@ def _consistency_checks(phase1_dir: Path, pairwise: pd.DataFrame) -> pd.DataFram
 
     return pd.DataFrame(checks)
 
-
 def _threshold_sensitivity(pairwise: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     if pairwise.empty:
@@ -281,7 +277,6 @@ def _threshold_sensitivity(pairwise: pd.DataFrame) -> pd.DataFrame:
             )
         rows.append(row)
     return pd.DataFrame(rows).sort_values(["source_label", "case_id"])
-
 
 def _trizone_counts(pairwise: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
@@ -307,7 +302,6 @@ def _trizone_counts(pairwise: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows).sort_values(["source_label", "case_id"])
-
 
 def _field34_filtering(candidate_rows: pd.DataFrame, phase1_dir: Path) -> pd.DataFrame:
     cartography = _read_csv(phase1_dir / "basin_cartography_case_index.csv")
@@ -351,7 +345,6 @@ def _field34_filtering(candidate_rows: pd.DataFrame, phase1_dir: Path) -> pd.Dat
             }
         )
     return pd.DataFrame(rows).sort_values("case_id")
-
 
 def _write_report(
     path: Path,
@@ -444,7 +437,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(phase1_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     pairwise = _load_pairwise_rows()
@@ -487,7 +479,6 @@ def run(phase1_dir: Path, output_dir: Path) -> dict[str, Any]:
     )
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase1-dir", type=Path, default=DEFAULT_PHASE1_DIR)
@@ -495,7 +486,6 @@ def main() -> None:
     args = parser.parse_args()
     summary = run(args.phase1_dir, args.output_dir)
     print(json.dumps({"output_dir": _rel(args.output_dir), **summary}, indent=2))
-
 
 if __name__ == "__main__":
     main()

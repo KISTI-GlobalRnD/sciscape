@@ -14,9 +14,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -24,6 +22,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_RUNNER_DIR = (
     BASE_RESULT_DIR / "leiden_basin_uniform_wall_probe_runner_clean_distinct_after_gap_fill_20260528"
@@ -54,13 +62,11 @@ CONFIG_JSON = "clean_distinct_route_mechanism_review_config.json"
 ENDPOINT_TAU = 0.02
 SAME_SUPPORT_MAX = 0.5
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -70,11 +76,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -85,7 +89,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _last_by_schedule(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     if frame.empty:
         return pd.DataFrame(columns=["panel_pair_id", "route_schedule", *columns])
@@ -93,7 +96,6 @@ def _last_by_schedule(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return ordered.groupby(["panel_pair_id", "route_schedule"], as_index=False).tail(1)[
         ["panel_pair_id", "route_schedule", *columns]
     ]
-
 
 def _objective_summary(objective: pd.DataFrame) -> pd.DataFrame:
     if objective.empty:
@@ -110,7 +112,6 @@ def _objective_summary(objective: pd.DataFrame) -> pd.DataFrame:
         )
         .reset_index()
     )
-
 
 def _route_summary(route: pd.DataFrame) -> pd.DataFrame:
     if route.empty:
@@ -132,7 +133,6 @@ def _route_summary(route: pd.DataFrame) -> pd.DataFrame:
         ],
     ).rename(columns={"step_index": "final_step_index"})
     return last.merge(total_edits, on=["panel_pair_id", "route_schedule"], how="left")
-
 
 def _schedule_rows(runner_dir: Path, subset_dir: Path) -> pd.DataFrame:
     claims = _read_csv(runner_dir / ROUTE_CLAIM_CSV)
@@ -265,7 +265,6 @@ def _schedule_rows(runner_dir: Path, subset_dir: Path) -> pd.DataFrame:
     ]
     return rows[public_cols].sort_values(["field", "panel_pair_id", "route_schedule"])
 
-
 def _schedule_mechanism_flag(row: pd.Series) -> str:
     if bool(row.get("post_polish_target_like", False)):
         return "post_polish_target_stable"
@@ -280,7 +279,6 @@ def _schedule_mechanism_flag(row: pd.Series) -> str:
     if not bool(row.get("pre_polish_target_like", False)):
         return "route_did_not_reach_target_like_state"
     return "unclassified_schedule_mechanism"
-
 
 def _pair_summary(schedule_rows: pd.DataFrame) -> pd.DataFrame:
     grouped = schedule_rows.groupby("panel_pair_id", dropna=False)
@@ -332,7 +330,6 @@ def _pair_summary(schedule_rows: pd.DataFrame) -> pd.DataFrame:
         )
     return pd.DataFrame(rows).sort_values(["field", "panel_pair_id"])
 
-
 def _field_contrast(pair_summary: pd.DataFrame) -> pd.DataFrame:
     if pair_summary.empty:
         return pd.DataFrame()
@@ -368,7 +365,6 @@ def _field_contrast(pair_summary: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows).sort_values(["field", "method"])
-
 
 def _write_report(
     path: Path,
@@ -441,7 +437,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(runner_dir: Path, subset_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     schedule_rows = _schedule_rows(runner_dir, subset_dir)
@@ -496,7 +491,6 @@ def run(runner_dir: Path, subset_dir: Path, output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, pair_summary, field_contrast)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runner-dir", type=Path, default=DEFAULT_RUNNER_DIR)
@@ -504,7 +498,6 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.runner_dir, args.subset_dir, args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

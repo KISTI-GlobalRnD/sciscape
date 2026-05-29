@@ -14,9 +14,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -24,6 +22,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 CROSSFIELD_ROOT = BASE_RESULT_DIR / "leiden_multibasin_crossfield_budget12_support_20260519"
 DEFAULT_CALIBRATION_DIR = BASE_RESULT_DIR / "leiden_basin_definition_calibration_20260528"
@@ -53,13 +61,11 @@ CLAIM_BOUNDARY = (
     "change, basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -69,11 +75,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
@@ -82,7 +86,6 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(float(value))
     except (TypeError, ValueError):
         return default
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -93,16 +96,13 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _case_tail_from_case(case: str) -> str:
     marker = "20260514_"
     return case.split(marker, 1)[1] if marker in case else case
 
-
 def _case_id_from_case(case: str, budget: int) -> str:
     tail = _case_tail_from_case(case)
     return f"{tail}_budget{budget}"
-
 
 def _field_method_from_case(case: str) -> tuple[str, str]:
     tail = _case_tail_from_case(case)
@@ -110,7 +110,6 @@ def _field_method_from_case(case: str) -> tuple[str, str]:
     if not method:
         raise ValueError(f"cannot parse field/method from case: {case}")
     return field, method
-
 
 def _support_size_class(count: int) -> str:
     if count <= 0:
@@ -120,7 +119,6 @@ def _support_size_class(count: int) -> str:
     if count <= SMALL_SUPPORT_MAX:
         return "small_support"
     return "moderate_support"
-
 
 def _endpoint_hygiene_status(
     *,
@@ -140,7 +138,6 @@ def _endpoint_hygiene_status(
     if support_count <= SMALL_SUPPORT_MAX:
         return "small_support_diagnostic_reference"
     return "moderate_support_candidate"
-
 
 def _method_role(row: pd.Series) -> str:
     endpoint_rows = _safe_int(row["endpoint_rows"])
@@ -165,12 +162,10 @@ def _method_role(row: pd.Series) -> str:
         return "field34_small_support_diagnostic_reference"
     return "field34_selective_reference_only"
 
-
 def _calibration_eligibility(method_role: str) -> str:
     if method_role == "field34_filtered_no_accepted_endpoint":
         return "exclude_from_basin_definition_calibration"
     return "not_clean_calibration_source"
-
 
 def _load_field34_candidates() -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
@@ -189,7 +184,6 @@ def _load_field34_candidates() -> pd.DataFrame:
     if not frames:
         raise ValueError("no field34 candidate rows found")
     return pd.concat(frames, ignore_index=True, sort=False)
-
 
 def _endpoint_rows(calibration_dir: Path) -> pd.DataFrame:
     candidates = _load_field34_candidates()
@@ -280,7 +274,6 @@ def _endpoint_rows(calibration_dir: Path) -> pd.DataFrame:
     out["claim_boundary"] = CLAIM_BOUNDARY
     return out.sort_values(["method", "candidate_index"]).reset_index(drop=True)
 
-
 def _method_rows(endpoint_rows: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for (case_id, method), group in endpoint_rows.groupby(["case_id", "method"], sort=True):
@@ -314,7 +307,6 @@ def _method_rows(endpoint_rows: pd.DataFrame) -> pd.DataFrame:
         row["claim_boundary"] = CLAIM_BOUNDARY
         rows.append(row)
     return pd.DataFrame(rows)
-
 
 def _pair_rows(calibration_dir: Path, endpoint_rows: pd.DataFrame) -> pd.DataFrame:
     pairs = _read_csv(calibration_dir / CANDIDATE_PAIR_RELATION_ROWS)
@@ -373,7 +365,6 @@ def _pair_rows(calibration_dir: Path, endpoint_rows: pd.DataFrame) -> pd.DataFra
     ]
     return pairs[cols].sort_values(["method", "left_candidate_index", "right_candidate_index"])
 
-
 def _pair_hygiene_status(row: pd.Series) -> str:
     statuses = {
         str(row.get("left_endpoint_hygiene_status", "")),
@@ -394,7 +385,6 @@ def _pair_hygiene_status(row: pd.Series) -> str:
     if min_count <= SMALL_SUPPORT_MAX:
         return "pair_reference_only_small_support"
     return "pair_candidate_with_field34_caution"
-
 
 def _queue_projection(
     *,
@@ -493,7 +483,6 @@ def _queue_projection(
         )
     return pd.DataFrame(projected).sort_values(["blocker_priority", "panel_pair_id"])
 
-
 def _queue_decision(row: pd.Series, pair_status: str, left: dict[str, Any], right: dict[str, Any]) -> str:
     route_label = str(row.get("route_label_interpretation_v0", ""))
     if pair_status in {"pair_identity_or_self_control", "pair_filtered_zero_or_noop_endpoint"}:
@@ -513,7 +502,6 @@ def _queue_decision(row: pd.Series, pair_status: str, left: dict[str, Any], righ
     if min(left_count, right_count) <= SMALL_SUPPORT_MAX:
         return "hygiene_pass_reference_only_small_support"
     return "hygiene_pass_route_gate_candidate_with_field34_caution"
-
 
 def _summary(
     *,
@@ -579,7 +567,6 @@ def _summary(
         },
         "claim_boundary": CLAIM_BOUNDARY,
     }
-
 
 def _write_report(path: Path, summary: dict[str, Any], method_rows: pd.DataFrame, queue_rows: pd.DataFrame) -> None:
     lines = [
@@ -663,7 +650,6 @@ def _write_report(path: Path, summary: dict[str, Any], method_rows: pd.DataFrame
     )
     path.write_text("\n".join(lines), encoding="utf-8")
 
-
 def run(
     *,
     calibration_dir: Path,
@@ -718,7 +704,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, method_rows, queue_rows)
     return summary
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--calibration-dir", type=Path, default=DEFAULT_CALIBRATION_DIR)
@@ -726,7 +711,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--coverage-dir", type=Path, default=DEFAULT_COVERAGE_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     return parser
-
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -738,7 +722,6 @@ def main() -> int:
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

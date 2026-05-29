@@ -14,17 +14,18 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 def _pct(numerator: int, denominator: int) -> str:
     if denominator <= 0:
         return "0.0%"
     return f"{(100.0 * numerator / denominator):.1f}%"
-
 
 def _latex_escape(text: str) -> str:
     replacements = {
@@ -44,7 +45,6 @@ def _latex_escape(text: str) -> str:
         out = out.replace(src, dst)
     return out
 
-
 def _winner_table_md(summary: dict[str, Any]) -> str:
     lines = [
         "| Slice | consensus_all | sum_minus_emb | sum_minus_cc |",
@@ -59,7 +59,6 @@ def _winner_table_md(summary: dict[str, Any]) -> str:
         f"| total | {total.get('consensus_all', 0)} | {total.get('sum_minus_emb', 0)} | {total.get('sum_minus_cc', 0)} |"
     )
     return "\n".join(lines)
-
 
 def _label_table_md(summary: dict[str, Any]) -> str:
     total_cases = int(summary["n_classified_cases"])
@@ -82,7 +81,6 @@ def _label_table_md(summary: dict[str, Any]) -> str:
         )
     return "\n".join(lines)
 
-
 def _example_block_md(title: str, examples: list[dict[str, Any]]) -> str:
     lines = [f"### {title}"]
     for example in examples:
@@ -99,7 +97,6 @@ def _example_block_md(title: str, examples: list[dict[str, Any]]) -> str:
         lines.append(f"  Winner advantage: {example['winner_advantage']}")
         lines.append(f"  Loser failure mode: {example['loser_failure_mode']}")
     return "\n".join(lines)
-
 
 def _build_markdown(summary: dict[str, Any]) -> str:
     total = summary["n_classified_cases"]
@@ -148,7 +145,6 @@ def _build_markdown(summary: dict[str, Any]) -> str:
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
-
 def _winner_table_tex(summary: dict[str, Any]) -> str:
     rows = []
     for k, counts in sorted(summary["winner_by_k"].items(), key=lambda item: int(item[0])):
@@ -160,7 +156,6 @@ def _winner_table_tex(summary: dict[str, Any]) -> str:
         f"Total & {total.get('consensus_all', 0)} & {total.get('sum_minus_emb', 0)} & {total.get('sum_minus_cc', 0)} \\\\"
     )
     return "\n".join(rows)
-
 
 def _label_table_tex(summary: dict[str, Any]) -> str:
     total_cases = int(summary["n_classified_cases"])
@@ -178,7 +173,6 @@ def _label_table_tex(summary: dict[str, Any]) -> str:
             )
         )
     return "\n".join(rows)
-
 
 def _example_list_tex(summary: dict[str, Any]) -> str:
     sections: list[str] = []
@@ -200,7 +194,6 @@ def _example_list_tex(summary: dict[str, Any]) -> str:
             )
         sections.append("\\end{itemize}")
     return "\n".join(sections)
-
 
 def _build_tex(summary: dict[str, Any]) -> str:
     return (
@@ -225,7 +218,6 @@ def _build_tex(summary: dict[str, Any]) -> str:
         f"{_example_list_tex(summary)}\n"
     )
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("taxonomy_summary", type=Path, help="Combined taxonomy summary JSON")
@@ -243,7 +235,6 @@ def main() -> None:
     tex_path = args.output / f"{args.stem}.tex"
     tex_path.write_text(_build_tex(summary), encoding="utf-8")
     print(f"Saved → {tex_path}")
-
 
 if __name__ == "__main__":
     main()

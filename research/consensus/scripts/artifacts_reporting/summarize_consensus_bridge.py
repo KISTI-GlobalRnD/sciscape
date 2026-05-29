@@ -13,22 +13,21 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import save_json, select_best_single_result
 
-
 def _load_payload(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
-
 def _index_results(results: list[dict]) -> dict[str, dict]:
     return {row["method"]: row for row in results if row.get("method")}
-
 
 def _protocol_label(payload: dict) -> str | None:
     protocol = payload.get("protocol")
@@ -41,10 +40,8 @@ def _protocol_label(payload: dict) -> str | None:
         return "practical_top_k"
     return None
 
-
 def _is_current_payload(payload: dict) -> bool:
     return bool(payload.get("protocol")) and bool(payload.get("layer_paths"))
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bridge summary for citation_consensus vs all_consensus")
@@ -98,7 +95,6 @@ def main() -> None:
         )
 
     save_json({"rows": rows}, args.output)
-
 
 if __name__ == "__main__":
     main()

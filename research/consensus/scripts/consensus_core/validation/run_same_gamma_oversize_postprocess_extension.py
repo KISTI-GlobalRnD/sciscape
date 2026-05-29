@@ -26,10 +26,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import numpy as np
@@ -64,9 +66,7 @@ DEFAULT_VARIANTS = (
 DEFAULT_GAMMA_MULTIPLIERS = (1.02, 1.05, 1.10, 1.15, 1.20, 1.25)
 CACHE_SCHEMA_VERSION = 1
 
-
 @dataclass(frozen=True)
-
 
 class SourceRunConfig:
     field: int
@@ -81,9 +81,7 @@ class SourceRunConfig:
     target_max_doc_weight: float
     n_nodes: int
 
-
 @dataclass(frozen=True)
-
 
 class VariantConfig:
     name: str
@@ -95,31 +93,25 @@ class VariantConfig:
     singleton_budget: float
     membership_role: str
 
-
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
-
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
-
 def _parse_float_list(value: str) -> tuple[float, ...]:
     return tuple(float(part.strip()) for part in value.split(",") if part.strip())
-
 
 def _field_from_sample(sample: str) -> int | None:
     match = re.search(r"field_?(\d+)", str(sample))
     return int(match.group(1)) if match else None
-
 
 def _source_seed_roots(validation_dir: Path) -> list[Path]:
     return [
         validation_dir / "field_expansion_runs" / "source_seed_sweep_runs",
         validation_dir / "source_seed_sweep_runs",
     ]
-
 
 def _discover_source_run(
     *,
@@ -160,7 +152,6 @@ def _discover_source_run(
         f"No prepared source-seed run for field={field}, source_seed={source_seed}"
     )
 
-
 def _load_graph(config: SourceRunConfig):
     n_nodes = int(config.n_nodes)
     if n_nodes <= 0:
@@ -172,7 +163,6 @@ def _load_graph(config: SourceRunConfig):
         str(config.graph_dir / "weight.f64.bin"),
         str(config.node_weights_path),
     )
-
 
 def _membership_metrics(
     membership: np.ndarray,
@@ -203,7 +193,6 @@ def _membership_metrics(
         "target_max_satisfied": bool(target <= 0.0 or not np.any(weights > target)),
     }
 
-
 def _file_fingerprint(path: Path) -> dict[str, Any]:
     try:
         stat = path.stat()
@@ -216,11 +205,9 @@ def _file_fingerprint(path: Path) -> dict[str, Any]:
         "mtime_ns": int(stat.st_mtime_ns),
     }
 
-
 def _hash_json(payload: dict[str, Any]) -> str:
     blob = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
-
 
 def _variant_config(
     name: str,
@@ -264,7 +251,6 @@ def _variant_config(
         )
     raise ValueError(f"Unsupported variant: {name}")
 
-
 def _args_for_variant(
     *,
     config: SourceRunConfig,
@@ -301,7 +287,6 @@ def _args_for_variant(
         trim_max_moves_per_cluster=int(variant.trim_max_moves_per_cluster),
     )
 
-
 def _cache_metadata(
     *,
     config: SourceRunConfig,
@@ -332,7 +317,6 @@ def _cache_metadata(
         "payload": payload,
     }
 
-
 def _cache_matches(summary: dict[str, Any], expected: dict[str, Any]) -> bool:
     observed = summary.get("extension_cache_metadata")
     return (
@@ -340,7 +324,6 @@ def _cache_matches(summary: dict[str, Any], expected: dict[str, Any]) -> bool:
         and observed.get("schema_version") == expected.get("schema_version")
         and observed.get("cache_key") == expected.get("cache_key")
     )
-
 
 def _summary_membership_path(summary: dict[str, Any]) -> Path | None:
     paths = summary.get("paths", {})
@@ -350,7 +333,6 @@ def _summary_membership_path(summary: dict[str, Any]) -> Path | None:
         or paths.get("trim_membership")
     )
     return _repo_path(raw)
-
 
 def _effect_row(
     *,
@@ -418,7 +400,6 @@ def _effect_row(
         "cache_key": cache_key,
     }
 
-
 def _flatten_pass_rows(
     *,
     config: SourceRunConfig,
@@ -453,7 +434,6 @@ def _flatten_pass_rows(
         )
     return rows
 
-
 def _candidate_rows_from_summary(
     *,
     config: SourceRunConfig,
@@ -478,7 +458,6 @@ def _candidate_rows_from_summary(
         frame = frame[[*front, *[column for column in frame.columns if column not in front]]]
         rows.extend(frame.to_dict("records"))
     return rows
-
 
 def _run_variant(
     *,
@@ -553,7 +532,6 @@ def _run_variant(
         _candidate_rows_from_summary(config=config, variant=variant.name, summary=summary),
     )
 
-
 def _current_quality_first(validation_dir: Path) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     paths = [
@@ -582,7 +560,6 @@ def _current_quality_first(validation_dir: Path) -> pd.DataFrame:
         .reset_index(drop=True)
     )
     return qf.drop(columns=["_priority"], errors="ignore")
-
 
 def _compare_vs_current(effects: pd.DataFrame, validation_dir: Path) -> pd.DataFrame:
     current = _current_quality_first(validation_dir)
@@ -640,7 +617,6 @@ def _compare_vs_current(effects: pd.DataFrame, validation_dir: Path) -> pd.DataF
     )
     return merged
 
-
 def _policy_summary(effects: pd.DataFrame) -> pd.DataFrame:
     if effects.empty:
         return pd.DataFrame()
@@ -660,7 +636,6 @@ def _policy_summary(effects: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
-
 
 def _write_report(
     *,
@@ -720,7 +695,6 @@ def _write_report(
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
 
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--validation-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -738,7 +712,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true")
     return parser
-
 
 def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
@@ -890,7 +863,6 @@ def main(argv: list[str] | None = None) -> None:
     }
     _write_json(output_dir / "iterative_quality_first_compute_summary.json", compute_summary)
     print(json.dumps(compute_summary, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

@@ -17,6 +17,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "basin_signatures"
+    / "trajectory_failure"
     / "collect_leiden_vanilla_reachability_sweep.py"
 )
 

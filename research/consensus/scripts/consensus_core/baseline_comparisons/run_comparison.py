@@ -13,10 +13,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import polars as pl
@@ -36,7 +38,6 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
 
 SINGLE_LAYER_METHODS = ("bc_cosine", "cc_cosine", "dc_fractional", "emb_knn")
-
 
 def _run_single_layer(
     name: str,
@@ -62,7 +63,6 @@ def _run_single_layer(
         extra={"kind": "single_layer"},
     )
 
-
 def _run_multi_layer(
     layers: dict,
     *,
@@ -86,7 +86,6 @@ def _run_multi_layer(
         strategy="consensus",
         extra={"kind": "multi_layer"},
     )
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="E1: single-layer vs multi-layer consensus comparison")
@@ -230,7 +229,6 @@ def main() -> None:
     out_path = args.output / f"{args.field}_comparison.json"
     save_json(payload, out_path)
     log.info("\nSaved → %s", out_path)
-
 
 if __name__ == "__main__":
     main()

@@ -14,10 +14,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import matplotlib
@@ -26,24 +28,19 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
-
 def _slug(label: str) -> str:
     return label.replace(" ", "_").replace("/", "_")
-
 
 def _clean_slice_label(label: str) -> str:
     label = re.sub(r"_order_balanced_gemini_v\d+", "", label)
     label = re.sub(r"_corrected$", "", label)
     return label
 
-
 def _matching_files(results_dir: Path, pattern: str) -> list[Path]:
     return [path for path in sorted(results_dir.glob(pattern)) if path.is_file()]
-
 
 def plot_comparison(payload: dict, out_dir: Path) -> Path:
     field = payload["field"]
@@ -67,7 +64,6 @@ def plot_comparison(payload: dict, out_dir: Path) -> Path:
     plt.close(fig)
     return out_path
 
-
 def plot_leave_one_out(payload: dict, out_dir: Path) -> Path:
     field = payload["field"]
     ablations = payload.get("ablations", [])
@@ -90,7 +86,6 @@ def plot_leave_one_out(payload: dict, out_dir: Path) -> Path:
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     return out_path
-
 
 def plot_consensus_tiers(payload: dict, out_dir: Path) -> Path:
     field = payload["field"]
@@ -116,7 +111,6 @@ def plot_consensus_tiers(payload: dict, out_dir: Path) -> Path:
     plt.close(fig)
     return out_path
 
-
 def plot_cross_field(payload: dict, out_dir: Path) -> Path | None:
     summary = payload.get("summary", [])
     if not summary:
@@ -140,7 +134,6 @@ def plot_cross_field(payload: dict, out_dir: Path) -> Path | None:
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     return out_path
-
 
 def plot_k_sweep(payload: dict, out_dir: Path) -> Path | None:
     rows = payload.get("summary", [])
@@ -170,7 +163,6 @@ def plot_k_sweep(payload: dict, out_dir: Path) -> Path | None:
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     return out_path
-
 
 def plot_cross_field_k_sweep(payload: dict, out_dir: Path) -> Path | None:
     runs = payload.get("runs", {})
@@ -214,7 +206,6 @@ def plot_cross_field_k_sweep(payload: dict, out_dir: Path) -> Path | None:
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     return out_path
-
 
 def plot_boundary_review(payload: dict, out_dir: Path) -> Path | None:
     if "summary" in payload and "comparison" in payload["summary"]:
@@ -283,7 +274,6 @@ def plot_boundary_review(payload: dict, out_dir: Path) -> Path | None:
     plt.close(fig)
     return out_path
 
-
 def plot_boundary_review_summary(payload: dict, out_dir: Path) -> Path | None:
     rows = payload.get("summary", [])
     if not rows:
@@ -320,7 +310,6 @@ def plot_boundary_review_summary(payload: dict, out_dir: Path) -> Path | None:
     plt.close(fig)
     return out_path
 
-
 def plot_rank_shift_review(payload: dict, out_dir: Path) -> Path | None:
     summary = payload.get("summary", {})
     comparison = summary.get("comparison")
@@ -356,7 +345,6 @@ def plot_rank_shift_review(payload: dict, out_dir: Path) -> Path | None:
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     return out_path
-
 
 def plot_review_uncertainty(payload: dict, out_dir: Path) -> Path | None:
     rows = payload.get("per_review", [])
@@ -402,7 +390,6 @@ def plot_review_uncertainty(payload: dict, out_dir: Path) -> Path | None:
     plt.close(fig)
     return out_path
 
-
 def plot_taxonomy_summary(payload: dict, out_dir: Path) -> Path | None:
     label_counts = payload.get("label_counts")
     label_by_winner = payload.get("label_by_winner")
@@ -443,7 +430,6 @@ def plot_taxonomy_summary(payload: dict, out_dir: Path) -> Path | None:
     plt.close(fig)
     return out_path
 
-
 def plot_regime_model(payload: dict, out_dir: Path) -> Path | None:
     positives = payload.get("top_positive_coefficients", [])
     negatives = payload.get("top_negative_coefficients", [])
@@ -467,7 +453,6 @@ def plot_regime_model(payload: dict, out_dir: Path) -> Path | None:
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
     return out_path
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate figures for consensus research")
@@ -531,7 +516,6 @@ def main() -> None:
             print(f"  {path}")
     else:
         print(f"No compatible result files found in {args.results_dir}")
-
 
 if __name__ == "__main__":
     main()

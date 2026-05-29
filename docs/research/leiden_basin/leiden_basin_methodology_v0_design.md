@@ -271,6 +271,25 @@ These artifacts should live under:
 
 `research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
 
+## M1 Materialization Status
+
+The first M1 materialization has been generated at:
+
+`research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
+
+It passes the v0 panel-shape gates:
+
+- `7` selected non-field34 cases;
+- `3` fields: field12, field26, field30;
+- `3` method families: bc_cosine, citation_embedding, emb_knn;
+- `3` strong H1 cases;
+- `2` moderate H1 cases;
+- `2` ambiguous-definition controls;
+- `142` accepted distinct pair candidates for M3 schema review.
+
+This is still a panel artifact. It does not execute routes, promote wall
+claims, or inspect basin quality/cost.
+
 ## Claim Ladder
 
 | evidence state | allowed claim | forbidden claim |

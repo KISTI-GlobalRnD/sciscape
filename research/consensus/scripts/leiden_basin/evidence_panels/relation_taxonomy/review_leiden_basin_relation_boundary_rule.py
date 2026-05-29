@@ -13,9 +13,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_BLOCKER_TRIAGE_DIR = BASE_RESULT_DIR / "leiden_basin_route_label_blocker_triage_20260529"
 DEFAULT_STABLE_REFINEMENT_DIR = (
@@ -50,13 +58,11 @@ CLAIM_BOUNDARY = (
     "basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -66,17 +72,14 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
-
 
 def _safe_float(value: Any) -> float:
     try:
@@ -86,14 +89,12 @@ def _safe_float(value: Any) -> float:
     except (TypeError, ValueError):
         return float("nan")
 
-
 def _current_classification(distance: float) -> str:
     if distance <= SAME_SUPPORT_MAX:
         return "same_support_local"
     if distance >= DISTINCT_SUPPORT_MIN:
         return "distinct_support_local"
     return "boundary_review_ambiguous_support_local"
-
 
 def _epsilon_classification(distance: float, epsilon: float, two_sided: bool) -> str:
     if distance <= SAME_SUPPORT_MAX:
@@ -106,7 +107,6 @@ def _epsilon_classification(distance: float, epsilon: float, two_sided: bool) ->
         return "distinct_support_local_epsilon_snap"
     return "boundary_review_ambiguous_support_local"
 
-
 def _boundary_status(row: pd.Series) -> str:
     band = str(row.get("ambiguous_band", ""))
     same_margin = _safe_float(row.get("same_threshold_margin"))
@@ -117,10 +117,8 @@ def _boundary_status(row: pd.Series) -> str:
         return f"near_same_above_threshold_margin_{same_margin:.6g}"
     return "boundary_review"
 
-
 def _review_decision(row: pd.Series) -> str:
     return "keep_boundary_review_no_route_promotion"
-
 
 def _review_rationale(row: pd.Series) -> str:
     band = str(row.get("ambiguous_band", ""))
@@ -138,7 +136,6 @@ def _review_rationale(row: pd.Series) -> str:
         )
     return "The row remains boundary-reviewed under the current relation rule."
 
-
 def _next_evidence(row: pd.Series) -> str:
     band = str(row.get("ambiguous_band", ""))
     if band == "near_distinct":
@@ -152,7 +149,6 @@ def _next_evidence(row: pd.Series) -> str:
             "control-like rows into wall candidates"
         )
     return "keep in relation review until a global boundary rule is accepted"
-
 
 def _review_rows(
     blocker_triage_dir: Path,
@@ -292,7 +288,6 @@ def _review_rows(
         ["ambiguous_band", "field", "panel_pair_id"]
     ).reset_index(drop=True)
 
-
 def _counterfactuals(rows: pd.DataFrame) -> pd.DataFrame:
     policies = [
         (
@@ -345,7 +340,6 @@ def _counterfactuals(rows: pd.DataFrame) -> pd.DataFrame:
             )
     return pd.DataFrame(out)
 
-
 def _options(counterfactuals: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for policy_id, frame in counterfactuals.groupby("policy_id", sort=False):
@@ -383,7 +377,6 @@ def _options(counterfactuals: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
-
 
 def _summary(rows: pd.DataFrame, counterfactuals: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
     accepted_policy = "current_hard_gate"
@@ -427,7 +420,6 @@ def _summary(rows: pd.DataFrame, counterfactuals: pd.DataFrame, output_dir: Path
         },
     }
 
-
 def _markdown_table(frame: pd.DataFrame) -> str:
     columns = list(frame.columns)
     rendered_rows = [
@@ -447,7 +439,6 @@ def _markdown_table(frame: pd.DataFrame) -> str:
         for row in rendered_rows
     ]
     return "\n".join([header, separator, *body])
-
 
 def _report(rows: pd.DataFrame, options: pd.DataFrame, summary: dict[str, Any]) -> str:
     lines = [
@@ -506,7 +497,6 @@ def _report(rows: pd.DataFrame, options: pd.DataFrame, summary: dict[str, Any]) 
     )
     return "\n".join(lines)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--blocker-triage-dir", type=Path, default=DEFAULT_BLOCKER_TRIAGE_DIR)
@@ -550,7 +540,6 @@ def main() -> None:
     )
     (output_dir / REPORT_MD).write_text(_report(rows, options, summary), encoding="utf-8")
     print(json.dumps(summary, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

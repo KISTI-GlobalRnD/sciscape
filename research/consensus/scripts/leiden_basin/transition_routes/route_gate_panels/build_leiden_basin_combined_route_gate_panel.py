@@ -13,9 +13,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_EXPANDED_GATE_DIR = (
     BASE_RESULT_DIR / "leiden_basin_uniform_wall_probe_runner_expanded_controls_20260528"
@@ -45,13 +53,11 @@ SUBSET_CSV = "uniform_wall_probe_subset.csv"
 SUMMARY_JSON = "uniform_route_schedule_claim_panel_summary.json"
 CONFIG_JSON = "uniform_route_schedule_claim_panel_config.json"
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -61,11 +67,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _clean_gate_panel(clean_runner_dir: Path, clean_subset_dir: Path) -> pd.DataFrame:
     claims = _read_csv(clean_runner_dir / CLAIM_ROWS_CSV)
@@ -103,7 +107,6 @@ def _clean_gate_panel(clean_runner_dir: Path, clean_subset_dir: Path) -> pd.Data
         "source_output",
     ] + [column for column in claims.columns if column != "panel_pair_id"]
     return panel[ordered_cols]
-
 
 def _write_report(path: Path, summary: dict[str, Any], combined: pd.DataFrame) -> None:
     lines = [
@@ -144,7 +147,6 @@ def _write_report(path: Path, summary: dict[str, Any], combined: pd.DataFrame) -
             + " |"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
 
 def run(
     expanded_gate_dir: Path,
@@ -205,7 +207,6 @@ def run(
     _write_report(output_dir / PANEL_REPORT_MD, summary, combined)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--expanded-gate-dir", type=Path, default=DEFAULT_EXPANDED_GATE_DIR)
@@ -224,7 +225,6 @@ def main() -> None:
             indent=2,
         )
     )
-
 
 if __name__ == "__main__":
     main()

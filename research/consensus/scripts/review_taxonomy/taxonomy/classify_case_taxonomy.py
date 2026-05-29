@@ -17,10 +17,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import abstracts_lookup, load_abstracts_table, save_json
@@ -130,7 +132,6 @@ HEURISTIC_KEYWORDS = {
     ],
 }
 
-
 def _display_field_label(review_path: Path, review_payload: dict[str, Any]) -> str:
     label = review_path.stem.replace("_rank_shift_review", "")
     label = re.sub(r"_order_balanced_gemini_v\d+$", "", label)
@@ -138,7 +139,6 @@ def _display_field_label(review_path: Path, review_payload: dict[str, Any]) -> s
     if label:
         return label
     return str(review_payload.get("field", review_path.stem))
-
 
 def _docs_from_ranked_neighbors(rows: list[dict[str, Any]], meta: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     docs: list[dict[str, Any]] = []
@@ -158,7 +158,6 @@ def _docs_from_ranked_neighbors(rows: list[dict[str, Any]], meta: dict[str, dict
         )
     return docs
 
-
 def _winner_method(case: dict[str, Any], *, label_a: str, label_b: str) -> tuple[str, str] | None:
     winner = case["comparison"]["winner"]
     if winner == "A":
@@ -167,17 +166,14 @@ def _winner_method(case: dict[str, Any], *, label_a: str, label_b: str) -> tuple
         return label_b, label_a
     return None
 
-
 def _score_gap(case: dict[str, Any]) -> float:
     comparison = case["comparison"]
     if comparison["winner"] == "A":
         return float(comparison["score_a"]) - float(comparison["score_b"])
     return float(comparison["score_b"]) - float(comparison["score_a"])
 
-
 def _normalize_label(label: str) -> str:
     return label if label in ALLOWED_LABELS else "unclassified"
-
 
 def _representative_examples(classified_cases: list[dict[str, Any]], *, label_a: str, label_b: str) -> dict[str, list[dict[str, Any]]]:
     by_winner: dict[str, list[dict[str, Any]]] = {label_a: [], label_b: []}
@@ -207,7 +203,6 @@ def _representative_examples(classified_cases: list[dict[str, Any]], *, label_a:
         ]
     return by_winner
 
-
 def _representative_by_label(classified_cases: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     labels = sorted({case["primary_label"] for case in classified_cases})
     by_label: dict[str, list[dict[str, Any]]] = {}
@@ -236,7 +231,6 @@ def _representative_by_label(classified_cases: list[dict[str, Any]]) -> dict[str
         ]
     return by_label
 
-
 def _summarize_cases(classified_cases: list[dict[str, Any]], *, top_k: int) -> dict[str, Any]:
     label_counts: Counter[str] = Counter()
     winner_counts: Counter[str] = Counter()
@@ -256,7 +250,6 @@ def _summarize_cases(classified_cases: list[dict[str, Any]], *, top_k: int) -> d
         },
     }
 
-
 def _split_reasoning(reasoning: str) -> tuple[str, str]:
     text = " ".join(reasoning.split())
     for marker in (" In contrast, ", " By contrast, ", " However, ", " Whereas "):
@@ -264,7 +257,6 @@ def _split_reasoning(reasoning: str) -> tuple[str, str]:
             left, right = text.split(marker, 1)
             return left.strip(), right.strip()
     return text, text
-
 
 def _heuristic_taxonomy(
     case: dict[str, Any],
@@ -321,7 +313,6 @@ def _heuristic_taxonomy(
         "confidence": confidence,
         "raw_response": "",
     }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -540,7 +531,6 @@ def main() -> None:
                 }
             )
     print(f"Saved → {summary_csv}")
-
 
 if __name__ == "__main__":
     main()

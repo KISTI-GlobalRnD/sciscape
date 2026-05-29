@@ -15,9 +15,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -25,6 +23,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_GATE_PANEL_DIR = (
     BASE_RESULT_DIR / "leiden_basin_route_gate_panel_combined_after_clean_distinct_20260528"
@@ -65,13 +73,11 @@ ENDPOINT_TAU = 0.02
 SAME_SUPPORT_MAX = 0.5
 SUPPORT_MARGIN_BAND = 0.05
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -81,11 +87,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -95,7 +99,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
     except (TypeError, ValueError):
         return default
     return out if math.isfinite(out) else default
-
 
 def _objective_summary(objective: pd.DataFrame) -> pd.DataFrame:
     if objective.empty:
@@ -117,7 +120,6 @@ def _objective_summary(objective: pd.DataFrame) -> pd.DataFrame:
         )
         .reset_index()
     )
-
 
 def _load_runner_schedule_rows(label: str, runner_dir: Path) -> pd.DataFrame:
     labels = _read_csv(runner_dir / ROUTE_LABEL_CSV)
@@ -157,7 +159,6 @@ def _load_runner_schedule_rows(label: str, runner_dir: Path) -> pd.DataFrame:
     rows["runner_dir"] = _rel(runner_dir)
     return rows
 
-
 def _margin_band(row: pd.Series) -> str:
     assignment = str(row.get("post_polish_endpoint_assignment", ""))
     support_margin = _safe_float(row.get("post_target_support_margin"))
@@ -175,7 +176,6 @@ def _margin_band(row: pd.Series) -> str:
     if math.isfinite(support_margin) and support_margin > 0:
         return "support_boundary_loss"
     return "other_or_ambiguous_unclassified"
-
 
 def _pair_margin_gate(group: pd.DataFrame) -> tuple[str, str]:
     bands = set(group["polish_margin_band"].astype(str))
@@ -218,7 +218,6 @@ def _pair_margin_gate(group: pd.DataFrame) -> tuple[str, str]:
     if relation != "distinct_support_local":
         return ("relation_or_control_hold", "non-distinct relation remains outside wall promotion")
     return ("manual_review_hold", "margin gate could not classify this pair")
-
 
 def _schedule_rows(gate_panel_dir: Path) -> pd.DataFrame:
     panel = _read_csv(gate_panel_dir / PANEL_SUMMARY_CSV)
@@ -292,7 +291,6 @@ def _schedule_rows(gate_panel_dir: Path) -> pd.DataFrame:
     ]
     return rows[public_cols].sort_values(["field", "panel_pair_id", "route_schedule"])
 
-
 def _pair_rows(schedule_rows: pd.DataFrame) -> pd.DataFrame:
     pair_rows: list[dict[str, Any]] = []
     for pair_id, group in schedule_rows.groupby("panel_pair_id", dropna=False):
@@ -332,7 +330,6 @@ def _pair_rows(schedule_rows: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(pair_rows).sort_values(["field", "panel_pair_id"])
-
 
 def _write_report(path: Path, summary: dict[str, Any], pair_rows: pd.DataFrame) -> None:
     lines = [
@@ -374,7 +371,6 @@ def _write_report(path: Path, summary: dict[str, Any], pair_rows: pd.DataFrame) 
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
 
 def run(gate_panel_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -426,14 +422,12 @@ def run(gate_panel_dir: Path, output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, pair_rows)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gate-panel-dir", type=Path, default=DEFAULT_GATE_PANEL_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.gate_panel_dir, args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

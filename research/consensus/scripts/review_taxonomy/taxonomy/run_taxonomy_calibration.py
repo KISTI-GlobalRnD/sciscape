@@ -16,17 +16,18 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import abstracts_lookup, load_abstracts_table, save_json
 
 from sciscape.clustering.cluster_naming import create_client
 from sciscape.evaluation.reviewer import classify_case_taxonomy
-
 
 def _load_cases(summary_path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -38,7 +39,6 @@ def _load_cases(summary_path: Path) -> tuple[dict[str, Any], list[dict[str, Any]
         payload = json.loads(Path(taxonomy_path).read_text(encoding="utf-8"))
         rows.extend(payload.get("classified_cases", []))
     return summary, rows
-
 
 def _round_robin_sample(groups: dict[tuple[str, str], list[dict[str, Any]]], n_cases: int, seed: int) -> list[dict[str, Any]]:
     rng = random.Random(seed)
@@ -68,13 +68,11 @@ def _round_robin_sample(groups: dict[tuple[str, str], list[dict[str, Any]]], n_c
             break
     return selected
 
-
 def _build_sample(rows: list[dict[str, Any]], *, n_cases: int, seed: int) -> list[dict[str, Any]]:
     groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         groups[(row["winner_method"], row["primary_label"])].append(dict(row))
     return _round_robin_sample(groups, n_cases=n_cases, seed=seed)
-
 
 def _docs_from_ranked_neighbors(rows: list[dict[str, Any]], meta: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     docs: list[dict[str, Any]] = []
@@ -94,13 +92,11 @@ def _docs_from_ranked_neighbors(rows: list[dict[str, Any]], meta: dict[str, dict
         )
     return docs
 
-
 def _find_review_case(review_payload: dict[str, Any], target_uid: str) -> dict[str, Any]:
     for case in review_payload.get("reviewed_cases", []):
         if case["target_uid"] == target_uid:
             return case
     raise KeyError(f"Target UID not found in review payload: {target_uid}")
-
 
 def _evaluate_llm_labels(calibration_cases: list[dict[str, Any]], *, model: str | None) -> dict[str, Any]:
     by_review: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -174,7 +170,6 @@ def _evaluate_llm_labels(calibration_cases: list[dict[str, Any]], *, model: str 
         "mismatches": mismatches[:20],
     }
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("taxonomy_summary", type=Path, help="Combined taxonomy summary JSON")
@@ -223,7 +218,6 @@ def main() -> None:
     comparison_path = args.output / f"{args.stem}_llm_comparison.json"
     save_json(comparison, comparison_path)
     print(f"Saved → {comparison_path}")
-
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "transition_routes"
+    / "transition_operators"
     / "run_leiden_basin_transition_operator_pilot.py"
 )
 

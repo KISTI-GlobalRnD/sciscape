@@ -14,25 +14,29 @@ import argparse
 import csv
 import json
 import math
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+import sys
 
-import numpy as np
-import pandas as pd
-
-
-SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = next(
     parent
     for parent in Path(__file__).resolve().parents
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-sys.path.insert(0, str(SCRIPT_ROOT))
-sys.path.insert(0, str(SCRIPT_ROOT / "leiden_basin/transition_routes/route_wall"))
-sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import numpy as np
+import pandas as pd
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 from collect_leiden_vanilla_reachability_sweep import hash_u32_sequence  # noqa: E402
 from run_leiden_basin_transition_operator_pilot import (  # noqa: E402
@@ -51,7 +55,6 @@ from run_leiden_basin_uniform_direct_pair_routes import (  # noqa: E402
     _membership_hash,
     _save_membership_cache,
 )
-
 
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_PENDING_REVIEW_DIR = (
@@ -90,20 +93,17 @@ CLAIM_BOUNDARY = (
     "wall-promotion change, basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _resolve(path_text: Any) -> Path:
     path = Path(str(path_text))
     if path.is_absolute():
         return path
     return REPO_ROOT / path
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -113,7 +113,6 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _csv_value(value: Any) -> Any:
     if value is None:
         return ""
@@ -122,7 +121,6 @@ def _csv_value(value: Any) -> Any:
     if isinstance(value, (list, tuple, dict)):
         return json.dumps(value, sort_keys=True, separators=(",", ":"))
     return value
-
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -139,10 +137,8 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             writer.writerow({field: _csv_value(row.get(field)) for field in fieldnames})
 
-
 def _now_utc() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
 
 def _emit_progress(path: Path, event: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +147,6 @@ def _emit_progress(path: Path, event: dict[str, Any]) -> None:
             json.dumps({"timestamp_utc": _now_utc(), **event}, sort_keys=True) + "\n"
         )
 
-
 def _safe_int(value: Any, default: int | None = None) -> int | None:
     try:
         if value is None or pd.isna(value):
@@ -159,7 +154,6 @@ def _safe_int(value: Any, default: int | None = None) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return default
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -170,13 +164,11 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _case_tail(case_id: str) -> str:
     for suffix in ("_budget12", "_budget15"):
         if case_id.endswith(suffix):
             return case_id[: -len(suffix)]
     return case_id
-
 
 def _find_candidate_row(path: Path, case_id: str, candidate_index: int) -> pd.Series:
     frame = _read_csv(path)
@@ -187,7 +179,6 @@ def _find_candidate_row(path: Path, case_id: str, candidate_index: int) -> pd.Se
     if rows.empty:
         raise ValueError(f"missing candidate {candidate_index} for {case_id} in {path}")
     return rows.iloc[0]
-
 
 def _graph_method_from_case(case_id: str) -> tuple[str, str]:
     tail = _case_tail(case_id)
@@ -201,7 +192,6 @@ def _graph_method_from_case(case_id: str) -> tuple[str, str]:
         return f"{sample}_all_edges", graph_method
     raise ValueError(f"cannot infer graph method from case_id={case_id!r}")
 
-
 def _graph_key_for_row(row: pd.Series, coverage_row: pd.Series | None, graph_root: Path) -> str:
     if coverage_row is not None:
         graph_dir = str(coverage_row.get("runner_preflight_graph_dir", "")).strip()
@@ -213,10 +203,8 @@ def _graph_key_for_row(row: pd.Series, coverage_row: pd.Series | None, graph_roo
         raise FileNotFoundError(f"cannot infer graph_dir for {row['panel_pair_id']}: {inferred}")
     return _rel(inferred)
 
-
 def _support_hash(nodes: np.ndarray) -> str:
     return hash_u32_sequence(np.asarray(nodes, dtype=np.uint32))
-
 
 def _classification(distance: float) -> str:
     if distance <= SAME_SUPPORT_MAX:
@@ -224,7 +212,6 @@ def _classification(distance: float) -> str:
     if distance >= DISTINCT_SUPPORT_MIN:
         return "distinct_support_local"
     return "boundary_review_ambiguous_support_local"
-
 
 def _load_or_run_baseline(
     *,
@@ -290,7 +277,6 @@ def _load_or_run_baseline(
         }
     )
     return recreated, key, status
-
 
 def _load_or_run_endpoint(
     *,
@@ -388,7 +374,6 @@ def _load_or_run_endpoint(
         }
     )
     return candidate
-
 
 def run(
     *,
@@ -632,7 +617,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, relation_rows)
     return summary
 
-
 def _write_report(path: Path, summary: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     lines = [
         "# Pending-Membership Cache Materialization",
@@ -678,7 +662,6 @@ def _write_report(path: Path, summary: dict[str, Any], rows: list[dict[str, Any]
     lines.extend(["", "Claim boundary: " + CLAIM_BOUNDARY, ""])
     path.write_text("\n".join(lines), encoding="utf-8")
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pending-review-dir", type=Path, default=DEFAULT_PENDING_REVIEW_DIR)
@@ -693,7 +676,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
 def main() -> int:
     args = build_parser().parse_args()
     summary = run(
@@ -706,7 +688,6 @@ def main() -> int:
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

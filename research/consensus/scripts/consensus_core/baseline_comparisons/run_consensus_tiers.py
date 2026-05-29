@@ -13,17 +13,18 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import load_layer_tables, run_combination, save_json
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="E3: consensus tier analysis")
@@ -92,7 +93,6 @@ def main() -> None:
     )
     stem.with_suffix(".txt").write_text(report_text + "\n", encoding="utf-8")
     log.info("\nSaved → %s(.json/.txt)", stem)
-
 
 if __name__ == "__main__":
     main()

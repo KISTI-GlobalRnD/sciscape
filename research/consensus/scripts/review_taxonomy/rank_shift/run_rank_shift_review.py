@@ -16,10 +16,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import numpy as np
@@ -41,13 +43,11 @@ log = logging.getLogger(__name__)
 
 VALID_METHODS = ("sum", "consensus", "rank", "max", "vote")
 
-
 def _parse_layer_list(value: str | None) -> list[str] | None:
     if value is None:
         return None
     items = [item.strip() for item in value.split(",") if item.strip()]
     return items or None
-
 
 def _docs_from_ranked_neighbors(rows: list[dict], meta: dict[str, dict]) -> list[dict]:
     docs = []
@@ -67,7 +67,6 @@ def _docs_from_ranked_neighbors(rows: list[dict], meta: dict[str, dict]) -> list
         )
     return docs
 
-
 def _aggregate_counts(values: Iterable[str], *, positive: str, negative: str) -> dict[str, int]:
     counts = Counter(value for value in values if value in {positive, negative})
     total = counts.get(positive, 0) + counts.get(negative, 0)
@@ -77,12 +76,10 @@ def _aggregate_counts(values: Iterable[str], *, positive: str, negative: str) ->
         "total": total,
     }
 
-
 def _mean(values: list[float | int]) -> float | None:
     if not values:
         return None
     return round(float(np.mean(values)), 4)
-
 
 def _serialize_case(case) -> dict:
     return {
@@ -107,7 +104,6 @@ def _serialize_case(case) -> dict:
         "neighbors_only_b": case.neighbors_only_b,
     }
 
-
 def _serialize_comparison(comparison) -> dict:
     payload = {
         "winner": comparison.winner,
@@ -127,10 +123,8 @@ def _serialize_comparison(comparison) -> dict:
         payload["balanced_passes"] = getattr(comparison, "balanced_passes", [])
     return payload
 
-
 def _selected_target_uids(cases: list[dict]) -> list[str]:
     return [case["target_uid"] for case in cases]
-
 
 def _resume_compatible(existing_payload: dict, current_payload: dict) -> bool:
     keys = (
@@ -160,12 +154,10 @@ def _resume_compatible(existing_payload: dict, current_payload: dict) -> bool:
         current_payload.get("selected_cases", [])
     )
 
-
 def _resolve_output_path(output_arg: Path, field: str) -> Path:
     if output_arg.suffix == ".json":
         return output_arg
     return output_arg / f"{field}_rank_shift_review.json"
-
 
 def _resolve_top_k(layer_names: list[str], *, top_k: int, effective_k: int | None) -> int | dict[str, int]:
     if effective_k is None:
@@ -174,10 +166,8 @@ def _resolve_top_k(layer_names: list[str], *, top_k: int, effective_k: int | Non
         return effective_k
     return allocate_effective_k(layer_names, effective_k)
 
-
 def _protocol_name(*, effective_k: int | None) -> str:
     return "candidate_budget_matched" if effective_k is not None else "practical_top_k"
-
 
 def _summarize_reviews(reviewed_cases: list[dict], *, method_a: str, method_b: str) -> dict:
     votes = [case["comparison"]["winner"] for case in reviewed_cases]
@@ -219,7 +209,6 @@ def _summarize_reviews(reviewed_cases: list[dict], *, method_a: str, method_b: s
             "cluster_changed_rate": _mean(cluster_changed),
         },
     }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="E6: blind A/B review on rank-shifted local neighborhoods")
@@ -597,7 +586,6 @@ def main() -> None:
 
     save_json(output_payload, out_path)
     log.info("\nSaved → %s", out_path)
-
 
 if __name__ == "__main__":
     main()

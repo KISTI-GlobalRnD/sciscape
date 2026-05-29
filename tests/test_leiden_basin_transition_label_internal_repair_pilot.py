@@ -13,6 +13,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "transition_routes"
+    / "closure_context"
     / "run_leiden_basin_transition_label_internal_repair_pilot.py"
 )
 

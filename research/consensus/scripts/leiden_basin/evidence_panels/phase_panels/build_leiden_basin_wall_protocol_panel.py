@@ -15,9 +15,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -25,6 +23,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_CALIBRATION_DIR = BASE_RESULT_DIR / "leiden_basin_definition_calibration_20260528"
 DEFAULT_ROUTE_JOIN_DIR = BASE_RESULT_DIR / "leiden_basin_route_wall_evidence_join_20260528"
@@ -48,13 +56,11 @@ CONFIG_JSON = "wall_protocol_panel_config.json"
 SAME_SUPPORT_MAX = 0.5
 DISTINCT_SUPPORT_MIN = 0.75
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -64,11 +70,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -79,7 +83,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _safe_int(value: Any, default: int = -1) -> int:
     try:
         if pd.isna(value):
@@ -88,20 +91,16 @@ def _safe_int(value: Any, default: int = -1) -> int:
     except (TypeError, ValueError):
         return default
 
-
 def _fmt_float(value: float) -> str:
     return "" if not math.isfinite(value) else f"{value:.10g}"
-
 
 def _identity_key(case_id: str, left_id: str, right_id: str) -> tuple[str, str, str]:
     left, right = sorted((str(left_id), str(right_id)))
     return str(case_id), left, right
 
-
 def _pair_id(case_id: str, left_idx: int, right_idx: int) -> str:
     lo, hi = sorted((left_idx, right_idx))
     return f"{case_id}:c{lo}-c{hi}"
-
 
 def _load_identity_pairs(calibration_dir: Path, route_join_dir: Path, direct_audit_dir: Path) -> pd.DataFrame:
     pairs = _read_csv(calibration_dir / IDENTITY_PAIR_RELATIONS)
@@ -181,7 +180,6 @@ def _load_identity_pairs(calibration_dir: Path, route_join_dir: Path, direct_aud
         )
     return pd.DataFrame(rows)
 
-
 def _add_rows(
     selected: list[pd.Series],
     seen: set[str],
@@ -202,12 +200,10 @@ def _add_rows(
         seen.add(pair_id)
         selected.append(out)
 
-
 def _group_take(frame: pd.DataFrame, n: int) -> pd.DataFrame:
     if frame.empty:
         return frame
     return frame.groupby(["source_label", "field"], group_keys=False, sort=True).head(n)
-
 
 def _select_panel(pairs: pd.DataFrame) -> pd.DataFrame:
     if pairs.empty:
@@ -321,7 +317,6 @@ def _select_panel(pairs: pd.DataFrame) -> pd.DataFrame:
     ]
     return panel[public_cols].sort_values(["protocol_priority", "source_label", "field", "panel_pair_id"])
 
-
 def _protocol_steps() -> pd.DataFrame:
     rows = [
         {
@@ -387,7 +382,6 @@ def _protocol_steps() -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
-
 def _available_status(row: pd.Series, step_id: str) -> tuple[str, str, str]:
     role = str(row["panel_role"])
     route_join = str(row["existing_route_join_candidate"])
@@ -421,7 +415,6 @@ def _available_status(row: pd.Series, step_id: str) -> tuple[str, str, str]:
         return "blocked_until_direct_trace", "no accepted direct pair route trace", "route label table"
     return "unknown", "", ""
 
-
 def _pair_requirements(panel: pd.DataFrame, steps: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for _, pair in panel.iterrows():
@@ -442,7 +435,6 @@ def _pair_requirements(panel: pd.DataFrame, steps: pd.DataFrame) -> pd.DataFrame
                 }
             )
     return pd.DataFrame(rows)
-
 
 def _summary(calibration_dir: Path, panel: pd.DataFrame, requirements: pd.DataFrame) -> dict[str, Any]:
     all_pairs = _read_csv(calibration_dir / IDENTITY_PAIR_RELATIONS)
@@ -472,7 +464,6 @@ def _summary(calibration_dir: Path, panel: pd.DataFrame, requirements: pd.DataFr
             "no wall, basin evaluation, or directed-search claim is made."
         ),
     }
-
 
 def _write_report(path: Path, summary: dict[str, Any], panel: pd.DataFrame, requirements: pd.DataFrame) -> None:
     lines = [
@@ -561,7 +552,6 @@ def _write_report(path: Path, summary: dict[str, Any], panel: pd.DataFrame, requ
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(
     calibration_dir: Path,
     route_join_dir: Path,
@@ -598,7 +588,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, panel, requirements)
     return {"output_dir": _rel(output_dir), **summary}
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--calibration-dir", type=Path, default=DEFAULT_CALIBRATION_DIR)
@@ -608,7 +597,6 @@ def main() -> None:
     args = parser.parse_args()
     result = run(args.calibration_dir, args.route_join_dir, args.direct_audit_dir, args.output_dir)
     print(json.dumps(result, indent=2))
-
 
 if __name__ == "__main__":
     main()

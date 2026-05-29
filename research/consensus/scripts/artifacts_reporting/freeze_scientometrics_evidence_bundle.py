@@ -25,10 +25,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from evaluate_hierarchy_postprocess import DEFAULT_OUTPUT_DIR  # noqa: E402
@@ -38,9 +40,7 @@ DEFAULT_BUNDLE_DIR = (
     / f"scientometrics_evidence_freeze_{date.today():%Y%m%d}"
 )
 
-
 @dataclass(frozen=True)
-
 
 class ArtifactSpec:
     source_root: str
@@ -49,7 +49,6 @@ class ArtifactSpec:
     category: str
     role: str
     required: bool = True
-
 
 def _paired_table_specs(
     stem: str,
@@ -72,7 +71,6 @@ def _paired_table_specs(
             )
         )
     return specs
-
 
 def _validation_artifact_specs() -> list[ArtifactSpec]:
     specs: list[ArtifactSpec] = [
@@ -362,7 +360,6 @@ def _validation_artifact_specs() -> list[ArtifactSpec]:
 
     return specs
 
-
 def _doc_artifact_specs() -> list[ArtifactSpec]:
     return [
         ArtifactSpec(
@@ -419,10 +416,8 @@ def _doc_artifact_specs() -> list[ArtifactSpec]:
         ),
     ]
 
-
 def _artifact_specs() -> list[ArtifactSpec]:
     return _validation_artifact_specs() + _doc_artifact_specs()
-
 
 def _source_base(spec: ArtifactSpec, validation_dir: Path, docs_dir: Path) -> Path:
     if spec.source_root == "validation":
@@ -431,14 +426,12 @@ def _source_base(spec: ArtifactSpec, validation_dir: Path, docs_dir: Path) -> Pa
         return docs_dir
     raise ValueError(f"Unknown source root: {spec.source_root}")
 
-
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
 
 def _write_csv(path: Path, rows: Iterable[dict[str, object]], fieldnames: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -447,7 +440,6 @@ def _write_csv(path: Path, rows: Iterable[dict[str, object]], fieldnames: list[s
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
-
 
 def _copy_artifacts(
     specs: list[ArtifactSpec],
@@ -493,10 +485,8 @@ def _copy_artifacts(
         )
     return rows
 
-
 def _all_validation_files(validation_dir: Path) -> list[Path]:
     return sorted(path for path in validation_dir.rglob("*") if path.is_file())
-
 
 def _archive_rows(
     *,
@@ -521,7 +511,6 @@ def _archive_rows(
             unselected_rows.append(unselected)
     return all_rows, unselected_rows
 
-
 def _directory_rows(validation_dir: Path) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for directory in sorted(path for path in validation_dir.rglob("*") if path.is_dir()):
@@ -536,7 +525,6 @@ def _directory_rows(validation_dir: Path) -> list[dict[str, object]]:
             }
         )
     return rows
-
 
 def _write_readme(
     *,
@@ -614,7 +602,6 @@ scripts.
     archive_dir.mkdir(parents=True, exist_ok=True)
     (archive_dir / "README.md").write_text(archive_readme, encoding="utf-8")
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Freeze curated Scientometrics evidence artifacts into one bundle."
@@ -649,7 +636,6 @@ def parse_args() -> argparse.Namespace:
         help="Build the manifest in memory without copying files.",
     )
     return parser.parse_args()
-
 
 def main() -> int:
     args = parse_args()
@@ -743,7 +729,6 @@ def main() -> int:
             print(f"  - {row['source_root']}:{row['source_relative_path']}")
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

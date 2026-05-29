@@ -13,9 +13,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_METHODOLOGY_DIR = BASE_RESULT_DIR / "leiden_basin_methodology_v0_margin_validation_20260528"
 DEFAULT_MARGIN_VALIDATION_DIR = (
@@ -47,7 +55,6 @@ CLAIM_BOUNDARY = (
     "Route-label interpretation only; no basin-quality claim, cost claim, "
     "directed-search claim, or wall-promotion change."
 )
-
 
 RULES: tuple[dict[str, str], ...] = (
     {
@@ -175,13 +182,11 @@ RULES: tuple[dict[str, str], ...] = (
     },
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -191,23 +196,19 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
 
-
 def _rule_frame() -> pd.DataFrame:
     rules = pd.DataFrame(RULES)
     rules["claim_boundary"] = CLAIM_BOUNDARY
     return rules
-
 
 def _match_rule(row: pd.Series, rules: pd.DataFrame) -> pd.Series:
     state = str(row.get("methodology_v0_state", ""))
@@ -236,7 +237,6 @@ def _match_rule(row: pd.Series, rules: pd.DataFrame) -> pd.Series:
             }
         )
     return exact.iloc[0]
-
 
 def _interpretation_rows(
     methodology_dir: Path,
@@ -364,7 +364,6 @@ def _interpretation_rows(
         na_position="last",
     ).reset_index(drop=True)
 
-
 def _counts(rows: pd.DataFrame) -> pd.DataFrame:
     count_rows: list[dict[str, Any]] = []
     for column in (
@@ -377,7 +376,6 @@ def _counts(rows: pd.DataFrame) -> pd.DataFrame:
         for value, count in _count(rows, column).items():
             count_rows.append({"count_type": column, "value": value, "count": count})
     return pd.DataFrame(count_rows)
-
 
 def _summary(rows: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
     promoted = int(
@@ -412,7 +410,6 @@ def _summary(rows: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
         },
     }
 
-
 def _markdown_table(frame: pd.DataFrame) -> str:
     columns = list(frame.columns)
     rendered_rows = [
@@ -435,7 +432,6 @@ def _markdown_table(frame: pd.DataFrame) -> str:
         for row in rendered_rows
     ]
     return "\n".join([header, separator, *body])
-
 
 def _report(rows: pd.DataFrame, rules: pd.DataFrame, summary: dict[str, Any]) -> str:
     lines = [
@@ -506,7 +502,6 @@ def _report(rows: pd.DataFrame, rules: pd.DataFrame, summary: dict[str, Any]) ->
     )
     return "\n".join(lines)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--methodology-dir", type=Path, default=DEFAULT_METHODOLOGY_DIR)
@@ -552,7 +547,6 @@ def main() -> None:
     )
     (output_dir / REPORT_MD).write_text(_report(rows, rules, summary), encoding="utf-8")
     print(json.dumps(summary, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

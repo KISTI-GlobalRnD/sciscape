@@ -12,6 +12,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "operator_probes"
+    / "selector_signals"
     / "evaluate_leiden_basin_branch_candidate_controls.py"
 )
 

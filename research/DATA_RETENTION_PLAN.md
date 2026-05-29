@@ -176,6 +176,7 @@ Core docs and code:
 
 Current terminal evidence:
 
+- `research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
 - `research/consensus/results/adaptive_refinement/leiden_basin_existence_assumption_audit_20260529/`
 - `research/consensus/results/adaptive_refinement/leiden_basin_remaining_wall_question_audit_20260529/`
 - `research/consensus/results/adaptive_refinement/leiden_basin_cycle_closure_writeup_20260529/`

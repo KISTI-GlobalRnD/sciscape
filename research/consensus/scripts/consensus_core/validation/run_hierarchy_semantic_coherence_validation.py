@@ -22,10 +22,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import matplotlib
@@ -40,8 +42,6 @@ from scipy import sparse
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPT_DIR))
-
 from evaluate_hierarchy_postprocess import DEFAULT_OUTPUT_DIR, _markdown_table, _write_table  # noqa: E402
 
 EXPECTED_FIELDS = (12, 15, 18, 26, 30, 34)
@@ -52,9 +52,7 @@ DEFAULT_RUN_ROOT = DEFAULT_OUTPUT_DIR / "semantic_coherence_validation"
 DEFAULT_MIN_CLUSTER_TEXT_DOCS = 10
 DEFAULT_MAX_FEATURES = 50_000
 
-
 @dataclass(frozen=True)
-
 
 class SampleConfig:
     sample: str
@@ -66,7 +64,6 @@ class SampleConfig:
     src_col: str = "uid1"
     dst_col: str = "uid2"
 
-
 def _repo_path(path: str | Path | None) -> Path | None:
     if path is None or (isinstance(path, float) and pd.isna(path)):
         return None
@@ -75,13 +72,11 @@ def _repo_path(path: str | Path | None) -> Path | None:
         resolved = REPO_ROOT / resolved
     return resolved
 
-
 def _field_id_from_sample(sample: str) -> int:
     match = re.search(r"field_?(\d+)", str(sample))
     if not match:
         raise ValueError(f"Could not parse field id from sample: {sample}")
     return int(match.group(1))
-
 
 def _sample_config(sample: str) -> SampleConfig:
     field_id = _field_id_from_sample(sample)
@@ -120,17 +115,14 @@ def _sample_config(sample: str) -> SampleConfig:
         dst_col="uid2",
     )
 
-
 def _read_membership(path: Path) -> pd.DataFrame:
     membership = pd.read_parquet(path, columns=["node_idx", "cluster"])
     if not membership["node_idx"].is_monotonic_increasing:
         membership = membership.sort_values("node_idx", kind="mergesort").reset_index(drop=True)
     return membership
 
-
 def _membership_node_count(path: Path) -> int:
     return int(pq.ParquetFile(path).metadata.num_rows)
-
 
 def _normalize_manifest_columns(manifest: pd.DataFrame) -> pd.DataFrame:
     cols = set(manifest.columns)
@@ -147,7 +139,6 @@ def _normalize_manifest_columns(manifest: pd.DataFrame) -> pd.DataFrame:
     out["work_id"] = out["work_id"].astype("string")
     return out
 
-
 def _manifest_from_mapping_if_exact(config: SampleConfig, n_nodes: int) -> pd.DataFrame | None:
     if config.node_mapping_path is None or not config.node_mapping_path.exists():
         return None
@@ -155,14 +146,12 @@ def _manifest_from_mapping_if_exact(config: SampleConfig, n_nodes: int) -> pd.Da
         return None
     return _normalize_manifest_columns(pd.read_parquet(config.node_mapping_path))
 
-
 def _manifest_from_existing_if_exact(config: SampleConfig, n_nodes: int) -> pd.DataFrame | None:
     if config.existing_manifest_path is None or not config.existing_manifest_path.exists():
         return None
     if int(pq.ParquetFile(config.existing_manifest_path).metadata.num_rows) != int(n_nodes):
         return None
     return _normalize_manifest_columns(pd.read_parquet(config.existing_manifest_path))
-
 
 def _derive_manifest_from_edges(config: SampleConfig, cache_path: Path) -> pd.DataFrame:
     if config.edge_path is None or not config.edge_path.exists():
@@ -185,7 +174,6 @@ def _derive_manifest_from_edges(config: SampleConfig, cache_path: Path) -> pd.Da
         .sink_parquet(cache_path, compression="zstd")
     )
     return _normalize_manifest_columns(pd.read_parquet(cache_path))
-
 
 def _load_manifest(config: SampleConfig, n_nodes: int, output_dir: Path, force_manifest: bool) -> tuple[pd.DataFrame, str]:
     cache_path = output_dir / "manifests" / config.sample / "node_manifest.parquet"
@@ -214,7 +202,6 @@ def _load_manifest(config: SampleConfig, n_nodes: int, output_dir: Path, force_m
         )
     return derived, "edge_derived"
 
-
 def _load_text_docs(config: SampleConfig, manifest: pd.DataFrame) -> pd.DataFrame:
     if not config.text_path.exists():
         raise FileNotFoundError(f"Missing works_text parquet for {config.sample}: {config.text_path}")
@@ -227,7 +214,6 @@ def _load_text_docs(config: SampleConfig, manifest: pd.DataFrame) -> pd.DataFram
     joined = joined[joined["text"].str.len() > 0].copy()
     joined = joined.sort_values("node_idx", kind="mergesort").reset_index(drop=True)
     return joined[["node_idx", "work_id", "text"]]
-
 
 def _build_tfidf(texts: pd.Series, *, max_features: int, min_df: int, ngram_max: int) -> tuple[sparse.csr_matrix, TfidfVectorizer]:
     params: dict[str, Any] = {
@@ -254,7 +240,6 @@ def _build_tfidf(texts: pd.Series, *, max_features: int, min_df: int, ngram_max:
                 raise
     raise RuntimeError("unreachable")
 
-
 def _labels_for_docs(membership: pd.DataFrame, node_idx: np.ndarray) -> np.ndarray:
     member_node_idx = membership["node_idx"].to_numpy(dtype=np.int64, copy=False)
     clusters = membership["cluster"].to_numpy(dtype=np.int64, copy=False)
@@ -267,12 +252,10 @@ def _labels_for_docs(membership: pd.DataFrame, node_idx: np.ndarray) -> np.ndarr
         raise ValueError(f"Membership is missing {missing} text node indices")
     return labels.to_numpy(dtype=np.int64)
 
-
 def _weighted_mean(values: np.ndarray, weights: np.ndarray) -> float:
     if len(values) == 0:
         return float("nan")
     return float(np.average(values, weights=weights))
-
 
 def _cluster_coherence(
     matrix: sparse.csr_matrix,
@@ -373,7 +356,6 @@ def _cluster_coherence(
     }
     return metrics, cluster_df
 
-
 def _field_metrics(
     *,
     config: SampleConfig,
@@ -460,7 +442,6 @@ def _field_metrics(
     clusters = pd.concat(cluster_tables, ignore_index=True) if cluster_tables else pd.DataFrame()
     return effects, clusters, metadata
 
-
 def _policy_summary(effects: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for policy, group in effects.groupby("policy", sort=True):
@@ -481,7 +462,6 @@ def _policy_summary(effects: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
-
 
 def _quality_first_pairwise(effects: pd.DataFrame) -> pd.DataFrame:
     key = ["sample", "field", "seed"]
@@ -521,7 +501,6 @@ def _quality_first_pairwise(effects: pd.DataFrame) -> pd.DataFrame:
         rows.append(out)
     return pd.DataFrame(rows).sort_values(key).reset_index(drop=True)
 
-
 def _field_breakdown(pairwise: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for (field, sample), group in pairwise.groupby(["field", "sample"], sort=True):
@@ -550,7 +529,6 @@ def _field_breakdown(pairwise: pd.DataFrame) -> pd.DataFrame:
         )
     return pd.DataFrame(rows)
 
-
 def _validate_outputs(effects: pd.DataFrame, pairwise: pd.DataFrame) -> dict[str, Any]:
     fields = tuple(sorted(int(v) for v in effects["field"].unique()))
     expected_pairs = len(EXPECTED_FIELDS) * len(DEFAULT_SEEDS)
@@ -572,7 +550,6 @@ def _validate_outputs(effects: pd.DataFrame, pairwise: pd.DataFrame) -> dict[str
         and checks["all_text_coverage_positive"]
     )
     return checks
-
 
 def _plot_pairwise(pairwise: pd.DataFrame, output_path: Path) -> None:
     field_summary = _field_breakdown(pairwise)
@@ -611,7 +588,6 @@ def _plot_pairwise(pairwise: pd.DataFrame, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=180)
     plt.close(fig)
-
 
 def _write_report(
     *,
@@ -664,7 +640,6 @@ def _write_report(
     ]
     (output_dir / "semantic_coherence_report.md").write_text("\n".join(report), encoding="utf-8")
 
-
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
@@ -680,7 +655,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--skip-cluster-table", action="store_true")
     parser.add_argument("--skip-figure", action="store_true")
     return parser.parse_args(argv)
-
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
@@ -776,7 +750,6 @@ def main(argv: list[str] | None = None) -> None:
 
     if not validation["passed"]:
         raise SystemExit(f"Semantic coherence validation failed: {validation}")
-
 
 if __name__ == "__main__":
     main()

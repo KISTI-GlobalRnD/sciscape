@@ -14,9 +14,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -24,6 +22,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_COVERAGE_DIR = BASE_RESULT_DIR / "leiden_basin_wall_panel_context_coverage_20260528"
 DEFAULT_REFINEMENT_DIR = (
@@ -58,13 +66,11 @@ QUALITY_LIKE_TOKENS = (
     "rank",
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -74,11 +80,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -88,7 +92,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
     except (TypeError, ValueError):
         return default
     return out if math.isfinite(out) else default
-
 
 def _status_summary(rows: pd.DataFrame) -> pd.DataFrame:
     if rows.empty:
@@ -114,7 +117,6 @@ def _status_summary(rows: pd.DataFrame) -> pd.DataFrame:
         ["current_calibrated_relation", "relation_taxonomy_v0_1"]
     )
 
-
 def _boundary_distance_class(value: float) -> tuple[str, str]:
     if not math.isfinite(value):
         return "ambiguous_unknown_metric_hold", "support distance missing"
@@ -132,7 +134,6 @@ def _boundary_distance_class(value: float) -> tuple[str, str]:
         "middle_ambiguous_support_local_hold",
         "coverage support distance remains in the middle ambiguous zone",
     )
-
 
 def _cached_boundary_class(refinement_status: str) -> tuple[str, str]:
     if refinement_status == "near_distinct_boundary_requires_definition_choice":
@@ -165,7 +166,6 @@ def _cached_boundary_class(refinement_status: str) -> tuple[str, str]:
         "cached full-membership support evidence remains between thresholds",
     )
 
-
 def _wall_promotion_status(taxonomy_status: str, coverage_row: pd.Series) -> str:
     gate_status = str(coverage_row.get("existing_wall_claim_gate_status", "not_run"))
     route_status = str(coverage_row.get("existing_route_order_sensitivity_status", ""))
@@ -195,7 +195,6 @@ def _wall_promotion_status(taxonomy_status: str, coverage_row: pd.Series) -> str
         return "relation_not_blocking_but_context_or_hygiene_blocks"
     return "blocked_manual_review_no_wall_promotion"
 
-
 def _next_taxonomy_action(taxonomy_status: str, coverage_row: pd.Series) -> str:
     if taxonomy_status in {
         "near_distinct_boundary_review_cached",
@@ -215,7 +214,6 @@ def _next_taxonomy_action(taxonomy_status: str, coverage_row: pd.Series) -> str:
     if taxonomy_status.startswith("same_"):
         return "keep_as_control"
     return str(coverage_row.get("next_action", "hold_for_manual_review"))
-
 
 def _build_rows(coverage: pd.DataFrame, refinement: pd.DataFrame) -> pd.DataFrame:
     refinement_lookup = {
@@ -304,7 +302,6 @@ def _build_rows(coverage: pd.DataFrame, refinement: pd.DataFrame) -> pd.DataFram
         ascending=[True, False, True],
     )
 
-
 def _boundary_queue(rows: pd.DataFrame) -> pd.DataFrame:
     if rows.empty:
         return pd.DataFrame()
@@ -343,7 +340,6 @@ def _boundary_queue(rows: pd.DataFrame) -> pd.DataFrame:
         ["relation_taxonomy_v0_1", "distinct_threshold_margin", "same_threshold_margin"]
     )
 
-
 def _quality_column_leaks(frames: dict[str, pd.DataFrame]) -> list[str]:
     leaks: list[str] = []
     for name, frame in frames.items():
@@ -352,7 +348,6 @@ def _quality_column_leaks(frames: dict[str, pd.DataFrame]) -> list[str]:
             if any(token in lower for token in QUALITY_LIKE_TOKENS):
                 leaks.append(f"{name}:{column}")
     return leaks
-
 
 def _write_report(
     path: Path,
@@ -442,7 +437,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(coverage_dir: Path, refinement_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     coverage = _read_csv(coverage_dir / COVERAGE_ROWS_CSV)
@@ -522,7 +516,6 @@ def run(coverage_dir: Path, refinement_dir: Path, output_dir: Path) -> dict[str,
     _write_report(output_dir / REPORT_MD, summary, status_summary, boundary_queue)
     return {"output_dir": _rel(output_dir), **summary}
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage-dir", type=Path, default=DEFAULT_COVERAGE_DIR)
@@ -530,7 +523,6 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.coverage_dir, args.refinement_dir, args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

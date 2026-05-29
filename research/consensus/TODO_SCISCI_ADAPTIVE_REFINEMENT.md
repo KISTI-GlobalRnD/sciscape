@@ -154,7 +154,7 @@ Branch target-growth search result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_branch_target_growth_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/search_leiden_basin_branch_target_growth.py`
+  `research/consensus/scripts/leiden_basin/basin_signatures/branch_growth/search_leiden_basin_branch_target_growth.py`
 - Scope is deliberately `c0-s11-r0.001` only: top-10 barrier-aware prefixes,
   guarded-elbow, fixed-cap, and fixed-tail-backfill target-growth branches,
   beam width `8`, and `3` target stages.
@@ -173,7 +173,7 @@ Branch candidate seed-control comparison result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_branch_candidate_controls_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/evaluate_leiden_basin_branch_candidate_controls.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/selector_signals/evaluate_leiden_basin_branch_candidate_controls.py`
 - Scope is the same `c0-s11-r0.001` branch row, compared against `15`
   standard Leiden controls: seeds `11,42,73,101,137`, randomness `0.01`, and
   iteration settings `1`, `10`, and convergence.
@@ -194,7 +194,7 @@ Greedy failure classifier result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_greedy_failure_classifier_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/classify_leiden_basin_greedy_failures.py`
+  `research/consensus/scripts/leiden_basin/basin_signatures/trajectory_failure/classify_leiden_basin_greedy_failures.py`
 - Reusable module additions:
   `classify_branch_greedy_failure_rows` and
   `summarize_greedy_failure_rows` in
@@ -218,7 +218,7 @@ Wall-route family profile result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_wall_route_family_profile_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_wall_route_families.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/route_wall/profile_leiden_basin_wall_route_families.py`
 - Reusable module additions:
   `annotate_wall_route_families` and `summarize_wall_route_families` in
   `sciscape/clustering/leiden_basin_search.py`.
@@ -237,11 +237,11 @@ Focused side-route expansion result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_side_route_expansion_field34_cc_c0_v0/`
 - Expansion runner:
-  `research/consensus/scripts/evaluate_leiden_basin_target_elbow_polish.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/evaluate_leiden_basin_target_elbow_polish.py`
   with `--selected-prefix-ranks 6,8,10`, `--max-target-stages 6`, and
   `fixed_cap,guarded_elbow,guarded_backfill,guarded_escalate`.
 - Profile script:
-  `research/consensus/scripts/profile_leiden_basin_side_route_expansion.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/route_wall/profile_leiden_basin_side_route_expansion.py`
 - The focused run emitted `96` state/path rows over prefixes `p6`, `p8`, and
   `p10`.
 - Result: lower-wall side routes do cross the support gate. There are `57`
@@ -262,7 +262,7 @@ Pathway debt-area comparison result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_pathway_debt_area_compare_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_pathway_debt_area.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/profile_leiden_basin_pathway_debt_area.py`
 - Reusable module addition:
   `annotate_pathway_debt_area_rows` in
   `sciscape/clustering/leiden_basin_search.py`.
@@ -290,7 +290,7 @@ Tunneling evidence profile result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_tunneling_evidence_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_tunneling_evidence.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/profile_leiden_basin_tunneling_evidence.py`
 - Reusable module additions:
   `annotate_tunneling_evidence_rows`,
   `trace_tunneling_path_states`, and
@@ -326,7 +326,7 @@ Tunneling path rank result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_tunneling_path_rank_field34_cc_v0/`
 - Script:
-  `research/consensus/scripts/rank_leiden_basin_tunneling_paths.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/rank_leiden_basin_tunneling_paths.py`
 - Reusable module additions:
   `rank_tunneling_operator_candidates` and
   `select_tunneling_operator_candidates` in
@@ -359,7 +359,7 @@ Post-gate recovery profile result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_recovery_field34_cc_c0_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_post_gate_recovery.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/profile_leiden_basin_post_gate_recovery.py`
 - Reusable module additions:
   `annotate_post_gate_recovery_step_rows` and
   `summarize_post_gate_recovery_paths` in
@@ -391,7 +391,7 @@ Post-gate recovery move probe result:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_recovery_moves_field34_cc_c0_p10_wide_v0/`
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_recovery_moves_field34_cc_c0_p6_wide_v0/`
 - Script:
-  `research/consensus/scripts/probe_leiden_basin_post_gate_recovery_moves.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/probe_leiden_basin_post_gate_recovery_moves.py`
 - Reusable module additions:
   `build_post_gate_recovery_actions` and
   `classify_post_gate_recovery_move_rows` in
@@ -428,7 +428,7 @@ Post-gate recovery subset probe result:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_recovery_subsets_field34_cc_c0_p8_v0/`
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_recovery_subsets_field34_cc_c0_p8_tail_v0/`
 - Script:
-  `research/consensus/scripts/probe_leiden_basin_post_gate_recovery_subsets.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/probe_leiden_basin_post_gate_recovery_subsets.py`
 - Scope replays the p8 post-gate near-miss source state, takes the full
   `vanilla_closure_topk:context_only` move's `436` selected context nodes, and
   probes ranked partial subsets with the same bounded polish seed. The coarse
@@ -452,7 +452,7 @@ Post-gate sufficient subset probe result:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_sufficient_subset_field34_cc_c0_p8_v1/`
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_sufficient_subset_field34_cc_c0_p8_labelband32_screen_v0/`
 - Script:
-  `research/consensus/scripts/probe_leiden_basin_post_gate_sufficient_subsets.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/probe_leiden_basin_post_gate_sufficient_subsets.py`
 - Scope treats the 436-node full `vanilla_closure_topk:context_only` row as an
   oracle, then greedily removes structured groups while requiring at least
   `70%` of the full QF gain plus source support/progress retention.
@@ -476,7 +476,7 @@ Post-gate gate trace result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_gate_trace_field34_cc_c0_p8_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_post_gate_gate_trace.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/profile_leiden_basin_post_gate_gate_trace.py`
 - Scope replays the same p8 source state and compares the narrowed 209-node
   gate against the original 436-node full context using the same recovery seed.
 - Result: the 209-node gate and 436-node full context produce identical
@@ -499,7 +499,7 @@ Post-gate gate attachment candidate score result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_post_gate_gate_attachment_candidates_field34_cc_c0_p8_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_gate_attachment_candidates.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/gate_release/profile_leiden_basin_gate_attachment_candidates.py`
 - Scope replays the same p8 source state, uses the 209-node sufficient gate as
   the target context, and scores all `244` target nodes from source-state graph
   features before any new recovery polish. The moved node label is overlaid
@@ -521,7 +521,7 @@ Gate-release operator probe result:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_gate_release_operator_probe_field34_cc_c0_p8_v0/`
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_gate_release_operator_probe_field34_cc_c0_p8_manual_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_gate_release_operator_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/gate_release/run_leiden_basin_gate_release_operator_probe.py`
 - Scope uses the attachment-score table to select target nodes, opens selected
   nodes and/or the 209-node gate as mutable context, and runs bounded polish
   without candidate transplant.
@@ -568,7 +568,7 @@ Attachment-margin cross-prefix smoke result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_attachment_margin_cross_prefix_field34_cc_c0_p6_p8_p10_v1/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_attachment_margin_cross_prefix_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/attachment_margin/run_leiden_basin_attachment_margin_cross_prefix_probe.py`
 - Scope replays the selected p6 wide, p8 full-context, and p10 wide
   post-gate source states, recomputes target-node attachment margin against
   each source's selected recovery context, and probes compact target-only
@@ -597,7 +597,7 @@ Attachment-margin seed/iteration control result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_attachment_margin_controls_field34_cc_c0_p6_p8_p10_v0/`
 - Script:
-  `research/consensus/scripts/evaluate_leiden_basin_attachment_margin_controls.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/attachment_margin/evaluate_leiden_basin_attachment_margin_controls.py`
 - Scope compares the best compact target-only row from each p6/p8/p10 source
   against same-case standard Leiden controls with seeds `11,42,73,101,137`,
   randomness values `0.001,0.01`, and iteration budgets `1,10,convergence`.
@@ -624,7 +624,7 @@ Attachment-margin stage2 recovery result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_attachment_margin_stage2_recovery_field34_cc_c0_p6_p8_p10_v2/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_attachment_margin_stage2_recovery.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/post_gate_recovery/run_leiden_basin_attachment_margin_stage2_recovery.py`
 - Scope starts from each best compact target-only row, then opens context
   around the selected target nodes using candidate-label, current-label,
   vanilla-label, and boundary-shell families with multipliers `4,16,64`.
@@ -650,7 +650,7 @@ Attachment-margin joint bundle result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_attachment_margin_joint_bundle_field34_cc_c0_p6_p8_p10_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_attachment_margin_joint_bundle_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/joint_bundle/run_leiden_basin_attachment_margin_joint_bundle_probe.py`
 - Scope starts from the post-gate source state, then activates target top-k
   nodes and companion context together before bounded polish. It tests target
   `k=1,2,4,8`, context families `none`, `source_context`,
@@ -683,7 +683,7 @@ Attachment-margin joint bundle focused replay result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_attachment_margin_joint_bundle_replay_field34_cc_c0_p8_current_label_v0/`
 - Script:
-  `research/consensus/scripts/explain_leiden_basin_attachment_margin_joint_bundle_replay.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/joint_bundle/explain_leiden_basin_attachment_margin_joint_bundle_replay.py`
 - Scope replays the compact p8/current-label bundle (`target_k=4`,
   selected targets `2050,2890,7325,9545`, context top-10, bundle size `14`)
   with the original polish seeds for both `joint_mutable` and
@@ -711,7 +711,7 @@ Basin evaluation metric audit:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_evaluation_metric_audit_v0/`
 - Script:
-  `research/consensus/scripts/audit_leiden_basin_evaluation_metrics.py`
+  `research/consensus/scripts/leiden_basin/evidence_panels/audits/audit_leiden_basin_evaluation_metrics.py`
 - Scope scans CSV artifacts under the combined field30/field34 basin-evidence
   root and flags files whose interpretation may depend on exact label equality.
 - Result over `532` CSV files after alias/backfill cleanup, the five targeted
@@ -743,7 +743,7 @@ Recomputed operator metric review:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_evaluation_metric_audit_v0/recomputed_operator_metric_review/`
 - Script:
-  `research/consensus/scripts/summarize_leiden_basin_recomputed_operator_metrics.py`
+  `research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/summarize_leiden_basin_recomputed_operator_metrics.py`
 - Scope summarizes the five recomputed operator artifacts using aligned-change,
   exact-only, endpoint, and QF-gain columns.
 - Result: stage2 recovery remains closed. Across `48` metric rows it has
@@ -768,7 +768,7 @@ Joint-bundle aligned-core frontier result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/joint_bundle_aligned_core_frontier_v0/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_joint_bundle_aligned_core_frontier.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/joint_bundle/profile_leiden_basin_joint_bundle_aligned_core_frontier.py`
 - Scope replays the six positive joint-bundle configs from the recomputed
   operator metric review and aggregates their label-invariant aligned cores.
 - Result: the stable p8 core is small and structured. `9545` and `9609` change
@@ -793,7 +793,7 @@ Aligned-core boundary operator probe:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_aligned_core_boundary_operator_field34_cc_c0_p8_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_aligned_core_boundary_operator_probe.py`
+  `research/consensus/scripts/leiden_basin/basin_signatures/local_modes/run_leiden_basin_aligned_core_boundary_operator_probe.py`
 - Reusable module additions:
   `select_aligned_core_boundary_nodes` and
   `build_aligned_core_boundary_plan_rows` in
@@ -824,7 +824,7 @@ Aligned-core handle subset sufficiency probe:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_aligned_core_handle_subset_field34_cc_c0_p8_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_aligned_core_handle_subset_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_aligned_core_handle_subset_probe.py`
 - Reusable module addition:
   `build_aligned_core_handle_subset_plan_rows` in
   `sciscape/clustering/leiden_basin_search.py`.
@@ -854,7 +854,7 @@ Aligned-core handle stability probe:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_aligned_core_handle_stability_field34_cc_c0_p6_p8_p10_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_aligned_core_handle_stability_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_aligned_core_handle_stability_probe.py`
 - Scope replays selected handle subsets across `p6_wide`, `p8_fullctx`, and
   `p10_wide`, with polish seed offsets `2000,3000,4000`. The selected subsets
   are the minimal sufficient set, the full five-handle set, and the strongest
@@ -879,7 +879,7 @@ Aligned-core handle selector replay:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_aligned_core_handle_selector_field34_cc_c0_p8_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_aligned_core_handle_selector_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_aligned_core_handle_selector_probe.py`
 - Reusable module additions:
   `score_aligned_core_handle_nodes` and
   `build_aligned_core_handle_selector_plan_rows` in
@@ -907,7 +907,7 @@ Local handle selector probe:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_local_handle_selector_field34_cc_c0_p6_p8_p10_coherent_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_local_handle_selector_probe.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_local_handle_selector_probe.py`
 - Reusable module additions:
   `score_local_handle_candidates` and
   `build_local_handle_selector_plan_rows` in
@@ -1008,7 +1008,7 @@ Selector source screen:
   - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_selector_source_screen_field34_cc_c0_top10_v0/`
   - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_selector_source_screen_field34_cc_c0_top10_recovery_context_v0/`
 - Script:
-  `research/consensus/scripts/screen_leiden_basin_selector_sources.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/selector_sources/screen_leiden_basin_selector_sources.py`
 - Purpose: rebuild post-gate source states and attachment-margin rows, then
   classify whether a source is worth expensive local-selector replay. This is
   a source-screening gate, not an operator acceptance policy.
@@ -1034,7 +1034,7 @@ Selector source screen batch:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_selector_source_screen_batch_field34_cc_non_c0_v0/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_selector_source_screen_batch.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/selector_sources/run_leiden_basin_selector_source_screen_batch.py`
 - Scope discovers existing `field34_cc` post-gate recovery artifacts, excludes
   c0 by default, and applies the `recovery_contexts` selector-source screen
   sequentially. It writes artifact-level, source-level, and readiness-level
@@ -1056,7 +1056,7 @@ Local selector readiness profile:
   - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_local_selector_readiness_field34_cc_v0/`
   - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_local_selector_readiness_field34_cc_v1/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_selector_readiness.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/selector_signals/profile_leiden_basin_selector_readiness.py`
 - Reusable module addition:
   `summarize_local_selector_readiness_rows` in
   `sciscape/clustering/leiden_basin_search.py`.
@@ -1106,7 +1106,7 @@ Closure shrink pilot result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_closure_operator_pilot_field34_cc/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_transition_closure_operator_pilot.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/transition_operators/run_leiden_basin_transition_closure_operator_pilot.py`
 - The default run emitted `220` rows: `20` controls and `200` closure rows
   over fresh-label and candidate-nearest target strategies.
 - Candidate-nearest raw shrink reduced support burden more than fresh raw
@@ -1124,7 +1124,7 @@ Bounded closure-context release result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_closure_context_release_pilot_field34_cc/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_transition_closure_context_release_pilot.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/closure_context/run_leiden_basin_transition_closure_context_release_pilot.py`
 - The default run selected `8` positive direct-shrink prefixes across `4`
   pairs and emitted `16` context-release rows plus controls.
 - Context release used the `outside_support` closure pool with
@@ -1142,7 +1142,7 @@ Label-internal repair result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_label_internal_repair_pilot_field34_cc/`
 - Script:
-  `research/consensus/scripts/run_leiden_basin_transition_label_internal_repair_pilot.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/closure_context/run_leiden_basin_transition_label_internal_repair_pilot.py`
 - The default run selected `10` high-ratio candidate-label rows across `5`
   pairs and emitted `40` total rows, including `20` repair rows.
 - Best repair row: `delta_vs_candidate = 3.323`,
@@ -1161,8 +1161,8 @@ Basin profiling v0 result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/pathway_ordered_flip_frontier_field34_cc_v0/`
 - Scripts:
-  `research/consensus/scripts/leiden_basin_profile.py` and
-  `research/consensus/scripts/profile_leiden_basin_ordered_flips.py`
+  `research/consensus/scripts/leiden_basin/basin_signatures/local_modes/leiden_basin_profile.py` and
+  `research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/profile_leiden_basin_ordered_flips.py`
 - Scope is deliberately narrow: `c2-s11-r0`, direction `V -> C`,
   `label_intersection_block` units, raw flips only, beam width `5`, max steps
   `10`, scoring policies `q_first`, `progress_first`, and `balanced`.
@@ -1190,7 +1190,7 @@ Basin profiling v1 batch result:
 - Artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/pathway_ordered_flip_frontier_field34_cc_v1_cases/`
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_ordered_flips_batch.py`
+  `research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/profile_leiden_basin_ordered_flips_batch.py`
 - Scope keeps v0 fixed: direction `V -> C`, unit type
   `label_intersection_block`, raw flips only, beam width `5`, max steps `10`.
   Only the target cases expand, to priority rows `c2-s11-r0`,
@@ -1244,7 +1244,7 @@ Barrier-aware pathway scorer result:
 - Reusable module:
   `sciscape/clustering/leiden_basin_profile.py`
 - Script:
-  `research/consensus/scripts/analyze_leiden_basin_barrier_aware_pathways.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/analyze_leiden_basin_barrier_aware_pathways.py`
 - The scorer reads existing ordered-flip frontier rows. It does not rerun
   Leiden, accept a mutation, or prove recoverability.
 - Default run over the first three v1 profiles selected `150` prefix rows,
@@ -1269,7 +1269,7 @@ Polish-aware prefix evaluator result:
   `membership_metric_row`, and `classify_polish_recovery` in
   `sciscape/clustering/leiden_basin_profile.py`
 - Script:
-  `research/consensus/scripts/evaluate_leiden_basin_polish_prefixes.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/evaluate_leiden_basin_polish_prefixes.py`
 - Default run evaluated `30` prefixes: top `10` per case, prefix nodes only
   mutable, `3` local-polish iterations.
 - The evaluator compacts edited memberships before calling Rust Leiden. This
@@ -1296,7 +1296,7 @@ Basin-transition search v0 result:
 - Reusable module:
   `sciscape/clustering/leiden_basin_search.py`
 - Script:
-  `research/consensus/scripts/search_leiden_basin_transitions.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/closure_context/search_leiden_basin_transitions.py`
 - The default state-greedy run tested `160` search states and `140` action
   edges over `c0-s11-r0.001` and `c2-s11-r0`, using top `10` barrier-aware
   prefixes per case, depth `3`, beam width `5`, and the primitive actions
@@ -1336,7 +1336,7 @@ Target-unit profiling v0 result:
   `target_edge_support_rows`, `components_from_edges`, and
   `build_target_unit_rows` in `sciscape/clustering/leiden_basin_search.py`.
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_target_units.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/profile_leiden_basin_target_units.py`
 - Scope: `c0-s11-r0.001` and `c2-s11-r0`, using the full V-only target set
   from candidate-vs-vanilla support, with three diagnostic unit definitions:
   `label_intersection_block`, `target_connected_component`, and
@@ -1363,7 +1363,7 @@ Unit-aware target action v0 result:
   `ACTION_REMAINING_TARGET_UNIT_TOPK` in
   `sciscape/clustering/leiden_basin_search.py`.
 - Script option:
-  `research/consensus/scripts/search_leiden_basin_transitions.py --action-types remaining_target_unit_topk`
+  `research/consensus/scripts/leiden_basin/transition_routes/closure_context/search_leiden_basin_transitions.py --action-types remaining_target_unit_topk`
 - Full unit branching with mixed unit types and `max_target_unit_actions=3`
   was stopped after more than six minutes before writing rows. A smaller
   smoke run with two pairs, top five prefixes, depth two, and one unit branch
@@ -1400,7 +1400,7 @@ Node-level target elbow profile v0 result:
   `remaining_target_pull_frame` and `remaining_target_elbow_summary` in
   `sciscape/clustering/leiden_basin_search.py`.
 - Script:
-  `research/consensus/scripts/profile_leiden_basin_target_elbows.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/profile_leiden_basin_target_elbows.py`
 - Scope: `c0-s11-r0.001` and `c2-s11-r0`, top `10` barrier-aware prefixes per
   case, max `3` cheap staged target-growth steps, no bounded polish.
 - The profile emitted `120` stage rows and `7,680` curve rows. It compares the
@@ -1425,7 +1425,7 @@ Node-level target elbow profile v0 result:
 Bounded-polish target-elbow comparison result:
 
 - Script:
-  `research/consensus/scripts/evaluate_leiden_basin_target_elbow_polish.py`
+  `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/evaluate_leiden_basin_target_elbow_polish.py`
 - Smoke artifact:
   `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_target_elbow_polish_field34_cc_smoke_v0/`
 - Per-pair top10 artifacts:
@@ -1520,7 +1520,7 @@ Pathway QF wall statistics result:
   `compute_pathway_wall_rows`, `summarize_pathway_wall_rows`, and
   `select_qf_wall_frontier` in `sciscape/clustering/leiden_basin_search.py`.
 - Script:
-  `research/consensus/scripts/summarize_leiden_basin_pathway_walls.py`
+  `research/consensus/scripts/leiden_basin/transition_routes/route_wall/summarize_leiden_basin_pathway_walls.py`
 - Scope: reconstruct each `transition_search_states.csv` row as a
   root-to-terminal path, then compare `reachability_v0` with the earlier
   state-greedy `v0`. The path-level QF wall is the maximum QF debt versus the
@@ -1935,13 +1935,13 @@ Relabel-pathway artifact:
 `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_minimal_pathway_field34_cc/`
 
 Implemented diagnostic:
-`research/consensus/scripts/analyze_leiden_basin_transition_minimal_pathway.py`
+`research/consensus/scripts/leiden_basin/transition_routes/transition_operators/analyze_leiden_basin_transition_minimal_pathway.py`
 
 Closure-context artifact:
 `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_closure_context_field34_cc/`
 
 Implemented diagnostic:
-`research/consensus/scripts/analyze_leiden_basin_transition_closure_context.py`
+`research/consensus/scripts/leiden_basin/transition_routes/closure_context/analyze_leiden_basin_transition_closure_context.py`
 
 Current result:
 
@@ -1983,7 +1983,7 @@ Closure-frontier artifact:
 `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/combined_with_field30/basin_transition_closure_frontier_field34_cc/`
 
 Implemented diagnostic:
-`research/consensus/scripts/rank_leiden_basin_transition_closure_frontier.py`
+`research/consensus/scripts/leiden_basin/transition_routes/closure_context/rank_leiden_basin_transition_closure_frontier.py`
 
 Frontier result:
 
@@ -2282,10 +2282,10 @@ Do not let polish turn into another full until-convergence run without a budget.
        (`docs/research/dongdaemun/refinement/dongdaemun_basin_transition_operator_design.md`),
     10. [x] add a boundary analyzer that classifies vanilla-extra support into
         bridge-like versus collateral-like groups before mutating membership
-        (`research/consensus/scripts/analyze_leiden_basin_transition_boundaries.py`),
+        (`research/consensus/scripts/leiden_basin/transition_routes/closure_context/analyze_leiden_basin_transition_boundaries.py`),
     11. [x] calibrate the boundary proxy scores with group-level revert/add
         dry-runs before treating collateral-like groups as removable
-        (`research/consensus/scripts/calibrate_leiden_basin_transition_boundary_groups.py`),
+        (`research/consensus/scripts/leiden_basin/transition_routes/transition_diagnostics/calibrate_leiden_basin_transition_boundary_groups.py`),
     12. test whether larger collateral chunks plus their one-hop boundary ring
         can persist after polish; current fixed-outside group/chunk edits mostly
         return to their original basin,

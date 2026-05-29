@@ -15,9 +15,7 @@ import math
 from collections import Counter
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -25,6 +23,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_OUTPUT_DIR = BASE_RESULT_DIR / "leiden_basin_phase1_index_20260528"
 COMBINED_ROOT = (
@@ -56,7 +64,6 @@ SUMMARY_JSON = "basin_cartography_summary.json"
 REPORT_MD = "leiden_landscape_diagnostics_report.md"
 CONFIG_JSON = "phase1_config.json"
 
-
 ROUTE_SOURCE_PATTERNS = (
     ("basin_transition_branch_target_growth_field34_cc_c0_v0", "branch_target_growth", "c0"),
     ("basin_transition_branch_target_growth_field34_cc_c2_v0", "branch_target_growth", "c2"),
@@ -77,7 +84,6 @@ ROUTE_SOURCE_PATTERNS = (
         "field34_cc",
     ),
 )
-
 
 QUALITY_LIKE_COLUMNS = {
     "quality",
@@ -102,7 +108,6 @@ QUALITY_LIKE_COLUMNS = {
     "operator_success",
 }
 
-
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
@@ -111,18 +116,15 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
@@ -131,7 +133,6 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(float(value))
     except (TypeError, ValueError):
         return default
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -142,17 +143,14 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _fmt_float(value: float) -> str:
     if not math.isfinite(value):
         return ""
     return f"{value:.10g}"
 
-
 def _case_tail(case: str) -> str:
     marker = "20260514_"
     return case.split(marker, 1)[1] if marker in case else case
-
 
 def _case_field_method(case: str) -> tuple[str, str]:
     tail = _case_tail(case)
@@ -161,13 +159,11 @@ def _case_field_method(case: str) -> tuple[str, str]:
     method = "_".join(parts[1:]) if len(parts) > 1 else ""
     return field, method
 
-
 def _case_slug(case: str, candidate_budget: int | None = None) -> str:
     slug = _case_tail(case)
     if candidate_budget is not None:
         return f"{slug}_budget{candidate_budget}"
     return slug
-
 
 def _classify_graph_kind(method: str) -> str:
     if method.startswith("all_edges_"):
@@ -176,13 +172,11 @@ def _classify_graph_kind(method: str) -> str:
         return "gcc"
     return "unknown"
 
-
 def _method_family(method: str) -> str:
     for prefix in ("gcc_emb_full_knn30_", "all_edges_"):
         if method.startswith(prefix):
             return method.removeprefix(prefix)
     return method
-
 
 def _case_source_root(case: str, source_label: str) -> str:
     if source_label:
@@ -196,10 +190,8 @@ def _case_source_root(case: str, source_label: str) -> str:
         return "crossfield_budget12_support"
     return "combined_signature_review"
 
-
 def _candidate_key(case: str, candidate_budget: int) -> tuple[str, int]:
     return (case, candidate_budget)
-
 
 def _candidate_rows_by_case() -> dict[tuple[str, int], pd.DataFrame]:
     out: dict[tuple[str, int], pd.DataFrame] = {}
@@ -227,7 +219,6 @@ def _candidate_rows_by_case() -> dict[tuple[str, int], pd.DataFrame]:
             out[key] = frame
     return out
 
-
 def _path_for_strict_signature_dir(case: str, candidate_budget: int) -> Path | None:
     field, method = _case_field_method(case)
     if field == "field30" and candidate_budget == 12:
@@ -239,7 +230,6 @@ def _path_for_strict_signature_dir(case: str, candidate_budget: int) -> Path | N
     ):
         return STRICT_FIELD26_ROOT / "signature_review"
     return None
-
 
 def _support_count_stats(frame: pd.DataFrame) -> dict[str, Any]:
     if frame.empty or "p5_basin_changed_support_node_count" not in frame:
@@ -266,7 +256,6 @@ def _support_count_stats(frame: pd.DataFrame) -> dict[str, Any]:
         "exact_support_capture": exact,
     }
 
-
 def _duplicate_signature_stats(frame: pd.DataFrame) -> dict[str, Any]:
     if frame.empty or "p5_basin_signature" not in frame:
         return {
@@ -284,7 +273,6 @@ def _duplicate_signature_stats(frame: pd.DataFrame) -> dict[str, Any]:
         "duplicate_signature_groups": duplicate_groups,
         "duplicate_endpoint_rows": duplicate_rows,
     }
-
 
 def _pairwise_stats(pairwise: pd.DataFrame, case: str) -> dict[str, Any]:
     if pairwise.empty:
@@ -337,7 +325,6 @@ def _pairwise_stats(pairwise: pd.DataFrame, case: str) -> dict[str, Any]:
         else 0,
     }
 
-
 def _threshold_stats(case: str, candidate_budget: int) -> dict[str, Any]:
     strict_dir = _path_for_strict_signature_dir(case, candidate_budget)
     if strict_dir is None:
@@ -381,7 +368,6 @@ def _threshold_stats(case: str, candidate_budget: int) -> dict[str, Any]:
         "threshold_exact_count_max": int(exact.max()) if exact.notna().any() else "",
     }
 
-
 def _route_trace_sources() -> dict[str, list[Path]]:
     sources: dict[str, list[Path]] = {}
     if not COMBINED_ROOT.exists():
@@ -395,7 +381,6 @@ def _route_trace_sources() -> dict[str, list[Path]]:
         case_key = "field34_all_edges_cc_cosine_budget12" if "field34_cc" in name else "unknown"
         sources.setdefault(case_key, []).append(path)
     return sources
-
 
 def _source_specs() -> list[dict[str, Any]]:
     return [
@@ -412,7 +397,6 @@ def _source_specs() -> list[dict[str, Any]]:
             "signature_dir": STRICT_FIELD26_ROOT / "signature_review",
         },
     ]
-
 
 def _case_records() -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
@@ -463,7 +447,6 @@ def _case_records() -> list[dict[str, Any]]:
             )
     return records
 
-
 def _artifact_counts(path: Path) -> dict[str, int]:
     counts = {"csv_files": 0, "json_files": 0, "md_files": 0, "csv_rows": 0}
     for csv_path in path.glob("*.csv"):
@@ -473,7 +456,6 @@ def _artifact_counts(path: Path) -> dict[str, int]:
     counts["json_files"] = len(list(path.glob("*.json")))
     counts["md_files"] = len(list(path.glob("*.md")))
     return counts
-
 
 def _route_inventory_rows() -> tuple[pd.DataFrame, pd.DataFrame]:
     wall_rows: list[dict[str, Any]] = []
@@ -535,7 +517,6 @@ def _route_inventory_rows() -> tuple[pd.DataFrame, pd.DataFrame]:
             }
         )
     return pd.DataFrame(wall_rows), pd.DataFrame(route_rows)
-
 
 def _build_indexes() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     candidates_by_case = _candidate_rows_by_case()
@@ -746,7 +727,6 @@ def _build_indexes() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataF
         summary,
     )
 
-
 def _quality_column_leaks(frames: dict[str, pd.DataFrame]) -> list[str]:
     leaks: list[str] = []
     for name, frame in frames.items():
@@ -755,7 +735,6 @@ def _quality_column_leaks(frames: dict[str, pd.DataFrame]) -> list[str]:
             if any(token in lower for token in QUALITY_LIKE_COLUMNS):
                 leaks.append(f"{name}:{column}")
     return leaks
-
 
 def _markdown_table(frame: pd.DataFrame, columns: list[str], max_rows: int = 20) -> list[str]:
     if frame.empty:
@@ -769,7 +748,6 @@ def _markdown_table(frame: pd.DataFrame, columns: list[str], max_rows: int = 20)
         values = [str(row.get(column, "")) for column in columns]
         lines.append("| " + " | ".join(values) + " |")
     return lines
-
 
 def _write_report(
     path: Path,
@@ -887,7 +865,6 @@ def _write_report(
         lines.append(f"- `{filename}`")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     landscape, hygiene, cartography, wall_rows, route_rows, summary = _build_indexes()
@@ -934,14 +911,12 @@ def run(output_dir: Path) -> dict[str, Any]:
     )
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     summary = run(args.output_dir)
     print(json.dumps({"output_dir": _rel(args.output_dir), **summary}, indent=2))
-
 
 if __name__ == "__main__":
     main()

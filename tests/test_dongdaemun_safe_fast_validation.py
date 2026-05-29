@@ -13,6 +13,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "refinement_runs"
     / "run_dongdaemun_safe_fast_validation.py"
 )
 

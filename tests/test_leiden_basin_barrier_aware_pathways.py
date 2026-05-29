@@ -13,6 +13,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "transition_routes"
+    / "tunneling_pathways"
     / "analyze_leiden_basin_barrier_aware_pathways.py"
 )
 

@@ -13,9 +13,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_CURRENT_REVIEW_DIR = BASE_RESULT_DIR / "leiden_basin_current_results_review_20260529"
 DEFAULT_ROUTE_LABEL_DIR = BASE_RESULT_DIR / "leiden_basin_route_label_interpretation_v0_20260529"
@@ -46,13 +54,11 @@ CLAIM_BOUNDARY = (
     "basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -62,23 +68,19 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
 
-
 def _as_str(value: Any) -> str:
     if pd.isna(value):
         return ""
     return str(value)
-
 
 def _blocker_tags(row: pd.Series) -> str:
     tags: list[str] = []
@@ -97,7 +99,6 @@ def _blocker_tags(row: pd.Series) -> str:
         tags.append("no_active_blocker_tag")
     return "|".join(tags)
 
-
 def _relation_queue_status(row: pd.Series) -> str:
     taxonomy = _as_str(row.get("relation_taxonomy_v0_1"))
     route_label = _as_str(row.get("route_label_interpretation_v0"))
@@ -112,7 +113,6 @@ def _relation_queue_status(row: pd.Series) -> str:
     if "middle_ambiguous" in taxonomy:
         return "middle_ambiguous_relation_hold"
     return ""
-
 
 def _primary_blocker_class(row: pd.Series) -> str:
     status = _as_str(row.get("current_review_status"))
@@ -137,7 +137,6 @@ def _primary_blocker_class(row: pd.Series) -> str:
         return "control_hold"
     return "not_currently_actionable"
 
-
 def _priority(row: pd.Series) -> int:
     primary = _as_str(row.get("primary_blocker_class"))
     route_label = _as_str(row.get("route_label_interpretation_v0"))
@@ -159,7 +158,6 @@ def _priority(row: pd.Series) -> int:
     if primary == "control_hold":
         return 6
     return 7
-
 
 def _triage_action(row: pd.Series) -> str:
     primary = _as_str(row.get("primary_blocker_class"))
@@ -186,7 +184,6 @@ def _triage_action(row: pd.Series) -> str:
         return "retain_as_no_wall_control"
     return "manual_review_only_no_route_execution"
 
-
 def _triage_rationale(row: pd.Series) -> str:
     primary = _as_str(row.get("primary_blocker_class"))
     if primary == "basin_relation_definition_blocker":
@@ -202,7 +199,6 @@ def _triage_rationale(row: pd.Series) -> str:
     if primary == "control_hold":
         return "Control relation blocks wall promotion by design."
     return "No current route/wall action is justified without a sharper mechanism question."
-
 
 def _allowed_next_work(row: pd.Series) -> str:
     primary = _as_str(row.get("primary_blocker_class"))
@@ -220,13 +216,11 @@ def _allowed_next_work(row: pd.Series) -> str:
         return "control retention only"
     return "manual review only"
 
-
 def _forbidden_next_work(row: pd.Series) -> str:
     return (
         "no wider route batch; no wall promotion; no basin-quality/cost join; "
         "no directed-search or operator-success claim"
     )
-
 
 def _wall_question_status(row: pd.Series) -> str:
     primary = _as_str(row.get("primary_blocker_class"))
@@ -237,7 +231,6 @@ def _wall_question_status(row: pd.Series) -> str:
     if primary == "no_wall_contrast_hold":
         return "no_wall_contrast_reference_no_immediate_execution"
     return ""
-
 
 def _triage_rows(current_review_dir: Path, route_label_dir: Path) -> pd.DataFrame:
     current = _read_csv(current_review_dir / CURRENT_PAIR_STATE_CSV)
@@ -318,7 +311,6 @@ def _triage_rows(current_review_dir: Path, route_label_dir: Path) -> pd.DataFram
         na_position="last",
     ).reset_index(drop=True)
 
-
 def _counts(rows: pd.DataFrame) -> pd.DataFrame:
     count_rows: list[dict[str, Any]] = []
     for column in (
@@ -332,7 +324,6 @@ def _counts(rows: pd.DataFrame) -> pd.DataFrame:
         for value, count in _count(rows, column).items():
             count_rows.append({"count_type": column, "value": value, "count": count})
     return pd.DataFrame(count_rows)
-
 
 def _relation_queue(rows: pd.DataFrame) -> pd.DataFrame:
     queue = rows[rows["relation_blocker_status"].eq("ambiguous_relation_blocks_wall_promotion")]
@@ -356,7 +347,6 @@ def _relation_queue(rows: pd.DataFrame) -> pd.DataFrame:
         ["blocker_priority", "field", "panel_pair_id"]
     )
 
-
 def _field34_queue(rows: pd.DataFrame) -> pd.DataFrame:
     queue = rows[rows["hygiene_blocker_status"].eq("field34_hygiene_review_required")]
     cols = [
@@ -378,7 +368,6 @@ def _field34_queue(rows: pd.DataFrame) -> pd.DataFrame:
         ["blocker_priority", "calibrated_relation", "panel_pair_id"]
     )
 
-
 def _wall_question_queue(rows: pd.DataFrame) -> pd.DataFrame:
     queue = rows[rows["wall_evidence_question_status"].ne("")]
     cols = [
@@ -398,7 +387,6 @@ def _wall_question_queue(rows: pd.DataFrame) -> pd.DataFrame:
     return queue[[col for col in cols if col in queue.columns]].sort_values(
         ["blocker_priority", "field", "panel_pair_id"]
     )
-
 
 def _summary(
     rows: pd.DataFrame,
@@ -445,7 +433,6 @@ def _summary(
         },
     }
 
-
 def _markdown_table(frame: pd.DataFrame) -> str:
     columns = list(frame.columns)
     rendered_rows = [
@@ -465,7 +452,6 @@ def _markdown_table(frame: pd.DataFrame) -> str:
         for row in rendered_rows
     ]
     return "\n".join([header, separator, *body])
-
 
 def _report(
     rows: pd.DataFrame,
@@ -547,7 +533,6 @@ def _report(
     )
     return "\n".join(lines)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--current-review-dir", type=Path, default=DEFAULT_CURRENT_REVIEW_DIR)
@@ -590,7 +575,6 @@ def main() -> None:
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

@@ -13,10 +13,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import (
@@ -35,13 +37,11 @@ log = logging.getLogger(__name__)
 
 VALID_METHODS = ("sum", "consensus", "rank", "max", "vote")
 
-
 def _parse_layer_list(raw: str) -> list[str] | None:
     raw = raw.strip()
     if raw in {"", "*", "all", "-", "none"}:
         return None
     return [item.strip() for item in raw.split(",") if item.strip()] or None
-
 
 def _parse_optional_gamma(raw: str | None) -> float | None:
     if raw is None:
@@ -50,7 +50,6 @@ def _parse_optional_gamma(raw: str | None) -> float | None:
     if raw in {"", "-", "auto", "cache", "none"}:
         return None
     return float(raw)
-
 
 def _parse_config(spec: str) -> dict:
     parts = [part.strip() for part in spec.split("|")]
@@ -68,7 +67,6 @@ def _parse_config(spec: str) -> dict:
         "exclude": _parse_layer_list(exclude_raw),
         "gamma": _parse_optional_gamma(rest[0]) if rest else None,
     }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -192,7 +190,6 @@ def main() -> None:
     out_path = args.output / f"{args.field}_k{args.top_k:02d}_gamma_cache_prep.json"
     save_json(payload, out_path)
     log.info("\nSaved → %s", out_path)
-
 
 if __name__ == "__main__":
     main()

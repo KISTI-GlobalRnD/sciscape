@@ -15,9 +15,7 @@ import math
 import re
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -25,6 +23,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_CALIBRATION_DIR = BASE_RESULT_DIR / "leiden_basin_definition_calibration_20260528"
 DEFAULT_OUTPUT_DIR = BASE_RESULT_DIR / "leiden_basin_route_wall_evidence_join_20260528"
@@ -73,13 +81,11 @@ SCAN_COLUMN_TOKENS = (
     "status",
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -89,11 +95,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -104,25 +108,20 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _fmt_float(value: float) -> str:
     return "" if not math.isfinite(value) else f"{value:.10g}"
-
 
 def _split_dirs(value: Any) -> list[Path]:
     if pd.isna(value):
         return []
     return [Path(part) for part in str(value).split(";") if part]
 
-
 def _candidate_from_identity(identity_id: str) -> str:
     return identity_id.rsplit(":", 1)[-1] if ":" in identity_id else identity_id
-
 
 def _pair_id(case_id: str, left_idx: int, right_idx: int) -> str:
     lo, hi = sorted((left_idx, right_idx))
     return f"{case_id}:c{lo}-c{hi}"
-
 
 def _route_family(path: Path) -> str:
     name = path.name
@@ -152,7 +151,6 @@ def _route_family(path: Path) -> str:
             return family
     return "other_route_artifact"
 
-
 def _read_relevant_csv(path: Path) -> pd.DataFrame:
     try:
         return pd.read_csv(
@@ -162,7 +160,6 @@ def _read_relevant_csv(path: Path) -> pd.DataFrame:
     except (pd.errors.EmptyDataError, ValueError):
         return pd.DataFrame()
 
-
 def _metric_columns(frame: pd.DataFrame, *tokens: str) -> list[str]:
     out: list[str] = []
     for column in frame.columns:
@@ -170,7 +167,6 @@ def _metric_columns(frame: pd.DataFrame, *tokens: str) -> list[str]:
         if any(token in lower for token in tokens):
             out.append(column)
     return out
-
 
 def _max_metric(frame: pd.DataFrame, columns: list[str]) -> float:
     values: list[float] = []
@@ -180,7 +176,6 @@ def _max_metric(frame: pd.DataFrame, columns: list[str]) -> float:
             values.append(float(series.max()))
     return max(values) if values else math.nan
 
-
 def _min_metric(frame: pd.DataFrame, columns: list[str]) -> float:
     values: list[float] = []
     for column in columns:
@@ -188,7 +183,6 @@ def _min_metric(frame: pd.DataFrame, columns: list[str]) -> float:
         if series.notna().any():
             values.append(float(series.min()))
     return min(values) if values else math.nan
-
 
 def _truthy_count(frame: pd.DataFrame, columns: list[str]) -> int:
     count = 0
@@ -200,7 +194,6 @@ def _truthy_count(frame: pd.DataFrame, columns: list[str]) -> int:
             text = values.fillna("").astype(str).str.lower()
             count += int(text.isin({"true", "1", "yes", "recovered", "reached"}).sum())
     return count
-
 
 def _label_counts(frame: pd.DataFrame) -> str:
     label_columns = [
@@ -216,7 +209,6 @@ def _label_counts(frame: pd.DataFrame) -> str:
             key = f"{column}={value}"
             counts[key] = counts.get(key, 0) + int(count)
     return ";".join(f"{key}:{value}" for key, value in sorted(counts.items())[:20])
-
 
 def _candidate_ids_from_nodes(frame: pd.DataFrame) -> pd.DataFrame:
     out = frame.copy()
@@ -236,7 +228,6 @@ def _candidate_ids_from_nodes(frame: pd.DataFrame) -> pd.DataFrame:
             errors="coerce",
         )
     return out
-
 
 def _build_pair_context(calibration_dir: Path) -> pd.DataFrame:
     pairs = _read_csv(calibration_dir / ROUTE_JOIN_CANDIDATE_PAIRS)
@@ -292,7 +283,6 @@ def _build_pair_context(calibration_dir: Path) -> pd.DataFrame:
         )
     return pd.DataFrame(rows)
 
-
 def _direct_pair_evidence(
     frame: pd.DataFrame,
     *,
@@ -329,7 +319,6 @@ def _direct_pair_evidence(
     )
     return rows
 
-
 def _candidate_side_evidence(
     frame: pd.DataFrame,
     *,
@@ -361,7 +350,6 @@ def _candidate_side_evidence(
             )
         )
     return rows
-
 
 def _evidence_record(
     *,
@@ -441,7 +429,6 @@ def _evidence_record(
         "outcome_label_counts": label_counts,
     }
 
-
 def _artifact_inventory(pair_context: pd.DataFrame) -> pd.DataFrame:
     dirs: set[Path] = set()
     for value in pair_context["route_trace_source_dirs"].dropna().unique():
@@ -461,7 +448,6 @@ def _artifact_inventory(pair_context: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
-
 
 def _join_evidence(pair_context: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
@@ -497,7 +483,6 @@ def _join_evidence(pair_context: pd.DataFrame) -> pd.DataFrame:
                     seen.add(key)
                     rows.append(record)
     return pd.DataFrame(rows)
-
 
 def _pair_summary(pair_context: pd.DataFrame, evidence: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
@@ -560,7 +545,6 @@ def _pair_summary(pair_context: pd.DataFrame, evidence: pd.DataFrame) -> pd.Data
             }
         )
     return pd.DataFrame(rows)
-
 
 def _write_report(path: Path, summary: dict[str, Any], pair_summary: pd.DataFrame) -> None:
     lines = [
@@ -626,7 +610,6 @@ def _write_report(path: Path, summary: dict[str, Any], pair_summary: pd.DataFram
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(calibration_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     pair_context = _build_pair_context(calibration_dir)
@@ -674,7 +657,6 @@ def run(calibration_dir: Path, output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, pair_summary)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--calibration-dir", type=Path, default=DEFAULT_CALIBRATION_DIR)
@@ -682,7 +664,6 @@ def main() -> None:
     args = parser.parse_args()
     summary = run(args.calibration_dir, args.output_dir)
     print(json.dumps({"output_dir": _rel(args.output_dir), **summary}, indent=2))
-
 
 if __name__ == "__main__":
     main()

@@ -13,6 +13,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "datasets"
     / "collect_cyclic_lookahead_guard_dataset.py"
 )
 

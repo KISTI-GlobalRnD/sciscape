@@ -14,6 +14,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "datasets"
     / "collect_dongdaemun_parent_local_replay_dataset.py"
 )
 

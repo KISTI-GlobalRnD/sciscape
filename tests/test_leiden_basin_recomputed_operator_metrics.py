@@ -11,7 +11,7 @@ import pandas as pd
 
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/summarize_leiden_basin_recomputed_operator_metrics.py"
+    / "research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/summarize_leiden_basin_recomputed_operator_metrics.py"
 )
 
 

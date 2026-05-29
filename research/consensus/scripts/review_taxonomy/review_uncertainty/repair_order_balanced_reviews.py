@@ -14,22 +14,22 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 # Add project root to path for direct script execution.
 
 from _common import save_json
 
-
 def _mean(values: list[float | int]) -> float | None:
     if not values:
         return None
     return round(sum(float(value) for value in values) / len(values), 4)
-
 
 def _resolve_comparison_winner(winner: str, *, score_a: float, score_b: float) -> str:
     if winner in {"A", "B", "TIE"}:
@@ -39,7 +39,6 @@ def _resolve_comparison_winner(winner: str, *, score_a: float, score_b: float) -
     if score_b > score_a:
         return "B"
     return "TIE"
-
 
 def _winner_from_presented_labels(
     presented_winner: str,
@@ -62,7 +61,6 @@ def _winner_from_presented_labels(
     if winner_method == original_method_b:
         return "B"
     return ""
-
 
 def _normalize_balanced_pass(
     pass_payload: dict[str, Any],
@@ -102,7 +100,6 @@ def _normalize_balanced_pass(
     normalized["method_a"] = original_method_a
     normalized["method_b"] = original_method_b
     return normalized
-
 
 def _summarize_reviews(reviewed_cases: list[dict[str, Any]], *, method_a: str, method_b: str) -> dict[str, Any]:
     votes = [case["comparison"]["winner"] for case in reviewed_cases]
@@ -145,7 +142,6 @@ def _summarize_reviews(reviewed_cases: list[dict[str, Any]], *, method_a: str, m
             "cluster_changed_rate": _mean(cluster_changed),
         },
     }
-
 
 def _repair_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
     repaired = json.loads(json.dumps(payload))
@@ -205,11 +201,9 @@ def _repair_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
     }
     return repaired, changed_cases
 
-
 def _default_output_path(review_path: Path, *, output_dir: Path | None, suffix: str) -> Path:
     target_dir = output_dir or review_path.parent
     return target_dir / f"{review_path.stem}{suffix}.json"
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Repair saved dual-pass review outputs after winner-logic changes")
@@ -231,7 +225,6 @@ def main() -> None:
             f"{before.get('method_a_wins')}:{before.get('method_b_wins')}:{before.get('ties_or_invalid')} -> "
             f"{after.get('method_a_wins')}:{after.get('method_b_wins')}:{after.get('ties_or_invalid')}"
         )
-
 
 if __name__ == "__main__":
     main()

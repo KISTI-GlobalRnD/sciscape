@@ -13,9 +13,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_COVERAGE_DIR = (
     BASE_RESULT_DIR / "leiden_basin_wall_panel_context_coverage_after_gap_fill_20260528"
@@ -43,13 +51,11 @@ RUN_ACTION = "run_w1_w6_route_order_gate"
 SUBSET_ROLE = "clean_non_field34_distinct_route_gate"
 SELECTION_MODE = "clean_distinct_after_gap_fill"
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -59,11 +65,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _select_clean_distinct(coverage: pd.DataFrame) -> pd.DataFrame:
     if coverage.empty:
@@ -93,7 +97,6 @@ def _select_clean_distinct(coverage: pd.DataFrame) -> pd.DataFrame:
         ["field", "method", "support_distance_max_num", "panel_pair_id"],
         ascending=[True, True, False, True],
     ).reset_index(drop=True)
-
 
 def _subset_rows(selected: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
@@ -138,7 +141,6 @@ def _subset_rows(selected: pd.DataFrame) -> pd.DataFrame:
         )
     return pd.DataFrame(rows)
 
-
 def _execution_manifest(selected: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for order, (_, row) in enumerate(selected.iterrows(), start=1):
@@ -172,7 +174,6 @@ def _execution_manifest(selected: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
-
 
 def _write_report(path: Path, summary: dict[str, Any], subset: pd.DataFrame) -> None:
     lines = [
@@ -219,7 +220,6 @@ def _write_report(path: Path, summary: dict[str, Any], subset: pd.DataFrame) -> 
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(coverage_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     coverage = _read_csv(coverage_dir / COVERAGE_ROWS_CSV)
@@ -260,14 +260,12 @@ def run(coverage_dir: Path, output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, subset)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage-dir", type=Path, default=DEFAULT_COVERAGE_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.coverage_dir, args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

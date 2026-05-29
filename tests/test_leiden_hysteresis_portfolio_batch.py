@@ -12,7 +12,7 @@ import pandas as pd
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "research" / "consensus" / "scripts"
-BATCH_PATH = SCRIPT_DIR / "run_leiden_hysteresis_portfolio_batch.py"
+BATCH_PATH = Path(__file__).resolve().parents[1] / "research/consensus/scripts/leiden_basin/hysteresis/run_leiden_hysteresis_portfolio_batch.py"
 
 
 def _load_script(module_name: str):

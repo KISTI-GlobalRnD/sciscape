@@ -13,6 +13,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "basin_signatures"
+    / "endpoint_flips"
     / "profile_leiden_basin_ordered_flips_batch.py"
 )
 

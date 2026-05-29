@@ -14,10 +14,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import polars as pl
@@ -41,12 +43,10 @@ log = logging.getLogger(__name__)
 SINGLE_LAYER_METHODS = ("bc_cosine", "cc_cosine", "dc_fractional", "emb_knn")
 CONSENSUS_METHODS = ("citation_consensus", "all_consensus")
 
-
 def _resolve_output_path(output_arg: Path, field: str, consensus_method: str) -> Path:
     if output_arg.suffix == ".json":
         return output_arg
     return output_arg / f"{field}_{consensus_method}_density_matched_comparison.json"
-
 
 def _single_layer_runs(
     layers: dict,
@@ -79,7 +79,6 @@ def _single_layer_runs(
         )
     return results
 
-
 def _consensus_layers(all_layers: dict, consensus_method: str) -> dict:
     if consensus_method == "citation_consensus":
         return {k: v for k, v in all_layers.items() if k in {"bc_cosine", "cc_cosine", "dc_fractional"}}
@@ -87,10 +86,8 @@ def _consensus_layers(all_layers: dict, consensus_method: str) -> dict:
         return dict(all_layers)
     raise ValueError(f"Unsupported consensus method: {consensus_method}")
 
-
 def _uniform_scale_top_k(original: dict[str, int], scale: float) -> dict[str, int]:
     return {name: max(1, int(round(value * scale))) for name, value in sorted(original.items())}
-
 
 def _search_scales(scale_min: float, scale_max: float, scale_step: float) -> list[float]:
     scales: list[float] = []
@@ -101,7 +98,6 @@ def _search_scales(scale_min: float, scale_max: float, scale_step: float) -> lis
     if not any(isclose(scale, 1.0, rel_tol=0.0, abs_tol=1e-9) for scale in scales):
         scales.append(1.0)
     return sorted(set(scales))
-
 
 def _search_density_match(
     layers: dict,
@@ -167,7 +163,6 @@ def _search_density_match(
         "best_overall": best_overall,
         "closest_within_tolerance": None,
     }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Protocol C: edge-count-matched comparison")
@@ -370,7 +365,6 @@ def main() -> None:
     payload["status"] = "ok"
     save_json(payload, out_path)
     log.info("Saved → %s", out_path)
-
 
 if __name__ == "__main__":
     main()

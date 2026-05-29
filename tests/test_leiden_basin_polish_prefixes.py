@@ -12,6 +12,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "operator_probes"
+    / "polish_elbow"
     / "evaluate_leiden_basin_polish_prefixes.py"
 )
 

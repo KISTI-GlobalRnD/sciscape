@@ -17,9 +17,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -27,6 +25,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 COMBINED_DIR = (
     BASE_RESULT_DIR
@@ -56,13 +64,11 @@ VANILLA_FIELD30 = COMBINED_DIR / "vanilla_reachability_sweep_field30_material_co
 VANILLA_FIELD34_CORE = COMBINED_DIR / "vanilla_reachability_sweep_field34_core_exact"
 VANILLA_FIELD34_CC = COMBINED_DIR / "vanilla_reachability_sweep_field34_cc_n10_compatible_sketch"
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -72,11 +78,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -87,7 +91,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
         if pd.isna(value):
@@ -95,7 +98,6 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(float(value))
     except (TypeError, ValueError):
         return default
-
 
 def _select_first(frame: pd.DataFrame, reason: str, subset_role: str, order: int) -> pd.Series:
     if frame.empty:
@@ -105,7 +107,6 @@ def _select_first(frame: pd.DataFrame, reason: str, subset_role: str, order: int
     row["subset_order"] = order
     row["subset_selection_reason"] = reason
     return row
-
 
 def _select_initial_rows(panel: pd.DataFrame) -> list[pd.Series]:
     rows: list[pd.Series] = []
@@ -183,7 +184,6 @@ def _select_initial_rows(panel: pd.DataFrame) -> list[pd.Series]:
 
     return rows
 
-
 def _append_expanded_control_rows(panel: pd.DataFrame, rows: list[pd.Series]) -> None:
     selected_ids = {str(row["panel_pair_id"]) for row in rows}
 
@@ -260,7 +260,6 @@ def _append_expanded_control_rows(panel: pd.DataFrame, rows: list[pd.Series]) ->
         )
     )
 
-
 def _select_subset(panel: pd.DataFrame, selection_mode: str) -> pd.DataFrame:
     rows = _select_initial_rows(panel)
     if selection_mode == "expanded_controls":
@@ -301,13 +300,11 @@ def _select_subset(panel: pd.DataFrame, selection_mode: str) -> pd.DataFrame:
     ]
     return subset[public_cols].sort_values("subset_order")
 
-
 def _endpoint_source_lookup(endpoint_rows: pd.DataFrame) -> dict[str, str]:
     lookup: dict[str, str] = {}
     for _, row in endpoint_rows.iterrows():
         lookup[str(row["endpoint_identity_id"])] = str(row.get("source_artifact", ""))
     return lookup
-
 
 def _vanilla_dir_for_field(field: str, case_id: str) -> Path:
     if field in {"field12", "field26"}:
@@ -320,13 +317,11 @@ def _vanilla_dir_for_field(field: str, case_id: str) -> Path:
         return VANILLA_FIELD34_CORE
     return Path("")
 
-
 def _case_has_vanilla_context(field: str, case_id: str) -> bool:
     vanilla_dir = _vanilla_dir_for_field(field, case_id)
     if not vanilla_dir:
         return False
     return _csv_has_case(vanilla_dir / "vanilla_basin_rows.csv", case_id)
-
 
 def _csv_has_case(path: Path, case_id: str) -> bool:
     if not path.exists():
@@ -337,7 +332,6 @@ def _csv_has_case(path: Path, case_id: str) -> bool:
         return False
     tail = str(case_id).removesuffix("_budget12").removesuffix("_budget15")
     return rows["case"].astype(str).str.endswith(tail).any()
-
 
 def _execution_manifest(subset: pd.DataFrame, endpoint_rows: pd.DataFrame) -> pd.DataFrame:
     source_lookup = _endpoint_source_lookup(endpoint_rows)
@@ -390,7 +384,6 @@ def _execution_manifest(subset: pd.DataFrame, endpoint_rows: pd.DataFrame) -> pd
         )
     return pd.DataFrame(rows)
 
-
 def _artifact_contract() -> pd.DataFrame:
     rows = [
         {
@@ -438,7 +431,6 @@ def _artifact_contract() -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
-
 def _status_matrix(subset: pd.DataFrame, requirements: pd.DataFrame) -> pd.DataFrame:
     selected_ids = set(subset["panel_pair_id"].astype(str))
     status = requirements[requirements["panel_pair_id"].astype(str).isin(selected_ids)].copy()
@@ -458,7 +450,6 @@ def _status_matrix(subset: pd.DataFrame, requirements: pd.DataFrame) -> pd.DataF
         "claim_boundary",
     ]
     return status[cols].sort_values(["subset_order", "protocol_step_id"])
-
 
 def _summary(
     subset: pd.DataFrame,
@@ -485,7 +476,6 @@ def _summary(
             "no wall, basin evaluation, or directed-search claim is made."
         ),
     }
-
 
 def _write_report(
     path: Path,
@@ -548,7 +538,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(
     panel_dir: Path,
     calibration_dir: Path,
@@ -594,7 +583,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, subset, status, manifest)
     return {"output_dir": _rel(output_dir), **summary}
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--panel-dir", type=Path, default=DEFAULT_PANEL_DIR)
@@ -610,7 +598,6 @@ def main() -> None:
         run(args.panel_dir, args.calibration_dir, args.output_dir, args.selection_mode),
         indent=2,
     ))
-
 
 if __name__ == "__main__":
     main()

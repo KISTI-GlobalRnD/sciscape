@@ -29,31 +29,31 @@ from sciscape.clustering.leiden_basin_search import (
 
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/run_leiden_basin_aligned_core_boundary_operator_probe.py"
+    / "research/consensus/scripts/leiden_basin/basin_signatures/local_modes/run_leiden_basin_aligned_core_boundary_operator_probe.py"
 )
 SUBSET_SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/run_leiden_basin_aligned_core_handle_subset_probe.py"
+    / "research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_aligned_core_handle_subset_probe.py"
 )
 STABILITY_SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/run_leiden_basin_aligned_core_handle_stability_probe.py"
+    / "research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_aligned_core_handle_stability_probe.py"
 )
 SELECTOR_SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/run_leiden_basin_aligned_core_handle_selector_probe.py"
+    / "research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_aligned_core_handle_selector_probe.py"
 )
 LOCAL_SELECTOR_SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/run_leiden_basin_local_handle_selector_probe.py"
+    / "research/consensus/scripts/leiden_basin/operator_probes/aligned_core/run_leiden_basin_local_handle_selector_probe.py"
 )
 SOURCE_SCREEN_SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/screen_leiden_basin_selector_sources.py"
+    / "research/consensus/scripts/leiden_basin/operator_probes/selector_sources/screen_leiden_basin_selector_sources.py"
 )
 SOURCE_SCREEN_BATCH_SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/run_leiden_basin_selector_source_screen_batch.py"
+    / "research/consensus/scripts/leiden_basin/operator_probes/selector_sources/run_leiden_basin_selector_source_screen_batch.py"
 )
 
 

@@ -16,10 +16,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import numpy as np
@@ -39,13 +41,11 @@ log = logging.getLogger(__name__)
 
 VALID_METHODS = ("sum", "consensus", "rank", "max", "vote")
 
-
 def _parse_layer_list(value: str | None) -> list[str] | None:
     if value is None:
         return None
     items = [item.strip() for item in value.split(",") if item.strip()]
     return items or None
-
 
 def _docs_from_uids(uids: list[str], meta: dict[str, dict]) -> list[dict]:
     docs = []
@@ -63,13 +63,11 @@ def _docs_from_uids(uids: list[str], meta: dict[str, dict]) -> list[dict]:
         )
     return docs
 
-
 def _select_cases(cases: list[dict], n_cases: int, seed: int) -> list[dict]:
     rng = np.random.RandomState(seed)
     order = list(cases)
     rng.shuffle(order)
     return order[: min(n_cases, len(order))]
-
 
 def _aggregate_counts(values: Iterable[str], *, positive: str, negative: str) -> dict[str, int]:
     counts = Counter(value for value in values if value in {positive, negative})
@@ -80,16 +78,13 @@ def _aggregate_counts(values: Iterable[str], *, positive: str, negative: str) ->
         "total": total,
     }
 
-
 def _mean(values: list[float | int]) -> float | None:
     if not values:
         return None
     return round(float(np.mean(values)), 4)
 
-
 def _min_group_size(n_neighbors: int) -> int:
     return max(2, (n_neighbors + 1) // 2)
-
 
 def _is_reviewable_case(case: dict, meta: dict[str, dict], *, min_group_size: int) -> bool:
     """Check whether a case has enough metadata to be sent to the reviewer."""
@@ -100,7 +95,6 @@ def _is_reviewable_case(case: dict, meta: dict[str, dict], *, min_group_size: in
     group_b_docs = _docs_from_uids(case["group_b_uids"], meta)
     return len(group_a_docs) >= min_group_size and len(group_b_docs) >= min_group_size
 
-
 def _resolve_top_k(layer_names: list[str], *, top_k: int, effective_k: int | None) -> int | dict[str, int]:
     if effective_k is None:
         return top_k
@@ -108,10 +102,8 @@ def _resolve_top_k(layer_names: list[str], *, top_k: int, effective_k: int | Non
         return effective_k
     return allocate_effective_k(layer_names, effective_k)
 
-
 def _protocol_name(*, effective_k: int | None) -> str:
     return "candidate_budget_matched" if effective_k is not None else "practical_top_k"
-
 
 def _summarize_reviews(
     reviewed_cases: list[dict],
@@ -172,7 +164,6 @@ def _summarize_reviews(
             "group_b_outliers_mean": _mean(outliers_b),
         }
     return summary
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="E5: blind A/B review on disagreement boundary nodes")
@@ -558,7 +549,6 @@ def main() -> None:
     out_path = args.output / f"{args.field}_boundary_review.json"
     save_json(output_payload, out_path)
     log.info("\nSaved → %s", out_path)
-
 
 if __name__ == "__main__":
     main()

@@ -1117,26 +1117,26 @@ others remain diagnostic.
 4. [x] Add minimum relabel-pathway accounting over `S_V - S_C`.
 5. [x] Add closure-context accounting over baseline/candidate/vanilla labels.
 6. [x] Add a closure-label frontier ranker:
-   `research/consensus/scripts/rank_leiden_basin_transition_closure_frontier.py`.
+   `research/consensus/scripts/leiden_basin/transition_routes/closure_context/rank_leiden_basin_transition_closure_frontier.py`.
 7. [x] Add a dry-run closure operator pilot:
-   `research/consensus/scripts/run_leiden_basin_transition_closure_operator_pilot.py`.
+   `research/consensus/scripts/leiden_basin/transition_routes/transition_operators/run_leiden_basin_transition_closure_operator_pilot.py`.
 8. [x] First pilot mode: `closure_split_shrink_from_vanilla`.
 9. [x] Add bounded closure-context release after positive direct-shrink rows:
-   `research/consensus/scripts/run_leiden_basin_transition_closure_context_release_pilot.py`.
+   `research/consensus/scripts/leiden_basin/transition_routes/closure_context/run_leiden_basin_transition_closure_context_release_pilot.py`.
 10. [x] Add label-internal repair control for high-ratio closure labels:
-   `research/consensus/scripts/run_leiden_basin_transition_label_internal_repair_pilot.py`.
+   `research/consensus/scripts/leiden_basin/transition_routes/closure_context/run_leiden_basin_transition_label_internal_repair_pilot.py`.
 11. [x] Add ordered flip basin profiling v0 before another operator:
-   `research/consensus/scripts/profile_leiden_basin_ordered_flips.py`.
+   `research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/profile_leiden_basin_ordered_flips.py`.
 12. [x] Add ordered flip basin profiling v1 batch over the first three
     priority cases:
-   `research/consensus/scripts/profile_leiden_basin_ordered_flips_batch.py`.
+   `research/consensus/scripts/leiden_basin/basin_signatures/endpoint_flips/profile_leiden_basin_ordered_flips_batch.py`.
 13. [x] Add barrier-aware pathway scorer over existing ordered-flip prefixes:
-   `research/consensus/scripts/analyze_leiden_basin_barrier_aware_pathways.py`.
+   `research/consensus/scripts/leiden_basin/transition_routes/tunneling_pathways/analyze_leiden_basin_barrier_aware_pathways.py`.
 14. [x] Add polish-aware prefix evaluator for selected barrier-aware prefixes:
-   `research/consensus/scripts/evaluate_leiden_basin_polish_prefixes.py`.
+   `research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/evaluate_leiden_basin_polish_prefixes.py`.
 15. [x] Add automated transition search over prefix/context primitive
     combinations:
-   `research/consensus/scripts/search_leiden_basin_transitions.py`.
+   `research/consensus/scripts/leiden_basin/transition_routes/closure_context/search_leiden_basin_transitions.py`.
 16. [x] Split transition search semantics into `target_nodes`, `action_nodes`,
     `context_nodes`, and `mutable_nodes`; keep `direct_nodes` only as a legacy
     input alias until artifact schemas are migrated.
@@ -1189,7 +1189,7 @@ The completed direct-node and bounded context shrink pilots both said that the
 shrink side was still vanilla-near. The follow-up control tested whether the
 problem was instead internal splitting inside high-ratio candidate labels:
 
-`research/consensus/scripts/run_leiden_basin_transition_label_internal_repair_pilot.py`
+`research/consensus/scripts/leiden_basin/transition_routes/closure_context/run_leiden_basin_transition_label_internal_repair_pilot.py`
 
 Default output:
 
@@ -1353,7 +1353,7 @@ Escalation/backfill follow-up artifacts are:
 
 The script is:
 
-`research/consensus/scripts/evaluate_leiden_basin_target_elbow_polish.py`
+`research/consensus/scripts/leiden_basin/operator_probes/polish_elbow/evaluate_leiden_basin_target_elbow_polish.py`
 
 Result:
 

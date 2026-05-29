@@ -6,7 +6,7 @@ from pathlib import Path
 
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[1]
-    / "research/consensus/scripts/audit_leiden_basin_evaluation_metrics.py"
+    / "research/consensus/scripts/leiden_basin/evidence_panels/audits/audit_leiden_basin_evaluation_metrics.py"
 )
 SPEC = importlib.util.spec_from_file_location("basin_metric_audit", SCRIPT_PATH)
 assert SPEC is not None and SPEC.loader is not None

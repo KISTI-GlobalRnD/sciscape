@@ -18,9 +18,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -28,6 +26,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 COMBINED_DIR = (
     BASE_RESULT_DIR
@@ -62,13 +70,11 @@ DISTINCT_SUPPORT_MIN = 0.75
 AMBIGUOUS_NEAR_SAME_MAX = 0.60
 AMBIGUOUS_NEAR_DISTINCT_MIN = 0.70
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -78,7 +84,6 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -87,11 +92,9 @@ def _read_json(path: Path) -> dict[str, Any]:
     except json.JSONDecodeError:
         return {}
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -102,13 +105,11 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _path_exists(path_text: str) -> bool:
     if not path_text or path_text == "nan":
         return False
     path = _resolve_path(path_text)
     return path.exists()
-
 
 def _resolve_path(path_text: Any) -> Path:
     path = Path(str(path_text))
@@ -116,17 +117,14 @@ def _resolve_path(path_text: Any) -> Path:
         return path
     return REPO_ROOT / path
 
-
 def _case_tail(case_id: str) -> str:
     return str(case_id).removesuffix("_budget12").removesuffix("_budget15")
-
 
 def _case_rows(frame: pd.DataFrame, case_id: str) -> pd.DataFrame:
     if frame.empty or "case" not in frame:
         return pd.DataFrame()
     tail = _case_tail(case_id)
     return frame[frame["case"].fillna("").astype(str).str.endswith(tail)].copy()
-
 
 def _vanilla_dir_for_field(field: str, case_id: str) -> Path:
     if field in {"field12", "field26"}:
@@ -139,7 +137,6 @@ def _vanilla_dir_for_field(field: str, case_id: str) -> Path:
         return VANILLA_FIELD34_CORE
     return Path("")
 
-
 def _csv_has_case(path: Path, case_id: str) -> bool:
     if not path.exists():
         return False
@@ -148,7 +145,6 @@ def _csv_has_case(path: Path, case_id: str) -> bool:
     except (pd.errors.EmptyDataError, ValueError):
         return False
     return not _case_rows(rows, case_id).empty
-
 
 def _vanilla_context_status(
     field: str,
@@ -166,7 +162,6 @@ def _vanilla_context_status(
         if _csv_has_case(extra_rows_path, case_id):
             return _rel(extra_dir), "available"
     return _rel(vanilla_dir), "missing"
-
 
 def _load_candidate_rows_for_preflight(
     left_source: str,
@@ -207,7 +202,6 @@ def _load_candidate_rows_for_preflight(
         keep="first",
     ), notes
 
-
 def _candidate_match_status(
     *,
     candidates: pd.DataFrame,
@@ -233,7 +227,6 @@ def _candidate_match_status(
     if notes:
         return "missing_candidate_index", ";".join(notes)
     return "candidate_rows_ready", "candidate rows and endpoint indices found"
-
 
 def _select_runner_vanilla_row(vanilla_dir: Path, case_id: str) -> tuple[str, str, str]:
     rows_path = vanilla_dir / "vanilla_basin_rows.csv"
@@ -266,7 +259,6 @@ def _select_runner_vanilla_row(vanilla_dir: Path, case_id: str) -> tuple[str, st
     if not graph_dir.exists():
         return "missing_graph_dir", f"graph_dir missing:{graph_dir}", _rel(graph_dir)
     return "vanilla_graph_ready", "vanilla row and graph_dir found", _rel(graph_dir)
-
 
 def _runner_preflight(
     *,
@@ -314,7 +306,6 @@ def _runner_preflight(
         vanilla_status,
     )
 
-
 def _endpoint_lookup(endpoint_rows: pd.DataFrame) -> dict[str, dict[str, Any]]:
     lookup: dict[str, dict[str, Any]] = {}
     for _, row in endpoint_rows.iterrows():
@@ -326,7 +317,6 @@ def _endpoint_lookup(endpoint_rows: pd.DataFrame) -> dict[str, dict[str, Any]]:
             "representative_candidate_index": row.get("representative_candidate_index", ""),
         }
     return lookup
-
 
 def _gate_lookup(claim_panel: pd.DataFrame) -> dict[str, dict[str, str]]:
     if claim_panel.empty:
@@ -343,7 +333,6 @@ def _gate_lookup(claim_panel: pd.DataFrame) -> dict[str, dict[str, str]]:
         }
     return lookup
 
-
 def _candidate_source_status(left_source: str, right_source: str) -> str:
     left_ok = _path_exists(left_source)
     right_ok = _path_exists(right_source)
@@ -353,7 +342,6 @@ def _candidate_source_status(left_source: str, right_source: str) -> str:
         return "partial"
     return "missing"
 
-
 def _runner_context_status(vanilla_status: str, source_status: str) -> str:
     if vanilla_status == "available" and source_status == "both_available":
         return "runnable"
@@ -362,7 +350,6 @@ def _runner_context_status(vanilla_status: str, source_status: str) -> str:
     if vanilla_status != "available":
         return "missing_vanilla_context"
     return "missing_candidate_source"
-
 
 def _runner_context_status_from_preflight(preflight_status: str) -> str:
     if preflight_status == "runner_preflight_ready":
@@ -374,7 +361,6 @@ def _runner_context_status_from_preflight(preflight_status: str) -> str:
     if "graph_dir" in preflight_status:
         return "missing_graph_context"
     return "missing_or_invalid_runner_context"
-
 
 def _field_hygiene_status(field: str, relation: str, left_support: Any, right_support: Any) -> str:
     flags: list[str] = []
@@ -390,7 +376,6 @@ def _field_hygiene_status(field: str, relation: str, left_support: Any, right_su
     elif counts and min(counts) <= 50:
         flags.append("small_support_endpoint")
     return "|".join(flags) if flags else "standard"
-
 
 def _next_action(
     relation: str,
@@ -414,7 +399,6 @@ def _next_action(
     if relation == "distinct_support_local":
         return "locate_or_generate_context_before_route_gate"
     return "hold_for_manual_review"
-
 
 def _coverage_rows(
     panel: pd.DataFrame,
@@ -519,7 +503,6 @@ def _coverage_rows(
         )
     return pd.DataFrame(rows).sort_values(["protocol_priority", "panel_pair_id"])
 
-
 def _case_requirements(coverage: pd.DataFrame) -> pd.DataFrame:
     grouped = coverage.groupby(["field", "case_id"], dropna=False)
     rows: list[dict[str, Any]] = []
@@ -583,7 +566,6 @@ def _case_requirements(coverage: pd.DataFrame) -> pd.DataFrame:
         )
     return pd.DataFrame(rows).sort_values(["field", "case_id"])
 
-
 def _ambiguous_band(row: pd.Series) -> str:
     support_max = _safe_float(row.get("support_distance_max"))
     if not math.isfinite(support_max):
@@ -593,7 +575,6 @@ def _ambiguous_band(row: pd.Series) -> str:
     if support_max <= AMBIGUOUS_NEAR_SAME_MAX:
         return "near_same"
     return "middle"
-
 
 def _relation_refinement_need(row: pd.Series) -> str:
     band = _ambiguous_band(row)
@@ -606,7 +587,6 @@ def _relation_refinement_need(row: pd.Series) -> str:
     if band == "near_same":
         return "same_zone_control_rule_check"
     return "stronger_signature_or_membership_check"
-
 
 def _ambiguous_queue(coverage: pd.DataFrame) -> pd.DataFrame:
     queue = coverage[coverage["calibrated_relation"].eq("ambiguous_support_local")].copy()
@@ -653,7 +633,6 @@ def _ambiguous_queue(coverage: pd.DataFrame) -> pd.DataFrame:
         ["has_stable_route_evidence", "ambiguous_band", "support_distance_max", "panel_pair_id"],
         ascending=[False, True, False, True],
     )
-
 
 def _distinct_queue(coverage: pd.DataFrame) -> pd.DataFrame:
     queue = coverage[coverage["calibrated_relation"].eq("distinct_support_local")].copy()
@@ -705,7 +684,6 @@ def _distinct_queue(coverage: pd.DataFrame) -> pd.DataFrame:
         ascending=[True, True, False, True],
     )
 
-
 def _gate_input_metadata(gate_dir: Path, claim_panel: pd.DataFrame) -> dict[str, Any]:
     config = _read_json(gate_dir / "uniform_wall_probe_runner_config.json")
     summary = _read_json(gate_dir / "uniform_wall_probe_runner_summary.json")
@@ -723,7 +701,6 @@ def _gate_input_metadata(gate_dir: Path, claim_panel: pd.DataFrame) -> dict[str,
         "gate_route_schedules": config.get("route_schedules", summary.get("route_schedules", [])),
         "gate_selected_pair_ids": config.get("pair_ids", summary.get("selected_pair_ids", [])),
     }
-
 
 def _summary(
     coverage: pd.DataFrame,
@@ -774,7 +751,6 @@ def _summary(
             "promote wall claims, or run new routes."
         ),
     }
-
 
 def _write_report(
     path: Path,
@@ -896,7 +872,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(
     panel_dir: Path,
     calibration_dir: Path,
@@ -957,7 +932,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, coverage, ambiguous, distinct)
     return {"output_dir": _rel(output_dir), **summary}
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--panel-dir", type=Path, default=DEFAULT_PANEL_DIR)
@@ -988,7 +962,6 @@ def main() -> None:
             indent=2,
         )
     )
-
 
 if __name__ == "__main__":
     main()

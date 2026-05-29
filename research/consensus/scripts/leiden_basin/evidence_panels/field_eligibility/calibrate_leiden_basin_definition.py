@@ -13,9 +13,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -23,6 +21,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_PHASE1_DIR = BASE_RESULT_DIR / "leiden_basin_phase1_index_20260528"
 DEFAULT_REVIEW_DIR = BASE_RESULT_DIR / "leiden_basin_phase1_review_20260528"
@@ -82,13 +90,11 @@ QUALITY_LIKE_TOKENS = (
     "operator_success",
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -98,11 +104,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
@@ -111,7 +115,6 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return int(float(value))
     except (TypeError, ValueError):
         return default
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -122,19 +125,15 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _fmt_float(value: float) -> str:
     return "" if not math.isfinite(value) else f"{value:.10g}"
-
 
 def _case_tail(case: str) -> str:
     marker = "20260514_"
     return case.split(marker, 1)[1] if marker in case else case
 
-
 def _case_id(case: str, candidate_budget: int) -> str:
     return f"{_case_tail(case)}_budget{candidate_budget}"
-
 
 def _case_field_method(case: str) -> tuple[str, str]:
     tail = _case_tail(case)
@@ -142,7 +141,6 @@ def _case_field_method(case: str) -> tuple[str, str]:
     field = parts[0] if parts else ""
     method = "_".join(parts[1:]) if len(parts) > 1 else ""
     return field, method
-
 
 def _load_candidate_rows() -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
@@ -170,7 +168,6 @@ def _load_candidate_rows() -> pd.DataFrame:
         return pd.DataFrame()
     return pd.concat(frames, ignore_index=True, sort=False)
 
-
 def _load_pairwise_rows() -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     for source_label, path in PAIRWISE_SOURCES:
@@ -194,7 +191,6 @@ def _load_pairwise_rows() -> pd.DataFrame:
     if not frames:
         return pd.DataFrame()
     return pd.concat(frames, ignore_index=True, sort=False)
-
 
 def _endpoint_status_rows(candidate_rows: pd.DataFrame) -> pd.DataFrame:
     if candidate_rows.empty:
@@ -264,13 +260,11 @@ def _endpoint_status_rows(candidate_rows: pd.DataFrame) -> pd.DataFrame:
             )
     return pd.DataFrame(rows)
 
-
 def _endpoint_lookup(endpoint_rows: pd.DataFrame) -> dict[tuple[str, int], dict[str, Any]]:
     lookup: dict[tuple[str, int], dict[str, Any]] = {}
     for _, row in endpoint_rows.iterrows():
         lookup[(str(row["case_id"]), int(row["candidate_index"]))] = row.to_dict()
     return lookup
-
 
 def _candidate_relation(row: pd.Series, left: dict[str, Any] | None, right: dict[str, Any] | None) -> tuple[str, str]:
     if left is None or right is None:
@@ -296,7 +290,6 @@ def _candidate_relation(row: pd.Series, left: dict[str, Any] | None, right: dict
     if math.isfinite(support_distance) and support_distance >= DISTINCT_SUPPORT_MIN and left_identity != right_identity:
         return "distinct_support_local", "support_far_and_endpoint_identity_distinct"
     return "ambiguous_support_local", "middle_support_zone_or_missing_metric"
-
 
 def _candidate_pair_rows(pairwise: pd.DataFrame, endpoint_rows: pd.DataFrame) -> pd.DataFrame:
     lookup = _endpoint_lookup(endpoint_rows)
@@ -338,7 +331,6 @@ def _candidate_pair_rows(pairwise: pd.DataFrame, endpoint_rows: pd.DataFrame) ->
         )
     return pd.DataFrame(rows)
 
-
 def _relation_priority(relations: set[str]) -> str:
     if "excluded_hygiene" in relations:
         return "excluded_hygiene"
@@ -355,7 +347,6 @@ def _relation_priority(relations: set[str]) -> str:
     if "same_support_local" in relations and "distinct_support_local" in relations:
         return "ambiguous_mixed_relation"
     return "ambiguous_support_local"
-
 
 def _identity_pair_rows(candidate_pairs: pd.DataFrame) -> pd.DataFrame:
     if candidate_pairs.empty:
@@ -407,7 +398,6 @@ def _identity_pair_rows(candidate_pairs: pd.DataFrame) -> pd.DataFrame:
         )
     return pd.DataFrame(rows)
 
-
 def _component_count(endpoint_ids: list[str], identity_pairs: pd.DataFrame) -> tuple[int, int]:
     parent = {node: node for node in endpoint_ids}
 
@@ -434,7 +424,6 @@ def _component_count(endpoint_ids: list[str], identity_pairs: pd.DataFrame) -> t
     roots = [find(node) for node in endpoint_ids]
     largest = max((roots.count(root) for root in set(roots)), default=0)
     return len(set(roots)), largest
-
 
 def _case_summary_rows(
     endpoint_rows: pd.DataFrame,
@@ -521,7 +510,6 @@ def _case_summary_rows(
         )
     return pd.DataFrame(rows)
 
-
 def _wall_candidate_pairs(identity_pairs: pd.DataFrame, case_summary: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     if identity_pairs.empty:
         return pd.DataFrame(), pd.DataFrame()
@@ -544,7 +532,6 @@ def _wall_candidate_pairs(identity_pairs: pd.DataFrame, case_summary: pd.DataFra
     route_join = out[out["phase2_route_join_status"].eq("route_join_candidate_pairs_available")].copy()
     return out, route_join
 
-
 def _quality_column_leaks(frames: dict[str, pd.DataFrame]) -> list[str]:
     leaks: list[str] = []
     for name, frame in frames.items():
@@ -553,7 +540,6 @@ def _quality_column_leaks(frames: dict[str, pd.DataFrame]) -> list[str]:
             if any(token in lower for token in QUALITY_LIKE_TOKENS):
                 leaks.append(f"{name}:{column}")
     return leaks
-
 
 def _write_report(path: Path, summary: dict[str, Any], case_summary: pd.DataFrame) -> None:
     lines = [
@@ -641,7 +627,6 @@ def _write_report(path: Path, summary: dict[str, Any], case_summary: pd.DataFram
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
 
 def run(phase1_dir: Path, review_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -741,7 +726,6 @@ def run(phase1_dir: Path, review_dir: Path, output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, case_summary)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase1-dir", type=Path, default=DEFAULT_PHASE1_DIR)
@@ -750,7 +734,6 @@ def main() -> None:
     args = parser.parse_args()
     summary = run(args.phase1_dir, args.review_dir, args.output_dir)
     print(json.dumps({"output_dir": _rel(args.output_dir), **summary}, indent=2))
-
 
 if __name__ == "__main__":
     main()

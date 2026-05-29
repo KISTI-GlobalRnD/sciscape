@@ -14,25 +14,30 @@ import csv
 import hashlib
 import json
 import math
-import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+import sys
 
-import numpy as np
-import pandas as pd
-
-
-SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = next(
     parent
     for parent in Path(__file__).resolve().parents
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-sys.path.insert(0, str(SCRIPT_ROOT))
-sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import numpy as np
+import pandas as pd
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 from collect_leiden_vanilla_reachability_sweep import (  # noqa: E402
     _load_graph,
@@ -49,7 +54,6 @@ from run_leiden_basin_transition_operator_pilot import (  # noqa: E402
     endpoint_distance,
     support_distance,
 )
-
 
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_SUBSET_DIR = BASE_RESULT_DIR / "leiden_basin_uniform_wall_probe_subset_20260528"
@@ -74,13 +78,11 @@ CACHE_ROWS_CSV = "uniform_endpoint_cache_rows.csv"
 ENDPOINT_TAU = 0.02
 SAME_SUPPORT_MAX = 0.5
 
-
 @dataclass(frozen=True)
 class EndpointContext:
     row: pd.Series
     candidate: CandidateMembership
     support_nodes: np.ndarray
-
 
 @dataclass(frozen=True)
 class PairContext:
@@ -97,7 +99,6 @@ class PairContext:
     sketch_nodes: np.ndarray
     sketch_context: dict[str, Any]
 
-
 @dataclass
 class RunnerStats:
     baseline_cache_hits: int = 0
@@ -105,20 +106,17 @@ class RunnerStats:
     endpoint_cache_hits: int = 0
     endpoint_cache_misses: int = 0
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _resolve(path_text: Any) -> Path:
     path = Path(str(path_text))
     if path.is_absolute():
         return path
     return REPO_ROOT / path
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -128,7 +126,6 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _csv_value(value: Any) -> Any:
     if value is None:
         return ""
@@ -137,7 +134,6 @@ def _csv_value(value: Any) -> Any:
     if isinstance(value, (list, tuple, dict)):
         return json.dumps(value, sort_keys=True, separators=(",", ":"))
     return value
-
 
 def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -154,10 +150,8 @@ def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             writer.writerow({field: _csv_value(row.get(field)) for field in fieldnames})
 
-
 def _now_utc() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
 
 def _emit_progress(path: Path | None, event: dict[str, Any]) -> None:
     if path is None:
@@ -166,7 +160,6 @@ def _emit_progress(path: Path | None, event: dict[str, Any]) -> None:
     row = {"timestamp_utc": _now_utc(), **event}
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
-
 
 def _safe_int(value: Any, default: int | None = None) -> int | None:
     try:
@@ -178,7 +171,6 @@ def _safe_int(value: Any, default: int | None = None) -> int | None:
     except (TypeError, ValueError):
         return default
 
-
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
         if value is None or pd.isna(value):
@@ -188,7 +180,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _case_tail(case_id: str) -> str:
     text = str(case_id)
     for suffix in ("_budget12", "_budget15"):
@@ -196,13 +187,11 @@ def _case_tail(case_id: str) -> str:
             return text[: -len(suffix)]
     return text
 
-
 def _case_rows(frame: pd.DataFrame, case_id: str) -> pd.DataFrame:
     if frame.empty or "case" not in frame:
         return pd.DataFrame()
     tail = _case_tail(case_id)
     return frame[frame["case"].astype(str).str.endswith(tail)].copy()
-
 
 def _load_candidate_rows_for_manifest(row: pd.Series) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
@@ -231,7 +220,6 @@ def _load_candidate_rows_for_manifest(row: pd.Series) -> pd.DataFrame:
         keep="first",
     )
 
-
 def _find_candidate_row(candidates: pd.DataFrame, case_id: str, candidate_index: int) -> pd.Series:
     case_rows = _case_rows(candidates, case_id)
     rows = case_rows[
@@ -241,7 +229,6 @@ def _find_candidate_row(candidates: pd.DataFrame, case_id: str, candidate_index:
     if rows.empty:
         raise ValueError(f"missing candidate row for {case_id} index={candidate_index}")
     return rows.iloc[0]
-
 
 def _select_vanilla_row(vanilla_dir: Path, case_id: str) -> pd.Series:
     rows = _case_rows(_read_csv(vanilla_dir / "vanilla_basin_rows.csv"), case_id)
@@ -262,7 +249,6 @@ def _select_vanilla_row(vanilla_dir: Path, case_id: str) -> pd.Series:
     )
     return rows.iloc[0]
 
-
 def _membership_hash(membership: np.ndarray) -> str:
     arr = np.asarray(membership, dtype=np.uint64)
     hasher = hashlib.blake2b(digest_size=16)
@@ -270,15 +256,12 @@ def _membership_hash(membership: np.ndarray) -> str:
     hasher.update(arr.tobytes())
     return hasher.hexdigest()
 
-
 def _cache_key(payload: dict[str, Any]) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.blake2b(encoded, digest_size=16).hexdigest()
 
-
 def _cache_paths(cache_dir: Path, key: str) -> tuple[Path, Path]:
     return cache_dir / f"{key}.membership.npy", cache_dir / f"{key}.metadata.json"
-
 
 def _save_membership_cache(
     *,
@@ -295,7 +278,6 @@ def _save_membership_cache(
         encoding="utf-8",
     )
 
-
 def _load_membership_cache(
     *,
     cache_dir: Path,
@@ -307,7 +289,6 @@ def _load_membership_cache(
     membership = np.asarray(np.load(membership_path), dtype=np.uint64)
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     return membership, metadata
-
 
 def _closed_route_scope(
     left_membership: np.ndarray,
@@ -334,7 +315,6 @@ def _closed_route_scope(
         right_labels.update(int(value) for value in right[nodes])
     return nodes
 
-
 def _target_groups(
     right_membership: np.ndarray,
     route_scope_nodes: np.ndarray,
@@ -357,7 +337,6 @@ def _target_groups(
     else:
         raise ValueError(f"unsupported route_schedule={route_schedule!r}")
     return [(label, np.asarray(nodes, dtype=np.uint32)) for label, nodes in ordered]
-
 
 def _state_rows(
     *,
@@ -520,7 +499,6 @@ def _state_rows(
         )
     return direct_rows, objective_rows, movement_rows, current, completion
 
-
 def _assign_endpoint(
     *,
     membership: np.ndarray,
@@ -556,7 +534,6 @@ def _assign_endpoint(
         "post_polish_endpoint_distance_to_target": target_endpoint_distance,
         "post_polish_support_node_count": int(support.size),
     }
-
 
 def _polish_row(
     *,
@@ -621,7 +598,6 @@ def _polish_row(
         "route_completion_status": route_completion_status,
         **metrics,
     }
-
 
 def _route_label_row(
     *,
@@ -697,7 +673,6 @@ def _route_label_row(
         "evidence_notes": notes,
     }
 
-
 def _unique_texts(rows: list[dict[str, Any]], column: str) -> list[str]:
     values = set()
     for row in rows:
@@ -706,7 +681,6 @@ def _unique_texts(rows: list[dict[str, Any]], column: str) -> list[str]:
             values.add(value)
     return sorted(values)
 
-
 def _numeric_values(rows: list[dict[str, Any]], column: str) -> list[float]:
     values: list[float] = []
     for row in rows:
@@ -714,7 +688,6 @@ def _numeric_values(rows: list[dict[str, Any]], column: str) -> list[float]:
         if math.isfinite(value):
             values.append(value)
     return values
-
 
 def _wall_step_count_by_schedule(
     objective_rows: list[dict[str, Any]],
@@ -730,7 +703,6 @@ def _wall_step_count_by_schedule(
         if bool(row.get("wall_step_flag")):
             counts[key] += 1
     return counts
-
 
 def _gate_status(
     *,
@@ -777,7 +749,6 @@ def _gate_status(
         return "route_order_stable", "stable_no_wall_claim"
     return "route_order_stable", "stable_non_wall_diagnostic"
 
-
 def _gate_notes(status: str) -> str:
     if status == "schedule_replicate_required_before_wall_claim":
         return "only one route schedule observed; replicate schedules are required before wall claims"
@@ -794,7 +765,6 @@ def _gate_notes(status: str) -> str:
     if status == "stable_no_wall_claim":
         return "all observed route schedules agree on no wall claim"
     return "stable schedule-level diagnostic row; review before promotion"
-
 
 def _build_route_schedule_claim_rows(
     label_rows: list[dict[str, Any]],
@@ -867,7 +837,6 @@ def _build_route_schedule_claim_rows(
             }
         )
     return claim_rows
-
 
 def _build_pair_context(
     *,
@@ -1097,7 +1066,6 @@ def _build_pair_context(
         sketch_context=sketch_context,
     )
 
-
 def _run_pair(
     *,
     pair: PairContext,
@@ -1162,7 +1130,6 @@ def _run_pair(
     )
     return route_rows, objective_rows, movement_rows, polish, label
 
-
 def _error_label(row: pd.Series, message: str) -> dict[str, Any]:
     panel_pair_id = str(row.get("panel_pair_id", ""))
     return {
@@ -1175,12 +1142,10 @@ def _error_label(row: pd.Series, message: str) -> dict[str, Any]:
         "evidence_notes": message,
     }
 
-
 def _parse_pair_ids(value: str) -> set[str]:
     if not value.strip():
         return set()
     return {part.strip() for part in value.split(",") if part.strip()}
-
 
 def _parse_route_schedules(value: str) -> tuple[str, ...]:
     schedules = tuple(part.strip() for part in value.split(",") if part.strip())
@@ -1196,7 +1161,6 @@ def _parse_route_schedules(value: str) -> tuple[str, ...]:
     if unsupported:
         raise ValueError(f"unsupported route schedules: {unsupported}")
     return schedules
-
 
 def _write_report(
     path: Path,
@@ -1268,7 +1232,6 @@ def _write_report(
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
 
 def run(
     *,
@@ -1525,7 +1488,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, label_rows, claim_rows)
     return summary
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--subset-dir", type=Path, default=DEFAULT_SUBSET_DIR)
@@ -1559,7 +1521,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--perturb-seed-offset", type=int, default=5000)
     return parser
 
-
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     summary = run(
@@ -1580,7 +1541,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

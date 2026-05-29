@@ -12,9 +12,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -22,6 +20,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 
 DEFAULT_CALIBRATION_DIR = BASE_RESULT_DIR / "leiden_basin_definition_calibration_20260528"
@@ -47,24 +55,20 @@ CLAIM_BOUNDARY = (
     "claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(path)
     return json.loads(path.read_text(encoding="utf-8"))
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _evidence_row(
     *,
@@ -84,7 +88,6 @@ def _evidence_row(
         "closure_role": closure_role,
         "claim_boundary": CLAIM_BOUNDARY,
     }
-
 
 def _evidence_rows(
     *,
@@ -237,7 +240,6 @@ def _evidence_rows(
     ]
     return pd.DataFrame(rows)
 
-
 def _reopen_conditions() -> pd.DataFrame:
     rows = [
         {
@@ -287,7 +289,6 @@ def _reopen_conditions() -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
-
 def _summary(
     *,
     evidence_rows: pd.DataFrame,
@@ -334,7 +335,6 @@ def _summary(
         },
         "claim_boundary": CLAIM_BOUNDARY,
     }
-
 
 def _write_report(
     path: Path,
@@ -416,7 +416,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines), encoding="utf-8")
 
-
 def run(
     *,
     calibration_dir: Path,
@@ -479,7 +478,6 @@ def run(
     )
     return summary
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--calibration-dir", type=Path, default=DEFAULT_CALIBRATION_DIR)
@@ -491,7 +489,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--remaining-audit-dir", type=Path, default=DEFAULT_REMAINING_AUDIT_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     return parser
-
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -507,7 +504,6 @@ def main() -> int:
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

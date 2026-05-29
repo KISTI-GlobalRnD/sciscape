@@ -18,15 +18,24 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
     for parent in Path(__file__).resolve().parents
     if (parent / "pyproject.toml").exists()
 )
+SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_CALIBRATION_DIR = BASE_RESULT_DIR / "leiden_basin_definition_calibration_20260528"
 DEFAULT_REMAINING_AUDIT_DIR = BASE_RESULT_DIR / "leiden_basin_remaining_wall_question_audit_20260529"
@@ -53,13 +62,11 @@ CLAIM_BOUNDARY = (
     "change, basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -69,23 +76,19 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_str(value: Any) -> str:
     if pd.isna(value):
         return ""
     return str(value)
 
-
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
-
 
 def _endpoint_support(endpoint_rows: pd.DataFrame) -> pd.DataFrame:
     accepted = endpoint_rows[
@@ -104,7 +107,6 @@ def _endpoint_support(endpoint_rows: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
     return grouped
-
 
 def _existence_pair_rows(calibration_dir: Path) -> pd.DataFrame:
     endpoints = _endpoint_support(_read_csv(calibration_dir / ENDPOINT_ROWS_CSV))
@@ -180,7 +182,6 @@ def _existence_pair_rows(calibration_dir: Path) -> pd.DataFrame:
         ascending=[True, True, True, False],
     )
 
-
 def _meaningful_pair_status(row: pd.Series) -> str:
     if _safe_str(row.get("field")) == "field34":
         return "field34_reference_only_not_clean_meaningful_basin_evidence"
@@ -190,7 +191,6 @@ def _meaningful_pair_status(row: pd.Series) -> str:
     if support >= MODERATE_SUPPORT_MIN:
         return "moderate_meaningful_distinct_basin_candidate_pair"
     return "weak_support_distinct_pair_hold"
-
 
 def _case_rows(calibration_dir: Path, pair_rows: pd.DataFrame) -> pd.DataFrame:
     endpoints = _endpoint_support(_read_csv(calibration_dir / ENDPOINT_ROWS_CSV))
@@ -267,7 +267,6 @@ def _case_rows(calibration_dir: Path, pair_rows: pd.DataFrame) -> pd.DataFrame:
     rows["claim_boundary"] = CLAIM_BOUNDARY
     return rows.sort_values(["field", "method", "case_id"]).reset_index(drop=True)
 
-
 def _case_existence_status(row: pd.Series) -> str:
     if _safe_str(row.get("field")) == "field34":
         return "field34_reference_only_hygiene_limited"
@@ -280,7 +279,6 @@ def _case_existence_status(row: pd.Series) -> str:
     if int(row.get("ambiguous_support_local", 0)) > 0:
         return "ambiguous_basin_relation_only"
     return "no_multi_basin_evidence_under_current_gate"
-
 
 def _pathway_rows(
     *,
@@ -328,7 +326,6 @@ def _pathway_rows(
         ["source_surface", "pathway_readiness_status", "panel_pair_id"]
     )
 
-
 def _pathway_status_from_remaining(row: pd.Series) -> str:
     cls = _safe_str(row.get("remaining_wall_question_class"))
     if cls == "protocol_reference_only":
@@ -349,7 +346,6 @@ def _pathway_status_from_remaining(row: pd.Series) -> str:
         return "pathway_candidate_requires_manual_review"
     return "pathway_not_ready"
 
-
 def _pathway_interpretation_from_remaining(row: pd.Series) -> str:
     status = _pathway_status_from_remaining(row)
     if status == "pathway_protocol_reference_not_operational":
@@ -365,7 +361,6 @@ def _pathway_interpretation_from_remaining(row: pd.Series) -> str:
     if status == "pathway_candidate_requires_manual_review":
         return "Potential route candidate found; requires a predeclared mechanism question."
     return "No pathway claim follows under current gates."
-
 
 def _summary(
     *,
@@ -448,7 +443,6 @@ def _summary(
         "claim_boundary": CLAIM_BOUNDARY,
     }
 
-
 def _write_report(
     path: Path,
     summary: dict[str, Any],
@@ -528,7 +522,6 @@ def _write_report(
     )
     path.write_text("\n".join(lines), encoding="utf-8")
 
-
 def run(
     *,
     calibration_dir: Path,
@@ -576,7 +569,6 @@ def run(
     _write_report(output_dir / REPORT_MD, summary, case_rows, pathway_rows)
     return summary
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--calibration-dir", type=Path, default=DEFAULT_CALIBRATION_DIR)
@@ -584,7 +576,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--field34-audit-dir", type=Path, default=DEFAULT_FIELD34_AUDIT_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     return parser
-
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -596,7 +587,6 @@ def main() -> int:
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

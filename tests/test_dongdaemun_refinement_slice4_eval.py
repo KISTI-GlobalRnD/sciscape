@@ -18,6 +18,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "refinement_runs"
     / "evaluate_dongdaemun_refinement_slice4.py"
 )
 

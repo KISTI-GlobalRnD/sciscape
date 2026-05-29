@@ -22,6 +22,8 @@ adaptive-refinement results, or moving result artifacts.
   `../docs/research/leiden_basin/README.md` for the Leiden basin research doc
   index, `../docs/research/leiden_basin/leiden_basin_data_inventory.md` for
   detailed artifact chronology, and
+  `consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
+  for the current methodology-v0 precommitted non-field34 panel. Also see
   `consensus/results/adaptive_refinement/leiden_basin_cycle_closure_writeup_20260529/`
   for the current closure state. Under the fixed current gates, Track C has
   basin-existence candidate evidence but 0 executable route candidates and 0

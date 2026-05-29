@@ -13,6 +13,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "basin_signatures"
+    / "endpoint_flips"
     / "analyze_leiden_endpoint_near_support_paths.py"
 )
 

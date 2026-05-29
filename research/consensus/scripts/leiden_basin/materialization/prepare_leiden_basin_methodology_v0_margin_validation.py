@@ -12,9 +12,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -22,6 +20,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_MARGIN_REVIEW_DIR = BASE_RESULT_DIR / "leiden_basin_polish_margin_gate_review_20260528"
 DEFAULT_OUTPUT_DIR = (
@@ -36,7 +44,6 @@ SUMMARY_JSON = "methodology_v0_margin_validation_summary.json"
 REPORT_MD = "methodology_v0_margin_validation_report.md"
 CONFIG_JSON = "methodology_v0_margin_validation_config.json"
 
-
 FORBIDDEN_USE = (
     "Do not use this row for basin quality/cost ranking, directed-search "
     "success claims, or wall-promotion relaxation."
@@ -47,7 +54,6 @@ COMMON_VALIDATION_QUESTION = (
     "support-hard-loss no-wall holds under predeclared repeat polish/schedule "
     "validation?"
 )
-
 
 STATE_RULES: dict[str, dict[str, Any]] = {
     "keep_partial_wall_gate_with_margin_context": {
@@ -152,13 +158,11 @@ STATE_RULES: dict[str, dict[str, Any]] = {
     },
 }
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -168,18 +172,15 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _value_counts(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     counts = frame[column].value_counts(dropna=False).to_dict()
     return {str(key): int(value) for key, value in counts.items()}
-
 
 def _decision_fields(row: pd.Series) -> dict[str, Any]:
     status = str(row.get("margin_gate_status", ""))
@@ -198,7 +199,6 @@ def _decision_fields(row: pd.Series) -> dict[str, Any]:
         "claim_boundary_v0": rule["claim_boundary"],
         "methodology_v0_rationale": rule["methodology_v0_rationale"],
     }
-
 
 def _decision_rows(pair_rows: pd.DataFrame) -> pd.DataFrame:
     decisions = pair_rows.copy()
@@ -241,7 +241,6 @@ def _decision_rows(pair_rows: pd.DataFrame) -> pd.DataFrame:
             decisions[column] = ""
     return decisions[ordered_cols].sort_values(["field", "panel_pair_id"]).reset_index(drop=True)
 
-
 def _state_counts(decisions: pd.DataFrame) -> pd.DataFrame:
     counts = (
         decisions.groupby(["methodology_v0_state", "validation_role"], dropna=False)
@@ -250,7 +249,6 @@ def _state_counts(decisions: pd.DataFrame) -> pd.DataFrame:
         .sort_values(["methodology_v0_state", "validation_role"])
     )
     return counts
-
 
 def _validation_panel(decisions: pd.DataFrame) -> pd.DataFrame:
     panel = decisions[decisions["include_in_margin_validation_panel"].astype(bool)].copy()
@@ -296,7 +294,6 @@ def _validation_panel(decisions: pd.DataFrame) -> pd.DataFrame:
         .sort_values(["validation_order", "field", "panel_pair_id"])
         .reset_index(drop=True)
     )
-
 
 def _write_report(
     path: Path,
@@ -374,7 +371,6 @@ def _write_report(
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(margin_review_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     pair_rows = _read_csv(margin_review_dir / PAIR_GATE_ROWS_CSV)
@@ -425,14 +421,12 @@ def run(margin_review_dir: Path, output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, decisions, validation_panel)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--margin-review-dir", type=Path, default=DEFAULT_MARGIN_REVIEW_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.margin_review_dir, args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

@@ -13,6 +13,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "transition_routes"
+    / "transition_operators"
     / "analyze_leiden_basin_transition_minimal_pathway.py"
 )
 

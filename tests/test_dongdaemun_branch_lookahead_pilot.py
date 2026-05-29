@@ -19,6 +19,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "prototype_runs"
     / "run_dongdaemun_branch_lookahead_pilot.py"
 )
 

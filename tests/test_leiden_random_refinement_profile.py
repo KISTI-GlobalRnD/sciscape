@@ -19,6 +19,9 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "leiden_basin"
+    / "basin_signatures"
+    / "branch_growth"
     / "run_leiden_random_refinement_profile.py"
 )
 

@@ -15,10 +15,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 import numpy as np
@@ -39,13 +41,11 @@ log = logging.getLogger(__name__)
 
 VALID_METHODS = ("sum", "consensus", "rank", "max", "vote")
 
-
 def _parse_layer_list(value: str | None) -> list[str] | None:
     if value is None:
         return None
     items = [item.strip() for item in value.split(",") if item.strip()]
     return items or None
-
 
 def _docs_from_ranked_neighbors(rows: list[dict], meta: dict[str, dict]) -> list[dict]:
     docs = []
@@ -65,16 +65,13 @@ def _docs_from_ranked_neighbors(rows: list[dict], meta: dict[str, dict]) -> list
         )
     return docs
 
-
 def _mean(values: list[float | int]) -> float | None:
     if not values:
         return None
     return round(float(np.mean(values)), 4)
 
-
 def _serialize_case(case: dict[str, Any]) -> dict[str, Any]:
     return dict(case)
-
 
 def _summarize_reviews(reviewed_cases: list[dict], *, method_a: str, method_b: str) -> dict[str, Any]:
     wins_a = sum(1 for case in reviewed_cases if case["comparison"]["winner"] == "A")
@@ -113,7 +110,6 @@ def _summarize_reviews(reviewed_cases: list[dict], *, method_a: str, method_b: s
             "cluster_changed_rate": _mean(cluster_changed),
         },
     }
-
 
 def _collect_null_cases(
     edges_a,
@@ -249,7 +245,6 @@ def _collect_null_cases(
         )
     )
     return candidate_rows, len(eligible)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -509,7 +504,6 @@ def main() -> None:
     out_path = args.output / f"{args.field}_null_control.json"
     save_json(payload, out_path)
     log.info("Saved → %s", out_path)
-
 
 if __name__ == "__main__":
     main()

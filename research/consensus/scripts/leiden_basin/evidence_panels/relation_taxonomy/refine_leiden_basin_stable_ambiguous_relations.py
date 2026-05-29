@@ -15,6 +15,21 @@ import json
 import math
 from pathlib import Path
 from typing import Any
+import sys
+
+REPO_ROOT = next(
+    parent
+    for parent in Path(__file__).resolve().parents
+    if (parent / "pyproject.toml").exists()
+)
+SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
 
 import numpy as np
 import pandas as pd
@@ -25,13 +40,6 @@ from sciscape.clustering.leiden_basin_profile import (
     support_distance,
 )
 
-
-REPO_ROOT = next(
-    parent
-    for parent in Path(__file__).resolve().parents
-    if (parent / "pyproject.toml").exists()
-)
-SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_COVERAGE_DIR = BASE_RESULT_DIR / "leiden_basin_wall_panel_context_coverage_20260528"
 DEFAULT_ENDPOINT_CACHE_DIR = BASE_RESULT_DIR / "leiden_basin_uniform_wall_probe_endpoint_cache_20260528"
@@ -52,20 +60,17 @@ NEAR_SAME_MARGIN = 0.02
 NEAR_DISTINCT_MARGIN = 0.005
 COASSIGNMENT_SAMPLE_MAX = 4096
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _resolve(path_text: Any) -> Path:
     path = Path(str(path_text))
     if path.is_absolute():
         return path
     return REPO_ROOT / path
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -75,11 +80,9 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _safe_float(value: Any, default: float = math.nan) -> float:
     try:
@@ -90,7 +93,6 @@ def _safe_float(value: Any, default: float = math.nan) -> float:
         return default
     return out if math.isfinite(out) else default
 
-
 def _safe_int(value: Any, default: int | None = None) -> int | None:
     try:
         if value is None or pd.isna(value):
@@ -98,7 +100,6 @@ def _safe_int(value: Any, default: int | None = None) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return default
-
 
 def _stable_sample_nodes(nodes: np.ndarray, max_nodes: int) -> np.ndarray:
     unique = np.unique(np.asarray(nodes, dtype=np.uint32))
@@ -111,21 +112,17 @@ def _stable_sample_nodes(nodes: np.ndarray, max_nodes: int) -> np.ndarray:
     selected = sorted(scored)[:max_nodes]
     return np.asarray(sorted(node for _digest, node in selected), dtype=np.uint32)
 
-
 def _load_json(path: Path) -> dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
-
 def _membership_path(cache_dir: Path, cache_key: str) -> Path:
     return cache_dir / f"{cache_key}.membership.npy"
 
-
 def _metadata_path(cache_dir: Path, cache_key: str) -> Path:
     return cache_dir / f"{cache_key}.metadata.json"
-
 
 def _load_cache_index(cache_dir: Path) -> tuple[dict[tuple[str, int], dict[str, Any]], dict[str, dict[str, Any]]]:
     endpoint_index: dict[tuple[str, int], dict[str, Any]] = {}
@@ -145,14 +142,12 @@ def _load_cache_index(cache_dir: Path) -> tuple[dict[tuple[str, int], dict[str, 
                 endpoint_index[(case_id, candidate_index)] = metadata
     return endpoint_index, baseline_index
 
-
 def _load_membership(cache_dir: Path, metadata: dict[str, Any]) -> np.ndarray | None:
     cache_key = str(metadata.get("cache_key", ""))
     path = _membership_path(cache_dir, cache_key)
     if not path.exists():
         return None
     return np.asarray(np.load(path), dtype=np.uint64)
-
 
 def _refinement_status(
     *,
@@ -178,12 +173,10 @@ def _refinement_status(
         )
     return "ambiguous_middle_zone_unresolved", "exact cached support evidence remains between thresholds"
 
-
 def _route_promotion_status(refinement_status: str) -> str:
     if refinement_status == "distinct_support_local_under_current_rule":
         return "eligible_for_route_gate_recheck_not_promoted_here"
     return "blocked_until_basin_relation_rule_fixed"
-
 
 def _analyze_pair(
     row: pd.Series,
@@ -300,7 +293,6 @@ def _analyze_pair(
         )
     return result, cache_links
 
-
 def _write_report(path: Path, summary: dict[str, Any], rows: pd.DataFrame) -> None:
     lines = [
         "# Stable Ambiguous Basin Relation Refinement",
@@ -360,7 +352,6 @@ def _write_report(path: Path, summary: dict[str, Any], rows: pd.DataFrame) -> No
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
 
 def run(coverage_dir: Path, endpoint_cache_dir: Path, output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -447,7 +438,6 @@ def run(coverage_dir: Path, endpoint_cache_dir: Path, output_dir: Path) -> dict[
     _write_report(output_dir / REPORT_MD, summary, refined)
     return {"output_dir": _rel(output_dir), **summary}
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage-dir", type=Path, default=DEFAULT_COVERAGE_DIR)
@@ -455,7 +445,6 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.coverage_dir, args.endpoint_cache_dir, args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

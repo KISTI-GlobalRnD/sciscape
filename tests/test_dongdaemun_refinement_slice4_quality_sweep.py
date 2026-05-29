@@ -16,6 +16,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "refinement_runs"
     / "run_dongdaemun_refinement_slice4_quality_sweep.py"
 )
 
@@ -38,7 +40,7 @@ def _load_module():
 
 def _load_quality_summary_module():
     script_path = (
-        SCRIPT_PATH.parent / "summarize_dongdaemun_quality_trace.py"
+        Path(__file__).resolve().parents[1] / "research/consensus/scripts/dongdaemun_hierarchy/trace_summaries/summarize_dongdaemun_quality_trace.py"
     )
     spec = importlib.util.spec_from_file_location(
         "summarize_dongdaemun_quality_trace_for_test",
@@ -53,7 +55,7 @@ def _load_quality_summary_module():
 
 
 def _load_candidate_summary_module():
-    script_path = SCRIPT_PATH.parent / "summarize_dongdaemun_candidate_trace.py"
+    script_path = Path(__file__).resolve().parents[1] / "research/consensus/scripts/dongdaemun_hierarchy/trace_summaries/summarize_dongdaemun_candidate_trace.py"
     spec = importlib.util.spec_from_file_location(
         "summarize_dongdaemun_candidate_trace_for_test",
         script_path,

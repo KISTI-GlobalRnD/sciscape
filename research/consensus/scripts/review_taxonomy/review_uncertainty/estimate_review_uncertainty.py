@@ -18,14 +18,15 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import save_json
-
 
 def _wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -> tuple[float, float]:
     if total <= 0:
@@ -35,7 +36,6 @@ def _wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -
     center = (phat + (z * z) / (2.0 * total)) / denom
     radius = (z / denom) * math.sqrt((phat * (1.0 - phat) / total) + ((z * z) / (4.0 * total * total)))
     return (max(0.0, center - radius), min(1.0, center + radius))
-
 
 def _bootstrap_interval(values: list[int], *, seed: int, n_boot: int) -> tuple[float, float]:
     if not values:
@@ -51,7 +51,6 @@ def _bootstrap_interval(values: list[int], *, seed: int, n_boot: int) -> tuple[f
     hi_idx = min(n_boot - 1, int(0.975 * (n_boot - 1)))
     return (rates[lo_idx], rates[hi_idx])
 
-
 def _focal_method(review_payload: dict[str, Any], method_hint: str | None) -> str:
     if method_hint:
         return method_hint
@@ -61,14 +60,12 @@ def _focal_method(review_payload: dict[str, Any], method_hint: str | None) -> st
             return label
     raise ValueError(f"Could not infer focal method from review labels: {labels}")
 
-
 def _case_indicator(case: dict[str, Any], *, focal_label: str, label_a: str, label_b: str) -> int | None:
     winner = case["comparison"]["winner"]
     if winner not in {"A", "B"}:
         return None
     winner_label = label_a if winner == "A" else label_b
     return 1 if winner_label == focal_label else 0
-
 
 def _display_bucket(review_path: Path, payload: dict[str, Any]) -> str:
     label = review_path.stem.replace("_rank_shift_review", "")
@@ -77,7 +74,6 @@ def _display_bucket(review_path: Path, payload: dict[str, Any]) -> str:
     if label:
         return label
     return str(payload.get("field", review_path.stem))
-
 
 def _summarize_bucket(name: str, rows: list[dict[str, Any]], *, seed: int, n_boot: int) -> dict[str, Any]:
     values = [row["indicator"] for row in rows]
@@ -96,7 +92,6 @@ def _summarize_bucket(name: str, rows: list[dict[str, Any]], *, seed: int, n_boo
         "wilson95": [round(wilson_low, 4), round(wilson_high, 4)],
         "bootstrap95": [round(boot_low, 4), round(boot_high, 4)],
     }
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -171,7 +166,6 @@ def main() -> None:
     out_path = args.output / f"{args.stem}.json"
     save_json(summary, out_path)
     print(f"Saved → {out_path}")
-
 
 if __name__ == "__main__":
     main()

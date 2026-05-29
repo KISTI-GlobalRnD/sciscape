@@ -17,9 +17,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -27,6 +25,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_OUTPUT_DIR = BASE_RESULT_DIR / "leiden_basin_current_results_review_20260529"
 
@@ -53,19 +61,16 @@ SUMMARY_JSON = "current_results_review_summary.json"
 REPORT_MD = "current_results_review_report.md"
 CONFIG_JSON = "current_results_review_config.json"
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(path)
     return json.loads(path.read_text(encoding="utf-8"))
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -75,17 +80,14 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
-
 
 def _evidence_row(
     layer: str,
@@ -104,7 +106,6 @@ def _evidence_row(
         "claim_boundary": claim_boundary,
     }
 
-
 def _risk_row(
     risk_id: str,
     severity: str,
@@ -121,7 +122,6 @@ def _risk_row(
         "consequence": consequence,
         "next_check": next_check,
     }
-
 
 def _current_review_status(row: pd.Series) -> str:
     state = str(row.get("methodology_v0_state", ""))
@@ -154,7 +154,6 @@ def _current_review_status(row: pd.Series) -> str:
         return "control_no_wall"
     return "not_currently_actionable"
 
-
 def _pair_comment(row: pd.Series) -> str:
     status = str(row.get("current_review_status", ""))
     if status == "current_partial_wall_protocol_evidence":
@@ -181,7 +180,6 @@ def _pair_comment(row: pd.Series) -> str:
         return "Control row; no wall promotion."
     return "No current route/wall action without a sharper mechanism question."
 
-
 def _relation_blocker(row: pd.Series) -> str:
     relation = str(row.get("calibrated_relation", ""))
     if relation == "ambiguous_support_local":
@@ -192,13 +190,11 @@ def _relation_blocker(row: pd.Series) -> str:
         return "relation_not_blocking"
     return "relation_unknown"
 
-
 def _hygiene_blocker(row: pd.Series) -> str:
     hygiene = str(row.get("field_hygiene_status", ""))
     if "hygiene_review_required" in hygiene:
         return "field34_hygiene_review_required"
     return "hygiene_not_blocking"
-
 
 def _route_gate_group(row: pd.Series) -> str:
     gate = str(row.get("wall_claim_gate_status", ""))
@@ -213,7 +209,6 @@ def _route_gate_group(row: pd.Series) -> str:
     if gate in {"", "nan", "None"}:
         return "not_run"
     return gate
-
 
 def _pair_state() -> pd.DataFrame:
     coverage = _read_csv(LATEST_COVERAGE_DIR / "wall_panel_context_coverage_rows.csv")
@@ -288,7 +283,6 @@ def _pair_state() -> pd.DataFrame:
     return state.sort_values(
         ["field", "current_review_status", "panel_pair_id"], na_position="last"
     ).reset_index(drop=True)
-
 
 def _evidence_ledger(pair_state: pd.DataFrame) -> pd.DataFrame:
     phase1 = _read_json(PHASE1_INDEX_DIR / "basin_cartography_summary.json")
@@ -479,7 +473,6 @@ def _evidence_ledger(pair_state: pd.DataFrame) -> pd.DataFrame:
     ]
     return pd.DataFrame(rows)
 
-
 def _risk_ledger() -> pd.DataFrame:
     rows = [
         _risk_row(
@@ -548,7 +541,6 @@ def _risk_ledger() -> pd.DataFrame:
         ),
     ]
     return pd.DataFrame(rows)
-
 
 def _write_report(
     path: Path,
@@ -647,7 +639,6 @@ def _write_report(
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 def run(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     pair_state = _pair_state()
@@ -691,13 +682,11 @@ def run(output_dir: Path) -> dict[str, Any]:
     _write_report(output_dir / REPORT_MD, summary, pair_state, evidence, risks)
     return summary
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(run(args.output_dir), indent=2))
-
 
 if __name__ == "__main__":
     main()

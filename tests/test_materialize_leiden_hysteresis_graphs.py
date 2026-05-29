@@ -11,7 +11,7 @@ import polars as pl
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "research" / "consensus" / "scripts"
-SCRIPT_PATH = SCRIPT_DIR / "materialize_leiden_hysteresis_graphs.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "research/consensus/scripts/leiden_basin/hysteresis/materialize_leiden_hysteresis_graphs.py"
 
 
 def _load_script(module_name: str):

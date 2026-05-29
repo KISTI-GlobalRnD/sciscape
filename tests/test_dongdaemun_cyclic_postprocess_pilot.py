@@ -17,6 +17,8 @@ SCRIPT_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "dongdaemun_hierarchy"
+    / "prototype_runs"
     / "run_dongdaemun_cyclic_postprocess_pilot.py"
 )
 

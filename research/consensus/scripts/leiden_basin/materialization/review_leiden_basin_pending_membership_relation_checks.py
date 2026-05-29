@@ -15,9 +15,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
-
+import sys
 
 REPO_ROOT = next(
     parent
@@ -25,6 +23,16 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
+
+
+import pandas as pd
+
 BASE_RESULT_DIR = REPO_ROOT / "research/consensus/results/adaptive_refinement"
 DEFAULT_BLOCKER_TRIAGE_DIR = BASE_RESULT_DIR / "leiden_basin_route_label_blocker_triage_20260529"
 DEFAULT_COVERAGE_DIR = (
@@ -51,20 +59,17 @@ CLAIM_BOUNDARY = (
     "wall-promotion change, basin-quality claim, cost claim, or directed-search claim."
 )
 
-
 def _rel(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
 
-
 def _resolve(path_text: Any) -> Path:
     path = Path(str(path_text))
     if path.is_absolute():
         return path
     return REPO_ROOT / path
-
 
 def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
@@ -74,17 +79,14 @@ def _read_csv(path: Path) -> pd.DataFrame:
     except pd.errors.EmptyDataError as exc:
         raise ValueError(f"empty CSV: {path}") from exc
 
-
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-
 
 def _count(frame: pd.DataFrame, column: str) -> dict[str, int]:
     if column not in frame:
         return {}
     return {str(k): int(v) for k, v in frame[column].value_counts(dropna=False).to_dict().items()}
-
 
 def _safe_float(value: Any) -> float:
     try:
@@ -95,7 +97,6 @@ def _safe_float(value: Any) -> float:
         return math.nan
     return out if math.isfinite(out) else math.nan
 
-
 def _safe_int(value: Any) -> int | None:
     try:
         if pd.isna(value):
@@ -103,7 +104,6 @@ def _safe_int(value: Any) -> int | None:
         return int(float(value))
     except (TypeError, ValueError):
         return None
-
 
 def _parse_nodes(value: Any) -> set[int]:
     if pd.isna(value):
@@ -113,7 +113,6 @@ def _parse_nodes(value: Any) -> set[int]:
         return set()
     return {int(part) for part in text.split(";") if part != ""}
 
-
 def _support_distance(left: set[int], right: set[int]) -> tuple[float, int, int]:
     union = left | right
     if not union:
@@ -121,14 +120,12 @@ def _support_distance(left: set[int], right: set[int]) -> tuple[float, int, int]
     intersection = left & right
     return 1.0 - (len(intersection) / len(union)), len(intersection), len(union)
 
-
 def _hard_gate_classification(distance: float) -> str:
     if distance <= SAME_SUPPORT_MAX:
         return "same_support_local"
     if distance >= DISTINCT_SUPPORT_MIN:
         return "distinct_support_local"
     return "boundary_review_ambiguous_support_local"
-
 
 def _epsilon_classification(distance: float, epsilon: float, two_sided: bool) -> str:
     if distance <= SAME_SUPPORT_MAX:
@@ -140,7 +137,6 @@ def _epsilon_classification(distance: float, epsilon: float, two_sided: bool) ->
     if distance >= DISTINCT_SUPPORT_MIN - epsilon:
         return "distinct_support_local_epsilon_snap"
     return "boundary_review_ambiguous_support_local"
-
 
 def _load_cache_index(cache_dir: Path) -> set[tuple[str, int]]:
     out: set[tuple[str, int]] = set()
@@ -157,14 +153,12 @@ def _load_cache_index(cache_dir: Path) -> set[tuple[str, int]]:
             out.add((case_id, candidate_index))
     return out
 
-
 def _candidate_row(path: Path, candidate_index: int) -> pd.Series:
     frame = _read_csv(path)
     rows = frame[pd.to_numeric(frame["candidate_index"], errors="coerce").eq(candidate_index)]
     if rows.empty:
         raise ValueError(f"candidate {candidate_index} not found in {path}")
     return rows.iloc[0]
-
 
 def _signature_status(left: pd.Series, right: pd.Series) -> str:
     same_sample = str(left.get("p5_basin_sketch_node_hash", "")) == str(
@@ -184,7 +178,6 @@ def _signature_status(left: pd.Series, right: pd.Series) -> str:
         return "changed_support_hash_differs"
     return "proxy_signature_inconclusive"
 
-
 def _review_decision(distance: float, cache_status: str) -> str:
     if cache_status == "both_endpoint_memberships_cached":
         if _hard_gate_classification(distance) == "boundary_review_ambiguous_support_local":
@@ -192,14 +185,12 @@ def _review_decision(distance: float, cache_status: str) -> str:
         return "cached_membership_relation_resolved_under_hard_gate"
     return "support_exact_available_but_full_membership_cache_missing"
 
-
 def _next_evidence(row: pd.Series) -> str:
     if str(row.get("full_membership_cache_status", "")) != "both_endpoint_memberships_cached":
         return "link_or_reconstruct_full_membership_cache_for_both_endpoint_candidates"
     if str(row.get("current_hard_gate_classification", "")) == "boundary_review_ambiguous_support_local":
         return "predeclare_boundary_band_rule_before_route_promotion"
     return "rerun_relation_taxonomy_with_cached_membership_result"
-
 
 def _review_rows(
     blocker_triage_dir: Path,
@@ -358,7 +349,6 @@ def _review_rows(
         links
     )
 
-
 def _counterfactuals(rows: pd.DataFrame) -> pd.DataFrame:
     policies = [
         (
@@ -396,7 +386,6 @@ def _counterfactuals(rows: pd.DataFrame) -> pd.DataFrame:
                 }
             )
     return pd.DataFrame(out)
-
 
 def _summary(rows: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
     cache_counts = _count(rows, "full_membership_cache_status")
@@ -467,7 +456,6 @@ def _summary(rows: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
         },
     }
 
-
 def _markdown_table(frame: pd.DataFrame) -> str:
     columns = list(frame.columns)
     rendered_rows = [
@@ -487,7 +475,6 @@ def _markdown_table(frame: pd.DataFrame) -> str:
         for row in rendered_rows
     ]
     return "\n".join([header, separator, *body])
-
 
 def _report(rows: pd.DataFrame, counterfactuals: pd.DataFrame, summary: dict[str, Any]) -> str:
     lines = [
@@ -553,7 +540,6 @@ def _report(rows: pd.DataFrame, counterfactuals: pd.DataFrame, summary: dict[str
     lines.extend(["", "## Interpretation", "", *interpretation, "", "Next step: " + str(summary["next_step"]), ""])
     return "\n".join(lines)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--blocker-triage-dir", type=Path, default=DEFAULT_BLOCKER_TRIAGE_DIR)
@@ -592,7 +578,6 @@ def main() -> None:
     )
     (output_dir / REPORT_MD).write_text(_report(rows, counterfactuals, summary), encoding="utf-8")
     print(json.dumps(summary, indent=2, sort_keys=True))
-
 
 if __name__ == "__main__":
     main()

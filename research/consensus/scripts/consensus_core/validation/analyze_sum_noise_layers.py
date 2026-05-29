@@ -15,10 +15,12 @@ REPO_ROOT = next(
     if (parent / "pyproject.toml").exists()
 )
 SCRIPT_ROOT = REPO_ROOT / "research/consensus/scripts"
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATHS = [REPO_ROOT, SCRIPT_ROOT]
+_SCRIPT_PATHS.extend(path for path in SCRIPT_ROOT.rglob("*") if path.is_dir())
+for _script_path in reversed(_SCRIPT_PATHS):
+    _script_path_str = str(_script_path)
+    if _script_path_str not in sys.path:
+        sys.path.insert(0, _script_path_str)
 
 
 from _common import (
@@ -30,10 +32,8 @@ from _common import (
 
 from sciscape.linkage.filters import filter_top_k
 
-
 def _canonical_pair(uid1: str, uid2: str) -> tuple[str, str]:
     return (uid1, uid2) if uid1 < uid2 else (uid2, uid1)
-
 
 def _layer_weights(filtered_layers: dict[str, Any]) -> dict[str, float]:
     counts = {name: df.height for name, df in filtered_layers.items() if df.height > 0}
@@ -44,7 +44,6 @@ def _layer_weights(filtered_layers: dict[str, Any]) -> dict[str, float]:
         for name, count in counts.items()
         if count > 0
     }
-
 
 def _build_pair_lookup(
     filtered_layers: dict[str, Any],
@@ -61,7 +60,6 @@ def _build_pair_lookup(
                 current[key] = float(row["rel_sum2"]) * scale
         lookup[name] = current
     return lookup
-
 
 def _suspect_neighbors(case: dict[str, Any], *, noisy_side: str) -> list[dict[str, Any]]:
     if noisy_side == "a":
@@ -82,10 +80,8 @@ def _suspect_neighbors(case: dict[str, Any], *, noisy_side: str) -> list[dict[st
         return suspects
     raise ValueError(f"Unknown noisy_side={noisy_side!r}")
 
-
 def _winner_matches(case: dict[str, Any], winner: str) -> bool:
     return case.get("comparison", {}).get("winner") == winner
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -227,7 +223,6 @@ def main() -> None:
     )
     save_json(payload, output_path)
     print(f"Saved → {output_path}")
-
 
 if __name__ == "__main__":
     main()
