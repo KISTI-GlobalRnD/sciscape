@@ -413,7 +413,7 @@ def _summary(
     return {
         "status": "route_label_blocker_triage_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/triage_leiden_basin_route_label_blockers.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "triage_version": TRIAGE_VERSION,
         "pair_count": int(len(rows)),

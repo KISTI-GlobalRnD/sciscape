@@ -433,7 +433,7 @@ def _summary(rows: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
     return {
         "status": "pending_membership_relation_review_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/review_leiden_basin_pending_membership_relation_checks.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "review_version": REVIEW_VERSION,
         "reviewed_pair_count": int(len(rows)),

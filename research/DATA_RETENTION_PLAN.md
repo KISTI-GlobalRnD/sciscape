@@ -160,15 +160,46 @@ indexed.
 
 ### KEEP-LIVE
 
+Core docs and code:
+
 - `research/consensus/TODO_SCISCI_ADAPTIVE_REFINEMENT.md`
+- `docs/research/leiden_basin/README.md`
+- `docs/research/leiden_basin/leiden_basin_cartography_redesign.md`
+- `docs/research/leiden_basin/leiden_basin_data_inventory.md`
+- `docs/research/leiden_basin/leiden_basin_existing_data_review.md`
 - `docs/leiden_multibasin_research_guardrails.md`
 - `docs/dongdaemun_basin_transition_operator_design.md`
+- `sciscape/clustering/leiden_basin_profile.py`
+- `sciscape/clustering/leiden_basin_search.py`
+- `research/consensus/scripts/leiden_basin/`
+
+Current terminal evidence:
+
+- `research/consensus/results/adaptive_refinement/leiden_basin_existence_assumption_audit_20260529/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_remaining_wall_question_audit_20260529/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_cycle_closure_writeup_20260529/`
+
+Representative basin-definition and route-gate chain:
+
+- `research/consensus/results/adaptive_refinement/leiden_basin_phase1_index_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_phase1_review_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_definition_calibration_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_wall_protocol_panel_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_route_gate_panel_combined_after_clean_distinct_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_route_label_interpretation_v0_20260529/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_relation_boundary_rule_review_20260529/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_field34_evidence_eligibility_audit_20260529/`
+
+Legacy support/signature roots that remain active references:
+
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_crossfield_budget12_support_20260519/`
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_signature_field30_budget12_support_20260519/`
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_signature_field26_citation_embedding_budget15_support_20260519/`
-- `sciscape/clustering/leiden_basin_profile.py`
-- `sciscape/clustering/leiden_basin_search.py`
-- `research/consensus/scripts/*leiden_basin*`
+
+Detailed intermediate Track C artifacts remain documented in
+`docs/research/leiden_basin/leiden_basin_data_inventory.md`; promote individual
+intermediate result directories back into `KEEP-LIVE` only if a current claim,
+reopen gate, or reproducibility bundle cites them directly.
 
 ### KEEP-SUMMARY
 

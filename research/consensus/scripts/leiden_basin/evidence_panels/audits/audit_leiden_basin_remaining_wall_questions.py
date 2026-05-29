@@ -330,7 +330,7 @@ def _summary(
     return {
         "status": "remaining_wall_question_audit_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/audit_leiden_basin_remaining_wall_questions.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "non_field34_pair_count": int(len(remaining_rows)),
         "field34_queue_pair_count": int(len(field34_rows)),

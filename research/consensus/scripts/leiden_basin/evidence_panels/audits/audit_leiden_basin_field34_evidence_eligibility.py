@@ -526,7 +526,7 @@ def _summary(
     return {
         "status": "field34_evidence_eligibility_audit_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/audit_leiden_basin_field34_evidence_eligibility.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "endpoint_row_count": int(len(endpoint_rows)),
         "method_count": int(len(method_rows)),

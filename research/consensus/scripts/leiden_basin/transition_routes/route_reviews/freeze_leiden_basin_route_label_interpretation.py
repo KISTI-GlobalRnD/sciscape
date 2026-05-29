@@ -386,7 +386,7 @@ def _summary(rows: pd.DataFrame, output_dir: Path) -> dict[str, Any]:
     return {
         "status": "route_label_interpretation_v0_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/freeze_leiden_basin_route_label_interpretation.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "interpretation_version": INTERPRETATION_VERSION,
         "pair_count": int(len(rows)),

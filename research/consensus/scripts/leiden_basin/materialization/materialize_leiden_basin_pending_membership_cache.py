@@ -544,7 +544,7 @@ def run(
     summary = {
         "status": "completed_with_errors" if errors else "completed",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/materialize_leiden_basin_pending_membership_cache.py",
+        "script": _rel(Path(__file__).resolve()),
         "pending_review_dir": _rel(pending_review_dir),
         "coverage_dir": _rel(coverage_dir),
         "output_dir": _rel(output_dir),

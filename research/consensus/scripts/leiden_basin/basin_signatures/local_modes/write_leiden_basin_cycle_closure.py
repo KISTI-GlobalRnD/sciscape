@@ -299,7 +299,7 @@ def _summary(
     return {
         "status": "track_c_cycle_closure_writeup_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/write_leiden_basin_cycle_closure.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "cycle_scope": "current_23_pair_wall_surface_and_blocker_chain",
         "closed_claim": (

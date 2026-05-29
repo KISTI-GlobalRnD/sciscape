@@ -1359,7 +1359,10 @@ Next gate:
 8. Use the remaining wall-question audit as the current execution closure:
    there are 0 executable non-field34 route candidates and 0 wall-promotion
    candidates under the fixed gates.
-9. Before expanding wall claims, explicitly reopen the basin-relation boundary
+9. Use the basin-existence assumption audit to keep H1 and H2 separate. Current
+   data support multiple meaningful basin candidates as candidate evidence, but
+   pathway methodology remains not operational under fixed gates.
+10. Before expanding wall claims, explicitly reopen the basin-relation boundary
    rule as a definition problem. Do not start with route execution.
 
 ## Current Readiness Judgment
@@ -1379,3 +1382,10 @@ executable non-field34 route candidates, 0 non-field34 wall-promotion
 candidates, and 0 field34 route-gate candidates. The current cycle should close
 as basin-definition and wall-protocol evidence unless the basin-relation
 boundary band is explicitly reopened first.
+
+The basin-existence assumption audit adds one important distinction: H1
+existence has candidate evidence, while H2 pathway readiness remains closed
+under the current gates. The audit reports 16 non-field34 cases with 5 strong
+and 4 moderate candidate multi-basin evidence cases, plus 87 strong and 75
+moderate meaningful distinct pairs under declared support thresholds. These are
+not final basin counts.

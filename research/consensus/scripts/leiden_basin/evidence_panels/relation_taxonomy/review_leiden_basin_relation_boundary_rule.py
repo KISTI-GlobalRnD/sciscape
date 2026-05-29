@@ -391,7 +391,7 @@ def _summary(rows: pd.DataFrame, counterfactuals: pd.DataFrame, output_dir: Path
     return {
         "status": "relation_boundary_rule_review_prepared",
         "date": "2026-05-29",
-        "script": "research/consensus/scripts/review_leiden_basin_relation_boundary_rule.py",
+        "script": _rel(Path(__file__).resolve()),
         "output_dir": _rel(output_dir),
         "review_version": REVIEW_VERSION,
         "reviewed_pair_count": int(len(rows)),
