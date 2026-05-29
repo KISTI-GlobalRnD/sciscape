@@ -7,8 +7,8 @@ SciScape is organized around full-cycle SciSci analysis and visualization of
 research paper networks. The workflows below describe the supported public
 paths from input data to landscape, keywords, reports, and viewer artifacts.
 
-For table-level schemas, see `docs/io_schema.md`. For module boundaries, see
-`docs/modules.md`.
+For table-level schemas, see `docs/user/io_schema.md`. For module boundaries, see
+`docs/user/modules.md`.
 
 ## Workflow 1: OpenAlex To Landscape Report
 
@@ -316,6 +316,6 @@ tables.membership.write_parquet("membership.parquet")
 ## Notes On Research-Only Surfaces
 
 Dongdaemun and adaptive-refinement names are research/development surfaces, not
-the default public workflow. Use `docs/dongdaemun_naming_contract.md` to
+the default public workflow. Use `docs/research/dongdaemun/core/dongdaemun_naming_contract.md` to
 distinguish `Dongdaemun-post`, `Dongdaemun-refinement`, and diagnostic-only
 artifacts before making method claims.

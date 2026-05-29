@@ -201,7 +201,7 @@ Primary surfaces:
 
 Evaluation outputs should report both quality and cost where relevant. For
 Dongdaemun or adaptive-refinement claims, follow
-`docs/leiden_multibasin_research_guardrails.md`.
+`docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`.
 
 ## Research And Development Surfaces
 
@@ -212,6 +212,6 @@ as default product surfaces without supporting evidence:
 - basin-transition and adaptive-refinement diagnostics.
 - policy or threshold sweeps that do not answer a mechanism question.
 
-Use `docs/dongdaemun_naming_contract.md`,
+Use `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`,
 `research/PROJECT_TRACKS.md`, and `research/FAILED_DIRECTIONS.md` before
 promoting a research helper into a supported workflow.

@@ -96,9 +96,9 @@ satisfaction (cut). CPM-density = average linkage → near-linear algorithms
 exist (Dhulipala et al., ICML 2021 / NeurIPS 2022 / SIGMOD 2024).
 
 **Status**: Theoretical framework complete. See:
-- `docs/research_problem_statement.md` — full problem statement + theory
-- `docs/methodology_final_design.md` — algorithm design
-- `docs/literature_review_hierarchical_clustering.md` — literature survey
+- `docs/research/methodology/research_problem_statement.md` — full problem statement + theory
+- `docs/research/methodology/methodology_final_design.md` — algorithm design
+- `docs/research/methodology/literature_review_hierarchical_clustering.md` — literature survey
 
 ---
 
@@ -388,11 +388,11 @@ memory file `project_sample_datasets.md`.
 
 | Document | Content |
 |----------|---------|
-| `docs/research_problem_statement.md` | Phase 3 theory: CPM-density = avg linkage, DP cut, proofs |
-| `docs/methodology_final_design.md` | Phase 3 algorithm design |
-| `docs/literature_review_hierarchical_clustering.md` | HAC + community detection literature |
-| `docs/implementation_plan.md` | Phase 3 implementation roadmap |
-| `docs/decisions.md` | Keyword pipeline design decisions (separate stream) |
+| `docs/research/methodology/research_problem_statement.md` | Phase 3 theory: CPM-density = avg linkage, DP cut, proofs |
+| `docs/research/methodology/methodology_final_design.md` | Phase 3 algorithm design |
+| `docs/research/methodology/literature_review_hierarchical_clustering.md` | HAC + community detection literature |
+| `docs/research/dendrogram/implementation_plan.md` | Phase 3 implementation roadmap |
+| `docs/developer/decisions.md` | Keyword pipeline design decisions (separate stream) |
 
 ### Key References for Evaluation Framework
 
@@ -408,7 +408,7 @@ memory file `project_sample_datasets.md`.
 ## 8. What This Document Does NOT Cover
 
 - **Keyword extraction pipeline**: Separate stream (`sciscape/keyword_extraction/`).
-  See `docs/decisions.md` and memory `keyword_pipeline_design.md`.
-- **Implementation details**: See individual script headers and `docs/implementation_plan.md`.
-- **Literature review**: See `docs/literature_review_hierarchical_clustering.md` and
+  See `docs/developer/decisions.md` and memory `keyword_pipeline_design.md`.
+- **Implementation details**: See individual script headers and `docs/research/dendrogram/implementation_plan.md`.
+- **Literature review**: See `docs/research/methodology/literature_review_hierarchical_clustering.md` and
   memory `reference_citation_normalization_literature.md`.

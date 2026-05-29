@@ -29,21 +29,22 @@ the core engine, but the package is branded around the full analysis and
 visualization lifecycle.
 
 Dongdaemun is a development/research family name, not the default product
-surface. Use the specific terms in `docs/dongdaemun_naming_contract.md`:
+surface. Use the specific terms in `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`:
 `Dongdaemun-post` for the manuscript-backed post-Leiden hierarchy repair
 method, `Dongdaemun-refinement` for opt-in integrated refinement R&D, and
 diagnostic-only names for basin/adaptive-refinement probes.
 
 ## Workflow Docs
 
-- `docs/workflows.md`: supported end-to-end workflows from source data to
+- `docs/README.md`: documentation map and fanout rule.
+- `docs/user/workflows.md`: supported end-to-end workflows from source data to
   landscapes, keywords, reports, and viewer artifacts.
-- `docs/project_structure.md`: repo map for source code, demos, generated
+- `docs/developer/project_structure.md`: repo map for source code, demos, generated
   outputs, research files, and the static viewer bundle.
-- `docs/modules.md`: lifecycle module map across ingest, network, landscape,
+- `docs/user/modules.md`: lifecycle module map across ingest, network, landscape,
   clustering, keywords, visualization, and evaluation.
-- `docs/io_schema.md`: table-level input/output schemas.
-- `docs/release_readiness.md`: local validation gate and artifact policy.
+- `docs/user/io_schema.md`: table-level input/output schemas.
+- `docs/developer/release_readiness.md`: local validation gate and artifact policy.
 
 ## Repository Map
 
@@ -51,7 +52,7 @@ Use `sciscape/` for package implementation. Use `viewer/` for the curated
 static demo bundle (`index.html` plus `data.json`). Local run products such as
 `workspace/data/`, `workspace/output/`, `workspace/examples_output/`, and
 `workspace/web_output/` are generated artifacts, not source. See
-`docs/project_structure.md` for the full map.
+`docs/developer/project_structure.md` for the full map.
 
 ## Install
 
@@ -148,7 +149,7 @@ from sciscape.clustering.label_pipeline import label_hierarchy
 labels = label_hierarchy(abstracts_df, result.to_dataframe(uids))
 ```
 
-See `docs/workflows.md` for full CLI and Python examples covering OpenAlex,
+See `docs/user/workflows.md` for full CLI and Python examples covering OpenAlex,
 local edge layers, existing membership, and clustering-only runs.
 
 Curated live OpenAlex demos are available in `examples/openalex_live_demo.py`
@@ -203,7 +204,7 @@ sciscape/
 rust/                       Rust Leiden backend (sciscape-leiden)
 rust-text/                  Rust keyword extraction (sciscape-text)
 research/                   Research plans, experiments, and auxiliary workspaces
-docs/                       LaTeX report + figures
+docs/                       User, developer, research, paper, archive, and asset docs
 ```
 
 ## CLI Commands
@@ -230,10 +231,10 @@ negative controls, and artifact retention.
 Historical reports remain available, but should not be treated as the current
 claim source without checking the active research notes:
 
-- `docs/multilayer_combination_report.pdf`
-- `docs/hierarchy_two_stage_postprocess_report.tex`
-- `docs/dongdaemun_naming_contract.md`
-- `docs/leiden_multibasin_research_guardrails.md`
+- `docs/papers/multilayer_combination_report.pdf`
+- `docs/papers/hierarchy_two_stage_postprocess_report.tex`
+- `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`
+- `docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`
 
 ## Tests
 
@@ -249,7 +250,7 @@ uv run --extra dev python -m pytest -q
 ./scripts/release_check.sh
 ```
 
-See `docs/release_readiness.md` for the release checklist and research artifact
+See `docs/developer/release_readiness.md` for the release checklist and research artifact
 policy.
 
 ## License

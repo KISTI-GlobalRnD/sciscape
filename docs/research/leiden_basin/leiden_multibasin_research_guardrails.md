@@ -6,7 +6,7 @@ This note defines the current research direction for Leiden/Dongdaemun adaptive
 refinement experiments. It is a guardrail document, not a production policy.
 
 Naming and claim boundaries for Dongdaemun-branded artifacts are defined in
-`docs/dongdaemun_naming_contract.md`.
+`docs/research/dongdaemun/core/dongdaemun_naming_contract.md`.
 
 The core question is whether perturbation portfolios can expose useful local
 basins that greedy Leiden or a cheap one-shot ranking would otherwise miss, and

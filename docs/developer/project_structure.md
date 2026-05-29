@@ -19,6 +19,40 @@ artifacts belong.
 | `viewer/` | Curated GitHub Pages/static viewer demo | Keep directly openable |
 | `workspace/` | Ignored local inputs, caches, runs, and web jobs | Do not commit generated contents |
 
+## Documentation Map
+
+The `docs/` tree is split by audience and artifact type. Keep each
+human-facing parent small enough to scan before adding a new document.
+
+| Path | Role |
+|---|---|
+| `docs/user/` | Public workflows, module map, and IO schemas |
+| `docs/developer/` | Repo structure, release readiness, and maintenance decisions |
+| `docs/research/` | Research design notes and claim boundaries |
+| `docs/research/dongdaemun/` | Dongdaemun core, refinement, and manuscript notes |
+| `docs/research/leiden_basin/` | Leiden basin and branch-adaptive research notes |
+| `docs/research/hierarchy/` | Hierarchy postprocess research notes |
+| `docs/research/dendrogram/` | CPM dendrogram implementation notes |
+| `docs/research/methodology/` | General methodology, literature, and problem framing |
+| `docs/papers/` | Manuscript drafts, reports, and paper figures |
+| `docs/archive/` | Historical notes kept for traceability |
+| `docs/assets/` | Images and static documentation assets |
+| `docs/api/` | Generated API docs; ignored by source-navigation fanout checks |
+
+## Documentation Fanout Rule
+
+Human-facing documentation folders should stay at six visible entries or fewer.
+Visible entries are direct child folders plus direct document files, excluding
+`README.md`. When a folder would exceed that limit, split it into topic
+subfolders and add or update a local `README.md` index.
+
+Generated outputs, API docs, caches, and local workspace artifacts are excluded
+from this rule. Run the check before committing documentation layout changes:
+
+```bash
+uv run --extra dev python scripts/check_doc_fanout.py
+```
+
 ## Current Data Entry Points
 
 Use these as the user-facing mental model.
@@ -87,3 +121,5 @@ When adding a new file, decide which bucket it belongs to before writing it:
 5. Research-only material stays under `research/`.
 6. Top-level package-like directories should not be added outside `sciscape/`
    or `sos/`.
+7. Documentation parents should pass the six-entry fanout check or be split
+   into topic subfolders with a local index.

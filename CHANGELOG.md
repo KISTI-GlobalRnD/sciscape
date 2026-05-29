@@ -5,10 +5,10 @@
 ### Added
 - Local release gate script (`scripts/release_check.sh`) covering whitespace checks,
   Rust tests, PyO3 rebuilds, Python tests, and CLI import/help smoke.
-- Release readiness checklist (`docs/release_readiness.md`) documenting supported
+- Release readiness checklist (`docs/developer/release_readiness.md`) documenting supported
   toolkit surface, internal research surface, fresh-clone smoke checks, and
   artifact policy.
-- Public workflow and module map docs (`docs/workflows.md`, `docs/modules.md`)
+- Public workflow and module map docs (`docs/user/workflows.md`, `docs/user/modules.md`)
   for the full-cycle SciSci analysis/visualization package surface.
 - Live OpenAlex example presets for perovskite solar cells and graph neural
   networks (`examples/openalex_live_demo.py`).

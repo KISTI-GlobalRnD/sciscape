@@ -25,7 +25,7 @@
 
 ## Research Guardrails
 - Treat `Dongdaemun` as a family name. For concrete research claims, follow
-  `docs/dongdaemun_naming_contract.md` and distinguish `Dongdaemun-post`,
+  `docs/research/dongdaemun/core/dongdaemun_naming_contract.md` and distinguish `Dongdaemun-post`,
   `Dongdaemun-refinement`, and diagnostic-only artifacts.
 - For Leiden/Dongdaemun adaptive-refinement work, keep the two objectives
   separate: find a better partition, and find it with less cost.

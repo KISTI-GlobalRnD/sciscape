@@ -14,7 +14,7 @@ Frozen evidence source:
 
 Naming and claim boundaries:
 
-`docs/dongdaemun_naming_contract.md`
+`docs/research/dongdaemun/core/dongdaemun_naming_contract.md`
 
 ## Positioning
 
@@ -38,7 +38,7 @@ method design and future-work discussion.
 ## Claim Register
 
 Use these claim IDs consistently in the manuscript and in
-`docs/dongdaemun_evidence_map.md`.
+`docs/research/dongdaemun/manuscript/dongdaemun_evidence_map.md`.
 
 | ID | Manuscript claim | Boundary |
 | --- | --- | --- |
@@ -149,7 +149,7 @@ Purpose:
   selection, conflict resolution, and fallback.
 - Present pseudocode for the conservative postprocess and for the future
   integrated loop. The full algorithm text belongs in
-  `docs/dongdaemun_algorithm_design.md`.
+  `docs/research/dongdaemun/core/dongdaemun_algorithm_design.md`.
 
 Primary claims: C2, C5, C6, C11.
 
@@ -270,7 +270,7 @@ Primary claims: C2, C3, C4, C11.
 
 ## Deliverable Dependencies
 
-- Evidence map: `docs/dongdaemun_evidence_map.md`
-- Figure and table plan: `docs/dongdaemun_figure_table_plan.md`
-- Algorithm design: `docs/dongdaemun_algorithm_design.md`
-- Reproducibility appendix: `docs/dongdaemun_reproducibility_appendix.md`
+- Evidence map: `docs/research/dongdaemun/manuscript/dongdaemun_evidence_map.md`
+- Figure and table plan: `docs/research/dongdaemun/manuscript/dongdaemun_figure_table_plan.md`
+- Algorithm design: `docs/research/dongdaemun/core/dongdaemun_algorithm_design.md`
+- Reproducibility appendix: `docs/research/dongdaemun/manuscript/dongdaemun_reproducibility_appendix.md`

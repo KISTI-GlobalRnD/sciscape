@@ -4,7 +4,7 @@ Frozen evidence root:
 
 `research/consensus/results/scientometrics_evidence_freeze_20260504`
 
-This map audits the claim IDs from `docs/dongdaemun_manuscript_plan.md`.
+This map audits the claim IDs from `docs/research/dongdaemun/manuscript/dongdaemun_manuscript_plan.md`.
 Statuses mean:
 
 - `supported`: the frozen bundle directly supports the claim within the stated
@@ -51,8 +51,8 @@ Statuses mean:
 
 | Claim | Status | Evidence readout | Artifacts or code anchors | Boundary |
 | --- | --- | --- | --- | --- |
-| C10 | future work | Branch-adaptive gamma is motivated by failure modes and diagnostics, but current selected-candidate rate is zero in the frozen pilot. | `docs/branch_adaptive_quality_first_research_note.md`; `research/consensus/results/scientometrics_evidence_freeze_20260504/supplementary/branch_adaptive/branch_adaptive_diagnostics_report.md` | Present as future candidate generation work only. |
-| C11 | future work | Integrated loop-level Dongdaemun is now specified as parent-internal adaptive refinement allocation, not direct postprocess commits inside Leiden. | `docs/dongdaemun_refinement_algorithm_design.md`; `docs/dongdaemun_algorithm_design.md`; `sciscape/clustering/hierarchy_postprocess.py`; `sciscape/clustering/leiden_rust.py` | No integrated-loop empirical claim should appear in Results. |
+| C10 | future work | Branch-adaptive gamma is motivated by failure modes and diagnostics, but current selected-candidate rate is zero in the frozen pilot. | `docs/research/leiden_basin/branch_adaptive_quality_first_research_note.md`; `research/consensus/results/scientometrics_evidence_freeze_20260504/supplementary/branch_adaptive/branch_adaptive_diagnostics_report.md` | Present as future candidate generation work only. |
+| C11 | future work | Integrated loop-level Dongdaemun is now specified as parent-internal adaptive refinement allocation, not direct postprocess commits inside Leiden. | `docs/research/dongdaemun/refinement/dongdaemun_refinement_algorithm_design.md`; `docs/research/dongdaemun/core/dongdaemun_algorithm_design.md`; `sciscape/clustering/hierarchy_postprocess.py`; `sciscape/clustering/leiden_rust.py` | No integrated-loop empirical claim should appear in Results. |
 
 ## Artifact Registry
 

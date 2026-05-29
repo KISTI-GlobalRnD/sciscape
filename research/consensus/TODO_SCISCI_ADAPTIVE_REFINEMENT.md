@@ -21,13 +21,13 @@ support-distance, fresh-transplant, barrier-aware scorer, context expansion, or
 search-state classification logic into another one-off script.
 
 Current Leiden multi-basin work should follow
-`docs/leiden_multibasin_research_guardrails.md`: separate "find a better
+`docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`: separate "find a better
 partition" from "find it faster", require material and cost-adjusted quality
 gains rather than any positive `delta_q`, and treat large/dense multi-basin
 claims as hypotheses until basin-level evidence is available.
 
 Dongdaemun-branded artifacts should also follow
-`docs/dongdaemun_naming_contract.md`: use `Dongdaemun-post` for the validated
+`docs/research/dongdaemun/core/dongdaemun_naming_contract.md`: use `Dongdaemun-post` for the validated
 postprocess method, `Dongdaemun-refinement` for opt-in integrated-loop research,
 and `Dongdaemun diagnostics` for probes, basin signatures, and uncommitted
 candidates.
@@ -59,11 +59,11 @@ Current Dongdaemun implementation status:
       `use_rust_dongdaemun=True, write_artifacts=False`; artifact-writing runs
       stay on the Python backend until move-row parity is implemented.
 - [x] Integrated Dongdaemun-refinement design documented in
-      `docs/dongdaemun_refinement_algorithm_design.md`.
+      `docs/research/dongdaemun/refinement/dongdaemun_refinement_algorithm_design.md`.
 - [x] Experimental Rust Leiden slice for size-priority parent-internal
       Dongdaemun refinement.
 - [x] Adaptive local shake portfolio design documented in
-      `docs/dongdaemun_adaptive_local_shake_design.md`.
+      `docs/research/dongdaemun/refinement/dongdaemun_adaptive_local_shake_design.md`.
 - [ ] Committed-best hard-cap state tracking (`CommittedBestCapState`).
 - [ ] Python ranking parity, only if evidence reproduction needs it.
 - [ ] Lower-tail interaction ablation.
@@ -1216,7 +1216,7 @@ Basin profiling v1 batch result:
 Barrier-aware pathway reframing:
 
 - Design doc:
-  `docs/dongdaemun_basin_transition_operator_design.md`
+  `docs/research/dongdaemun/refinement/dongdaemun_basin_transition_operator_design.md`
 - The ordered flip results should be treated as evidence that naive one-step
   greedy ordering is the wrong objective, not as proof that a pathway is
   impossible.
@@ -1971,7 +1971,7 @@ residual support and high-ratio closure labels, not merely replay group-level
 reverts or ask whether fixed-outside polish accepts them.
 
 Updated operator design:
-`docs/dongdaemun_basin_transition_operator_design.md`
+`docs/research/dongdaemun/refinement/dongdaemun_basin_transition_operator_design.md`
 
 The redesigned operator family now starts with a closure-label frontier, then
 tests `closure_split_shrink_from_vanilla` before any expand-from-candidate
@@ -2279,7 +2279,7 @@ Do not let polish turn into another full until-convergence run without a budget.
     9. [x] design a boundary-aware shrink/expand operator because the first
        hard candidate-support freeze/transplant pilot did not beat seed
        variation
-       (`docs/dongdaemun_basin_transition_operator_design.md`),
+       (`docs/research/dongdaemun/refinement/dongdaemun_basin_transition_operator_design.md`),
     10. [x] add a boundary analyzer that classifies vanilla-extra support into
         bridge-like versus collateral-like groups before mutating membership
         (`research/consensus/scripts/analyze_leiden_basin_transition_boundaries.py`),

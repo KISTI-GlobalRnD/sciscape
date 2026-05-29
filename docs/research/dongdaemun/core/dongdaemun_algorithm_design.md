@@ -3,7 +3,7 @@
 Status: canonical algorithm specification for the manuscript track.
 
 Naming and claim boundaries are defined in
-`docs/dongdaemun_naming_contract.md`.
+`docs/research/dongdaemun/core/dongdaemun_naming_contract.md`.
 
 Dongdaemun is an objective-preserving macro-refinement layer for hierarchical
 CPM science maps. It is not a new clustering objective, not a size-penalized
@@ -494,7 +494,7 @@ No integrated-loop guarantee:
 
 The current evidence validates only conservative Dongdaemun-post behavior.
 Loop-level Dongdaemun remains a design target. The current target design is
-specified in `docs/dongdaemun_refinement_algorithm_design.md`.
+specified in `docs/research/dongdaemun/refinement/dongdaemun_refinement_algorithm_design.md`.
 
 ## Integrated Dongdaemun Loop
 
@@ -513,7 +513,7 @@ adaptive refinement allocation method:
   unchanged CPM objective.
 
 The full design is maintained in
-`docs/dongdaemun_refinement_algorithm_design.md`. The minimal target loop is:
+`docs/research/dongdaemun/refinement/dongdaemun_refinement_algorithm_design.md`. The minimal target loop is:
 
 ```text
 procedure LEIDEN_CPM_WITH_DONGDAEMUN(G, gamma, T_max):

@@ -7,7 +7,7 @@
 ## 구성
 
 저장소 전체 구조와 산출물 위치는
-[`../docs/project_structure.md`](../docs/project_structure.md)를 기준으로 봅니다.
+[`../docs/developer/project_structure.md`](../docs/developer/project_structure.md)를 기준으로 봅니다.
 패키지 구현의 source of truth는 이 `sciscape/` 디렉토리입니다.
 
 ```
@@ -41,7 +41,7 @@ network visualization, report/web viewer, evaluation utilities를 포함합니�
 패키지에 둡니다.
 
 Dongdaemun은 개발/연구용 family name입니다. 구체적인 claim에는
-`../docs/dongdaemun_naming_contract.md`를 따르고, `Dongdaemun-post`,
+`../docs/research/dongdaemun/core/dongdaemun_naming_contract.md`를 따르고, `Dongdaemun-post`,
 `Dongdaemun-refinement`, diagnostic-only artifact를 구분합니다. 기본
 `sciscape landscape` 동작은 development-only Dongdaemun refinement를 켜지
 않습니다.
@@ -241,7 +241,7 @@ Dongdaemun 관련 Rust fast path는 현재 개발/연구 전용입니다. 메인
 Rust CPM/Leiden 실행, projection, contraction, small-cluster postprocess와 SciSci
 연구용 진단 모듈입니다.
 
-방법론 리포트: [`docs/hierarchy_two_stage_postprocess_report.tex`](../docs/hierarchy_two_stage_postprocess_report.tex)
+방법론 리포트: [`docs/papers/hierarchy_two_stage_postprocess_report.tex`](../docs/papers/hierarchy_two_stage_postprocess_report.tex)
 
 ## 키워드 추출 파이프라인
 
@@ -397,8 +397,8 @@ uv run --extra dev python -m pytest -q
 `research/**/results/**` 아래의 새 산출물은 기본적으로 git에서 무시합니다.
 이미 추적 중인 curated evidence는 유지되지만, 새 산출물은
 `../research/DATA_RETENTION_PLAN.md` 검토 후 필요한 경우에만 `git add -f`로
-추가합니다. 릴리즈 체크리스트는 `../docs/release_readiness.md`를 참고합니다.
+추가합니다. 릴리즈 체크리스트는 `../docs/developer/release_readiness.md`를 참고합니다.
 
 ## I/O 스키마
 
-자세한 입출력 스키마 문서: [`docs/io_schema.md`](../docs/io_schema.md)
+자세한 입출력 스키마 문서: [`docs/user/io_schema.md`](../docs/user/io_schema.md)

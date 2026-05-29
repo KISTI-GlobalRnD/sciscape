@@ -27,8 +27,8 @@ gate to run before a push or release.
   evidence is strong enough to promote.
 - Adaptive-refinement and basin-transition artifacts are diagnostics unless a
   track document explicitly promotes them.
-- Follow `docs/dongdaemun_naming_contract.md` and
-  `docs/leiden_multibasin_research_guardrails.md` for claim boundaries.
+- Follow `docs/research/dongdaemun/core/dongdaemun_naming_contract.md` and
+  `docs/research/leiden_basin/leiden_multibasin_research_guardrails.md` for claim boundaries.
 
 ## Local Release Gate
 
