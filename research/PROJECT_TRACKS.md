@@ -12,7 +12,7 @@ rename artifacts, or promote diagnostic results into paper claims.
 
 - Keep paper-facing claims separate from diagnostic-only experiments.
 - Keep `Dongdaemun-post`, `Dongdaemun-refinement`, and diagnostics distinct
-  according to `docs/dongdaemun_naming_contract.md`.
+  according to `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`.
 - Treat adaptive-refinement results as mechanism evidence until they beat the
   two objectives: better partition and acceptable cost.
 - Stop adding policy or threshold sweeps unless the sweep answers a mechanism
@@ -203,12 +203,12 @@ Not yet defensible:
 
 ### Primary Anchors
 
-- `docs/dongdaemun_evidence_map.md`
-- `docs/dongdaemun_naming_contract.md`
-- `docs/dongdaemun_manuscript_plan.md`
-- `docs/dongdaemun_reproducibility_appendix.md`
-- `docs/hierarchy_postprocess_research_roadmap.md`
-- `docs/methodology_final_design.md`
+- `docs/research/dongdaemun/manuscript/dongdaemun_evidence_map.md`
+- `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`
+- `docs/research/dongdaemun/manuscript/dongdaemun_manuscript_plan.md`
+- `docs/research/dongdaemun/manuscript/dongdaemun_reproducibility_appendix.md`
+- `docs/research/hierarchy/hierarchy_postprocess_research_roadmap.md`
+- `docs/research/methodology/methodology_final_design.md`
 - `research/consensus/results/scientometrics_evidence_freeze_20260504/`
 - `sciscape/clustering/hierarchy_postprocess.py`
 - `sciscape/clustering/hierarchical.py`
@@ -282,10 +282,10 @@ calibration universe has no walls.
 ### Primary Anchors
 
 - `docs/research/leiden_basin/README.md`
-- `docs/research/leiden_basin/leiden_basin_cartography_redesign.md`
-- `docs/research/leiden_basin/leiden_basin_existing_data_review.md`
-- `docs/research/leiden_basin/leiden_basin_methodology_v0_design.md`
-- `docs/research/leiden_basin/leiden_basin_data_inventory.md`
+- `docs/research/leiden_basin/core/leiden_basin_cartography_redesign.md`
+- `docs/research/leiden_basin/evidence/leiden_basin_existing_data_review.md`
+- `docs/research/leiden_basin/core/leiden_basin_methodology_v0_design.md`
+- `docs/research/leiden_basin/evidence/leiden_basin_data_inventory.md`
 - `research/consensus/TODO_SCISCI_ADAPTIVE_REFINEMENT.md`
 - `research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
 - `research/consensus/results/adaptive_refinement/leiden_basin_existence_assumption_audit_20260529/`
@@ -337,6 +337,18 @@ The first M1 materialization now passes the panel-shape gates with 7
 non-field34 cases across 3 fields and 3 method families. It creates 142
 accepted distinct pair candidates for M3 schema review, but does not execute
 routes or promote wall claims.
+
+The first M2 enrichment attaches endpoint/signature/cache evidence to the same
+panel: 53 endpoint evidence rows, 142 pair evidence rows, 15 endpoints with
+cached full-membership metadata, and 8 pairs with both endpoint caches
+available. All 142 pairs are ready for M3 schema review, not route execution.
+
+The first M3 wall/pathway schema review keeps the route gate closed: 142 pairs
+were reviewed, 5 overlap the existing 23-pair review surface, 2 are only
+existing partial-wall protocol references that need trace audit before any new
+probe, 3 existing route references remain blocked or insufficient, and 0 pairs
+are M4 probe-ready. Support-distance distinctness remains relation evidence,
+not wall evidence.
 
 ### Merge Into This Track
 
@@ -400,6 +412,8 @@ validation plan is approved.
 
 - Keep this file as the top-level project map.
 - Use `research/DATA_RETENTION_PLAN.md` for keep/archive decisions.
+- Generate a read-only result manifest with
+  `python3 scripts/research_retention_manifest.py` before any physical cleanup.
 - Use `research/FAILED_DIRECTIONS.md` as the guardrail for dead ends,
   negative controls, and reopen conditions.
 - After review, add a manifest before moving any results:

@@ -28,7 +28,7 @@ gate to run before a push or release.
 - Adaptive-refinement and basin-transition artifacts are diagnostics unless a
   track document explicitly promotes them.
 - Follow `docs/research/dongdaemun/core/dongdaemun_naming_contract.md` and
-  `docs/research/leiden_basin/leiden_multibasin_research_guardrails.md` for claim boundaries.
+  `docs/research/leiden_basin/core/leiden_multibasin_research_guardrails.md` for claim boundaries.
 
 ## Local Release Gate
 

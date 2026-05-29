@@ -5,14 +5,14 @@ documents are guardrails or exploratory evidence, not default product claims.
 
 ## Active Notes
 
-- `leiden_basin_cartography_redesign.md`: Track C objective-landscape and basin
-  diagnostics redesign.
-- `leiden_basin_existing_data_review.md`: primitive-basin review of existing
-  Track C artifacts.
-- `leiden_basin_methodology_v0_design.md`: next basin-definition, precommitted
+- `core/leiden_basin_cartography_redesign.md`: Track C objective-landscape and
+  basin diagnostics redesign.
+- `evidence/leiden_basin_existing_data_review.md`: primitive-basin review of
+  existing Track C artifacts.
+- `core/leiden_basin_methodology_v0_design.md`: next basin-definition, precommitted
   non-field34 panel, and wall/pathway evidence contract.
-- `leiden_basin_data_inventory.md`: basin-first inventory of current adaptive
-  refinement artifacts and generated Phase 1 outputs.
+- `evidence/leiden_basin_data_inventory.md`: basin-first inventory of current
+  adaptive refinement artifacts and generated Phase 1 outputs.
 
 ## Current State
 
@@ -29,6 +29,8 @@ predeclared boundary-rule, panel-selection, or wall-evidence gate in
 Current terminal evidence:
 
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
+  for the M1 precommitted panel, M2 endpoint/signature/cache enrichment, and M3
+  wall/pathway schema review.
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_existence_assumption_audit_20260529/`
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_remaining_wall_question_audit_20260529/`
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_cycle_closure_writeup_20260529/`

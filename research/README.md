@@ -17,10 +17,10 @@ adaptive-refinement results, or moving result artifacts.
 - Track A, multi-layer consensus boundary signal:
   `consensus/README.md`
 - Track B, Dongdaemun-post hierarchy repair:
-  `../docs/dongdaemun_evidence_map.md`
+  `../docs/research/dongdaemun/README.md`
 - Track C, adaptive refinement and basin-tunneling R&D:
   `../docs/research/leiden_basin/README.md` for the Leiden basin research doc
-  index, `../docs/research/leiden_basin/leiden_basin_data_inventory.md` for
+  index, `../docs/research/leiden_basin/evidence/leiden_basin_data_inventory.md` for
   detailed artifact chronology, and
   `consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
   for the current methodology-v0 precommitted non-field34 panel. Also see
@@ -35,6 +35,6 @@ adaptive-refinement results, or moving result artifacts.
 ## Guardrail
 
 Do not move or delete result artifacts directly from this index. Use
-`DATA_RETENTION_PLAN.md` to create a reviewed manifest first, and check
-`FAILED_DIRECTIONS.md` before spending new compute on adaptive-refinement
-experiments.
+`DATA_RETENTION_PLAN.md` and `../scripts/research_retention_manifest.py` to
+create a reviewed manifest first, and check `FAILED_DIRECTIONS.md` before
+spending new compute on adaptive-refinement experiments.

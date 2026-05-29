@@ -234,7 +234,7 @@ claim source without checking the active research notes:
 - `docs/papers/multilayer_combination_report.pdf`
 - `docs/papers/hierarchy_two_stage_postprocess_report.tex`
 - `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`
-- `docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`
+- `docs/research/leiden_basin/core/leiden_multibasin_research_guardrails.md`
 
 ## Tests
 

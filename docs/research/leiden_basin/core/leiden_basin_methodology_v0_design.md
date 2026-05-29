@@ -290,6 +290,59 @@ It passes the v0 panel-shape gates:
 This is still a panel artifact. It does not execute routes, promote wall
 claims, or inspect basin quality/cost.
 
+## M2 Evidence Enrichment Status
+
+The first M2 enrichment has also been generated in the same result directory:
+
+`research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
+
+It adds:
+
+- `methodology_v0_endpoint_evidence_rows.csv`;
+- `methodology_v0_pair_evidence_rows.csv`;
+- `methodology_v0_evidence_enrichment_summary.json`;
+- `methodology_v0_evidence_enrichment_report.md`.
+
+Current M2 counts:
+
+- `53` endpoint evidence rows;
+- `142` pair evidence rows;
+- `15` endpoints with cached full-membership metadata;
+- `38` endpoints with endpoint signature plus support hash evidence;
+- `8` pairs with both full-membership caches available;
+- `142` pairs ready for M3 schema review, all still missing wall/pathway
+  evidence.
+
+M2 remains evidence enrichment only. It does not load memberships, execute
+routes, promote wall claims, or inspect basin quality/cost.
+
+## M3 Wall/Pathway Schema Review Status
+
+The first M3 schema review has been generated in the same result directory:
+
+`research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
+
+It adds:
+
+- `methodology_v0_wall_pathway_schema_review_rows.csv`;
+- `methodology_v0_wall_pathway_schema_review_summary.json`;
+- `methodology_v0_wall_pathway_schema_review_report.md`.
+
+Current M3 counts:
+
+- `142` enriched pair rows reviewed;
+- `5` rows joined to the existing 23-pair review surface;
+- `137` rows remain M2-only with no existing pathway review surface;
+- `2` existing partial-wall protocol references need trace audit against the
+  v0 schema before any new probe;
+- `3` existing route references remain blocked or insufficient for a supported
+  wall/pathway label;
+- `0` pairs are M4 probe-ready.
+
+M3 remains schema review only. It does not execute routes, promote wall claims,
+or inspect basin quality/cost. Support-distance distinctness is treated as
+basin-pair relation evidence, not wall evidence.
+
 ## Claim Ladder
 
 | evidence state | allowed claim | forbidden claim |

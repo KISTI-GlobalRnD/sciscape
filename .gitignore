@@ -50,6 +50,7 @@ pilot_*.parquet
 # Existing curated tracked files under research/**/results remain tracked.
 # Add new result artifacts only after DATA_RETENTION_PLAN review, usually with git add -f.
 research/**/results/**
+research/retention_manifest.csv
 
 # Generated API docs (rebuild with: make docs)
 docs/api/

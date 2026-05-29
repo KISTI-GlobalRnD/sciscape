@@ -372,14 +372,14 @@ def _doc_artifact_specs() -> list[ArtifactSpec]:
         ArtifactSpec(
             "docs",
             "branch_adaptive_case_study_notes.md",
-            "docs/research/leiden_basin/branch_adaptive_case_study_notes.md",
+            "docs/research/leiden_basin/notes/branch_adaptive_case_study_notes.md",
             "docs",
             "branch-adaptive case-study notes",
         ),
         ArtifactSpec(
             "docs",
             "branch_adaptive_quality_first_research_note.md",
-            "docs/research/leiden_basin/branch_adaptive_quality_first_research_note.md",
+            "docs/research/leiden_basin/notes/branch_adaptive_quality_first_research_note.md",
             "docs",
             "branch-adaptive research note",
         ),

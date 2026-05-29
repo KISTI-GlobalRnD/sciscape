@@ -201,7 +201,7 @@ Primary surfaces:
 
 Evaluation outputs should report both quality and cost where relevant. For
 Dongdaemun or adaptive-refinement claims, follow
-`docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`.
+`docs/research/leiden_basin/core/leiden_multibasin_research_guardrails.md`.
 
 ## Research And Development Surfaces
 

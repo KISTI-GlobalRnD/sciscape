@@ -62,7 +62,7 @@ Revisit only if:
 
 Primary anchors:
 
-- `docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`
+- `docs/research/leiden_basin/core/leiden_multibasin_research_guardrails.md`
 - `research/consensus/TODO_SCISCI_ADAPTIVE_REFINEMENT.md`
 
 ### F2. Direct-Node Closure Shrink As A Main Basin Operator
@@ -377,7 +377,7 @@ Revisit only if:
 
 Primary anchors:
 
-- `docs/research/leiden_basin/branch_adaptive_quality_first_research_note.md`
+- `docs/research/leiden_basin/notes/branch_adaptive_quality_first_research_note.md`
 - `docs/research/dongdaemun/manuscript/dongdaemun_evidence_map.md`
 - `research/consensus/results/scientometrics_evidence_freeze_20260504/supplementary/branch_adaptive/`
 
@@ -471,7 +471,7 @@ Revisit only if:
 
 Primary anchors:
 
-- `docs/research/leiden_basin/leiden_hysteresis_work_acceleration_note.md`
+- `docs/research/leiden_basin/notes/leiden_hysteresis_work_acceleration_note.md`
 - `research/consensus/results/adaptive_refinement/leiden_hysteresis_work_acceleration_monitor_v2_budget123_20260513/`
 
 ## Current Positive Direction To Protect

@@ -1,13 +1,31 @@
 # SciScape Data Retention And Archive Plan
 
-Status: reorganization draft
-Date: 2026-05-27
-Scope: documentation-only. No files have been moved or deleted.
+Status: reviewed policy plus read-only manifest tooling
+Date: 2026-05-29
+Scope: classification and manifest generation. No files are moved or deleted.
 
 This plan classifies local research outputs into keep, consolidate, archive,
 and drop-candidate groups. It is meant to be reviewed before any physical file
 move. The companion track map is `research/PROJECT_TRACKS.md`.
 The companion failure ledger is `research/FAILED_DIRECTIONS.md`.
+
+## Repository Boundary
+
+Generated result directories under `research/**/results/**` are ignored by
+default. Existing curated tracked files remain tracked, but new result
+artifacts should be committed only after this plan says why they are compact,
+paper-facing, or required for reproducibility.
+
+Default rule:
+
+- commit code, docs, tests, compact reports, summaries, manifests, and
+  paper-facing bundles;
+- keep large raw traces, rerunnable caches, membership arrays, and exploratory
+  output directories local unless explicitly promoted;
+- use `git add -f` for ignored result artifacts only after a manifest row has a
+  reviewed non-archive label;
+- never move, compress, or delete a result path before a manifest captures its
+  path, size, label, representative summary, and rerun command.
 
 ## Retention Labels
 
@@ -32,6 +50,16 @@ Before any file move:
 4. Move only reviewed `ARCHIVE` paths into an archive root such as
    `research/archive/2026-05-track-reorg/`.
 5. Never archive the only copy of a paper-facing frozen bundle.
+
+The read-only helper is:
+
+```bash
+python3 scripts/research_retention_manifest.py
+```
+
+It writes `research/retention_manifest.csv` by default and does not move,
+compress, or delete files. Use `--stdout` for review without writing a file and
+`--fail-on-unclassified` when tightening the plan.
 
 ## Size Snapshot
 
@@ -92,8 +120,10 @@ as the active reference.
 - `research/consensus/results/k_sweep_first_pass/`
 - `research/consensus/results/pilot_field15/`
 - `research/consensus/results/controls/`
-- root-level early JSONs under `research/consensus/results/` after their
-  values are copied into an audit index.
+- `research/consensus/results/*.json`
+- `research/consensus/results/gamma_cache`
+- `research/consensus/results/ladder`
+- `research/consensus/results/logs_gpu_emb`
 
 Reason: useful history, but not the current manuscript-facing evidence unless
 explicitly cited.
@@ -105,12 +135,12 @@ validation runs after summary coverage is confirmed.
 
 ### KEEP-LIVE
 
-- `docs/dongdaemun_evidence_map.md`
-- `docs/dongdaemun_naming_contract.md`
-- `docs/dongdaemun_manuscript_plan.md`
-- `docs/dongdaemun_reproducibility_appendix.md`
-- `docs/hierarchy_postprocess_research_roadmap.md`
-- `docs/methodology_final_design.md`
+- `docs/research/dongdaemun/manuscript/dongdaemun_evidence_map.md`
+- `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`
+- `docs/research/dongdaemun/manuscript/dongdaemun_manuscript_plan.md`
+- `docs/research/dongdaemun/manuscript/dongdaemun_reproducibility_appendix.md`
+- `docs/research/hierarchy/hierarchy_postprocess_research_roadmap.md`
+- `docs/research/methodology/methodology_final_design.md`
 - `research/consensus/results/scientometrics_evidence_freeze_20260504/`
 - `research/consensus/results/adaptive_refinement/split_merge_repair_cross_sample_summary.json`
 - `research/consensus/results/adaptive_refinement/split_merge_repair_success_failure_diagnostics.json`
@@ -164,12 +194,12 @@ Core docs and code:
 
 - `research/consensus/TODO_SCISCI_ADAPTIVE_REFINEMENT.md`
 - `docs/research/leiden_basin/README.md`
-- `docs/research/leiden_basin/leiden_basin_cartography_redesign.md`
-- `docs/research/leiden_basin/leiden_basin_data_inventory.md`
-- `docs/research/leiden_basin/leiden_basin_existing_data_review.md`
-- `docs/research/leiden_basin/leiden_basin_methodology_v0_design.md`
-- `docs/leiden_multibasin_research_guardrails.md`
-- `docs/dongdaemun_basin_transition_operator_design.md`
+- `docs/research/leiden_basin/core/leiden_basin_cartography_redesign.md`
+- `docs/research/leiden_basin/evidence/leiden_basin_data_inventory.md`
+- `docs/research/leiden_basin/evidence/leiden_basin_existing_data_review.md`
+- `docs/research/leiden_basin/core/leiden_basin_methodology_v0_design.md`
+- `docs/research/leiden_basin/core/leiden_multibasin_research_guardrails.md`
+- `docs/research/dongdaemun/refinement/dongdaemun_basin_transition_operator_design.md`
 - `sciscape/clustering/leiden_basin_profile.py`
 - `sciscape/clustering/leiden_basin_search.py`
 - `research/consensus/scripts/leiden_basin/`
@@ -199,7 +229,7 @@ Legacy support/signature roots that remain active references:
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_signature_field26_citation_embedding_budget15_support_20260519/`
 
 Detailed intermediate Track C artifacts remain documented in
-`docs/research/leiden_basin/leiden_basin_data_inventory.md`; promote individual
+`docs/research/leiden_basin/evidence/leiden_basin_data_inventory.md`; promote individual
 intermediate result directories back into `KEEP-LIVE` only if a current claim,
 reopen gate, or reproducibility bundle cites them directly.
 
@@ -209,6 +239,8 @@ reopen gate, or reproducibility bundle cites them directly.
 - `research/consensus/results/adaptive_refinement/leiden_hysteresis_parallel_memory_benchmark_memopt_summary_20260514/`
 - `research/consensus/results/adaptive_refinement/leiden_hysteresis_parallel_memory_benchmark_summary_20260514/`
 - `research/consensus/results/adaptive_refinement/previous_results_review_20260518/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_uniform_wall_probe_endpoint_cache_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_pending_membership_endpoint_cache_20260529/`
 
 Reason: these support cost and instrumentation interpretation, but should not
 stay as independent research tracks.
@@ -218,6 +250,18 @@ stay as independent research tracks.
 - `research/consensus/results/adaptive_refinement/leiden_multibasin_signature_*`
 - `research/consensus/results/adaptive_refinement/leiden_approx_polish_label_*`
 - `research/consensus/results/adaptive_refinement/leiden_hysteresis_multifidelity_label_*`
+- `research/consensus/results/adaptive_refinement/leiden_basin_clean_distinct_*`
+- `research/consensus/results/adaptive_refinement/leiden_basin_current_results_review_2026052*`
+- `research/consensus/results/adaptive_refinement/leiden_basin_margin_validation_*`
+- `research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_margin_validation_20260528`
+- `research/consensus/results/adaptive_refinement/leiden_basin_pending_membership_*`
+- `research/consensus/results/adaptive_refinement/leiden_basin_polish_margin_gate_review_20260528`
+- `research/consensus/results/adaptive_refinement/leiden_basin_relation_taxonomy_v01_20260528`
+- `research/consensus/results/adaptive_refinement/leiden_basin_route_label_blocker_triage_20260529`
+- `research/consensus/results/adaptive_refinement/leiden_basin_route_wall_evidence_join_20260528`
+- `research/consensus/results/adaptive_refinement/leiden_basin_stable_ambiguous_relation_refinement_20260528`
+- `research/consensus/results/adaptive_refinement/leiden_basin_uniform_wall_probe_subset*`
+- `research/consensus/results/adaptive_refinement/leiden_basin_wall_panel_context_coverage*`
 
 Reason: keep the best support/signature evidence and index the rest as
 predecessor signal or stress validation.
@@ -241,6 +285,21 @@ Archive after representative summaries and rerun commands are captured:
 - `research/consensus/results/adaptive_refinement/dongdaemun_safe_fast_layer_comparison/`
 - `research/consensus/results/adaptive_refinement/leiden_hysteresis_work_acceleration_monitor_v2_20260513/`
 - `research/consensus/results/adaptive_refinement/leiden_hysteresis_work_acceleration_monitor_v2_smoke/`
+- `research/consensus/results/adaptive_refinement/bcrefresh_g0005_recguard_cluster_graph_summary.json`
+- `research/consensus/results/adaptive_refinement/dongdaemun_*`
+- `research/consensus/results/adaptive_refinement/external_grain_predictor_validation*`
+- `research/consensus/results/adaptive_refinement/g016_gamma0p*_boundary_*`
+- `research/consensus/results/adaptive_refinement/g016_gamma0p*_cluster_graph_summary.json`
+- `research/consensus/results/adaptive_refinement/g016_gamma0p*_external_grain_probe_*`
+- `research/consensus/results/adaptive_refinement/g016_gamma0p*_macro_merge_ensemble`
+- `research/consensus/results/adaptive_refinement/g016_gamma0p*_multi_core_split_probe`
+- `research/consensus/results/adaptive_refinement/g016_gamma0p*_split_merge_repair_probe`
+- `research/consensus/results/adaptive_refinement/direct_pair_route_audit_field34_cc_c0_c2_20260528/`
+- `research/consensus/results/adaptive_refinement/leiden_basin_uniform_wall_probe_runner*`
+- `research/consensus/results/adaptive_refinement/leiden_branch_lookahead_analysis_20260511/`
+- `research/consensus/results/adaptive_refinement/leiden_hysteresis_*`
+- `research/consensus/results/adaptive_refinement/leiden_iteration_budget_profile_20260511/`
+- `research/consensus/results/adaptive_refinement/leiden_random_refinement_profile_20260511/`
 
 Reason: these are bulky exploratory traces or superseded mechanism probes. They
 remain useful as audit history, but they should not define the active research
@@ -271,25 +330,33 @@ Decision: keep small pilot outputs in place.
 Reason: the whole track is small, separate, and not currently blocking active
 Dongdaemun/adaptive work.
 
+## Legacy Combination Experiments
+
+Decision: archive generated layer-combination result files by default. Promote
+only compact summaries if they are cited by Track A, Track B, or package
+examples.
+
+### ARCHIVE
+
+- `research/experiments/combination/results/*`
+
+Reason: these are legacy local experiment outputs, including parquet and memory
+profiling files. They are not part of the current paper-facing evidence surface
+and should stay generated/local unless a specific compact summary is promoted.
+
 ## DROP-CANDIDATE
 
-These should not be removed without explicit approval:
-
-- `C`
-
-Reason: empty file at repo root, likely accidental.
+No current drop-candidate path is present in the working tree. Add accidental
+or empty paths here before deleting them.
 
 ## Next Physical Cleanup Step
 
-Do not move data yet. The next safe step is to generate a machine-readable
-manifest:
+Do not move data yet. The next safe step is to generate and review the
+machine-readable manifest:
 
 ```bash
 python3 scripts/research_retention_manifest.py
 ```
 
-That script does not exist yet. If created, it should only read file sizes and
-write a CSV manifest; it should not move or delete anything.
-
-The manifest should include a `failure_id` column for archived negative-control
+The manifest includes a `failure_id` column for archived negative-control
 artifacts when they correspond to entries in `research/FAILED_DIRECTIONS.md`.

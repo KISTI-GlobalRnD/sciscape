@@ -24,7 +24,7 @@ The answer is narrower than the previous draft:
 ## Primitive Objects
 
 The current primitive definition from
-`docs/research/leiden_basin/leiden_basin_cartography_redesign.md` is:
+`docs/research/leiden_basin/core/leiden_basin_cartography_redesign.md` is:
 
 `observed_basin = cluster(final_polished_endpoint_memberships | fixed case_id, fixed endpoint protocol)`
 

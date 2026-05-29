@@ -21,7 +21,7 @@ support-distance, fresh-transplant, barrier-aware scorer, context expansion, or
 search-state classification logic into another one-off script.
 
 Current Leiden multi-basin work should follow
-`docs/research/leiden_basin/leiden_multibasin_research_guardrails.md`: separate "find a better
+`docs/research/leiden_basin/core/leiden_multibasin_research_guardrails.md`: separate "find a better
 partition" from "find it faster", require material and cost-adjusted quality
 gains rather than any positive `delta_q`, and treat large/dense multi-basin
 claims as hypotheses until basin-level evidence is available.
