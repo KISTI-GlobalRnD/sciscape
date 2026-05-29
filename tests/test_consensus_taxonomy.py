@@ -5,7 +5,15 @@ from pathlib import Path
 import sys
 
 
-_SCRIPT_PATH = Path(__file__).resolve().parents[1] / "research" / "consensus" / "scripts" / "classify_case_taxonomy.py"
+_SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "research"
+    / "consensus"
+    / "scripts"
+    / "review_taxonomy"
+    / "taxonomy"
+    / "classify_case_taxonomy.py"
+)
 sys.path.insert(0, str(_SCRIPT_PATH.parent))
 _SCRIPT_SPEC = spec_from_file_location("consensus_taxonomy_test_module", _SCRIPT_PATH)
 assert _SCRIPT_SPEC is not None and _SCRIPT_SPEC.loader is not None

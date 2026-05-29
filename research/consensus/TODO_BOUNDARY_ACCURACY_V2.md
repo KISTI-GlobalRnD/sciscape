@@ -12,8 +12,8 @@ implemented and have completed pilot runs for:
 
 Main code entry points:
 
-- `research/consensus/scripts/run_boundary_coverage_review.py`
-- `research/consensus/scripts/score_boundary_coverage.py`
+- `research/consensus/scripts/review_taxonomy/boundary_reviews/run_boundary_coverage_review.py`
+- `research/consensus/scripts/review_taxonomy/boundary_reviews/score_boundary_coverage.py`
 
 Current aggregate file:
 

@@ -224,37 +224,37 @@ they should not be treated as the current reference results.
 
 | Script | Purpose | Key outputs |
 |--------|---------|-------------|
-| `scripts/run_comparison.py` | E1 single-layer vs consensus comparison | `*_comparison.json` |
-| `scripts/run_leave_one_out.py` | E2 ablation study | `*_leave_one_out.json` |
-| `scripts/run_consensus_tiers.py` | E3 per-tier intra/cross analysis | `*_consensus_tiers.json`, `.txt` |
-| `scripts/run_cross_field.py` | E4 multi-field sweep | `cross_field_summary.json` |
-| `scripts/run_boundary_review.py` | E5 A/B disagreement review for one field/k | `*_boundary_review.json` |
-| `scripts/run_boundary_review_grid.py` | E5 grid across fields and k values | `boundary_review_summary.json` |
-| `scripts/run_boundary_accuracy_review.py` | Protocol D v1 binary boundary adjudication on disagreement cases | `*_boundary_accuracy_review.json` |
-| `scripts/run_boundary_coverage_review.py` | Protocol D v2 coverage-aware population/diagnostic boundary review | `*_boundary_coverage_v2_review.json` |
-| `scripts/score_boundary_coverage.py` | Aggregate Protocol D v2 coverage-aware review outputs | `boundary_coverage_v2_summary.json` |
-| `scripts/run_effective_k_sweep.py` | E6 one-field effective-k sweep | `*_k_sweep.json` |
-| `scripts/run_cross_field_k_sweep.py` | E6 multi-field effective-k sweep | `cross_field_k_sweep_summary.json` |
-| `scripts/run_density_matched_comparison.py` | Protocol C density-matched clustering comparison | `*_density_matched_comparison.json` |
-| `scripts/run_rank_shift_review.py` | E7 local reranking review for one field/k | `*_rank_shift_review.json` |
-| `scripts/summarize_consensus_bridge.py` | Bridge summary between `citation_consensus` and `all_consensus` result packages | bridge JSON |
-| `scripts/repair_order_balanced_reviews.py` | Repair saved dual-pass review outputs after reviewer winner-logic changes | repaired `*_rank_shift_review.json` |
-| `scripts/prepare_gamma_cache.py` | Precompute reusable gamma values for large fields | `*_gamma_cache_prep.json`, gamma cache JSON |
-| `scripts/build_common_case_bank.py` | Build a shared rank-shift target bank across multiple pairwise comparisons | `*_common_case_bank.json` |
-| `scripts/classify_case_taxonomy.py` | Classify reviewed bank cases into a primary winner/loser taxonomy | `*_taxonomy.json`, `taxonomy_combined.json/.csv` |
-| `scripts/aggregate_taxonomy_results.py` | Aggregate existing taxonomy JSON files into a combined summary | `taxonomy_combined.json/.csv` |
-| `scripts/export_taxonomy_report.py` | Export a combined taxonomy summary as Markdown and LaTeX snippets | `taxonomy_report.md`, `taxonomy_report.tex` |
-| `scripts/run_taxonomy_calibration.py` | Build a stratified taxonomy calibration set and optionally re-label it with a live judge | `*_sample.json`, `*_llm_comparison.json` |
-| `scripts/estimate_review_uncertainty.py` | Add Wilson and bootstrap uncertainty to local review win rates | `review_uncertainty.json` |
-| `scripts/fit_consensus_regime_model.py` | Fit simple predictive models for when consensus wins a local review case | `consensus_regime_model.json` |
-| `scripts/generate_figures.py` | Render result JSON files to PNG figures | `figures/*.png` |
+| `scripts/consensus_core/baseline_comparisons/run_comparison.py` | E1 single-layer vs consensus comparison | `*_comparison.json` |
+| `scripts/consensus_core/baseline_comparisons/run_leave_one_out.py` | E2 ablation study | `*_leave_one_out.json` |
+| `scripts/consensus_core/baseline_comparisons/run_consensus_tiers.py` | E3 per-tier intra/cross analysis | `*_consensus_tiers.json`, `.txt` |
+| `scripts/consensus_core/sweeps/run_cross_field.py` | E4 multi-field sweep | `cross_field_summary.json` |
+| `scripts/review_taxonomy/boundary_reviews/run_boundary_review.py` | E5 A/B disagreement review for one field/k | `*_boundary_review.json` |
+| `scripts/review_taxonomy/boundary_reviews/run_boundary_review_grid.py` | E5 grid across fields and k values | `boundary_review_summary.json` |
+| `scripts/review_taxonomy/boundary_reviews/run_boundary_accuracy_review.py` | Protocol D v1 binary boundary adjudication on disagreement cases | `*_boundary_accuracy_review.json` |
+| `scripts/review_taxonomy/boundary_reviews/run_boundary_coverage_review.py` | Protocol D v2 coverage-aware population/diagnostic boundary review | `*_boundary_coverage_v2_review.json` |
+| `scripts/review_taxonomy/boundary_reviews/score_boundary_coverage.py` | Aggregate Protocol D v2 coverage-aware review outputs | `boundary_coverage_v2_summary.json` |
+| `scripts/consensus_core/sweeps/run_effective_k_sweep.py` | E6 one-field effective-k sweep | `*_k_sweep.json` |
+| `scripts/consensus_core/sweeps/run_cross_field_k_sweep.py` | E6 multi-field effective-k sweep | `cross_field_k_sweep_summary.json` |
+| `scripts/consensus_core/baseline_comparisons/run_density_matched_comparison.py` | Protocol C density-matched clustering comparison | `*_density_matched_comparison.json` |
+| `scripts/review_taxonomy/rank_shift/run_rank_shift_review.py` | E7 local reranking review for one field/k | `*_rank_shift_review.json` |
+| `scripts/artifacts_reporting/summarize_consensus_bridge.py` | Bridge summary between `citation_consensus` and `all_consensus` result packages | bridge JSON |
+| `scripts/review_taxonomy/review_uncertainty/repair_order_balanced_reviews.py` | Repair saved dual-pass review outputs after reviewer winner-logic changes | repaired `*_rank_shift_review.json` |
+| `scripts/artifacts_reporting/prepare_gamma_cache.py` | Precompute reusable gamma values for large fields | `*_gamma_cache_prep.json`, gamma cache JSON |
+| `scripts/consensus_core/validation/build_common_case_bank.py` | Build a shared rank-shift target bank across multiple pairwise comparisons | `*_common_case_bank.json` |
+| `scripts/review_taxonomy/taxonomy/classify_case_taxonomy.py` | Classify reviewed bank cases into a primary winner/loser taxonomy | `*_taxonomy.json`, `taxonomy_combined.json/.csv` |
+| `scripts/review_taxonomy/taxonomy/aggregate_taxonomy_results.py` | Aggregate existing taxonomy JSON files into a combined summary | `taxonomy_combined.json/.csv` |
+| `scripts/review_taxonomy/taxonomy/export_taxonomy_report.py` | Export a combined taxonomy summary as Markdown and LaTeX snippets | `taxonomy_report.md`, `taxonomy_report.tex` |
+| `scripts/review_taxonomy/taxonomy/run_taxonomy_calibration.py` | Build a stratified taxonomy calibration set and optionally re-label it with a live judge | `*_sample.json`, `*_llm_comparison.json` |
+| `scripts/review_taxonomy/review_uncertainty/estimate_review_uncertainty.py` | Add Wilson and bootstrap uncertainty to local review win rates | `review_uncertainty.json` |
+| `scripts/artifacts_reporting/fit_consensus_regime_model.py` | Fit simple predictive models for when consensus wins a local review case | `consensus_regime_model.json` |
+| `scripts/artifacts_reporting/generate_figures.py` | Render result JSON files to PNG figures | `figures/*.png` |
 
 ## Typical Commands
 
 ### E1
 
 ```bash
-python research/consensus/scripts/run_comparison.py \
+python research/consensus/scripts/consensus_core/baseline_comparisons/run_comparison.py \
   data/linktype_edges_gcc/field_15 \
   --field field_15 \
   --effective-k 30 \
@@ -265,7 +265,7 @@ python research/consensus/scripts/run_comparison.py \
 ### E2
 
 ```bash
-python research/consensus/scripts/run_leave_one_out.py \
+python research/consensus/scripts/consensus_core/baseline_comparisons/run_leave_one_out.py \
   data/linktype_edges_gcc/field_15 \
   --field field_15 \
   -o research/consensus/results
@@ -274,7 +274,7 @@ python research/consensus/scripts/run_leave_one_out.py \
 ### E3
 
 ```bash
-python research/consensus/scripts/run_consensus_tiers.py \
+python research/consensus/scripts/consensus_core/baseline_comparisons/run_consensus_tiers.py \
   data/linktype_edges_gcc/field_15 \
   --field field_15 \
   -o research/consensus/results
@@ -283,7 +283,7 @@ python research/consensus/scripts/run_consensus_tiers.py \
 ### E4
 
 ```bash
-python research/consensus/scripts/run_cross_field.py \
+python research/consensus/scripts/consensus_core/sweeps/run_cross_field.py \
   data/linktype_edges_gcc \
   --effective-k 30 \
   -o research/consensus/results
@@ -292,7 +292,7 @@ python research/consensus/scripts/run_cross_field.py \
 ### E5 sample-only
 
 ```bash
-python research/consensus/scripts/run_boundary_review.py \
+python research/consensus/scripts/review_taxonomy/boundary_reviews/run_boundary_review.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15 \
@@ -306,7 +306,7 @@ python research/consensus/scripts/run_boundary_review.py \
 ### E5 field/k grid
 
 ```bash
-python research/consensus/scripts/run_boundary_review_grid.py \
+python research/consensus/scripts/review_taxonomy/boundary_reviews/run_boundary_review_grid.py \
   data/linktype_edges_gcc \
   data/openalex_metadata \
   --fields field_15,field_12 \
@@ -317,7 +317,7 @@ python research/consensus/scripts/run_boundary_review_grid.py \
 ### E6 one-field sweep
 
 ```bash
-python research/consensus/scripts/run_effective_k_sweep.py \
+python research/consensus/scripts/consensus_core/sweeps/run_effective_k_sweep.py \
   data/linktype_edges_gcc/field_15 \
   --field field_15 \
   --k-values 1-30 \
@@ -327,7 +327,7 @@ python research/consensus/scripts/run_effective_k_sweep.py \
 ### E6 cross-field sweep
 
 ```bash
-python research/consensus/scripts/run_cross_field_k_sweep.py \
+python research/consensus/scripts/consensus_core/sweeps/run_cross_field_k_sweep.py \
   data/linktype_edges_gcc \
   --k-values 1-30 \
   -o research/consensus/results
@@ -336,7 +336,7 @@ python research/consensus/scripts/run_cross_field_k_sweep.py \
 ### E7 local rank-shift review
 
 ```bash
-python research/consensus/scripts/run_rank_shift_review.py \
+python research/consensus/scripts/review_taxonomy/rank_shift/run_rank_shift_review.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15_k06_sum_vs_consensus_local \
@@ -349,7 +349,7 @@ python research/consensus/scripts/run_rank_shift_review.py \
 ### Gamma cache precompute for large fields
 
 ```bash
-python research/consensus/scripts/prepare_gamma_cache.py \
+python research/consensus/scripts/artifacts_reporting/prepare_gamma_cache.py \
   data/linktype_edges_gcc/field_12 \
   --field field_12 \
   --config 'sum_minus_cc|sum|*|cc_cosine' \
@@ -363,7 +363,7 @@ python research/consensus/scripts/prepare_gamma_cache.py \
 ### Common case bank for fair pairwise local review
 
 ```bash
-python research/consensus/scripts/build_common_case_bank.py \
+python research/consensus/scripts/consensus_core/validation/build_common_case_bank.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15 \
@@ -381,7 +381,7 @@ python research/consensus/scripts/build_common_case_bank.py \
 Then reuse the bank in pairwise review:
 
 ```bash
-python research/consensus/scripts/run_rank_shift_review.py \
+python research/consensus/scripts/review_taxonomy/rank_shift/run_rank_shift_review.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15_k30_sum_minus_cc_vs_consensus_bank \
@@ -402,7 +402,7 @@ For the current preferred protocol, add order balancing and write into the
 corrected results directory:
 
 ```bash
-python research/consensus/scripts/run_rank_shift_review.py \
+python research/consensus/scripts/review_taxonomy/rank_shift/run_rank_shift_review.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15_k30_sum_minus_cc_vs_consensus_bank \
@@ -425,7 +425,7 @@ If you need to repair an existing dual-pass review after a winner-logic change,
 reuse the saved `balanced_passes` without calling the judge again:
 
 ```bash
-python research/consensus/scripts/repair_order_balanced_reviews.py \
+python research/consensus/scripts/review_taxonomy/review_uncertainty/repair_order_balanced_reviews.py \
   research/consensus/results/case_banks_corrected/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v2_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_order_balanced_gemini_v2_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_12_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v2_rank_shift_review.json \
@@ -435,7 +435,7 @@ python research/consensus/scripts/repair_order_balanced_reviews.py \
 ### Case taxonomy on reviewed bank outputs
 
 ```bash
-python research/consensus/scripts/classify_case_taxonomy.py \
+python research/consensus/scripts/review_taxonomy/taxonomy/classify_case_taxonomy.py \
   research/consensus/results/case_banks_corrected/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   --model gemini-2.5-pro \
@@ -453,7 +453,7 @@ This produces:
 If you already have per-file taxonomy JSON outputs and just want a merged summary:
 
 ```bash
-python research/consensus/scripts/aggregate_taxonomy_results.py \
+python research/consensus/scripts/review_taxonomy/taxonomy/aggregate_taxonomy_results.py \
   research/consensus/results/taxonomy/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_taxonomy.json \
   research/consensus/results/taxonomy/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_taxonomy.json \
   -o research/consensus/results/taxonomy
@@ -472,7 +472,7 @@ The taxonomy is single-label by design and currently uses:
 If live LLM classification is slow or unavailable, use the deterministic fallback:
 
 ```bash
-python research/consensus/scripts/classify_case_taxonomy.py \
+python research/consensus/scripts/review_taxonomy/taxonomy/classify_case_taxonomy.py \
   research/consensus/results/case_banks_corrected/field_12_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   --classifier heuristic \
   -o research/consensus/results/taxonomy
@@ -481,7 +481,7 @@ python research/consensus/scripts/classify_case_taxonomy.py \
 ### Paper-ready taxonomy export
 
 ```bash
-python research/consensus/scripts/export_taxonomy_report.py \
+python research/consensus/scripts/review_taxonomy/taxonomy/export_taxonomy_report.py \
   research/consensus/results/taxonomy/taxonomy_aggregated.json \
   -o research/consensus/results/taxonomy \
   --stem taxonomy_report
@@ -494,7 +494,7 @@ This produces:
 ### Taxonomy calibration set
 
 ```bash
-python research/consensus/scripts/run_taxonomy_calibration.py \
+python research/consensus/scripts/review_taxonomy/taxonomy/run_taxonomy_calibration.py \
   research/consensus/results/taxonomy/taxonomy_aggregated.json \
   --n-cases 24 \
   -o research/consensus/results/taxonomy \
@@ -504,7 +504,7 @@ python research/consensus/scripts/run_taxonomy_calibration.py \
 Optional live re-labeling:
 
 ```bash
-python research/consensus/scripts/run_taxonomy_calibration.py \
+python research/consensus/scripts/review_taxonomy/taxonomy/run_taxonomy_calibration.py \
   research/consensus/results/taxonomy/taxonomy_aggregated.json \
   --n-cases 12 \
   --run-llm \
@@ -516,7 +516,7 @@ python research/consensus/scripts/run_taxonomy_calibration.py \
 ### Review uncertainty
 
 ```bash
-python research/consensus/scripts/estimate_review_uncertainty.py \
+python research/consensus/scripts/review_taxonomy/review_uncertainty/estimate_review_uncertainty.py \
   research/consensus/results/case_banks_corrected/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_12_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
@@ -527,7 +527,7 @@ python research/consensus/scripts/estimate_review_uncertainty.py \
 ### Consensus regime model
 
 ```bash
-python research/consensus/scripts/fit_consensus_regime_model.py \
+python research/consensus/scripts/artifacts_reporting/fit_consensus_regime_model.py \
   research/consensus/results/case_banks_corrected/field_15_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_15_k30_sum_minus_cc_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
   research/consensus/results/case_banks_corrected/field_12_k06_sum_minus_emb_vs_consensus_bank_n48_order_balanced_gemini_v3_rank_shift_review.json \
@@ -540,7 +540,7 @@ python research/consensus/scripts/fit_consensus_regime_model.py \
 Sample low-shift, near-tie neighborhoods where the compared methods almost agree:
 
 ```bash
-python research/consensus/scripts/run_null_rank_shift_control.py \
+python research/consensus/scripts/review_taxonomy/rank_shift/run_null_rank_shift_control.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15_k30_sum_minus_cc_vs_consensus_null_control \
@@ -559,7 +559,7 @@ python research/consensus/scripts/run_null_rank_shift_control.py \
 To keep the sampled control bank fixed during live review, reuse the saved JSON:
 
 ```bash
-python research/consensus/scripts/run_null_rank_shift_control.py \
+python research/consensus/scripts/review_taxonomy/rank_shift/run_null_rank_shift_control.py \
   data/linktype_edges_gcc/field_15 \
   data/openalex_metadata/field_15/works_text.parquet \
   --field field_15_k30_sum_minus_cc_vs_consensus_null_control \
@@ -579,7 +579,7 @@ python research/consensus/scripts/run_null_rank_shift_control.py \
 ### Figure generation
 
 ```bash
-python research/consensus/scripts/generate_figures.py \
+python research/consensus/scripts/artifacts_reporting/generate_figures.py \
   research/consensus/results \
   -o research/consensus/figures
 ```

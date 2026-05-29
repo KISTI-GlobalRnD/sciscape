@@ -11,6 +11,8 @@ _DENSITY_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "consensus_core"
+    / "baseline_comparisons"
     / "run_density_matched_comparison.py"
 )
 sys.path.insert(0, str(_DENSITY_PATH.parent))
@@ -24,6 +26,7 @@ _BRIDGE_PATH = (
     / "research"
     / "consensus"
     / "scripts"
+    / "artifacts_reporting"
     / "summarize_consensus_bridge.py"
 )
 _BRIDGE_SPEC = spec_from_file_location("consensus_bridge_test_module", _BRIDGE_PATH)

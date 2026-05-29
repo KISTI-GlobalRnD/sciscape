@@ -4,7 +4,14 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
 
-_SCRIPT_PATH = Path(__file__).resolve().parents[1] / "research" / "consensus" / "scripts" / "generate_figures.py"
+_SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "research"
+    / "consensus"
+    / "scripts"
+    / "artifacts_reporting"
+    / "generate_figures.py"
+)
 _SCRIPT_SPEC = spec_from_file_location("consensus_generate_figures_test_module", _SCRIPT_PATH)
 assert _SCRIPT_SPEC is not None and _SCRIPT_SPEC.loader is not None
 _SCRIPT_MODULE = module_from_spec(_SCRIPT_SPEC)
