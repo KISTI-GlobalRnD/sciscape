@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "description": "Curated SciScape live OpenAlex demo presets. These are the canonical public examples for end-to-end smoke/demo runs.",
+  "default_output_root": "workspace/examples_output/openalex_live",
+  "presets": {
+    "perovskite": {
+      "slug": "perovskite_solar_cells_2020_2024",
+      "title": "Perovskite Solar Cells, 2020-2024",
+      "query": "perovskite solar cells",
+      "filters": {
+        "publication_year": "2020-2024",
+        "type": "article",
+        "language": "en"
+      },
+      "max_works": 1000,
+      "edge_types": ["dc", "bc"],
+      "bc_topk": 50,
+      "min_shared_refs": 1,
+      "min_docs": 30,
+      "top_n_keywords": 30,
+      "combine_strategy": "consensus",
+      "combine_top_k": "auto",
+      "auto_gamma": true,
+      "auto_gamma_target": 3.0,
+      "expected_artifacts": [
+        "abstracts.parquet",
+        "edges.parquet",
+        "landscape/membership.parquet",
+        "landscape/keywords.parquet",
+        "landscape/report/data.json",
+        "landscape/report/index.html",
+        "landscape/report/report.html"
+      ]
+    },
+    "gnn": {
+      "slug": "graph_neural_networks_2020_2024",
+      "title": "Graph Neural Networks, 2020-2024",
+      "query": "",
+      "filters": {
+        "publication_year": "2020-2024",
+        "type": "article",
+        "language": "en",
+        "title_and_abstract.search": "graph neural networks"
+      },
+      "max_works": 1000,
+      "edge_types": ["dc", "bc"],
+      "bc_topk": 50,
+      "min_shared_refs": 1,
+      "min_docs": 30,
+      "top_n_keywords": 30,
+      "combine_strategy": "consensus",
+      "combine_top_k": "auto",
+      "auto_gamma": true,
+      "auto_gamma_target": 3.0,
+      "expected_artifacts": [
+        "abstracts.parquet",
+        "edges.parquet",
+        "landscape/membership.parquet",
+        "landscape/keywords.parquet",
+        "landscape/report/data.json",
+        "landscape/report/index.html",
+        "landscape/report/report.html"
+      ]
+    }
+  }
+}

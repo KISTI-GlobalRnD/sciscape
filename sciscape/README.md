@@ -40,6 +40,11 @@ network visualization, report/web viewer, evaluation utilities를 포함합니�
 클러스터링이 핵심 엔진이지만, Sciscape 브랜딩은 전주기 분석과 시각화
 패키지에 둡니다.
 
+처음 사용할 때 어떤 파일을 넣어야 하는지는
+[`../docs/user/quickstart_data.md`](../docs/user/quickstart_data.md)를 먼저
+봅니다. 대표 라이브 데모는 `examples/demo_presets.json`에 고정되어 있고,
+`examples/openalex_live_demo.py --preset both`로 재생성할 수 있습니다.
+
 Dongdaemun은 개발/연구용 family name입니다. 구체적인 claim에는
 `../docs/research/dongdaemun/core/dongdaemun_naming_contract.md`를 따르고, `Dongdaemun-post`,
 `Dongdaemun-refinement`, diagnostic-only artifact를 구분합니다. 기본

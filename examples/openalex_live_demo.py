@@ -20,6 +20,9 @@ from sciscape.landscape import LandscapeConfig, run_landscape
 from sciscape.openalex import OpenAlexPipelineConfig, run_openalex_pipeline
 
 
+DEMO_MANIFEST_PATH = Path(__file__).with_name("demo_presets.json")
+
+
 @dataclass(frozen=True)
 class DemoPreset:
     slug: str
@@ -38,32 +41,43 @@ class DemoPreset:
     auto_gamma_target: float = 3.0
 
 
-PRESETS: dict[str, DemoPreset] = {
-    "perovskite": DemoPreset(
-        slug="perovskite_solar_cells_2020_2024",
-        title="Perovskite Solar Cells, 2020-2024",
-        query="perovskite solar cells",
-        filters={
-            "publication_year": "2020-2024",
-            "type": "article",
-            "language": "en",
-        },
-    ),
-    "gnn": DemoPreset(
-        slug="graph_neural_networks_2020_2024",
-        title="Graph Neural Networks, 2020-2024",
-        query="",
-        filters={
-            "publication_year": "2020-2024",
-            "type": "article",
-            "language": "en",
-            "title_and_abstract.search": "graph neural networks",
-        },
-    ),
-}
+def load_demo_manifest(path: Path = DEMO_MANIFEST_PATH) -> dict[str, Any]:
+    """Load the curated demo manifest used by docs, examples, and gates."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _preset_from_manifest(record: dict[str, Any]) -> DemoPreset:
+    return DemoPreset(
+        slug=str(record["slug"]),
+        title=str(record["title"]),
+        query=str(record.get("query", "")),
+        filters={str(k): str(v) for k, v in dict(record.get("filters", {})).items()},
+        max_works=int(record.get("max_works", 1000)),
+        edge_types=tuple(str(v) for v in record.get("edge_types", ("dc", "bc"))),
+        bc_topk=int(record.get("bc_topk", 50)),
+        min_shared_refs=int(record.get("min_shared_refs", 1)),
+        min_docs=int(record.get("min_docs", 30)),
+        top_n_keywords=int(record.get("top_n_keywords", 30)),
+        combine_strategy=str(record.get("combine_strategy", "consensus")),
+        combine_top_k=record.get("combine_top_k", "auto"),
+        auto_gamma=bool(record.get("auto_gamma", True)),
+        auto_gamma_target=float(record.get("auto_gamma_target", 3.0)),
+    )
+
+
+def load_demo_presets(path: Path = DEMO_MANIFEST_PATH) -> dict[str, DemoPreset]:
+    manifest = load_demo_manifest(path)
+    return {
+        str(name): _preset_from_manifest(record)
+        for name, record in dict(manifest["presets"]).items()
+    }
+
+
+PRESETS: dict[str, DemoPreset] = load_demo_presets()
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    manifest = load_demo_manifest()
     parser = argparse.ArgumentParser(
         description=(
             "Run live OpenAlex SciScape demos for perovskite solar cells and "
@@ -79,7 +93,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("workspace/examples_output/openalex_live"),
+        default=Path(str(manifest.get("default_output_root", "workspace/examples_output/openalex_live"))),
         help="Root directory for demo outputs.",
     )
     parser.add_argument(

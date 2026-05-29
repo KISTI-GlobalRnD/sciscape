@@ -10,6 +10,9 @@ paths from input data to landscape, keywords, reports, and viewer artifacts.
 For table-level schemas, see `docs/user/io_schema.md`. For module boundaries, see
 `docs/user/modules.md`.
 
+If you are not sure which file to provide, start with
+`docs/user/quickstart_data.md`.
+
 ## Workflow 1: OpenAlex To Landscape Report
 
 Use this when the starting point is a topic query and SciScape should fetch

@@ -47,18 +47,23 @@ The gate performs:
 - staged diff whitespace/conflict-marker check with `git diff --cached --check`;
 - Rust tests for `rust/` and `rust-text/`;
 - editable rebuild of both PyO3 extensions with `maturin develop`;
+- `scripts/sciscape_quality_gate.py --smoke`, covering artifact filtering,
+  term co-occurrence, and dashboard generation without external data;
 - full Python test suite with `pytest -q`;
 - CLI import/help smoke check.
 
-## Planned Workflow Smoke
+## Optional Demo Output Gate
 
-The next release-hardening step is a small full-cycle smoke test that exercises
-the package identity directly:
+Generated live demo outputs can be checked against the canonical preset
+manifest:
 
-- build a synthetic abstract table and edge table;
-- run the landscape or equivalent module sequence;
-- confirm membership, keywords, report, and viewer-facing artifacts exist;
-- keep the test small enough to run inside the normal `pytest -q` gate.
+```bash
+uv run --extra dev python scripts/sciscape_quality_gate.py \
+  --demo-root workspace/examples_output/openalex_live
+```
+
+Use `--allow-missing` when documenting a machine that has not generated the
+live examples yet.
 
 ## Fresh Clone Smoke
 

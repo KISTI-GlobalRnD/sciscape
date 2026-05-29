@@ -12,6 +12,10 @@ analysis/visualization workflow.
 | `perovskite` | Perovskite solar cells, 2020-2024 | Dense citation structure, coherent materials-science subtopics, good default demo. |
 | `gnn` | Graph neural networks, 2020-2024 | Broader CS/AI topic spread using `title_and_abstract.search` to reduce generic search noise. |
 
+The canonical preset definitions live in `demo_presets.json`. Keep that manifest
+in sync with docs and quality gates when changing demo scope, output names, or
+expected artifacts.
+
 List presets without network access:
 
 ```bash
@@ -53,6 +57,13 @@ uv run --extra dev python examples/openalex_live_demo.py \
 
 Outputs are written under `workspace/examples_output/openalex_live/` by default.
 This directory is intentionally ignored by git as local generated output.
+
+Validate generated demo outputs:
+
+```bash
+uv run --extra dev python scripts/sciscape_quality_gate.py \
+  --demo-root workspace/examples_output/openalex_live
+```
 
 Landscape runs now include keyword quality refinement columns in
 `landscape/keywords.parquet`.  Inspect `display_label`, `quality_score`, and
