@@ -67,9 +67,11 @@ def test_web_homepage_exposes_query_analysis_controls():
 
     assert response.status_code == 200
     assert "Query OpenAlex" in response.text
+    assert "Local Data" in response.text
     assert 'id="q-search"' in response.text
     assert "submitQuery()" in response.text
     assert "fetch('/api/query'" in response.text
+    assert "fetch('/api/local-data" in response.text
     assert 'id="file-input"' not in response.text
 
 
@@ -111,3 +113,74 @@ def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
     assert payload["status"] == "done"
     assert payload["progress"] == ["fake pipeline: graph neural networks"]
     assert payload["result"]["n_works"] == 12
+
+
+def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
+    output_dir = tmp_path / "workspace" / "examples_output" / "demo"
+    report_dir = output_dir / "landscape" / "report"
+    report_dir.mkdir(parents=True)
+    (report_dir / "data.json").write_text("{}", encoding="utf-8")
+    (output_dir / "landscape" / "keywords.parquet").write_bytes(b"keyword-data")
+    (output_dir / "landscape" / "membership.parquet").write_bytes(b"membership-data")
+
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "examples_output"],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/local-data")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["artifacts"]
+    data_rows = [row for row in payload["artifacts"] if row["path"].endswith("data.json")]
+    assert data_rows
+    assert data_rows[0]["has_web_result"] is True
+    assert data_rows[0]["has_data_json"] is True
+    assert data_rows[0]["has_keywords"] is True
+    assert data_rows[0]["has_membership"] is True
+
+
+def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
+    output_dir = tmp_path / "workspace" / "web_output" / "demo"
+    landscape_dir = output_dir / "landscape"
+    report_dir = landscape_dir / "report"
+    report_dir.mkdir(parents=True)
+    (report_dir / "data.json").write_text("{}", encoding="utf-8")
+    (landscape_dir / "membership.parquet").write_bytes(b"membership-data")
+    (landscape_dir / "keywords.parquet").write_bytes(b"keyword-data")
+    (output_dir / "edges.parquet").write_bytes(b"edge-data")
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "web_output"],
+    )
+
+    client = TestClient(app)
+    response = client.post("/api/local-data/open", json={"path": str(report_dir / "data.json")})
+
+    assert response.status_code == 200
+    payload = response.json()
+    job_id = payload["job_id"]
+    job_response = client.get(f"/api/jobs/{job_id}")
+    job_payload = job_response.json()
+
+    assert job_payload["status"] == "done"
+    assert job_payload["result"]["output_dir"] == str(output_dir)
+    assert job_payload["result"]["edges_path"] == str(output_dir / "edges.parquet")
+    assert job_payload["result"]["landscape_dir"] == str(landscape_dir)
+
+
+def test_open_local_data_rejects_paths_outside_allowed_roots(monkeypatch, tmp_path):
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside" / "data.json"
+    allowed.mkdir()
+    outside.parent.mkdir()
+    outside.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr("sciscape.web.app._LOCAL_DATA_ROOTS", [allowed])
+
+    client = TestClient(app)
+    response = client.post("/api/local-data/open", json={"path": str(outside)})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "local data path is outside allowed roots"

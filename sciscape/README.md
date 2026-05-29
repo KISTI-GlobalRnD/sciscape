@@ -129,6 +129,9 @@ fetch → edge construction → landscape clustering → keyword extraction →
 report/dashboard 생성까지 백그라운드 job으로 실행됩니다. 완료 후 Web 탭에서
 network, hierarchy, temporal, cluster, keyword view를 바로 확인하고,
 Download 탭에서 생성된 HTML report/dashboard를 열 수 있습니다.
+이미 생성된 로컬 결과는 Local Data 패널에서 찾을 수 있습니다. 기본 탐색
+위치는 `workspace/web_output/`, `workspace/examples_output/`,
+`workspace/output/`, `viewer/`이며, 결과를 선택하면 같은 Web 탭으로 열립니다.
 
 ### `sciscape export` — 네트워크 내보내기
 

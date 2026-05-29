@@ -8,6 +8,7 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import uuid
@@ -55,6 +56,18 @@ class JobStatus(BaseModel):
     status: str  # "pending", "running", "done", "error"
     progress: list[str]
     result: dict | None = None
+
+
+class LocalDataOpenRequest(BaseModel):
+    path: str
+
+
+_LOCAL_DATA_ROOTS = [
+    Path("workspace/web_output"),
+    Path("workspace/examples_output"),
+    Path("workspace/output"),
+    Path("viewer"),
+]
 
 
 # ── Routes ──────────────────────────────────────────────────
@@ -213,6 +226,192 @@ async def get_network(job_id: str):
         return data
     except Exception as e:
         return {"error": str(e)}
+
+
+def _local_data_roots() -> list[Path]:
+    """Return local roots the web app may browse for existing outputs."""
+    roots: list[Path] = []
+    for root in _LOCAL_DATA_ROOTS:
+        resolved = root if root.is_absolute() else Path.cwd() / root
+        roots.append(resolved.resolve())
+    return roots
+
+
+def _safe_local_path(path: str | Path) -> Path:
+    """Resolve a user-supplied local artifact path inside allowed roots."""
+    raw = Path(path)
+    candidate = raw if raw.is_absolute() else Path.cwd() / raw
+    resolved = candidate.resolve()
+    for root in _local_data_roots():
+        if not root.exists():
+            continue
+        try:
+            resolved.relative_to(root)
+            return resolved
+        except ValueError:
+            continue
+    raise HTTPException(status_code=400, detail="local data path is outside allowed roots")
+
+
+def _path_size(path: Path) -> int:
+    if path.is_file():
+        return path.stat().st_size
+    total = 0
+    for child in path.rglob("*"):
+        if child.is_file() and not child.is_symlink():
+            try:
+                total += child.stat().st_size
+            except FileNotFoundError:
+                continue
+    return total
+
+
+def _display_local_path(path: Path) -> str:
+    try:
+        return path.relative_to(Path.cwd()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def _infer_output_dir(path: Path) -> Path | None:
+    """Infer the containing SciScape output directory for a local artifact."""
+    current = path if path.is_dir() else path.parent
+    candidates = [current, *current.parents]
+    for candidate in candidates:
+        if (candidate / "landscape").is_dir():
+            return candidate
+        if (candidate / "edges.parquet").exists() or (candidate / "abstracts.parquet").exists():
+            return candidate
+        if candidate.name == "report" and candidate.parent.name == "landscape":
+            return candidate.parent.parent
+    return None
+
+
+def _infer_local_result(path: Path) -> dict[str, Any]:
+    """Build a completed-job result dict from an existing local output path."""
+    output_dir = _infer_output_dir(path)
+    if output_dir is None:
+        raise HTTPException(status_code=400, detail="could not infer SciScape output directory")
+
+    landscape_dir = output_dir / "landscape"
+    result: dict[str, Any] = {
+        "output_dir": str(output_dir),
+        "abstracts_path": None,
+        "edges_path": None,
+        "landscape_dir": str(landscape_dir) if landscape_dir.exists() else None,
+        "n_edges": {},
+    }
+    abstracts = output_dir / "abstracts.parquet"
+    if abstracts.exists():
+        result["abstracts_path"] = str(abstracts)
+    edges = output_dir / "edges.parquet"
+    if edges.exists():
+        result["edges_path"] = str(edges)
+    return result
+
+
+def _artifact_role(path: Path) -> str:
+    name = path.name
+    if name == "data.json":
+        return "viewer_data"
+    if name == "keywords.parquet":
+        return "keywords"
+    if name == "membership.parquet":
+        return "membership"
+    if name == "report.html":
+        return "report"
+    if name == "index.html" and path.parent.name == "report":
+        return "dashboard"
+    if path.is_dir() and (path / "landscape").is_dir():
+        return "output_dir"
+    return "artifact"
+
+
+def _local_artifact_record(path: Path) -> dict[str, Any]:
+    output_dir = _infer_output_dir(path)
+    relative_path = _display_local_path(path)
+    artifact_id = hashlib.sha1(relative_path.encode("utf-8")).hexdigest()[:12]
+    landscape_dir = output_dir / "landscape" if output_dir is not None else None
+    data_json = landscape_dir / "report" / "data.json" if landscape_dir else None
+    keywords = landscape_dir / "keywords.parquet" if landscape_dir else None
+    membership = landscape_dir / "membership.parquet" if landscape_dir else None
+    return {
+        "id": artifact_id,
+        "path": relative_path,
+        "name": path.name,
+        "role": _artifact_role(path),
+        "size_bytes": _path_size(path),
+        "modified": int(path.stat().st_mtime),
+        "output_dir": _display_local_path(output_dir) if output_dir else None,
+        "has_web_result": output_dir is not None,
+        "has_data_json": bool(data_json and data_json.exists()),
+        "has_keywords": bool(keywords and keywords.exists()),
+        "has_membership": bool(membership and membership.exists()),
+    }
+
+
+def _discover_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
+    """Find local SciScape outputs that can be opened from the web UI."""
+    candidates: dict[str, Path] = {}
+    globs = [
+        "**/landscape/report/data.json",
+        "**/landscape/report/index.html",
+        "**/landscape/report/report.html",
+        "**/landscape/keywords.parquet",
+        "**/landscape/membership.parquet",
+        "**/data.json",
+    ]
+    for root in _local_data_roots():
+        if not root.exists() or not root.is_dir():
+            continue
+        for pattern in globs:
+            for path in root.glob(pattern):
+                if path.is_file():
+                    candidates[_display_local_path(path)] = path
+        for child in root.iterdir():
+            if child.is_dir() and (child / "landscape").is_dir():
+                candidates[_display_local_path(child)] = child
+
+    records = [_local_artifact_record(path) for path in candidates.values()]
+    records.sort(key=lambda item: item["modified"], reverse=True)
+    return records[:limit]
+
+
+@app.get("/api/local-data")
+async def list_local_data(limit: int = 80):
+    """List existing local SciScape output artifacts the web app can open."""
+    return {
+        "roots": [_display_local_path(root) for root in _local_data_roots()],
+        "artifacts": _discover_local_artifacts(limit=limit),
+        "expected_files": [
+            "workspace/web_output/<job>/landscape/report/data.json",
+            "workspace/examples_output/<demo>/landscape/keywords.parquet",
+            "workspace/examples_output/<demo>/landscape/membership.parquet",
+            "viewer/data.json",
+        ],
+    }
+
+
+@app.post("/api/local-data/open")
+async def open_local_data(req: LocalDataOpenRequest):
+    """Register an existing local SciScape output as a completed web job."""
+    path = _safe_local_path(req.path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="local data path not found")
+
+    result = _infer_local_result(path)
+    rel = _display_local_path(path)
+    job_id = "local" + hashlib.sha1(rel.encode("utf-8")).hexdigest()[:8]
+    _jobs.create(job_id, {"query": f"Local output: {rel}"})
+    job = _jobs[job_id]
+    job["status"] = "done"
+    job["progress"] = [
+        f"Loaded local SciScape output from {rel}",
+        "No fetch or clustering was run for this local view.",
+    ]
+    job["result"] = result
+    _jobs.persist(job_id)
+    return {"job_id": job_id, "result": result}
 
 
 @app.get("/api/jobs/{job_id}/labels")

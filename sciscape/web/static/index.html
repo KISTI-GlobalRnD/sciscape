@@ -482,6 +482,61 @@ body {
   opacity: 0.4;
 }
 
+/* ── SIDEBAR: LOCAL DATA ───────────────────────────────── */
+.local-data-panel {
+  margin-bottom: 1.4rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--fog);
+}
+.local-data-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+.local-data-list {
+  display: grid;
+  gap: 0.45rem;
+}
+.local-data-item {
+  padding: 0.65rem 0.7rem;
+  background: var(--white);
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+}
+.local-data-item:hover { border-color: var(--amber); box-shadow: var(--shadow-sm); }
+.local-data-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  word-break: break-word;
+}
+.local-data-path {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--silver);
+  margin-top: 0.2rem;
+  word-break: break-all;
+}
+.local-data-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+.local-data-badge {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--steel);
+  background: var(--paper);
+  border: 1px solid var(--fog);
+  border-radius: 3px;
+  padding: 0.08rem 0.28rem;
+}
+.local-data-open {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
 /* ── SCROLLBAR ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -739,6 +794,18 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
     </div>
 
+    <div class="history-title">Local Data</div>
+    <div class="local-data-panel">
+      <div class="local-data-actions">
+        <button class="net-chip active" onclick="loadLocalData()">Find Outputs</button>
+      </div>
+      <div id="local-data-list" class="local-data-list">
+        <div class="empty-state" style="padding:1rem 0.5rem;">
+          Existing SciScape outputs will appear here.
+        </div>
+      </div>
+    </div>
+
     <div class="history-title">Analysis History</div>
     <ul class="job-list" id="job-list">
       <li class="empty-state">
@@ -907,6 +974,64 @@ function viewCard(filename, desc, icon, jobId) {
 function artifactUrl(jobId, mode, filename) {
   const safePath = String(filename).split('/').map(encodeURIComponent).join('/');
   return '/api/jobs/' + encodeURIComponent(jobId) + '/' + mode + '/' + safePath;
+}
+
+/* ── LOCAL DATA BROWSER ───────────────────────────────── */
+async function loadLocalData() {
+  const list = document.getElementById('local-data-list');
+  list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">Scanning workspace outputs...</div>';
+  try {
+    const r = await fetch('/api/local-data?limit=20');
+    const data = await r.json();
+    const artifacts = data.artifacts || [];
+    if (!artifacts.length) {
+      list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">No local outputs found.<br>' +
+        'Expected: workspace/web_output or workspace/examples_output.</div>';
+      return;
+    }
+    list.innerHTML = artifacts.map(localDataCard).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">Local scan failed: ' + esc(e.message) + '</div>';
+  }
+}
+
+function localDataCard(item) {
+  const badges = [
+    item.role,
+    item.has_data_json ? 'data.json' : null,
+    item.has_keywords ? 'keywords' : null,
+    item.has_membership ? 'membership' : null,
+  ].filter(Boolean).map(v => '<span class="local-data-badge">' + esc(v) + '</span>').join('');
+  const disabled = item.has_web_result ? '' : ' disabled';
+  return '<div class="local-data-item">' +
+    '<div class="local-data-name">' + esc(item.name || item.role) + '</div>' +
+    '<div class="local-data-path">' + esc(item.path) + '</div>' +
+    '<div class="local-data-meta">' + badges + '</div>' +
+    '<button class="net-chip local-data-open"' + disabled +
+    ' onclick="openLocalData(\'' + encodeURIComponent(item.path) + '\')">Open in Web App</button>' +
+    '</div>';
+}
+
+async function openLocalData(encodedPath) {
+  const path = decodeURIComponent(encodedPath);
+  try {
+    const r = await fetch('/api/local-data/open', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({path}),
+    });
+    const data = await r.json();
+    if (!r.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'open failed');
+    currentJobId = data.job_id;
+    await loadJob(data.job_id);
+    refreshHistory();
+  } catch (e) {
+    const list = document.getElementById('local-data-list');
+    list.insertAdjacentHTML(
+      'afterbegin',
+      '<div class="empty-state" style="padding:0.6rem;color:var(--coral);">Open failed: ' + esc(e.message) + '</div>'
+    );
+  }
 }
 
 /* ── TABS ──────────────────────────────────────────────── */
@@ -1253,6 +1378,7 @@ async function exportNetwork(fmt) {
 
 /* ── INIT ──────────────────────────────────────────────── */
 refreshHistory();
+loadLocalData();
 
 /* Enter key submits */
 document.getElementById('q-search').addEventListener('keydown', function(e) {
