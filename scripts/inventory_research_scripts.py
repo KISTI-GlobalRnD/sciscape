@@ -74,6 +74,7 @@ class ScriptRecord:
     name: str
     bucket: str
     sub_bucket: str
+    detail_bucket: str
     target_path: str
     action: str
     git_state: str
@@ -288,18 +289,188 @@ def classify_leiden_sub_bucket(script_name: str) -> str:
     return "basin_signatures"
 
 
+def classify_operator_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if any(token in stem for token in ("gate_release", "gate_attachment")):
+        return "gate_release"
+
+    if any(token in stem for token in ("post_gate", "recovery")):
+        return "post_gate_recovery"
+
+    if "joint_bundle" in stem:
+        return "joint_bundle"
+
+    if any(token in stem for token in ("aligned_core", "local_handle")):
+        return "aligned_core"
+
+    if "attachment" in stem:
+        return "attachment_margin"
+
+    if any(token in stem for token in ("polish", "elbow", "target_unit")):
+        return "polish_elbow"
+
+    if any(token in stem for token in ("source_screen", "selector_source", "screen_leiden_basin_selector")):
+        return "selector_sources"
+
+    return "selector_signals"
+
+
+def classify_transition_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if any(token in stem for token in ("review", "triage", "freeze")):
+        return "route_reviews"
+
+    if any(token in stem for token in ("tunneling", "barrier", "pathway_debt")):
+        return "tunneling_pathways"
+
+    if any(token in stem for token in ("combined_route_gate", "route_gate", "route_wall")):
+        return "route_gate_panels"
+
+    if any(token in stem for token in ("direct_pair", "route", "wall")):
+        return "route_wall"
+
+    if any(token in stem for token in ("operator", "minimal_pathway")):
+        return "transition_operators"
+
+    if any(token in stem for token in ("boundary", "landscape")):
+        return "transition_diagnostics"
+
+    return "closure_context"
+
+
+def classify_basin_signature_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if any(token in stem for token in ("branch", "random_refinement")):
+        return "branch_growth"
+
+    if any(token in stem for token in ("multifidelity", "greedy_failures", "vanilla_reachability")):
+        return "trajectory_failure"
+
+    if any(token in stem for token in ("portfolio", "contract")):
+        return "portfolio_contracts"
+
+    if any(token in stem for token in ("multibasin", "signature", "threshold", "decision_rules")):
+        return "signature_detection"
+
+    if any(token in stem for token in ("endpoint", "ordered_flips", "recomputed")):
+        return "endpoint_flips"
+
+    return "local_modes"
+
+
+def classify_evidence_panel_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if "audit" in stem:
+        return "audits"
+
+    if any(token in stem for token in ("field34", "definition")):
+        return "field_eligibility"
+
+    if any(token in stem for token in ("relation", "taxonomy", "stable_ambiguous")):
+        return "relation_taxonomy"
+
+    if any(token in stem for token in ("phase1", "wall_protocol", "wall_panel")):
+        return "phase_panels"
+
+    if "portfolio_evidence" in stem:
+        return "portfolio_evidence"
+
+    return "review_panels"
+
+
+def classify_dongdaemun_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if stem.startswith("collect_"):
+        return "datasets"
+
+    if any(token in stem for token in ("branch_lookahead", "cyclic", "adaptive_stochastic")):
+        return "prototype_runs"
+
+    if "hierarchy_postprocess" in stem and any(token in stem for token in ("seed", "sweep", "expansion")):
+        return "postprocess_sweeps"
+
+    if "hierarchy_postprocess" in stem:
+        return "postprocess_evaluation"
+
+    if any(token in stem for token in ("refinement", "rust_dongdaemun", "safe_fast")):
+        return "refinement_runs"
+
+    if stem.startswith("summarize_"):
+        return "trace_summaries"
+
+    return "trajectory_analysis"
+
+
+def classify_review_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if "rank_shift" in stem:
+        return "rank_shift"
+
+    if "taxonomy" in stem:
+        return "taxonomy"
+
+    if "uncertainty" in stem or "reproducibility" in stem or "order_balanced" in stem:
+        return "review_uncertainty"
+
+    return "boundary_reviews"
+
+
+def classify_consensus_core_detail(script_name: str) -> str:
+    stem = Path(script_name).stem
+
+    if any(token in stem for token in ("sweep", "cross_field", "noise_ablation")):
+        return "sweeps"
+
+    if any(token in stem for token in ("semantic", "same_gamma", "common_case", "sum_noise")):
+        return "validation"
+
+    return "baseline_comparisons"
+
+
 def target_sub_bucket(script_name: str, bucket: str) -> str:
     if bucket == "leiden_basin":
         return classify_leiden_sub_bucket(script_name)
     return ""
 
 
-def target_path(root: Path, script_name: str, bucket: str, sub_bucket: str) -> str:
+def target_detail_bucket(script_name: str, bucket: str, sub_bucket: str) -> str:
+    if bucket == "leiden_basin":
+        if sub_bucket == "operator_probes":
+            return classify_operator_detail(script_name)
+        if sub_bucket == "transition_routes":
+            return classify_transition_detail(script_name)
+        if sub_bucket == "basin_signatures":
+            return classify_basin_signature_detail(script_name)
+        if sub_bucket == "evidence_panels":
+            return classify_evidence_panel_detail(script_name)
+        return ""
+
+    if bucket == "dongdaemun_hierarchy":
+        return classify_dongdaemun_detail(script_name)
+
+    if bucket == "review_taxonomy":
+        return classify_review_detail(script_name)
+
+    if bucket == "consensus_core":
+        return classify_consensus_core_detail(script_name)
+
+    return ""
+
+
+def target_path(root: Path, script_name: str, bucket: str, sub_bucket: str, detail_bucket: str) -> str:
     if bucket == "unclassified":
         return display_path(root / script_name)
     parts = [root, Path(bucket)]
     if sub_bucket:
         parts.append(Path(sub_bucket))
+    if detail_bucket:
+        parts.append(Path(detail_bucket))
     parts.append(Path(script_name))
     return display_path(Path(*parts))
 
@@ -354,13 +525,15 @@ def build_records(root: Path) -> list[ScriptRecord]:
         rel = display_path(script)
         bucket = classify(script.name)
         sub_bucket = target_sub_bucket(script.name, bucket)
+        detail_bucket = target_detail_bucket(script.name, bucket, sub_bucket)
         records.append(
             ScriptRecord(
                 path=rel,
                 name=script.name,
                 bucket=bucket,
                 sub_bucket=sub_bucket,
-                target_path=target_path(root, script.name, bucket, sub_bucket),
+                detail_bucket=detail_bucket,
+                target_path=target_path(root, script.name, bucket, sub_bucket, detail_bucket),
                 action=action_name(script.name),
                 git_state=states.get(rel, "unknown"),
                 reference_count=refs.get(script.name, 0),
@@ -388,6 +561,18 @@ def sub_bucket_counts(records: list[ScriptRecord]) -> Counter[str]:
     )
 
 
+def target_bucket_counts(records: list[ScriptRecord]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for record in records:
+        parts = [record.bucket]
+        if record.sub_bucket:
+            parts.append(record.sub_bucket)
+        if record.detail_bucket:
+            parts.append(record.detail_bucket)
+        counts["/".join(parts)] += 1
+    return counts
+
+
 def grouped_records(records: list[ScriptRecord]) -> dict[str, list[ScriptRecord]]:
     grouped: dict[str, list[ScriptRecord]] = defaultdict(list)
     for record in records:
@@ -404,6 +589,10 @@ def print_text(records: list[ScriptRecord], top_references: int) -> None:
     print()
     print("Target sub-bucket counts:")
     for bucket, count in sub_bucket_counts(records).most_common():
+        print(f"- {bucket}: {count}")
+    print()
+    print("Target detail-bucket counts:")
+    for bucket, count in target_bucket_counts(records).most_common():
         print(f"- {bucket}: {count}")
     print()
     print("Git state counts:")
@@ -441,6 +630,13 @@ def print_markdown(records: list[ScriptRecord], top_references: int) -> None:
     for bucket, count in sub_bucket_counts(records).most_common():
         print(f"| `{bucket}` | {count} |")
     print()
+    print("## Target Detail-Bucket Counts")
+    print()
+    print("| Target | Count |")
+    print("|---|---:|")
+    for bucket, count in target_bucket_counts(records).most_common():
+        print(f"| `{bucket}` | {count} |")
+    print()
     print("## Git State Counts")
     print()
     print("| State | Count |")
@@ -464,6 +660,7 @@ def print_json(records: list[ScriptRecord]) -> None:
         "total": len(records),
         "bucket_counts": dict(bucket_counts(records)),
         "sub_bucket_counts": dict(sub_bucket_counts(records)),
+        "target_bucket_counts": dict(target_bucket_counts(records)),
         "git_state_counts": dict(git_state_counts(records)),
         "action_counts": dict(action_counts(records)),
         "records": [asdict(record) for record in records],

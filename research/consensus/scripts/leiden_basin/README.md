@@ -13,3 +13,14 @@ Second-level buckets:
 | `evidence_panels/` | Reviews, audits, field eligibility, relation taxonomy, phase panels, and claim evidence |
 | `materialization/` | Cache, membership, prepare, join, and materialization scripts |
 | `hysteresis/` | Leiden hysteresis runs, monitors, and graph materialization |
+
+The largest buckets are split once more. `operator_probes/` uses
+`selector_sources/`, `selector_signals/`, `attachment_margin/`, `aligned_core/`,
+`joint_bundle/`, `gate_release/`, `post_gate_recovery/`, and `polish_elbow/`.
+`transition_routes/` uses `closure_context/`, `transition_operators/`,
+`transition_diagnostics/`, `route_wall/`, `route_gate_panels/`,
+`tunneling_pathways/`, and `route_reviews/`. `basin_signatures/` uses
+`signature_detection/`, `portfolio_contracts/`, `trajectory_failure/`,
+`branch_growth/`, `local_modes/`, and `endpoint_flips/`. `evidence_panels/`
+uses `audits/`, `field_eligibility/`, `relation_taxonomy/`, `phase_panels/`,
+`portfolio_evidence/`, and `review_panels/`.
