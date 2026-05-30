@@ -94,3 +94,15 @@ Validate generated demo outputs:
 uv run --extra dev python scripts/sciscape_quality_gate.py \
   --demo-root workspace/examples_output/openalex_live
 ```
+
+Open the generated demos in the local web app:
+
+```bash
+uv run --extra dev sciscape web
+```
+
+The sidebar's Recommended Demos panel reads `examples/demo_presets.json` and
+looks for matching outputs under `workspace/examples_output/`, including
+timestamped demo roots such as `openalex_live_20260527_233732/`. Click
+`Open Demo` to register that local output as a completed web job without
+fetching or clustering again.

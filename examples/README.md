@@ -58,6 +58,11 @@ uv run --extra dev python examples/openalex_live_demo.py \
 Outputs are written under `workspace/examples_output/openalex_live/` by default.
 This directory is intentionally ignored by git as local generated output.
 
+The local web app also reads `demo_presets.json`. Its Recommended Demos panel
+discovers these generated outputs under `workspace/examples_output/`, including
+timestamped `openalex_live_<timestamp>/` roots, and opens the matching
+`landscape/report/data.json` without rerunning the pipeline.
+
 Validate generated demo outputs:
 
 ```bash

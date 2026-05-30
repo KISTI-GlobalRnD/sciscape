@@ -68,6 +68,14 @@ _LOCAL_DATA_ROOTS = [
     Path("workspace/output"),
     Path("viewer"),
 ]
+_DEMO_MANIFEST_PATH = Path("examples/demo_presets.json")
+_DEFAULT_DEMO_ARTIFACTS = [
+    "abstracts.parquet",
+    "edges.parquet",
+    "landscape/membership.parquet",
+    "landscape/keywords.parquet",
+    "landscape/report/data.json",
+]
 
 
 # ── Routes ──────────────────────────────────────────────────
@@ -251,6 +259,18 @@ def _safe_local_path(path: str | Path) -> Path:
         except ValueError:
             continue
     raise HTTPException(status_code=400, detail="local data path is outside allowed roots")
+
+
+def _is_allowed_local_path(path: Path) -> bool:
+    """Return True when a path resolves inside a configured local data root."""
+    resolved = path.resolve()
+    for root in _local_data_roots():
+        try:
+            resolved.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def _path_size(path: Path) -> int:
@@ -439,6 +459,151 @@ def _discover_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
     records = [_local_artifact_record(path) for path in candidates.values()]
     records.sort(key=lambda item: item["modified"], reverse=True)
     return records[:limit]
+
+
+def _demo_manifest_file() -> Path:
+    manifest = _DEMO_MANIFEST_PATH
+    return manifest if manifest.is_absolute() else (Path.cwd() / manifest).resolve()
+
+
+def _load_demo_manifest() -> dict[str, Any]:
+    manifest_path = _demo_manifest_file()
+    if not manifest_path.exists():
+        return {"schema_version": 1, "presets": {}}
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail=f"invalid demo manifest: {exc}") from exc
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="invalid demo manifest")
+    return data
+
+
+def _demo_expected_artifacts(preset: dict[str, Any]) -> list[str]:
+    artifacts = preset.get("expected_artifacts", _DEFAULT_DEMO_ARTIFACTS)
+    if not isinstance(artifacts, list):
+        return list(_DEFAULT_DEMO_ARTIFACTS)
+    return [str(item) for item in artifacts if isinstance(item, str) and item]
+
+
+def _demo_missing_artifacts(output_dir: Path, preset: dict[str, Any]) -> list[str]:
+    return [
+        rel_path
+        for rel_path in _demo_expected_artifacts(preset)
+        if not (output_dir / rel_path).exists()
+    ]
+
+
+def _demo_candidate_mtime(output_dir: Path, preset: dict[str, Any]) -> int:
+    mtimes: list[int] = []
+    for rel_path in ["", *_demo_expected_artifacts(preset)]:
+        path = output_dir / rel_path if rel_path else output_dir
+        try:
+            mtimes.append(int(path.stat().st_mtime))
+        except FileNotFoundError:
+            continue
+    return max(mtimes, default=0)
+
+
+def _demo_candidate_score(output_dir: Path, preset: dict[str, Any]) -> tuple[int, int, int, str]:
+    missing = _demo_missing_artifacts(output_dir, preset)
+    score = 0
+    if not missing:
+        score += 100
+    if (output_dir / "landscape" / "report" / "data.json").exists():
+        score += 30
+    if output_dir.parent.name == "openalex_live":
+        score += 20
+    elif output_dir.parent.name.startswith("openalex_live_"):
+        score += 15
+    if _infer_landscape_dir(output_dir) is not None:
+        score += 5
+    return (score, -len(missing), _demo_candidate_mtime(output_dir, preset), output_dir.as_posix())
+
+
+def _add_demo_candidate(candidates: dict[str, Path], path: Path) -> None:
+    if not path.exists() or not path.is_dir():
+        return
+    if not _is_allowed_local_path(path):
+        return
+    try:
+        candidates[str(path.resolve())] = path.resolve()
+    except FileNotFoundError:
+        return
+
+
+def _find_demo_output_dir(slug: str, preset: dict[str, Any], manifest: dict[str, Any]) -> Path | None:
+    """Find the best existing output directory for a curated demo slug."""
+    candidates: dict[str, Path] = {}
+
+    default_root = manifest.get("default_output_root")
+    if isinstance(default_root, str) and default_root:
+        root = Path(default_root)
+        root = root if root.is_absolute() else Path.cwd() / root
+        _add_demo_candidate(candidates, root / slug)
+
+    for root in _local_data_roots():
+        if not root.exists() or not root.is_dir():
+            continue
+        _add_demo_candidate(candidates, root / slug)
+        _add_demo_candidate(candidates, root / "openalex_live" / slug)
+        for child in root.iterdir():
+            if child.is_dir() and child.name.startswith("openalex_live"):
+                _add_demo_candidate(candidates, child / slug)
+        for path in root.rglob(slug):
+            _add_demo_candidate(candidates, path)
+
+    if not candidates:
+        return None
+    return max(candidates.values(), key=lambda path: _demo_candidate_score(path, preset))
+
+
+def _demo_run_command(key: str) -> str:
+    return (
+        "uv run --extra dev python examples/openalex_live_demo.py "
+        f"--preset {key} --email you@example.org"
+    )
+
+
+def _demo_preset_record(key: str, preset: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+    slug = str(preset.get("slug") or key)
+    output_dir = _find_demo_output_dir(slug, preset, manifest)
+    primary_path = output_dir / "landscape" / "report" / "data.json" if output_dir else None
+    missing = _demo_missing_artifacts(output_dir, preset) if output_dir else _demo_expected_artifacts(preset)
+    can_open = bool(primary_path and primary_path.exists())
+    status = "available" if can_open and not missing else "partial" if can_open else "missing"
+    return {
+        "key": key,
+        "title": str(preset.get("title") or key),
+        "slug": slug,
+        "query": str(preset.get("query") or ""),
+        "filters": preset.get("filters") if isinstance(preset.get("filters"), dict) else {},
+        "max_works": preset.get("max_works"),
+        "status": status,
+        "can_open": can_open,
+        "output_dir": _display_local_path(output_dir) if output_dir else None,
+        "primary_path": _display_local_path(primary_path) if primary_path and primary_path.exists() else None,
+        "missing_artifacts": missing,
+        "expected_artifacts": _demo_expected_artifacts(preset),
+        "run_command": _demo_run_command(key),
+    }
+
+
+@app.get("/api/demo-presets")
+async def list_demo_presets():
+    """List curated demo presets and any matching local generated outputs."""
+    manifest = _load_demo_manifest()
+    presets = manifest.get("presets", {})
+    if not isinstance(presets, dict):
+        raise HTTPException(status_code=500, detail="invalid demo manifest presets")
+    return {
+        "manifest_path": _display_local_path(_demo_manifest_file()),
+        "demos": [
+            _demo_preset_record(str(key), preset, manifest)
+            for key, preset in presets.items()
+            if isinstance(preset, dict)
+        ],
+    }
 
 
 @app.get("/api/local-data")

@@ -532,6 +532,28 @@ body {
   border-radius: 3px;
   padding: 0.08rem 0.28rem;
 }
+.local-data-badge.status-available {
+  color: var(--teal-dim);
+  border-color: rgba(43, 168, 156, 0.25);
+  background: rgba(43, 168, 156, 0.08);
+}
+.local-data-badge.status-partial {
+  color: var(--amber);
+  border-color: rgba(194, 124, 48, 0.25);
+  background: rgba(194, 124, 48, 0.08);
+}
+.local-data-badge.status-missing {
+  color: var(--coral);
+  border-color: rgba(201, 94, 74, 0.25);
+  background: rgba(201, 94, 74, 0.08);
+}
+.local-data-note {
+  margin-top: 0.45rem;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: var(--silver);
+  word-break: break-word;
+}
 .local-data-open {
   margin-top: 0.5rem;
   width: 100%;
@@ -794,6 +816,18 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
     </div>
 
+    <div class="history-title">Recommended Demos</div>
+    <div class="local-data-panel">
+      <div class="local-data-actions">
+        <button class="net-chip active" onclick="loadDemoPresets()">Refresh Demos</button>
+      </div>
+      <div id="demo-data-list" class="local-data-list">
+        <div class="empty-state" style="padding:1rem 0.5rem;">
+          Curated SciScape demos will appear here.
+        </div>
+      </div>
+    </div>
+
     <div class="history-title">Local Data</div>
     <div class="local-data-panel">
       <div class="local-data-actions">
@@ -977,6 +1011,51 @@ function artifactUrl(jobId, mode, filename) {
 }
 
 /* ── LOCAL DATA BROWSER ───────────────────────────────── */
+async function loadDemoPresets() {
+  const list = document.getElementById('demo-data-list');
+  list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">Scanning curated demos...</div>';
+  try {
+    const r = await fetch('/api/demo-presets');
+    const data = await r.json();
+    const demos = data.demos || [];
+    if (!demos.length) {
+      list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">No demo presets found.</div>';
+      return;
+    }
+    list.innerHTML = demos.map(demoPresetCard).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">Demo scan failed: ' + esc(e.message) + '</div>';
+  }
+}
+
+function demoPresetCard(item) {
+  const status = item.status || 'missing';
+  const statusClass = ['available', 'partial', 'missing'].includes(status) ? status : 'missing';
+  const statusBadge = '<span class="local-data-badge status-' + statusClass + '">' + esc(status) + '</span>';
+  const badges = [
+    item.key,
+    item.max_works ? String(item.max_works) + ' works' : null,
+  ].filter(Boolean).map(v => '<span class="local-data-badge">' + esc(v) + '</span>').join('') + statusBadge;
+  const path = item.primary_path || item.output_dir || item.slug || '';
+  const missing = item.missing_artifacts || [];
+  const note = missing.length && !item.can_open
+    ? '<div class="local-data-note">Missing: ' + esc(missing.slice(0, 3).join(', ')) + (missing.length > 3 ? ', ...' : '') + '</div>'
+    : '';
+  const disabled = item.can_open ? '' : ' disabled';
+  const onclick = item.can_open && item.primary_path
+    ? ' onclick="openLocalData(\'' + encodeURIComponent(item.primary_path) + '\', \'demo-data-list\')"'
+    : '';
+  return '<div class="local-data-item">' +
+    '<div class="local-data-name">' + esc(item.title || item.key) + '</div>' +
+    '<div class="local-data-path">' + esc(path) + '</div>' +
+    '<div class="local-data-meta">' + badges + '</div>' +
+    note +
+    '<button class="net-chip local-data-open"' + disabled + onclick + '>' +
+    (item.can_open ? 'Open Demo' : 'Output Missing') +
+    '</button>' +
+    '</div>';
+}
+
 async function loadLocalData() {
   const list = document.getElementById('local-data-list');
   list.innerHTML = '<div class="empty-state" style="padding:1rem 0.5rem;">Scanning workspace outputs...</div>';
@@ -1013,7 +1092,7 @@ function localDataCard(item) {
     '</div>';
 }
 
-async function openLocalData(encodedPath) {
+async function openLocalData(encodedPath, statusListId) {
   const path = decodeURIComponent(encodedPath);
   try {
     const r = await fetch('/api/local-data/open', {
@@ -1027,7 +1106,7 @@ async function openLocalData(encodedPath) {
     await loadJob(data.job_id);
     refreshHistory();
   } catch (e) {
-    const list = document.getElementById('local-data-list');
+    const list = document.getElementById(statusListId || 'local-data-list');
     list.insertAdjacentHTML(
       'afterbegin',
       '<div class="empty-state" style="padding:0.6rem;color:var(--coral);">Open failed: ' + esc(e.message) + '</div>'
@@ -1384,6 +1463,7 @@ async function exportNetwork(fmt) {
 
 /* ── INIT ──────────────────────────────────────────────── */
 refreshHistory();
+loadDemoPresets();
 loadLocalData();
 
 /* Enter key submits */

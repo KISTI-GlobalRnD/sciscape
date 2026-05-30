@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from pathlib import Path
 
@@ -78,10 +79,12 @@ def test_web_homepage_exposes_query_analysis_controls():
 
     assert response.status_code == 200
     assert "Query OpenAlex" in response.text
+    assert "Recommended Demos" in response.text
     assert "Local Data" in response.text
     assert 'id="q-search"' in response.text
     assert "submitQuery()" in response.text
     assert "fetch('/api/query'" in response.text
+    assert "fetch('/api/demo-presets'" in response.text
     assert "fetch('/api/local-data" in response.text
     assert 'id="file-input"' not in response.text
 
@@ -151,6 +154,98 @@ def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
     assert data_rows[0]["has_data_json"] is True
     assert data_rows[0]["has_keywords"] is True
     assert data_rows[0]["has_membership"] is True
+
+
+def test_demo_presets_endpoint_finds_timestamped_demo_output(monkeypatch, tmp_path):
+    slug = "demo_topic_2020_2024"
+    manifest_path = tmp_path / "examples" / "demo_presets.json"
+    manifest_path.parent.mkdir()
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "default_output_root": str(tmp_path / "workspace" / "examples_output" / "openalex_live"),
+                "presets": {
+                    "demo": {
+                        "slug": slug,
+                        "title": "Demo Topic",
+                        "query": "demo topic",
+                        "max_works": 1000,
+                        "expected_artifacts": [
+                            "abstracts.parquet",
+                            "edges.parquet",
+                            "landscape/membership.parquet",
+                            "landscape/keywords.parquet",
+                            "landscape/report/data.json",
+                        ],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    output_dir = tmp_path / "workspace" / "examples_output" / "openalex_live_20260530_010203" / slug
+    report_dir = output_dir / "landscape" / "report"
+    report_dir.mkdir(parents=True)
+    data_json = report_dir / "data.json"
+    data_json.write_text("{}", encoding="utf-8")
+    (output_dir / "abstracts.parquet").write_bytes(b"abstracts")
+    (output_dir / "edges.parquet").write_bytes(b"edges")
+    (output_dir / "landscape" / "membership.parquet").write_bytes(b"membership")
+    (output_dir / "landscape" / "keywords.parquet").write_bytes(b"keywords")
+    monkeypatch.setattr("sciscape.web.app._DEMO_MANIFEST_PATH", manifest_path)
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "examples_output"],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/demo-presets")
+
+    assert response.status_code == 200
+    payload = response.json()
+    demo = payload["demos"][0]
+    assert demo["key"] == "demo"
+    assert demo["status"] == "available"
+    assert demo["can_open"] is True
+    assert demo["primary_path"] == str(data_json)
+    assert demo["missing_artifacts"] == []
+
+
+def test_demo_presets_endpoint_reports_missing_output(monkeypatch, tmp_path):
+    manifest_path = tmp_path / "examples" / "demo_presets.json"
+    manifest_path.parent.mkdir()
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "default_output_root": str(tmp_path / "workspace" / "examples_output" / "openalex_live"),
+                "presets": {
+                    "demo": {
+                        "slug": "missing_demo",
+                        "title": "Missing Demo",
+                        "expected_artifacts": ["landscape/report/data.json"],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("sciscape.web.app._DEMO_MANIFEST_PATH", manifest_path)
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "examples_output"],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/demo-presets")
+
+    assert response.status_code == 200
+    demo = response.json()["demos"][0]
+    assert demo["status"] == "missing"
+    assert demo["can_open"] is False
+    assert demo["primary_path"] is None
+    assert demo["missing_artifacts"] == ["landscape/report/data.json"]
 
 
 def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
