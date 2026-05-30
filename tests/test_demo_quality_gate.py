@@ -35,3 +35,18 @@ def test_quality_gate_smoke_runs_without_external_data():
     assert smoke["keywords"] > 0
     assert smoke["term_network_nodes"] > 0
     assert smoke["term_network_edges"] > 0
+
+
+def test_quality_gate_web_demo_smoke_runs_without_external_data():
+    result = subprocess.run(
+        [sys.executable, "scripts/sciscape_quality_gate.py", "--web-demo-smoke", "--json"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    payload = json.loads(result.stdout)
+
+    smoke = payload["gates"]["web_demo_smoke"]
+    assert smoke["status"] == "passed"
+    assert smoke["term_network_nodes"] > 0
+    assert smoke["term_network_edges"] > 0

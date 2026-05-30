@@ -195,6 +195,178 @@ def validate_demo_outputs(
     return {"status": "passed", "demos": rows}
 
 
+def _write_web_demo_fixture(root: Path) -> tuple[Path, Path, Path]:
+    """Create a tiny local demo output that exercises the web demo-open path."""
+    local_root = root / "workspace" / "examples_output"
+    output_dir = local_root / "openalex_live_20260530_010203" / "quality_gate_demo"
+    landscape_dir = output_dir / "landscape"
+    report_dir = landscape_dir / "report"
+    report_dir.mkdir(parents=True)
+
+    pd.DataFrame(
+        {
+            "uid": ["W0", "W1", "W2", "W3"],
+            "title": [
+                "Perovskite interface passivation",
+                "Perovskite solar cell stability",
+                "Graph neural traffic forecasting",
+                "Graph neural anomaly detection",
+            ],
+            "abstract": [
+                "Interface passivation improves perovskite solar cell stability.",
+                "Perovskite devices use passivation layers for stable performance.",
+                "Graph neural networks forecast traffic over road sensor graphs.",
+                "Graph neural networks detect anomalies in dynamic graphs.",
+            ],
+            "pubyear": [2021, 2022, 2021, 2022],
+        }
+    ).to_parquet(output_dir / "abstracts.parquet", index=False)
+    pd.DataFrame(
+        {
+            "uid1": ["W0", "W0", "W1", "W2"],
+            "uid2": ["W1", "W2", "W3", "W3"],
+            "rel_sum2": [2.0, 1.0, 1.0, 2.0],
+        }
+    ).to_parquet(output_dir / "edges.parquet", index=False)
+    pd.DataFrame(
+        {
+            "uid": ["W0", "W1", "W2", "W3"],
+            "cluster_nano": [0, 0, 1, 1],
+        }
+    ).to_parquet(landscape_dir / "membership.parquet", index=False)
+    pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 1, 1, 1],
+            "term": [
+                "perovskite solar cells",
+                "interface passivation",
+                "device stability",
+                "graph neural networks",
+                "traffic forecasting",
+                "anomaly detection",
+            ],
+            "display_label": [
+                "perovskite solar cells",
+                "interface passivation",
+                "device stability",
+                "graph neural networks",
+                "traffic forecasting",
+                "anomaly detection",
+            ],
+            "score": [0.95, 0.9, 0.8, 0.96, 0.88, 0.78],
+            "frequency": [2, 2, 1, 2, 1, 1],
+        }
+    ).to_parquet(landscape_dir / "keywords.parquet", index=False)
+    (report_dir / "data.json").write_text('{"clusters":[],"keywords":[]}', encoding="utf-8")
+    (report_dir / "index.html").write_text("<html><title>dashboard</title></html>", encoding="utf-8")
+    (report_dir / "report.html").write_text("<html><title>report</title></html>", encoding="utf-8")
+
+    manifest_path = root / "demo_presets.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "default_output_root": str(local_root / "openalex_live"),
+                "presets": {
+                    "quality_gate": {
+                        "slug": "quality_gate_demo",
+                        "title": "Quality Gate Demo",
+                        "query": "quality gate demo",
+                        "max_works": 4,
+                        "expected_artifacts": [
+                            "abstracts.parquet",
+                            "edges.parquet",
+                            "landscape/membership.parquet",
+                            "landscape/keywords.parquet",
+                            "landscape/report/data.json",
+                            "landscape/report/index.html",
+                            "landscape/report/report.html",
+                        ],
+                    }
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return manifest_path, local_root, report_dir / "data.json"
+
+
+def run_web_demo_smoke_gate() -> dict[str, Any]:
+    """Exercise the web demo launcher and key visualization data endpoints."""
+    with tempfile.TemporaryDirectory(prefix="sciscape_web_demo_gate_") as tmp:
+        root = Path(tmp)
+        manifest_path, local_root, primary_path = _write_web_demo_fixture(root)
+
+        from fastapi.testclient import TestClient
+        import sciscape.web.app as web_app
+        from sciscape.web.jobstore import JobStore
+
+        old_manifest = web_app._DEMO_MANIFEST_PATH
+        old_roots = web_app._LOCAL_DATA_ROOTS
+        old_jobs = web_app._jobs
+        try:
+            web_app._DEMO_MANIFEST_PATH = manifest_path
+            web_app._LOCAL_DATA_ROOTS = [local_root]
+            web_app._jobs = JobStore(root / "jobs.db")
+
+            client = TestClient(web_app.app)
+            home = client.get("/")
+            _assert(home.status_code == 200, "web homepage did not load")
+            _assert("Recommended Demos" in home.text, "web homepage lacks Recommended Demos")
+            _assert("loadDemoPresets()" in home.text, "web homepage lacks demo refresh action")
+
+            demo_response = client.get("/api/demo-presets")
+            _assert(demo_response.status_code == 200, "demo preset endpoint failed")
+            demos = demo_response.json().get("demos", [])
+            _assert(len(demos) == 1, "demo preset endpoint returned unexpected demo count")
+            demo = demos[0]
+            _assert(demo["status"] == "available", "synthetic demo was not available")
+            _assert(demo["primary_path"] == str(primary_path), "synthetic demo primary path mismatch")
+
+            open_response = client.post("/api/local-data/open", json={"path": demo["primary_path"]})
+            _assert(open_response.status_code == 200, "open local demo endpoint failed")
+            job_id = open_response.json()["job_id"]
+
+            job_response = client.get(f"/api/jobs/{job_id}")
+            _assert(job_response.status_code == 200, "opened demo job status endpoint failed")
+            job = job_response.json()
+            _assert(job["status"] == "done", "opened demo job was not marked done")
+            result = job["result"]
+            _assert(result["landscape_rel_path"] == "landscape", "landscape rel path mismatch")
+
+            network_response = client.get(f"/api/jobs/{job_id}/network")
+            _assert(network_response.status_code == 200, "cluster network endpoint failed")
+            network = network_response.json()
+            _assert("error" not in network, f"cluster network error: {network.get('error')}")
+            _assert(network["nodes"], "cluster network has no nodes")
+
+            term_response = client.get(f"/api/jobs/{job_id}/term-network?top_k=3&min_cooc=1")
+            _assert(term_response.status_code == 200, "term network endpoint failed")
+            term_network = term_response.json()
+            _assert("error" not in term_network, f"term network error: {term_network.get('error')}")
+            _assert(term_network["nodes"], "term network has no nodes")
+            _assert(term_network["edges"], "term network has no edges")
+
+            report_response = client.get(f"/api/jobs/{job_id}/view/landscape/report/report.html")
+            _assert(report_response.status_code == 200, "report view endpoint failed")
+            data_response = client.get(f"/api/jobs/{job_id}/download/landscape/report/data.json")
+            _assert(data_response.status_code == 200, "data download endpoint failed")
+
+            return {
+                "status": "passed",
+                "demo_key": demo["key"],
+                "job_id": job_id,
+                "network_levels": int(len(network["nodes"])),
+                "term_network_nodes": int(len(term_network["nodes"])),
+                "term_network_edges": int(len(term_network["edges"])),
+            }
+        finally:
+            web_app._DEMO_MANIFEST_PATH = old_manifest
+            web_app._LOCAL_DATA_ROOTS = old_roots
+            web_app._jobs = old_jobs
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run SciScape release quality gates.")
     parser.add_argument(
@@ -219,13 +391,18 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Report missing demo outputs as skipped instead of failing.",
     )
+    parser.add_argument(
+        "--web-demo-smoke",
+        action="store_true",
+        help="Run a synthetic web demo launcher smoke gate without external data.",
+    )
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON only.")
     return parser
 
 
 def main() -> None:
     args = _build_parser().parse_args()
-    run_smoke = args.smoke or args.demo_root is None
+    run_smoke = args.smoke or (args.demo_root is None and not args.web_demo_smoke)
     results: dict[str, Any] = {"status": "passed", "gates": {}}
     if run_smoke:
         results["gates"]["smoke"] = run_smoke_gate()
@@ -235,6 +412,8 @@ def main() -> None:
             manifest_path=args.manifest,
             allow_missing=args.allow_missing,
         )
+    if args.web_demo_smoke:
+        results["gates"]["web_demo_smoke"] = run_web_demo_smoke_gate()
 
     if args.json:
         print(json.dumps(results, indent=2, sort_keys=True))
