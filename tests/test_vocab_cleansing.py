@@ -182,3 +182,24 @@ class TestRunVocabCleansing:
             uni, np.array([], dtype=str), C, None, None, None,
         )
         assert len(fn_uni) == 0
+
+    def test_can_skip_similarity_graph(self):
+        """Batch profiles can skip the expensive full-vocabulary graph."""
+        uni_names = np.array(["network", "netwerk"])
+        C_uni = _make_count_matrix(uni_names, [[100, 50]])
+
+        (
+            _fn_uni, _fn_phrase, _C_uni_out, _C_phrase_out,
+            _DF_uni_out, _DF_phrase_out, sim_graph, _merge_log,
+        ) = run_vocab_cleansing(
+            uni_names,
+            np.array([], dtype=str),
+            C_uni,
+            None,
+            C_uni.copy(),
+            None,
+            build_similarity_graph=False,
+        )
+
+        assert isinstance(sim_graph, VocabSimGraph)
+        assert len(sim_graph) == 0

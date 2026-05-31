@@ -95,6 +95,14 @@ uv run --extra dev python scripts/sciscape_quality_gate.py \
   --demo-root workspace/examples_output/openalex_live
 ```
 
+Validate a single result root and write its feature/QA contract:
+
+```bash
+uv run --extra dev python scripts/sciscape_quality_gate.py \
+  --artifact-root workspace/examples_output/openalex_live/perovskite_solar_cells_2020_2024 \
+  --write-artifact-contract
+```
+
 Open the generated demos in the local web app:
 
 ```bash

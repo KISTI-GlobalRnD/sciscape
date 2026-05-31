@@ -6,6 +6,7 @@ import json
 import uuid
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -81,6 +82,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Query OpenAlex" in response.text
     assert "Recommended Demos" in response.text
     assert "Local Data" in response.text
+    assert "Artifact contract" in response.text
+    assert "applyResultFeatureAvailability" in response.text
     assert 'id="q-search"' in response.text
     assert "submitQuery()" in response.text
     assert "fetch('/api/query'" in response.text
@@ -253,10 +256,41 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     landscape_dir = output_dir / "landscape"
     report_dir = landscape_dir / "report"
     report_dir.mkdir(parents=True)
-    (report_dir / "data.json").write_text("{}", encoding="utf-8")
-    (landscape_dir / "membership.parquet").write_bytes(b"membership-data")
-    (landscape_dir / "keywords.parquet").write_bytes(b"keyword-data")
-    (output_dir / "edges.parquet").write_bytes(b"edge-data")
+    (report_dir / "data.json").write_text(
+        json.dumps(
+            {
+                "0": {
+                    "label": "perovskite",
+                    "keywords": [{"term": "perovskite"}, {"term": "passivation"}],
+                    "network_edges": [{"source": "perovskite", "target": "passivation", "weight": 1}],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    pd.DataFrame(
+        {
+            "uid": ["D0", "D1"],
+            "title": ["Perovskite passivation", "Stable perovskite device"],
+            "abstract": ["Passivation improves stability.", "Perovskite devices are stable."],
+            "pubyear": [2021, 2022],
+        }
+    ).to_parquet(output_dir / "abstracts.parquet", index=False)
+    pd.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).to_parquet(
+        landscape_dir / "membership.parquet",
+        index=False,
+    )
+    pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["perovskite", "passivation"],
+            "score": [0.9, 0.8],
+        }
+    ).to_parquet(landscape_dir / "keywords.parquet", index=False)
+    pd.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [1.0]}).to_parquet(
+        output_dir / "edges.parquet",
+        index=False,
+    )
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
         [tmp_path / "workspace" / "web_output"],
@@ -276,6 +310,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["edges_path"] == str(output_dir / "edges.parquet")
     assert job_payload["result"]["landscape_dir"] == str(landscape_dir)
     assert job_payload["result"]["landscape_rel_path"] == "landscape"
+    assert job_payload["result"]["result_state"] == "loaded"
+    assert job_payload["result"]["features"]["term_network"] is True
+    assert job_payload["result"]["features"]["keyword"] is True
+    assert job_payload["result"]["artifact_contract"]["ok"] is True
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

@@ -435,6 +435,7 @@ def run_vocab_cleansing(
     edit_distance_max: int = 1,
     edit_distance_ratio: float = 0.01,
     sim_graph_max_dist: int = 2,
+    build_similarity_graph: bool = True,
     verbose_callback=None,
 ) -> Tuple[
     np.ndarray,           # feature_names_uni (updated)
@@ -536,19 +537,23 @@ def run_vocab_cleansing(
     )
 
     # ---- 3d: Similarity graph ----
-    _log("Stage 3d: building similarity graph (max_dist=%d)", sim_graph_max_dist)
+    sim_graph = VocabSimGraph()
+    if build_similarity_graph:
+        _log("Stage 3d: building similarity graph (max_dist=%d)", sim_graph_max_dist)
 
-    # Combine uni + phrase for graph building
-    all_names = np.concatenate([feature_names_uni, feature_names_phrase])
-    C_combined = sp.hstack(
-        [m for m in (C_uni, C_phrase) if m is not None], format="csr"
-    )
-    sim_graph = _build_similarity_graph(
-        all_names, {}, C_combined,
-        max_edit_distance=sim_graph_max_dist,
-    )
-    _log("Stage 3d: similarity graph has %d edges across %s",
-         len(sim_graph), repr(sim_graph))
+        # Combine uni + phrase for graph building
+        all_names = np.concatenate([feature_names_uni, feature_names_phrase])
+        C_combined = sp.hstack(
+            [m for m in (C_uni, C_phrase) if m is not None], format="csr"
+        )
+        sim_graph = _build_similarity_graph(
+            all_names, {}, C_combined,
+            max_edit_distance=sim_graph_max_dist,
+        )
+        _log("Stage 3d: similarity graph has %d edges across %s",
+             len(sim_graph), repr(sim_graph))
+    else:
+        _log("Stage 3d: similarity graph skipped")
 
     return (
         feature_names_uni,

@@ -22,14 +22,24 @@ from .utils import _looks_like_metadata_artifact_term
 METADATA_TERMS: frozenset[str] = frozenset(
     {
         "abstract",
+        "article",
+        "articles",
         "introduction",
         "background",
         "conclusion",
         "conclusions",
         "copyright",
+        "cross ref",
+        "crossref",
+        "date",
+        "description",
+        "download",
+        "downloads",
         "keyword",
         "keywords",
+        "online",
         "paper",
+        "pubmed scopus",
         "study",
     }
 )
@@ -701,7 +711,8 @@ def _compute_family_representative_support(
                         support[parent_idx]["member_count"] += 1
                         seen_children.add(evidence_label)
 
-        for info in support:
+        for idx in row_indices:
+            info = support[idx]
             children = info["children"]
             child_count = len(children)
             info["child_count"] = child_count

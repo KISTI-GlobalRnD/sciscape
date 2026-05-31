@@ -407,21 +407,34 @@ def test_representative_score_demotes_unresolved_formula_fragments_for_labels():
 
 
 def test_quality_annotation_demotes_html_and_publisher_metadata_fragments():
+    terms = [
+        "class htmlview paragraph",
+        "lt div gt",
+        "articles author",
+        "author gsw google",
+        "urology vol",
+        "usepackage",
+        "pubmed scopus",
+        "crossrefmedlinegoogle",
+        "referenceadd description exportriscitationcitation",
+        "articles citing article",
+        "metricsarticle views counter",
+        "attention research article",
+        "article information score",
+        "pdf html institutions",
+        "scopus google",
+        "preview article review",
+        "level evidence articles",
+        "discriminant analysis abstract",
+        "nanoparticle synthesis",
+    ]
     df = pd.DataFrame(
         {
-            "cluster_id": [0, 0, 0, 0, 0, 0, 0],
-            "term": [
-                "class htmlview paragraph",
-                "lt div gt",
-                "articles author",
-                "author gsw google",
-                "urology vol",
-                "usepackage",
-                "nanoparticle synthesis",
-            ],
-            "score": [20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 5.0],
-            "frequency": [50, 48, 46, 44, 42, 40, 20],
-            "doc_coverage": [25, 24, 23, 22, 21, 20, 10],
+            "cluster_id": [0] * len(terms),
+            "term": terms,
+            "score": list(reversed(range(5, 5 + len(terms)))),
+            "frequency": list(reversed(range(20, 20 + len(terms)))),
+            "doc_coverage": list(reversed(range(10, 10 + len(terms)))),
         }
     )
 
@@ -435,6 +448,18 @@ def test_quality_annotation_demotes_html_and_publisher_metadata_fragments():
         "author gsw google",
         "urology vol",
         "usepackage",
+        "pubmed scopus",
+        "crossrefmedlinegoogle",
+        "referenceadd description exportriscitationcitation",
+        "articles citing article",
+        "metricsarticle views counter",
+        "attention research article",
+        "article information score",
+        "pdf html institutions",
+        "scopus google",
+        "preview article review",
+        "level evidence articles",
+        "discriminant analysis abstract",
     ]:
         assert "metadata_fragment" in rows[term].quality_flags
         assert rows[term].keyword_label_tier == "review_artifact"

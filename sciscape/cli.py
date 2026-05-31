@@ -66,6 +66,28 @@ def _build_parser() -> argparse.ArgumentParser:
     kw.add_argument("--min-df", type=int, default=5, help="Min document frequency (default: 5)")
     kw.add_argument("--ngram-max", type=int, default=3, help="Max n-gram size (default: 3)")
     kw.add_argument("--n-jobs", type=int, default=-1, help="Parallel jobs (default: -1 = all)")
+    kw.add_argument(
+        "--parallel-backend",
+        choices=["auto", "loky", "threading", "sequential"],
+        default="auto",
+        help="Cluster task backend; auto uses threads for large cluster counts",
+    )
+    kw.add_argument("--parallel-large-cluster-threshold", type=int, default=1000)
+    kw.add_argument("--progress-path", type=Path, default=None, help="Write progress JSON here")
+    kw.add_argument("--progress-interval-clusters", type=int, default=100)
+    kw.add_argument("--scoring-shard-dir", type=Path, default=None, help="Write Stage 4 scoring shards here")
+    kw.add_argument(
+        "--scoring-shard-size-clusters",
+        type=int,
+        default=0,
+        help="Clusters per scoring shard (0 uses default when --scoring-shard-dir is set)",
+    )
+    kw.add_argument(
+        "--scoring-shard-resume",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Reuse complete matching scoring shards when --scoring-shard-dir is set",
+    )
     kw.add_argument("--enable-all", action="store_true",
                      help="Enable all optional stages (vocab merge, cooccurrence, term network, depth)")
     kw.add_argument("-o", "--output", type=Path, default=Path("keywords.parquet"),
@@ -280,6 +302,13 @@ def _run_keywords(args: argparse.Namespace) -> None:
         ngram_min=2,
         ngram_max=args.ngram_max,
         n_jobs=args.n_jobs,
+        parallel_backend=args.parallel_backend,
+        parallel_large_cluster_threshold=args.parallel_large_cluster_threshold,
+        progress_path=args.progress_path,
+        progress_interval_clusters=args.progress_interval_clusters,
+        scoring_shard_dir=args.scoring_shard_dir,
+        scoring_shard_size_clusters=args.scoring_shard_size_clusters,
+        scoring_shard_resume=args.scoring_shard_resume,
         verbose=args.verbose,
     )
 

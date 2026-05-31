@@ -6,6 +6,8 @@ temporal metrics into a single run() call.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 from collections import Counter, defaultdict
@@ -41,7 +43,7 @@ from .normalization import normalize_keywords
 from .quality import annotate_keyword_quality
 from .temporal import TemporalMixin
 from .term_network import TermNetwork
-from .utils import _looks_like_metadata_artifact_term
+from .utils import METADATA_ARTIFACT_FILTER_VERSION, _looks_like_metadata_artifact_term
 from .vocab_cleansing import VocabSimGraph, run_vocab_cleansing
 from .vocab_merge import apply_merge_map, build_merge_map
 
@@ -94,7 +96,9 @@ ACADEMIC_STOPWORDS: frozenset = frozenset({
     "finally", "effectively", "designed", "determined", "introduced",
     "established", "influence", "estimate", "reference", "function",
     "observation", "evolution", "speed", "position", "multiple",
-    "dynamic", "measurement",
+    "dynamic", "measurement", "date", "online", "article", "articles",
+    "download", "downloads", "view", "views", "counter", "description",
+    "option", "options", "received",
 })
 
 # Publisher / copyright boilerplate tokens — if *any* of these words appear
@@ -211,6 +215,157 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
     def _log(self, message: str, *args) -> None:
         if self.config.verbose:
             logger.info(message, *args)
+
+    def _parallel_backend(self) -> str:
+        backend = self.config.parallel_backend
+        if backend == "auto":
+            if self.K >= int(self.config.parallel_large_cluster_threshold):
+                return "threading"
+            return "loky"
+        return backend
+
+    def _write_progress(self, stage: str, processed: int, total: int, **extra: Any) -> None:
+        path = self.config.progress_path
+        if path is None:
+            return
+        payload = {
+            "updated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "stage": stage,
+            "processed": int(processed),
+            "total": int(total),
+            "percent": round((100.0 * int(processed) / max(1, int(total))), 3),
+            "parallel_backend": self._parallel_backend(),
+            "n_jobs": int(self.n_jobs_effective),
+        }
+        payload.update(extra)
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix(target.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        tmp.replace(target)
+
+    @staticmethod
+    def _write_json_atomic(path: Path, payload: Dict[str, Any]) -> None:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix(target.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        tmp.replace(target)
+
+    def _run_cluster_tasks(self, stage: str, total: int, func) -> list[Any]:
+        return self._run_cluster_range_tasks(stage, 0, total, func, total)
+
+    def _run_cluster_range_tasks(
+        self,
+        stage: str,
+        start: int,
+        end: int,
+        func,
+        total: Optional[int] = None,
+        **progress_extra: Any,
+    ) -> list[Any]:
+        backend = self._parallel_backend()
+        interval = max(1, int(self.config.progress_interval_clusters))
+        total_progress = int(total if total is not None else end - start)
+        if backend == "sequential" or self.n_jobs_effective == 1:
+            results: list[Any] = []
+            self._write_progress(stage, start, total_progress, **progress_extra)
+            for idx in range(start, end):
+                results.append(func(idx))
+                done = idx + 1
+                if done == end or done % interval == 0:
+                    self._write_progress(stage, done, total_progress, **progress_extra)
+            return results
+
+        prefer = "threads" if backend == "threading" else "processes"
+        self._write_progress(stage, start, total_progress, **progress_extra)
+        results = Parallel(n_jobs=self.n_jobs_effective, prefer=prefer)(
+            delayed(func)(r) for r in range(start, end)
+        )
+        self._write_progress(stage, end, total_progress, **progress_extra)
+        return results
+
+    def _effective_scoring_shard_size(self, total: int) -> int:
+        if self.config.scoring_shard_dir is None:
+            return 0
+        configured = int(self.config.scoring_shard_size_clusters)
+        if configured > 0:
+            return configured
+        return min(256, max(1, int(total)))
+
+    @staticmethod
+    def _feature_names_digest(feature_names: np.ndarray) -> str:
+        digest = hashlib.sha256()
+        for term in feature_names:
+            digest.update(str(term).encode("utf-8"))
+            digest.update(b"\0")
+        return digest.hexdigest()
+
+    def _scoring_fingerprint(
+        self,
+        C_all: sp.csr_matrix,
+        DF_all: Optional[sp.csr_matrix],
+        feature_names: np.ndarray,
+        top_k: int,
+        pool_size: int,
+    ) -> Dict[str, Any]:
+        cluster_digest = hashlib.sha256(np.asarray(self.cluster_ids).tobytes()).hexdigest()
+        payload: Dict[str, Any] = {
+            "schema_version": "sciscape_scoring_shard_fingerprint_v2",
+            "metadata_artifact_filter_version": int(METADATA_ARTIFACT_FILTER_VERSION),
+            "clusters": int(C_all.shape[0]),
+            "features": int(C_all.shape[1]),
+            "top_k": int(top_k),
+            "pool_size": int(pool_size),
+            "matrix_nnz": int(C_all.nnz),
+            "matrix_sum": int(C_all.sum()),
+            "feature_names_sha256": self._feature_names_digest(feature_names),
+            "cluster_ids_sha256": cluster_digest,
+            "min_cluster_doc_coverage": int(self.config.min_cluster_doc_coverage),
+            "min_cluster_doc_coverage_ratio": float(self.config.min_cluster_doc_coverage_ratio),
+            "mmr_jaccard_lambda": float(self.config.mmr_jaccard_lambda),
+            "mmr_pool_factor": float(self.config.mmr_pool_factor),
+            "w_ctfidf": float(self.config.w_ctfidf),
+            "w_llr": float(self.config.w_llr),
+            "cross_cluster_penalty_enabled": bool(self.config.cross_cluster_penalty_enabled),
+            "cross_cluster_penalty_min_count": int(self.config.cross_cluster_penalty_min_count),
+            "cross_cluster_penalty_fn": str(self.config.cross_cluster_penalty_fn),
+            "fragment_suppression_enabled": bool(self.config.fragment_suppression_enabled),
+            "fragment_min_longer_ratio": float(self.config.fragment_min_longer_ratio),
+            "artifact_filter_enabled": bool(self.config.artifact_filter_enabled),
+            "artifact_filter_patterns": list(self.config.artifact_filter_patterns),
+            "academic_stopwords_enabled": bool(self.config.academic_stopwords_enabled),
+        }
+        if DF_all is not None:
+            payload.update(
+                {
+                    "df_nnz": int(DF_all.nnz),
+                    "df_sum": int(DF_all.sum()),
+                }
+            )
+        else:
+            payload.update({"df_nnz": None, "df_sum": None})
+        return payload
+
+    @staticmethod
+    def _scoring_shard_payload_matches(
+        payload: Dict[str, Any],
+        *,
+        fingerprint: Dict[str, Any],
+        shard_index: int,
+        start: int,
+        end: int,
+        total: int,
+    ) -> bool:
+        return (
+            payload.get("schema_version") == "sciscape_scoring_shard_done_v1"
+            and int(payload.get("shard_index", -1)) == int(shard_index)
+            and int(payload.get("row_start", -1)) == int(start)
+            and int(payload.get("row_end", -1)) == int(end)
+            and int(payload.get("total_clusters", -1)) == int(total)
+            and payload.get("fingerprint") == fingerprint
+            and payload.get("status") == "complete"
+        )
 
     def _is_stopword_ngram(self, term: str) -> bool:
         if not term:
@@ -472,6 +627,8 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
                   orig_uni, orig_phrase)
 
         fn_phrase = self.feature_names_phrase if self.feature_names_phrase is not None else np.array([], dtype=str)
+        tn_cfg = self.config.term_network
+        build_similarity_graph = bool(tn_cfg is not None and getattr(tn_cfg, "enabled", False))
 
         (
             self.feature_names_uni,
@@ -493,6 +650,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
             edit_distance_max=1,
             edit_distance_ratio=0.01,
             sim_graph_max_dist=2,
+            build_similarity_graph=build_similarity_graph,
             verbose_callback=self._log,
         )
         self.feature_names_phrase = fn_phrase_out
@@ -689,11 +847,146 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
                 for term in selected_terms
             ]
 
-        results = Parallel(n_jobs=self.n_jobs_effective)(
-            delayed(extract_row)(r) for r in range(K)
-        )
-        flat = [item for sub in results for item in sub]
-        df = pd.DataFrame(flat, columns=["cluster_id", "term", "score", "frequency", "doc_coverage"])
+        columns = ["cluster_id", "term", "score", "frequency", "doc_coverage"]
+        shard_size = self._effective_scoring_shard_size(K)
+        if shard_size > 0:
+            assert self.config.scoring_shard_dir is not None
+            shard_dir = Path(self.config.scoring_shard_dir)
+            shard_dir.mkdir(parents=True, exist_ok=True)
+            n_shards = int(math.ceil(K / shard_size))
+            fingerprint = self._scoring_fingerprint(
+                C_all, DF_all, feature_names, top_k=top_k, pool_size=pool_size
+            )
+            manifest_path = shard_dir / "manifest.json"
+            manifest: Dict[str, Any] = {
+                "schema_version": "sciscape_scoring_shard_manifest_v1",
+                "created_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                "status": "running",
+                "stage": "scoring_topk",
+                "total_clusters": int(K),
+                "shard_size_clusters": int(shard_size),
+                "shard_count": int(n_shards),
+                "resume": bool(self.config.scoring_shard_resume),
+                "fingerprint": fingerprint,
+                "completed_shards": [],
+            }
+            self._write_json_atomic(manifest_path, manifest)
+
+            frames: List[pd.DataFrame] = []
+            completed_shards: List[Dict[str, Any]] = []
+            for shard_index, start in enumerate(range(0, K, shard_size)):
+                end = min(K, start + shard_size)
+                shard_path = shard_dir / f"scoring_topk_shard_{shard_index:04d}.parquet"
+                done_path = shard_dir / f"scoring_topk_shard_{shard_index:04d}.done.json"
+                shard_loaded = False
+
+                if self.config.scoring_shard_resume and shard_path.exists() and done_path.exists():
+                    try:
+                        done_payload = json.loads(done_path.read_text(encoding="utf-8"))
+                        if self._scoring_shard_payload_matches(
+                            done_payload,
+                            fingerprint=fingerprint,
+                            shard_index=shard_index,
+                            start=start,
+                            end=end,
+                            total=K,
+                        ):
+                            shard_df = pd.read_parquet(shard_path)
+                            frames.append(shard_df)
+                            shard_loaded = True
+                            self._write_progress(
+                                "scoring_topk",
+                                end,
+                                K,
+                                shard_index=shard_index,
+                                shard_count=n_shards,
+                                row_start=start,
+                                row_end=end,
+                                shard_status="loaded",
+                                shard_path=str(shard_path),
+                            )
+                    except Exception as exc:  # stale/corrupt shard: recompute below
+                        self._log(
+                            "Stage 4 (scoring): ignoring shard %04d due to %s",
+                            shard_index,
+                            exc,
+                        )
+
+                if not shard_loaded:
+                    results = self._run_cluster_range_tasks(
+                        "scoring_topk",
+                        start,
+                        end,
+                        extract_row,
+                        K,
+                        shard_index=shard_index,
+                        shard_count=n_shards,
+                        row_start=start,
+                        row_end=end,
+                        shard_status="running",
+                    )
+                    flat = [item for sub in results for item in sub]
+                    shard_df = pd.DataFrame(flat, columns=columns)
+                    tmp_shard_path = shard_path.with_suffix(".tmp.parquet")
+                    shard_df.to_parquet(tmp_shard_path, index=False)
+                    tmp_shard_path.replace(shard_path)
+                    done_payload = {
+                        "schema_version": "sciscape_scoring_shard_done_v1",
+                        "created_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                        "status": "complete",
+                        "stage": "scoring_topk",
+                        "shard_index": int(shard_index),
+                        "row_start": int(start),
+                        "row_end": int(end),
+                        "total_clusters": int(K),
+                        "rows": int(len(shard_df)),
+                        "fingerprint": fingerprint,
+                        "shard_path": str(shard_path),
+                    }
+                    self._write_json_atomic(done_path, done_payload)
+                    frames.append(shard_df)
+                    self._write_progress(
+                        "scoring_topk",
+                        end,
+                        K,
+                        shard_index=shard_index,
+                        shard_count=n_shards,
+                        row_start=start,
+                        row_end=end,
+                        shard_status="complete",
+                        shard_path=str(shard_path),
+                    )
+
+                completed_shards.append(
+                    {
+                        "shard_index": int(shard_index),
+                        "row_start": int(start),
+                        "row_end": int(end),
+                        "path": str(shard_path),
+                        "loaded": bool(shard_loaded),
+                    }
+                )
+                manifest.update(
+                    {
+                        "updated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                        "completed_shards": completed_shards,
+                    }
+                )
+                self._write_json_atomic(manifest_path, manifest)
+
+            manifest.update(
+                {
+                    "updated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                    "status": "complete",
+                    "output_rows": int(sum(len(frame) for frame in frames)),
+                }
+            )
+            self._write_json_atomic(manifest_path, manifest)
+            df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=columns)
+        else:
+            results = self._run_cluster_tasks("scoring_topk", K, extract_row)
+            flat = [item for sub in results for item in sub]
+            df = pd.DataFrame(flat, columns=columns)
 
         # Re-apply quality filters after parallel extraction.
         # Joblib workers may not correctly serialize closure-captured filter
@@ -1392,24 +1685,35 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
 
     def run(self) -> pd.DataFrame:
         self._log("Pipeline run started")
+        self._write_progress("pipeline_start", 0, 1)
 
         # Pass 1: vectorization → aggregation → vocab cleansing → scoring (wide pool)
+        self._write_progress("vectorization", 0, 1)
         self._fit_vectorizers()                          # Stage 1 (vectorization)
+        self._write_progress("vectorization", 1, 1)
+        self._write_progress("aggregation", 0, 1)
         self._aggregate_counts()                         # Stage 2 (aggregation)
+        self._write_progress("aggregation", 1, 1)
 
         # Stage 3: vocab cleansing (replaces old vocab_merge)
+        self._write_progress("vocab_cleansing", 0, 1)
         vm_cfg = self.config.vocab_merge
         if vm_cfg is not None and vm_cfg.enabled:
             self._stage_vocab_cleansing()
         else:
             self._apply_vocab_merge()  # fallback for backward compat
+        self._write_progress("vocab_cleansing", 1, 1)
         pool_factor = max(1.0, self.config.scoring_pool_factor)
         pool_size = int(np.ceil(self.config.top_n_keywords * pool_factor))
         top_df = self._stage_scores_and_topk(pool_override=pool_size)  # Stage 4 (wide pool)
 
         # Pass 2: keyword refinement (post-scoring normalization → trim → network → canonicalize)
+        self._write_progress("normalization", 0, 1)
         top_df = self._stage_normalization(top_df)       # post-scoring normalization (+ P2 plural)
+        self._write_progress("normalization", 1, 1)
+        self._write_progress("quality_rerank", 0, 1)
         top_df = self._stage_quality_refinement(top_df, rerank=True)
+        self._write_progress("quality_rerank", 1, 1)
 
         # Trim back to top_n_keywords per cluster after merge
         final_k = self.config.top_n_keywords
@@ -1429,15 +1733,24 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
                        before_trim, len(top_df), final_k)
 
         selected_terms = top_df["term"].unique().tolist() if not top_df.empty else []
+        self._write_progress("cooccurrence", 0, 1)
         self._stage_cooccurrence(selected_terms)         # Stage 5
+        self._write_progress("cooccurrence", 1, 1)
         top_df = self._expand_short_terms(top_df, selected_terms)  # P4: abbreviation expansion
+        self._write_progress("term_network", 0, 1)
         self._stage_term_network(selected_terms, top_df) # Stage 6
+        self._write_progress("term_network", 1, 1)
         top_df = self._auto_merge_candidates(top_df)     # P3: auto-merge high-confidence
         top_df = self._bridge_merge_candidates(top_df)   # Stage 6→7
+        self._write_progress("canonicalize", 0, 1)
         top_df = self._maybe_canonicalise(top_df)        # Stage 7
+        self._write_progress("canonicalize", 1, 1)
 
         # Pass 3: metadata (depth → temporal)
+        self._write_progress("depth", 0, 1)
         top_df = self._stage_depth(top_df, selected_terms)  # Stage 8
+        self._write_progress("depth", 1, 1)
+        self._write_progress("temporal", 0, 1)
         term_year = self._compute_year_series(top_df)       # Stage 9
         if not top_df.empty:
             top_df = top_df.assign(
@@ -1449,11 +1762,15 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         else:
             top_df = top_df.assign(pub_year_series=[])
         top_df = self._build_time_series_metrics(top_df, term_year)
+        self._write_progress("temporal", 1, 1)
         top_df = self._filter_stopword_only_terms(top_df)
+        self._write_progress("quality_final", 0, 1)
         top_df = self._stage_quality_refinement(top_df, rerank=False)
+        self._write_progress("quality_final", 1, 1)
 
         self.final_keywords = top_df
         self._log("Pipeline run complete: final rows = %d", len(top_df))
+        self._write_progress("complete", self.K, self.K, final_rows=int(len(top_df)))
         return top_df
 
     def top_unigrams(self) -> pd.DataFrame:
@@ -1482,9 +1799,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
                 if freq_map.get(idx, 0) > 0
             ]
 
-        results = Parallel(n_jobs=self.n_jobs_effective)(
-            delayed(extract)(r) for r in range(self.C_uni.shape[0])
-        )
+        results = self._run_cluster_tasks("top_unigrams", self.C_uni.shape[0], extract)
         flat = [item for sub in results for item in sub]
         return pd.DataFrame(flat, columns=["cluster_id", "term", "score", "frequency"])
 

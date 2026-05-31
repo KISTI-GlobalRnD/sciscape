@@ -67,6 +67,31 @@ uv run --extra dev python scripts/sciscape_quality_gate.py \
 Use `--allow-missing` when documenting a machine that has not generated the
 live examples yet.
 
+## Optional Artifact Contract Gate
+
+Any existing SciScape result root, report directory, or `report/data.json` can
+be checked for feature availability and blocking schema issues:
+
+```bash
+uv run --extra dev python scripts/sciscape_quality_gate.py \
+  --artifact-root workspace/examples_output/openalex_live/perovskite_solar_cells_2020_2024 \
+  --write-artifact-contract
+```
+
+This writes `landscape/qa/artifact_contract.json` when a landscape directory is
+detected. The same validator powers feature inference for local/static result
+loading. The contract also scans keyword tables and embedded report terms for
+HTML, LaTeX preamble, and publisher metadata fragments. Top-ranked
+contamination is treated as a blocking release issue.
+
+## Keyword Extraction Scale TODO
+
+The current keyword engine is validated for capped Atlas-scale extraction with
+several thousand clusters. Do not claim unrestricted full-corpus scale support
+until `docs/developer/keyword_extraction_scaling.md` has a completed benchmark
+matrix covering runtime, memory high-water mark, shard reuse, and QC failures
+across capped and uncapped runs.
+
 ## Fresh Clone Smoke
 
 Before a public release, verify from a new clone or clean virtual environment:

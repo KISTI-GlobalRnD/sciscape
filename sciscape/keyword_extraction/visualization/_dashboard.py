@@ -41,7 +41,10 @@ def export_dashboard(
     str
         Absolute path to the generated HTML file.
     """
+    from sciscape.artifacts import build_report_data_contract
+
     cluster_data = prepare_cluster_data(df, viz_data=viz_data)
+    cluster_data["_sciscape"] = build_report_data_contract(cluster_data)
     data_json = json.dumps(cluster_data, ensure_ascii=False)
 
     html = _DASHBOARD_HTML_TEMPLATE
@@ -110,7 +113,10 @@ def export_report(
     generated: List[str] = []
 
     # 0. Save data.json (for external viewer / Vercel deploy)
+    from sciscape.artifacts import build_report_data_contract
+
     cluster_data = prepare_cluster_data(df, viz_data=viz_data)
+    cluster_data["_sciscape"] = build_report_data_contract(cluster_data)
     data_json_path = str(out / "data.json")
     with open(data_json_path, "w", encoding="utf-8") as f:
         json.dump(cluster_data, f, ensure_ascii=False)

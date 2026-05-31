@@ -204,6 +204,13 @@ class KeywordExtractionConfig:
 
     # Execution
     n_jobs: int = -1
+    parallel_backend: str = "auto"  # "auto", "loky", "threading", or "sequential"
+    parallel_large_cluster_threshold: int = 1000
+    progress_path: Optional[Path] = None
+    progress_interval_clusters: int = 100
+    scoring_shard_dir: Optional[Path] = None
+    scoring_shard_size_clusters: int = 0
+    scoring_shard_resume: bool = True
     use_polars: bool = True
     use_pyarrow_streaming: bool = True
     verbose: bool = False
@@ -319,6 +326,25 @@ class KeywordExtractionConfig:
         if self.alias_candidate_max < 1:
             raise ValueError(
                 f"alias_candidate_max must be >= 1, got {self.alias_candidate_max}"
+            )
+        if self.parallel_backend not in ("auto", "loky", "threading", "sequential"):
+            raise ValueError(
+                "parallel_backend must be 'auto', 'loky', 'threading', or "
+                f"'sequential', got {self.parallel_backend!r}"
+            )
+        if self.parallel_large_cluster_threshold < 1:
+            raise ValueError(
+                "parallel_large_cluster_threshold must be >= 1, got "
+                f"{self.parallel_large_cluster_threshold}"
+            )
+        if self.progress_interval_clusters < 1:
+            raise ValueError(
+                f"progress_interval_clusters must be >= 1, got {self.progress_interval_clusters}"
+            )
+        if self.scoring_shard_size_clusters < 0:
+            raise ValueError(
+                "scoring_shard_size_clusters must be >= 0, got "
+                f"{self.scoring_shard_size_clusters}"
             )
         if self.w_ctfidf + self.w_llr <= 0:
             raise ValueError(

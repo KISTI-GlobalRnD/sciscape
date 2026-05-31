@@ -11,6 +11,7 @@ from typing import Any
 
 import pandas as pd
 
+from sciscape.artifacts import default_artifact_contract_path, validate_result_root, write_artifact_contract
 from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
 from sciscape.keyword_extraction.visualization import export_dashboard
 from sciscape.web.network_data import build_term_network_json
@@ -396,13 +397,26 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run a synthetic web demo launcher smoke gate without external data.",
     )
+    parser.add_argument(
+        "--artifact-root",
+        type=Path,
+        default=None,
+        help="Validate a SciScape result root, report directory, or report/data.json file.",
+    )
+    parser.add_argument(
+        "--write-artifact-contract",
+        action="store_true",
+        help="Write qa/artifact_contract.json when used with --artifact-root.",
+    )
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON only.")
     return parser
 
 
 def main() -> None:
     args = _build_parser().parse_args()
-    run_smoke = args.smoke or (args.demo_root is None and not args.web_demo_smoke)
+    run_smoke = args.smoke or (
+        args.demo_root is None and args.artifact_root is None and not args.web_demo_smoke
+    )
     results: dict[str, Any] = {"status": "passed", "gates": {}}
     if run_smoke:
         results["gates"]["smoke"] = run_smoke_gate()
@@ -414,6 +428,19 @@ def main() -> None:
         )
     if args.web_demo_smoke:
         results["gates"]["web_demo_smoke"] = run_web_demo_smoke_gate()
+    if args.artifact_root is not None:
+        if args.write_artifact_contract:
+            artifact_result = write_artifact_contract(args.artifact_root)
+            artifact_payload = artifact_result.to_dict()
+            artifact_payload["artifact_contract_path"] = str(default_artifact_contract_path(artifact_result))
+        else:
+            artifact_payload = validate_result_root(args.artifact_root).to_dict()
+        results["gates"]["artifact_contract"] = artifact_payload
+        if not artifact_payload["ok"]:
+            results["status"] = "failed"
+            if args.json:
+                print(json.dumps(results, indent=2, sort_keys=True))
+            raise SystemExit(1)
 
     if args.json:
         print(json.dumps(results, indent=2, sort_keys=True))

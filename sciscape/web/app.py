@@ -21,6 +21,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
+from sciscape.artifacts import validate_result_root
+
 log = logging.getLogger(__name__)
 
 app = FastAPI(title="SciScape", version="0.2.0")
@@ -389,6 +391,10 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     edges = output_dir / "edges.parquet"
     if edges.exists():
         result["edges_path"] = str(edges)
+    contract = validate_result_root(path).to_dict()
+    result["artifact_contract"] = contract
+    result["features"] = contract["features"]
+    result["result_state"] = contract["result_state"]
     return result
 
 

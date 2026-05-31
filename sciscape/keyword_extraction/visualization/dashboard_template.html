@@ -28,6 +28,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .tab{padding:.7rem 1.2rem;cursor:pointer;font-size:.9rem;font-weight:500;color:#6c757d;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;}
 .tab:hover{color:#212529;background:#f8f9fa;}
 .tab.active{color:#0d6efd;border-bottom-color:#0d6efd;font-weight:600;}
+.tab.unavailable{color:#adb5bd;cursor:not-allowed;background:#f8f9fa;}
+.tab.unavailable:hover{color:#adb5bd;background:#f8f9fa;}
 .tab-divider{width:1px;background:#ced4da;margin:0.4rem 0.3rem;align-self:stretch;}
 .tab-group-label{font-size:.7rem;font-weight:700;color:#adb5bd;text-transform:uppercase;letter-spacing:.05em;padding:.7rem .4rem .7rem .6rem;align-self:center;user-select:none;}
 .controls.dimmed .cluster-controls{opacity:.35;pointer-events:none;}
@@ -35,7 +37,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .panel{display:none;}
 .panel.active{display:block;}
 .chart-card{background:#fff;border-radius:8px;padding:1rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.unavailable-panel{background:#fff;border:1px dashed #ced4da;border-radius:6px;padding:1.25rem;text-align:center;color:#6c757d;}
 .panel-desc{background:#e8f4fd;border-left:4px solid #0d6efd;border-radius:4px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.9rem;line-height:1.6;color:#2c3e50;}
+.contract-status{display:none;background:#fff;border:1px solid #dee2e6;border-left:4px solid #198754;border-radius:6px;padding:.75rem 1rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.06);font-size:.85rem;}
+.contract-status.partial{border-left-color:#ffc107;}
+.contract-status.blocked{border-left-color:#dc3545;}
+.contract-status-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.45rem;}
+.contract-status-title{font-weight:700;color:#1f2933;}
+.contract-status-state{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:.15rem .45rem;border-radius:10px;background:#d1e7dd;color:#0f5132;}
+.contract-status.partial .contract-status-state{background:#fff3cd;color:#664d03;}
+.contract-status.blocked .contract-status-state{background:#f8d7da;color:#842029;}
+.contract-feature-list{display:flex;flex-wrap:wrap;gap:.25rem;margin:.35rem 0;}
+.contract-feature{font-size:.72rem;font-weight:700;padding:.12rem .4rem;border-radius:10px;background:#e9ecef;color:#495057;}
+.contract-feature.on{background:#e7f1ff;color:#084298;}
+.contract-feature.off{background:#f8f9fa;color:#adb5bd;border:1px solid #e9ecef;}
+.contract-warning-list{margin-top:.35rem;color:#6c757d;font-size:.78rem;line-height:1.45;}
+.contract-warning{display:block;}
 .cluster-meta{background:#fff;border-radius:8px;padding:1rem 1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;gap:2rem;flex-wrap:wrap;font-size:.9rem;}
 .cluster-meta .meta-item{flex:1;min-width:140px;}
 .cluster-meta .meta-label{font-weight:600;color:#6c757d;font-size:.8rem;text-transform:uppercase;}
@@ -185,6 +202,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </div>
 
 <div class="container">
+  <div id="contract-status" class="contract-status"></div>
   <div class="cluster-meta" id="cluster-meta"></div>
 
   <div class="panel active" id="panel-overview">
@@ -345,14 +363,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 <script>
 let DATA = {{DATA_JSON}};
+let SCISCAPE_CONTRACT = null;
 
 // ── Upload / Viewer mode ──
 let VOCAB_MERGES = {}, NORM_MERGES = {}, CROSS_CLUSTER_TERMS = null;
 let COMMON_KEYWORDS = [], SHARED_KEYWORDS = [];
 let ABBREVIATION_EVIDENCE = [], ABBREVIATION_EVIDENCE_TOTAL = 0;
 let TREND_SCORES = {}, CENTRALITY = {}, PIPELINE_CONFIG = {};
+const DEFAULT_FEATURES = {
+  overview: false,
+  cluster_map: false,
+  keyword: false,
+  term_network: false,
+  matrix: false,
+  evidence: false,
+  temporal: false,
+  quality: false,
+  export: false
+};
+const TAB_FEATURES = {
+  overview: "overview",
+  crosscluster: "keyword",
+  keywords: "keyword",
+  temporal: "temporal",
+  hierarchy: "keyword",
+  network: "term_network",
+  dictionary: "keyword"
+};
+const FEATURE_LABELS = {
+  overview: "Overview",
+  cluster_map: "Cluster map",
+  keyword: "Keywords",
+  term_network: "Term network",
+  matrix: "Matrix",
+  evidence: "Evidence",
+  temporal: "Temporal",
+  quality: "Quality",
+  export: "Export"
+};
 
 function _extractGlobals() {
+  SCISCAPE_CONTRACT = DATA["_sciscape"] || null;
   VOCAB_MERGES = DATA["_vocab_merges"] || {};
   NORM_MERGES = DATA["_norm_merges"] || {};
   CROSS_CLUSTER_TERMS = DATA["_cross_cluster_terms"] || null;
@@ -373,6 +424,7 @@ function _extractGlobals() {
   delete DATA["_trend_scores"];
   delete DATA["_centrality"];
   delete DATA["_pipeline_config"];
+  delete DATA["_sciscape"];
 }
 
 const clusterSelect = document.getElementById("cluster-select");
@@ -405,6 +457,137 @@ function _initClusters() {
   }
 }
 
+function _hasKeywordSeries(keyword) {
+  if (!keyword) return false;
+  for (const key of ["pub_year_series", "ppm_series", "loglift_series", "temporal"]) {
+    const value = keyword[key];
+    if (value && typeof value === "object" && Object.keys(value).length) return true;
+  }
+  return false;
+}
+
+function _inferViewerFeatures() {
+  const ids = Object.keys(DATA || {}).map(Number).filter(n => !isNaN(n));
+  const hasClusters = ids.length > 0;
+  const hasKeywords = ids.some(cid => ((DATA[cid] || {}).keywords || []).length > 0);
+  const hasTermEdges = ids.some(cid => {
+    const cl = DATA[cid] || {};
+    return ((cl.network_edges || []).length > 0) || ((cl.cooccurrence_table || []).length > 0);
+  });
+  const hasTemporal = Object.keys(TREND_SCORES || {}).length > 0 || ids.some(cid => {
+    const cl = DATA[cid] || {};
+    return (cl.keywords || []).some(_hasKeywordSeries);
+  });
+  return {
+    overview: hasClusters,
+    cluster_map: hasClusters,
+    keyword: hasKeywords,
+    term_network: hasTermEdges,
+    matrix: hasTermEdges,
+    evidence: false,
+    temporal: hasTemporal,
+    quality: false,
+    export: hasClusters || hasKeywords
+  };
+}
+
+function _ensureContract(mode) {
+  const inferred = _inferViewerFeatures();
+  const source = SCISCAPE_CONTRACT && typeof SCISCAPE_CONTRACT === "object" ? SCISCAPE_CONTRACT : {};
+  const advertised = source.features && typeof source.features === "object" ? source.features : null;
+  const warnings = Array.isArray(source.warnings) ? source.warnings.slice() : [];
+  if (!advertised) {
+    warnings.push({
+      code: "viewer_contract_inferred",
+      severity: "info",
+      message: "Feature availability was inferred from this data file.",
+      artifact: "report_data"
+    });
+  }
+  const features = {};
+  Object.keys(DEFAULT_FEATURES).forEach(feature => {
+    const hasAdvertisedValue = advertised && Object.prototype.hasOwnProperty.call(advertised, feature);
+    features[feature] = hasAdvertisedValue ? Boolean(advertised[feature]) : Boolean(inferred[feature]);
+    if (features[feature] && !inferred[feature] && feature !== "quality") {
+      features[feature] = false;
+      warnings.push({
+        code: "advertised_feature_missing",
+        severity: "warning",
+        message: FEATURE_LABELS[feature] + " was advertised but no matching embedded data was found.",
+        artifact: "report_data"
+      });
+    }
+  });
+  const hasError = warnings.some(w => w && (w.severity === "error" || w.severity === "blocking"));
+  const resultState = hasError ? "blocked" : Object.values(features).some(Boolean) ? "loaded" : "empty";
+  SCISCAPE_CONTRACT = Object.assign({}, source, {
+    mode: source.mode || mode,
+    result_state: source.result_state && source.result_state !== "loaded" ? source.result_state : resultState,
+    features,
+    warnings
+  });
+}
+
+function isFeatureAvailable(feature) {
+  if (!feature) return true;
+  return Boolean(SCISCAPE_CONTRACT && SCISCAPE_CONTRACT.features && SCISCAPE_CONTRACT.features[feature]);
+}
+
+function tabFeature(tabName) {
+  return TAB_FEATURES[tabName] || null;
+}
+
+function isTabAvailable(tabName) {
+  return isFeatureAvailable(tabFeature(tabName));
+}
+
+function renderContractStatus() {
+  const el = document.getElementById("contract-status");
+  if (!el || !SCISCAPE_CONTRACT) return;
+  const features = SCISCAPE_CONTRACT.features || {};
+  const warnings = Array.isArray(SCISCAPE_CONTRACT.warnings) ? SCISCAPE_CONTRACT.warnings : [];
+  const state = SCISCAPE_CONTRACT.result_state || "loaded";
+  const stateClass = state === "blocked" ? "blocked" : warnings.length ? "partial" : "loaded";
+  const featureHtml = Object.keys(FEATURE_LABELS).map(feature => {
+    const on = Boolean(features[feature]);
+    return `<span class="contract-feature ${on ? "on" : "off"}">${FEATURE_LABELS[feature]}</span>`;
+  }).join("");
+  const warningHtml = warnings.slice(0, 4).map(w => (
+    `<span class="contract-warning">${escHtml((w.severity || "info") + ": " + (w.message || w.code || "warning"))}</span>`
+  )).join("");
+  el.className = "contract-status " + stateClass;
+  el.innerHTML = `
+    <div class="contract-status-head">
+      <div class="contract-status-title">Result contract</div>
+      <div class="contract-status-state">${escHtml(state)}</div>
+    </div>
+    <div class="contract-feature-list">${featureHtml}</div>
+    ${warningHtml ? `<div class="contract-warning-list">${warningHtml}</div>` : ""}
+  `;
+  el.style.display = "block";
+}
+
+function applyFeatureAvailability() {
+  tabEls.forEach(tab => {
+    const feature = tabFeature(tab.dataset.tab);
+    const available = isFeatureAvailable(feature);
+    tab.classList.toggle("unavailable", !available);
+    tab.setAttribute("aria-disabled", String(!available));
+    tab.title = available ? "" : (FEATURE_LABELS[feature] || feature) + " data is unavailable in this result";
+  });
+  if (!isTabAvailable(currentTab)) {
+    const fallback = Array.from(tabEls).find(tab => isTabAvailable(tab.dataset.tab));
+    if (fallback) {
+      tabEls.forEach(t => t.classList.remove("active"));
+      fallback.classList.add("active");
+      panels.forEach(p => p.classList.remove("active"));
+      const panelEl = document.getElementById("panel-" + fallback.dataset.tab);
+      if (panelEl) panelEl.classList.add("active");
+      currentTab = fallback.dataset.tab;
+    }
+  }
+}
+
 // ── Upload handler ──
 const overlay = document.getElementById("upload-overlay");
 const dropZone = document.getElementById("drop-zone");
@@ -416,6 +599,9 @@ function _loadJSON(text) {
     DATA = JSON.parse(text);
     _extractGlobals();
     _initClusters();
+    _ensureContract("hosted_data");
+    renderContractStatus();
+    applyFeatureAvailability();
     overlay.style.display = "none";
     if (clusterSelect.options.length > 1) {
       clusterSelect.selectedIndex = 1;
@@ -465,11 +651,15 @@ function _loadCSV(text, filename) {
   try {
     const sep = (filename.endsWith(".tsv") || text.split("\n")[0].split("\t").length > 2) ? "\t" : ",";
     DATA = _parseCSV(text, sep);
+    SCISCAPE_CONTRACT = null;
     VOCAB_MERGES = {}; NORM_MERGES = {}; CROSS_CLUSTER_TERMS = null;
     ABBREVIATION_EVIDENCE = []; ABBREVIATION_EVIDENCE_TOTAL = 0;
     COMMON_KEYWORDS = []; SHARED_KEYWORDS = [];
     TREND_SCORES = {}; CENTRALITY = {}; PIPELINE_CONFIG = {};
     _initClusters();
+    _ensureContract("uploaded_table");
+    renderContractStatus();
+    applyFeatureAvailability();
     overlay.style.display = "none";
     if (clusterSelect.options.length > 1) {
       clusterSelect.selectedIndex = 1;
@@ -540,6 +730,9 @@ if (dropZone) {
 if (DATA) {
   _extractGlobals();
   _initClusters();
+  _ensureContract("embedded_report");
+  renderContractStatus();
+  applyFeatureAvailability();
 } else {
   overlay.style.display = "flex";
   const candidates = _hostedDataCandidates();
@@ -562,9 +755,13 @@ function updateScopeUI() {
 
 tabEls.forEach(tab => {
   tab.addEventListener("click", () => {
+    const tabName = tab.dataset.tab;
+    if (!isTabAvailable(tabName)) {
+      renderContractStatus();
+      return;
+    }
     tabEls.forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
-    const tabName = tab.dataset.tab;
     panels.forEach(p => p.classList.remove("active"));
     document.getElementById("panel-" + tabName).classList.add("active");
     currentTab = tabName;
@@ -2532,7 +2729,7 @@ function restoreFromHash() {
   }
   if (params.tab) {
     const tabEl = document.querySelector('.tab[data-tab="' + params.tab + '"]');
-    if (tabEl) {
+    if (tabEl && isTabAvailable(params.tab)) {
       tabEls.forEach(t => t.classList.remove("active"));
       tabEl.classList.add("active");
       panels.forEach(p => p.classList.remove("active"));

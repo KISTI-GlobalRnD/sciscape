@@ -305,6 +305,76 @@ body {
   border-color: var(--amber);
   color: var(--amber-dim);
 }
+.result-contract {
+  display: none;
+  background: var(--cream);
+  border: 1px solid #e5dfd6;
+  border-left: 4px solid var(--teal);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+.result-contract.partial { border-left-color: var(--amber); }
+.result-contract.blocked { border-left-color: var(--coral); }
+.result-contract-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+.result-contract-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+.result-contract-state {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.12rem 0.38rem;
+  border-radius: 3px;
+  background: rgba(43, 168, 156, 0.1);
+  color: var(--teal-dim);
+}
+.result-contract.partial .result-contract-state {
+  background: rgba(232, 168, 56, 0.14);
+  color: var(--amber-dim);
+}
+.result-contract.blocked .result-contract-state {
+  background: rgba(216, 90, 74, 0.12);
+  color: var(--coral);
+}
+.feature-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+.feature-pill {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 0.1rem 0.34rem;
+  border-radius: 3px;
+  border: 1px solid var(--fog);
+  color: var(--silver);
+  background: var(--paper);
+}
+.feature-pill.on {
+  color: var(--teal-dim);
+  border-color: rgba(43, 168, 156, 0.25);
+  background: rgba(43, 168, 156, 0.08);
+}
+.contract-warnings {
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  color: var(--steel);
+  line-height: 1.45;
+}
+.contract-warnings span { display: block; }
 
 /* ── TABS ──────────────────────────────────────────────── */
 .tab-bar {
@@ -332,6 +402,12 @@ body {
   border-bottom-color: var(--amber);
   font-weight: 600;
 }
+.tab-btn.unavailable {
+  color: var(--silver);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.tab-btn.unavailable:hover { color: var(--silver); }
 
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.25s ease-out; }
@@ -670,6 +746,7 @@ input[type="range"]::-webkit-slider-thumb {
     <div class="results-panel" id="results">
       <div class="section-label">Results</div>
       <div class="stats-row" id="stats-row"></div>
+      <div class="result-contract" id="result-contract"></div>
 
       <div class="tab-bar" id="tab-bar">
         <button class="tab-btn active" data-tab="overview">Network</button>
@@ -855,6 +932,102 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── STATE ─────────────────────────────────────────────── */
 let currentJobId = null;
 let evtSource = null;
+let currentResultFeatures = {};
+const RESULT_FEATURE_LABELS = {
+  overview: 'Overview',
+  cluster_map: 'Cluster map',
+  keyword: 'Keywords',
+  term_network: 'Term network',
+  matrix: 'Matrix',
+  evidence: 'Evidence',
+  temporal: 'Temporal',
+  quality: 'Quality',
+  export: 'Export',
+};
+const TAB_FEATURES = {
+  overview: 'cluster_map',
+  hierarchy: 'cluster_map',
+  temporal: 'temporal',
+  clusters: 'cluster_map',
+  keywords: 'keyword',
+  whatif: 'cluster_map',
+  quality: 'quality',
+  downloads: 'export',
+};
+
+function featureAvailable(feature) {
+  if (!feature) return true;
+  return Boolean(currentResultFeatures && currentResultFeatures[feature]);
+}
+
+function tabFeature(tabName) {
+  return TAB_FEATURES[tabName] || null;
+}
+
+function tabAvailable(tabName) {
+  return featureAvailable(tabFeature(tabName));
+}
+
+function inferResultFeatures(result) {
+  const hasLandscape = Boolean(result.landscape_dir);
+  const hasEdges = Boolean(result.edges_path);
+  const hasOutput = Boolean(result.output_dir);
+  return {
+    overview: hasOutput || hasLandscape || hasEdges,
+    cluster_map: hasLandscape || hasEdges,
+    keyword: hasLandscape,
+    term_network: hasLandscape,
+    matrix: hasLandscape,
+    evidence: Boolean(result.abstracts_path && hasLandscape),
+    temporal: false,
+    quality: hasLandscape || hasEdges,
+    export: hasOutput || hasLandscape || hasEdges,
+  };
+}
+
+function applyResultFeatureAvailability(result) {
+  currentResultFeatures = result.features || inferResultFeatures(result || {});
+  const buttons = document.querySelectorAll('.tab-btn');
+  buttons.forEach(btn => {
+    const feature = tabFeature(btn.dataset.tab);
+    const available = tabAvailable(btn.dataset.tab);
+    btn.classList.toggle('unavailable', !available);
+    btn.disabled = !available;
+    btn.title = available ? '' : (RESULT_FEATURE_LABELS[feature] || feature) + ' unavailable in this result';
+  });
+  const termButton = document.getElementById('btn-term-net');
+  if (termButton) {
+    const available = featureAvailable('term_network');
+    termButton.disabled = !available;
+    termButton.classList.toggle('unavailable', !available);
+    termButton.title = available ? '' : 'Term co-occurrence data unavailable in this result';
+  }
+}
+
+function renderResultContract(result) {
+  const el = document.getElementById('result-contract');
+  if (!el) return;
+  const contract = result.artifact_contract || null;
+  const features = result.features || inferResultFeatures(result || {});
+  const warnings = (contract && contract.warnings) || [];
+  const state = result.result_state || (contract && contract.result_state) || 'loaded';
+  const statusClass = state === 'blocked' ? 'blocked' : warnings.length ? 'partial' : 'loaded';
+  const featureHtml = Object.entries(RESULT_FEATURE_LABELS).map(([key, label]) =>
+    '<span class="feature-pill ' + (features[key] ? 'on' : '') + '">' + esc(label) + '</span>'
+  ).join('');
+  const warningHtml = warnings.slice(0, 4).map(w =>
+    '<span>' + esc((w.severity || 'info') + ': ' + (w.message || w.code || 'warning')) + '</span>'
+  ).join('');
+  el.className = 'result-contract ' + statusClass;
+  el.innerHTML =
+    '<div class="result-contract-head">' +
+      '<div class="result-contract-title">Artifact contract</div>' +
+      '<div class="result-contract-state">' + esc(state) + '</div>' +
+    '</div>' +
+    '<div class="feature-row">' + featureHtml + '</div>' +
+    (warningHtml ? '<div class="contract-warnings">' + warningHtml + '</div>' : '');
+  el.style.display = 'block';
+}
 
 /* ── SUBMIT ────────────────────────────────────────────── */
 async function submitQuery() {
@@ -955,10 +1128,13 @@ function showResults(result) {
   window._currentJobId = currentJobId;
   const panel = document.getElementById('results');
   panel.classList.add('active');
+  applyResultFeatureAvailability(result);
+  renderResultContract(result);
 
   // Stats
   const row = document.getElementById('stats-row');
   let html = '';
+  if (result.result_state) html += pill('state: ' + result.result_state, result.result_state === 'loaded');
   if (result.n_works) html += pill(result.n_works + ' works', true);
   if (result.n_edges) {
     for (const [k, v] of Object.entries(result.n_edges)) {
@@ -976,15 +1152,18 @@ function showResults(result) {
     grid.innerHTML += dlCard('edges.parquet', 'Citation edges', 'EDG', currentJobId);
 
   // Load all tabs
-  loadNetwork(currentJobId);
-  loadHierarchy('treemap');
-  loadTemporal();
-  loadClusterTable();
-  loadKeywordTable();
+  if (featureAvailable('cluster_map')) {
+    loadNetwork(currentJobId);
+    loadHierarchy('treemap');
+    loadClusterTable();
+  }
+  if (featureAvailable('temporal')) loadTemporal();
+  if (featureAvailable('keyword')) loadKeywordTable();
   updateDownloads(result);
 
   // Tabs: activate overview
-  switchTab('overview');
+  const firstTab = ['overview', 'keywords', 'downloads'].find(tabAvailable) || 'downloads';
+  switchTab(firstTab);
 }
 
 function pill(text, accent) {
@@ -1120,6 +1299,7 @@ document.getElementById('tab-bar').addEventListener('click', function(e) {
 });
 
 function switchTab(name) {
+  if (!tabAvailable(name)) return;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
 }
@@ -1179,6 +1359,7 @@ async function loadNetwork(jobId) {
 }
 
 async function switchNetMode(mode) {
+  if (mode === 'term' && !featureAvailable('term_network')) return;
   currentNetMode = mode;
   document.getElementById('btn-cluster-net').classList.toggle('active', mode === 'cluster');
   document.getElementById('btn-term-net').classList.toggle('active', mode === 'term');

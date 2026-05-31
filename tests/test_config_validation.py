@@ -67,6 +67,22 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="alias_candidate_max"):
             KeywordExtractionConfig(**_DUMMY, alias_candidate_max=0)
 
+    def test_parallel_backend_invalid(self):
+        with pytest.raises(ValueError, match="parallel_backend"):
+            KeywordExtractionConfig(**_DUMMY, parallel_backend="forkserver")
+
+    def test_parallel_large_cluster_threshold_zero(self):
+        with pytest.raises(ValueError, match="parallel_large_cluster_threshold"):
+            KeywordExtractionConfig(**_DUMMY, parallel_large_cluster_threshold=0)
+
+    def test_progress_interval_zero(self):
+        with pytest.raises(ValueError, match="progress_interval_clusters"):
+            KeywordExtractionConfig(**_DUMMY, progress_interval_clusters=0)
+
+    def test_scoring_shard_size_negative(self):
+        with pytest.raises(ValueError, match="scoring_shard_size_clusters"):
+            KeywordExtractionConfig(**_DUMMY, scoring_shard_size_clusters=-1)
+
     def test_scoring_weights_both_zero(self):
         with pytest.raises(ValueError, match="w_ctfidf.*w_llr"):
             KeywordExtractionConfig(**_DUMMY, w_ctfidf=0.0, w_llr=0.0)
