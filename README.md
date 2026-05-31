@@ -1,8 +1,10 @@
 # SciScape
 
-SciScape is a full-cycle SciSci analysis and visualization package for research
-paper networks: data ingestion, multi-layer clustering, keyword extraction,
-network visualization, reporting, and evaluation.
+SciScape is a local-first SciSci workbench for building validated science
+landscapes from research queries or bibliographic files. It combines data
+ingestion, multi-layer clustering, keyword extraction, co-occurrence and network
+visualization, cluster evolution views, evidence-backed narratives, reporting,
+and evaluation.
 
 ## Full-Cycle Modules
 
@@ -12,7 +14,7 @@ network visualization, reporting, and evaluation.
 - **Hierarchical clustering core**: nano → micro → meso → macro with auto-gamma per level
 - **Rust CPM/Leiden backend**: High-performance Leiden clustering, contraction, projection, and small-cluster postprocess for the main pipeline
 - **10-stage keyword extraction**: TF-IDF, quality reranking/display labels, cooccurrence, term network, temporal/depth signals, and optional LLM canonicalization
-- **Network visualization and reports**: FastAPI + D3.js network visualization, Plotly treemap/sunburst, temporal charts, and standalone viewer export
+- **Network visualization and reports**: FastAPI + D3.js network visualization, Plotly treemap/sunburst, temporal charts, cluster evolution maps, narrative views, and standalone viewer export
 - **Evaluation framework**: LLM blind review (3 criteria), stability analysis (AMI/ARI), and quality reports
 - **SciSci research modules**: Optional diagnostics and hierarchy postprocess helpers for auditable development runs; Dongdaemun surfaces stay development-only
 - **Rust acceleration**: Clustering + keyword extraction hot paths (50-200x speedup)
@@ -20,13 +22,14 @@ network visualization, reporting, and evaluation.
 
 ## Current Scope
 
-The supported package surface is the end-to-end SciSci analysis and
-visualization workflow: source-data conversion, OpenAlex ingestion, multi-layer
-edge construction and combination, Rust CPM/Leiden clustering, hierarchical
-landscape construction, keyword extraction, network visualization/report
-generation, standalone viewer export, and evaluation utilities. Clustering is
-the core engine, but the package is branded around the full analysis and
-visualization lifecycle.
+The supported package surface is the end-to-end validated science-landscape
+workflow: source-data conversion, OpenAlex ingestion, multi-layer edge
+construction and combination, Rust CPM/Leiden clustering, hierarchical
+landscape construction, keyword extraction and co-occurrence analysis, network
+visualization/report generation, cluster evolution and narrative views when
+their artifacts exist, standalone viewer export, and evaluation utilities.
+Clustering is the core engine, but the package is branded around the full
+analysis, QA, interpretation, and visualization lifecycle.
 
 Dongdaemun is a development/research family name, not the default product
 surface. Use the specific terms in `docs/research/dongdaemun/core/dongdaemun_naming_contract.md`:

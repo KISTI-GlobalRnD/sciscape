@@ -1,8 +1,10 @@
 # SciScape
 
-학술 논문 네트워크를 위한 SciSci 전주기 분석/시각화 패키지입니다. 데이터
-변환, 네트워크 구성, multi-layer clustering, 키워드 추출, 네트워크 시각화,
-리포트/뷰어 생성, 평가 유틸리티를 포함합니다.
+연구 쿼리나 서지 파일에서 검증 가능한 science landscape를 만드는
+local-first SciSci workbench입니다. 데이터 변환, 네트워크 구성,
+multi-layer clustering, 키워드/공기어 분석, 네트워크 시각화, 리포트/뷰어
+생성, cluster evolution view, evidence-backed narrative, 평가 유틸리티를
+포함합니다.
 
 ## 구성
 
@@ -33,12 +35,13 @@ sciscape/
 
 ## 현재 지원 표면
 
-기본 공개 표면은 end-to-end SciSci analysis/visualization workflow입니다.
-데이터 변환, OpenAlex ingestion, multi-layer edge construction/combination,
-Rust CPM/Leiden clustering, hierarchy construction, keyword extraction,
-network visualization, report/web viewer, evaluation utilities를 포함합니다.
-클러스터링이 핵심 엔진이지만, Sciscape 브랜딩은 전주기 분석과 시각화
-패키지에 둡니다.
+기본 공개 표면은 검증 가능한 science-landscape workflow입니다. 데이터
+변환, OpenAlex ingestion, multi-layer edge construction/combination, Rust
+CPM/Leiden clustering, hierarchy construction, keyword extraction,
+co-occurrence analysis, network visualization, report/web viewer, evaluation
+utilities를 포함하고, 관련 artifact가 있을 때 cluster evolution과
+narrative view까지 확장합니다. 클러스터링이 핵심 엔진이지만, Sciscape
+브랜딩은 전주기 분석, QA, 해석, 시각화 패키지에 둡니다.
 
 처음 사용할 때 어떤 파일을 넣어야 하는지는
 [`../docs/user/quickstart_data.md`](../docs/user/quickstart_data.md)를 먼저

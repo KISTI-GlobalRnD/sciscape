@@ -8,10 +8,16 @@ UI is redesigned. It is not a screen-level UI specification. It is the contract
 for app modes, analysis lenses, inputs, outputs, and validation rules that the
 UI, CLI, and static viewer should eventually share.
 
+For the higher-level project identity, governance levels, project invariants,
+and north-star definition, see `branding_positioning.md`. This feature
+definition should remain subordinate to that document: a feature is in scope
+only if it strengthens the validated science-landscape workflow without
+violating the stated invariants.
+
 ## Positioning
 
-SciScape should be framed as a full-cycle SciSci analysis and visualization
-package:
+SciScape should be framed as a local-first workbench for validated science
+landscapes:
 
 ```text
 query or files
@@ -19,12 +25,13 @@ query or files
 -> network and matrix construction
 -> clustering and hierarchy
 -> keyword cleaning and labeling
--> visualization and evidence review
+-> cluster maps, hierarchy maps, evolution maps, and evidence review
+-> cluster narratives
 -> export, report, and validation artifacts
 ```
 
 The primary differentiation should not be a single map view. It should be a
-reproducible workflow that combines:
+reproducible, QA-visible workflow that combines:
 
 - VOSviewer-style science mapping and term co-occurrence visualization.
 - Biblioshiny-style full-cycle bibliometric workflow.
@@ -95,6 +102,8 @@ Decision labels:
 | Editable thesaurus/alias/stop-term rules | VOSviewer, VantagePoint | `support-v1.5` | rule log must be replayable |
 | Acronym expansion from local text | tech mining workflows | `support-v1.5` | preserve evidence source and ambiguity state |
 | Temporal trend summary | Biblioshiny, CiteSpace | `support-v1` if `pubyear` exists | simple yearly counts before advanced evolution |
+| Cluster evolution map | Science Atlas, CiteSpace/SciMAT | `support-v1.5` when evolution artifacts exist | yearly activity, phase topics, topic/child trajectories, representative works |
+| Evidence-backed cluster narratives | Science Atlas, analyst review workflows | `support-v1.5` | must cite terms, representatives, lineage, neighbors, evolution, and QA caveats |
 | Burst detection and thematic evolution | CiteSpace, SciMAT | `support-v2` | do not claim without separate method contract |
 | Institutional benchmarking and normalized impact | SciVal, InCites | `defer` | requires controlled metric and data-license contracts |
 | Full graph editor behavior | Gephi, Cytoscape | `exclude` | export to graph tools instead |
@@ -202,6 +211,8 @@ enabled or disabled by feature availability, not by hard-coded UI assumptions.
 | `matrix` | Inspect occurrence, co-occurrence, proximity, 1-mode, and 2-mode matrices | matrix artifacts | show rows, columns, weighting, sparsity, top pairs |
 | `evidence` | Inspect representative works and text evidence | abstracts, membership, representative docs | show titles, abstracts/snippets, term evidence |
 | `temporal` | Inspect change over publication years or periods | pubyear, temporal summaries | show trend summaries; advanced evolution deferred |
+| `evolution` | Inspect cluster lifecycle and composition shifts | evolution artifact, temporal summaries, representative works | show activity timeline, evolution map, topic/child trajectories, and milestones when present |
+| `narrative` | Read an evidence-backed interpretation of a cluster | labels, terms, lineage, representatives, neighbors, optional evolution | show cluster narrative with citations to available evidence and QA caveats |
 | `quality` | Inspect data contamination, duplicates, artifacts, imbalance, schema warnings | QA artifacts | show blocking and non-blocking issues |
 | `export` | Prepare downstream files | report data, membership, edges, keywords | export JSON, CSV/TSV, GEXF/GraphML, HTML |
 
@@ -219,6 +230,8 @@ dedicated artifact contract can later split these into stricter schema files.
 | `matrix` | matrix artifact plus row/column labels | matrix type, row IDs, column IDs, values, weighting | disable lens with `missing_matrix` |
 | `evidence` | abstracts plus membership, or representative docs | `uid`, `title`, optional `abstract`, joined cluster ID | show cluster-level evidence unavailable warning |
 | `temporal` | abstracts or report payload with year data | `pubyear`, counts by year or period | disable lens with `missing_temporal_data` |
+| `evolution` | cluster evolution payload | `cluster_id`, year counts, lifecycle or trajectory fields | disable lens with `missing_evolution_data` |
+| `narrative` | narrative payload or enough evidence to generate a deterministic summary | cluster label, terms, lineage, representative works or evidence snippets | disable lens with `missing_narrative_evidence` |
 | `quality` | QA artifact or validation output | severity, code, message, affected artifact | run lightweight validation if possible |
 | `export` | loaded result data plus writable target | available artifact list and export formats | show only formats whose inputs exist |
 
@@ -416,6 +429,8 @@ should be generated by validation, not hand-written in the UI.
     "matrix": false,
     "evidence": true,
     "temporal": false,
+    "evolution": false,
+    "narrative": false,
     "quality": true,
     "export": true
   },
@@ -440,6 +455,8 @@ Recommended feature inference:
 | `matrix` | matrix artifact exists with row/column metadata |
 | `evidence` | abstracts and membership can be joined, or representative docs exist |
 | `temporal` | `pubyear` exists and temporal summaries or yearly grouping are available |
+| `evolution` | cluster evolution artifact exists and has non-empty yearly or trajectory data |
+| `narrative` | narrative artifact exists, or labels/terms/evidence meet the deterministic narrative contract |
 | `quality` | QA report exists or validation can run |
 | `export` | loaded result has enough data to write at least one supported export |
 
@@ -549,7 +566,9 @@ VantagePoint:
 3. editable or replayable thesaurus, stop-term, alias, and acronym rules.
 4. matrix QA and matrix export.
 5. keyword-family hierarchy display.
-6. co-authorship, institution, source, and country co-occurrence where
+6. cluster evolution maps when temporal/evolution artifacts exist.
+7. evidence-backed cluster narrative view.
+8. co-authorship, institution, source, and country co-occurrence where
    normalized entity fields exist.
 
 ## V2 Product Scope

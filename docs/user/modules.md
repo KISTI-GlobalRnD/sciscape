@@ -3,9 +3,9 @@
 Status: public module orientation
 Date: 2026-05-27
 
-SciScape is branded as a full-cycle SciSci analysis and visualization package.
-The modules below are user-facing functional areas, not necessarily one-to-one
-with package directories.
+SciScape is branded as a local-first SciSci workbench for validated science
+landscapes. The modules below are user-facing functional areas, not necessarily
+one-to-one with package directories.
 
 ## Lifecycle Summary
 

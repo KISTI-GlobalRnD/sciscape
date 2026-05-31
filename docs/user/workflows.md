@@ -3,9 +3,9 @@
 Status: public workflow orientation
 Date: 2026-05-27
 
-SciScape is organized around full-cycle SciSci analysis and visualization of
-research paper networks. The workflows below describe the supported public
-paths from input data to landscape, keywords, reports, and viewer artifacts.
+SciScape is organized around validated science-landscape workflows for research
+paper networks. The workflows below describe the supported public paths from
+input data to landscapes, keywords, QA, reports, and viewer artifacts.
 
 For table-level schemas, see `docs/user/io_schema.md`. For module boundaries, see
 `docs/user/modules.md`.

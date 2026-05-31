@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sciscape"
 version = "0.2.0"
-description = "SciScape: full-cycle SciSci analysis and visualization for research paper networks."
+description = "SciScape: local-first SciSci workbench for validated science landscapes."
 readme = {file = "sciscape/README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 license = "LicenseRef-KRISS-Internal"
