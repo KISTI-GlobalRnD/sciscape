@@ -81,6 +81,9 @@ class LandscapeConfig:
 
     # Report
     report_title: str = "SciScape Landscape"
+    edge_evidence_enabled: bool = True
+    edge_evidence_max_relations: int = 300
+    edge_evidence_samples_per_relation: int = 3
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +404,7 @@ def run_landscape(
     abstract_subset_path = output_dir / "abstracts_subset.parquet"
     keywords_path = output_dir / "keywords.parquet"
     abbreviation_path = output_dir / "abbreviation_pairs.parquet"
+    edge_evidence_path = output_dir / "edge_evidence_samples.json"
     report_dir = output_dir / "report"
 
     # ------------------------------------------------------------------
@@ -512,10 +516,37 @@ def run_landscape(
     # ------------------------------------------------------------------
     # Step 4: Report (always regenerate — cheap)
     # ------------------------------------------------------------------
+    if cfg.edge_evidence_enabled:
+        try:
+            from .artifacts import write_edge_evidence_samples
+
+            evidence_source_abstracts = abstract_subset_path if abstract_subset_path.exists() else abstract_path
+            written_edge_evidence = write_edge_evidence_samples(
+                edges_path=edge_path,
+                membership_path=membership_path,
+                abstracts_path=evidence_source_abstracts,
+                output_path=edge_evidence_path,
+                max_relations=cfg.edge_evidence_max_relations,
+                max_samples_per_relation=cfg.edge_evidence_samples_per_relation,
+            )
+            if written_edge_evidence is not None:
+                log.info("Edge evidence samples saved: %s", written_edge_evidence)
+        except Exception as exc:  # pragma: no cover - defensive sidecar generation
+            log.warning("Edge evidence sample sidecar skipped: %s", exc)
+
     log.info("=" * 60)
     log.info("Step 4: Generate landscape report")
     log.info("=" * 60)
     _generate_report(keywords_df, viz_data, report_dir, cfg.report_title)
+    result_manifest_path = None
+    try:
+        from .artifacts import default_result_manifest_path, validate_result_root, write_result_manifest
+
+        write_result_manifest(output_dir)
+        result_manifest_path = default_result_manifest_path(validate_result_root(output_dir))
+        log.info("Result manifest saved: %s", result_manifest_path)
+    except Exception as exc:  # pragma: no cover - defensive manifest generation
+        log.warning("Result manifest skipped: %s", exc)
 
     # Summary
     log.info("=" * 60)
@@ -539,6 +570,8 @@ def run_landscape(
         "membership_path": membership_path,
         "keywords_path": keywords_path,
         "report_dir": report_dir,
+        "edge_evidence_path": edge_evidence_path if edge_evidence_path.exists() else None,
+        "result_manifest_path": result_manifest_path,
         "keywords_df": keywords_df,
         "viz_data": viz_data,
     }

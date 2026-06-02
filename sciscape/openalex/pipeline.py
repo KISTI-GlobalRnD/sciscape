@@ -188,6 +188,23 @@ def run_openalex_pipeline(
         except Exception as e:
             _log(f"Landscape failed: {e}")
 
+    try:
+        from ..artifacts import write_result_manifest
+
+        write_result_manifest(
+            output_dir,
+            mode="live_query",
+            source_overrides={
+                "source_type": "openalex_query",
+                "query": config.query,
+                "filters": dict(config.filters),
+                "record_count": len(works),
+            },
+        )
+        _log(f"Saved result manifest → {output_dir / 'result_manifest.json'}")
+    except Exception as e:
+        _log(f"Result manifest skipped: {e}")
+
     total_time = time.perf_counter() - t0
     _log(f"Pipeline complete in {total_time:.1f}s: "
          f"{len(works)} works, {sum(n_edges.values())} edges")

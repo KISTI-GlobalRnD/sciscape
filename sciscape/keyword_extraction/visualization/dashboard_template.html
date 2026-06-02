@@ -378,6 +378,8 @@ const DEFAULT_FEATURES = {
   matrix: false,
   evidence: false,
   temporal: false,
+  evolution: false,
+  narrative: false,
   quality: false,
   export: false
 };
@@ -398,6 +400,8 @@ const FEATURE_LABELS = {
   matrix: "Matrix",
   evidence: "Evidence",
   temporal: "Temporal",
+  evolution: "Evolution",
+  narrative: "Narrative",
   quality: "Quality",
   export: "Export"
 };
@@ -478,6 +482,14 @@ function _inferViewerFeatures() {
     const cl = DATA[cid] || {};
     return (cl.keywords || []).some(_hasKeywordSeries);
   });
+  const hasEvolution = ids.some(cid => {
+    const cl = DATA[cid] || {};
+    return Boolean(cl.evolution || cl.yearly_activity || cl.topic_trajectory || cl.child_trajectory);
+  });
+  const hasNarrative = ids.some(cid => {
+    const cl = DATA[cid] || {};
+    return Boolean(cl.narrative || cl.overview_markdown || (cl.overview && cl.overview.overview_markdown));
+  });
   return {
     overview: hasClusters,
     cluster_map: hasClusters,
@@ -486,6 +498,8 @@ function _inferViewerFeatures() {
     matrix: hasTermEdges,
     evidence: false,
     temporal: hasTemporal,
+    evolution: hasEvolution,
+    narrative: hasNarrative,
     quality: false,
     export: hasClusters || hasKeywords
   };

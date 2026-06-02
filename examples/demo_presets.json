@@ -23,10 +23,12 @@
       "auto_gamma": true,
       "auto_gamma_target": 3.0,
       "expected_artifacts": [
+        "result_manifest.json",
         "abstracts.parquet",
         "edges.parquet",
         "landscape/membership.parquet",
         "landscape/keywords.parquet",
+        "landscape/edge_evidence_samples.json",
         "landscape/report/data.json",
         "landscape/report/index.html",
         "landscape/report/report.html"
@@ -53,10 +55,12 @@
       "auto_gamma": true,
       "auto_gamma_target": 3.0,
       "expected_artifacts": [
+        "result_manifest.json",
         "abstracts.parquet",
         "edges.parquet",
         "landscape/membership.parquet",
         "landscape/keywords.parquet",
+        "landscape/edge_evidence_samples.json",
         "landscape/report/data.json",
         "landscape/report/index.html",
         "landscape/report/report.html"

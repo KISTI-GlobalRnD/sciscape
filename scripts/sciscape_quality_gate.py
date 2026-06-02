@@ -11,7 +11,13 @@ from typing import Any
 
 import pandas as pd
 
-from sciscape.artifacts import default_artifact_contract_path, validate_result_root, write_artifact_contract
+from sciscape.artifacts import (
+    default_artifact_contract_path,
+    validate_result_root,
+    write_artifact_contract,
+    write_edge_evidence_samples,
+    write_result_manifest,
+)
 from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
 from sciscape.keyword_extraction.visualization import export_dashboard
 from sciscape.web.network_data import build_term_network_json
@@ -204,6 +210,12 @@ def _write_web_demo_fixture(root: Path) -> tuple[Path, Path, Path]:
     report_dir = landscape_dir / "report"
     report_dir.mkdir(parents=True)
 
+    abstract_path = output_dir / "abstracts.parquet"
+    edge_path = output_dir / "edges.parquet"
+    membership_path = landscape_dir / "membership.parquet"
+    keyword_path = landscape_dir / "keywords.parquet"
+    edge_evidence_path = landscape_dir / "edge_evidence_samples.json"
+
     pd.DataFrame(
         {
             "uid": ["W0", "W1", "W2", "W3"],
@@ -221,20 +233,20 @@ def _write_web_demo_fixture(root: Path) -> tuple[Path, Path, Path]:
             ],
             "pubyear": [2021, 2022, 2021, 2022],
         }
-    ).to_parquet(output_dir / "abstracts.parquet", index=False)
+    ).to_parquet(abstract_path, index=False)
     pd.DataFrame(
         {
             "uid1": ["W0", "W0", "W1", "W2"],
             "uid2": ["W1", "W2", "W3", "W3"],
             "rel_sum2": [2.0, 1.0, 1.0, 2.0],
         }
-    ).to_parquet(output_dir / "edges.parquet", index=False)
+    ).to_parquet(edge_path, index=False)
     pd.DataFrame(
         {
             "uid": ["W0", "W1", "W2", "W3"],
             "cluster_nano": [0, 0, 1, 1],
         }
-    ).to_parquet(landscape_dir / "membership.parquet", index=False)
+    ).to_parquet(membership_path, index=False)
     pd.DataFrame(
         {
             "cluster_id": [0, 0, 0, 1, 1, 1],
@@ -257,10 +269,40 @@ def _write_web_demo_fixture(root: Path) -> tuple[Path, Path, Path]:
             "score": [0.95, 0.9, 0.8, 0.96, 0.88, 0.78],
             "frequency": [2, 2, 1, 2, 1, 1],
         }
-    ).to_parquet(landscape_dir / "keywords.parquet", index=False)
-    (report_dir / "data.json").write_text('{"clusters":[],"keywords":[]}', encoding="utf-8")
+    ).to_parquet(keyword_path, index=False)
+    written_edge_evidence = write_edge_evidence_samples(
+        edges_path=edge_path,
+        membership_path=membership_path,
+        abstracts_path=abstract_path,
+        output_path=edge_evidence_path,
+        max_relations=10,
+        max_samples_per_relation=2,
+    )
+    _assert(written_edge_evidence == edge_evidence_path, "edge evidence fixture was not written")
+    (report_dir / "data.json").write_text(
+        json.dumps(
+            {
+                "0": {
+                    "label": "perovskite solar cells, interface passivation",
+                    "keywords": [
+                        {"term": "perovskite solar cells"},
+                        {"term": "interface passivation"},
+                    ],
+                },
+                "1": {
+                    "label": "graph neural networks, traffic forecasting",
+                    "keywords": [
+                        {"term": "graph neural networks"},
+                        {"term": "traffic forecasting"},
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
     (report_dir / "index.html").write_text("<html><title>dashboard</title></html>", encoding="utf-8")
     (report_dir / "report.html").write_text("<html><title>report</title></html>", encoding="utf-8")
+    write_result_manifest(output_dir, mode="demo")
 
     manifest_path = root / "demo_presets.json"
     manifest_path.write_text(
@@ -275,10 +317,12 @@ def _write_web_demo_fixture(root: Path) -> tuple[Path, Path, Path]:
                         "query": "quality gate demo",
                         "max_works": 4,
                         "expected_artifacts": [
+                            "result_manifest.json",
                             "abstracts.parquet",
                             "edges.parquet",
                             "landscape/membership.parquet",
                             "landscape/keywords.parquet",
+                            "landscape/edge_evidence_samples.json",
                             "landscape/report/data.json",
                             "landscape/report/index.html",
                             "landscape/report/report.html",
@@ -335,6 +379,18 @@ def run_web_demo_smoke_gate() -> dict[str, Any]:
             _assert(job["status"] == "done", "opened demo job was not marked done")
             result = job["result"]
             _assert(result["landscape_rel_path"] == "landscape", "landscape rel path mismatch")
+            contract = result["artifact_contract"]
+            _assert(
+                contract["counts"]["edge_evidence_artifacts"] == 1,
+                "artifact contract did not detect edge evidence sidecar",
+            )
+            atlas = result.get("atlas", {})
+            sample_count = sum(
+                int(neighbor.get("sample_count") or 0)
+                for node in atlas.get("nodes", [])
+                for neighbor in node.get("neighbors", [])
+            )
+            _assert(sample_count > 0, "atlas neighbor evidence samples were not attached")
 
             network_response = client.get(f"/api/jobs/{job_id}/network")
             _assert(network_response.status_code == 200, "cluster network endpoint failed")
@@ -361,6 +417,7 @@ def run_web_demo_smoke_gate() -> dict[str, Any]:
                 "network_levels": int(len(network["nodes"])),
                 "term_network_nodes": int(len(term_network["nodes"])),
                 "term_network_edges": int(len(term_network["edges"])),
+                "edge_evidence_samples": sample_count,
             }
         finally:
             web_app._DEMO_MANIFEST_PATH = old_manifest
@@ -408,6 +465,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write qa/artifact_contract.json when used with --artifact-root.",
     )
+    parser.add_argument(
+        "--write-result-manifest",
+        action="store_true",
+        help="Write result_manifest.json when used with --artifact-root.",
+    )
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON only.")
     return parser
 
@@ -436,6 +498,11 @@ def main() -> None:
         else:
             artifact_payload = validate_result_root(args.artifact_root).to_dict()
         results["gates"]["artifact_contract"] = artifact_payload
+        if args.write_result_manifest:
+            manifest_result = write_result_manifest(args.artifact_root)
+            manifest_payload = manifest_result.to_dict()
+            manifest_payload["result_manifest_path"] = str(Path(artifact_payload["result_root"]) / "result_manifest.json")
+            results["gates"]["result_manifest"] = manifest_payload
         if not artifact_payload["ok"]:
             results["status"] = "failed"
             if args.json:

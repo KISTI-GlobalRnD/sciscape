@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -83,12 +84,77 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Recommended Demos" in response.text
     assert "Local Data" in response.text
     assert "Artifact contract" in response.text
+    assert 'id="atlas-shell"' in response.text
     assert "applyResultFeatureAvailability" in response.text
+    assert "renderAtlasShell" in response.text
+    assert "renderAtlasLineage" in response.text
+    assert "renderAtlasEvidenceProfile" in response.text
+    assert "renderAtlasChildren" in response.text
+    assert "atlasChildrenForNode" in response.text
+    assert "renderAtlasSearchPanel" in response.text
+    assert "atlasSearchRows" in response.text
+    assert "atlas_query" in response.text
+    assert "renderAtlasLensControls" in response.text
+    assert "renderAtlasLensScalePanel" in response.text
+    assert "atlasLensStats" in response.text
+    assert "atlasMetricRange" in response.text
+    assert "renderAtlasOrientation" in response.text
+    assert "atlasOrientationStats" in response.text
+    assert "atlasSourceLabel" in response.text
+    assert "renderAtlasSessionRail" in response.text
+    assert "toggleAtlasPin" in response.text
+    assert "atlasSessionStorageKey" in response.text
+    assert "renderAtlasViewControls" in response.text
+    assert "selectAtlasViewMode" in response.text
+    assert "renderAtlasHierarchyView" in response.text
+    assert "renderAtlasEvidenceNodeView" in response.text
+    assert "atlas_view" in response.text
+    assert "resultFeatureBlock" in response.text
+    assert "renderAtlasModulePanel" in response.text
+    assert "atlasModuleReadinessNote" in response.text
+    assert "renderAtlasFocusControls" in response.text
+    assert "selectAtlasFocusMode" in response.text
+    assert "atlasFocusedNodes" in response.text
+    assert "atlas_focus" in response.text
+    assert "selectAtlasNeighborEvidence" in response.text
+    assert "renderAtlasNeighborEvidence" in response.text
+    assert "atlasNeighborSamples" in response.text
+    assert "atlas_neighbor" in response.text
+    assert "renderAtlasNeighborSummary" in response.text
+    assert "selectAtlasLens" in response.text
+    assert "atlasEvidenceScore" in response.text
+    assert "atlas_lens" in response.text
+    assert "applyAtlasUrlState" in response.text
+    assert "syncAtlasUrlState" in response.text
+    assert "atlas_node" in response.text
+    assert "renderAtlasRepresentativeWorks" in response.text
+    assert "atlasNodeByUid" in response.text
+    assert "preferredAtlasLevel" in response.text
+    assert "atlas-search-hit" in response.text
+    assert "atlas-lens-panel" in response.text
+    assert "atlas-lens-scale-panel" in response.text
+    assert "atlas-lens-cell" in response.text
+    assert "atlas-orientation" in response.text
+    assert "atlas-session-rail" in response.text
+    assert "atlas-module-panel" in response.text
+    assert "atlas-module-note" in response.text
+    assert "atlas-view-panel" in response.text
+    assert "atlas-relation-panel" in response.text
+    assert "atlas-evidence-node-row" in response.text
+    assert "atlas-focus-panel" in response.text
+    assert "atlas-neighbor-evidence" in response.text
+    assert "atlas-neighbor-summary" in response.text
+    assert "atlas-pin-button" in response.text
+    assert "atlas-evidence-row" in response.text
+    assert "atlas-child-row" in response.text
+    assert "atlas-neighbor-row" in response.text
+    assert "atlas-work-row" in response.text
     assert 'id="q-search"' in response.text
     assert "submitQuery()" in response.text
     assert "fetch('/api/query'" in response.text
     assert "fetch('/api/demo-presets'" in response.text
     assert "fetch('/api/local-data" in response.text
+    assert "new URLSearchParams(window.location.search).get('job')" in response.text
     assert 'id="file-input"' not in response.text
 
 
@@ -130,6 +196,86 @@ def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
     assert payload["status"] == "done"
     assert payload["progress"] == ["fake pipeline: graph neural networks"]
     assert payload["result"]["n_works"] == 12
+
+
+def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    original_write_result_manifest = web_app.write_result_manifest
+    manifest_calls = []
+
+    def counted_write_result_manifest(*args, **kwargs):
+        manifest_calls.append((args, kwargs))
+        return original_write_result_manifest(*args, **kwargs)
+
+    def fake_openalex_pipeline(config):
+        output_dir = Path(config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        abstracts_path = output_dir / "abstracts.parquet"
+        pd.DataFrame(
+            {
+                "uid": ["W1"],
+                "title": ["Graph neural network survey"],
+                "abstract": ["Graph neural networks for citation analysis."],
+                "pubyear": [2024],
+            }
+        ).to_parquet(abstracts_path, index=False)
+        config.progress("fetched works")
+        return SimpleNamespace(
+            n_works=1,
+            n_edges={"dc": 0, "bc": 0, "cc": 0},
+            abstracts_path=abstracts_path,
+            edges_path=None,
+            landscape_dir=None,
+        )
+
+    monkeypatch.setattr(web_app, "write_result_manifest", counted_write_result_manifest)
+    monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_openalex_pipeline)
+
+    req = web_app.QueryRequest(
+        query="graph neural networks",
+        years="2020-2024",
+        max_works=1,
+        run_landscape=False,
+    )
+    job_id = "jobstatus1"
+    web_app._jobs[job_id] = {
+        "status": "pending",
+        "progress": [],
+        "result": None,
+        "request": req.model_dump(),
+    }
+
+    web_app._run_job(job_id, req)
+
+    output_dir = tmp_path / "workspace" / "web_output" / job_id
+    status_payload = json.loads((output_dir / "job_status.json").read_text(encoding="utf-8"))
+    manifest_payload = json.loads((output_dir / "result_manifest.json").read_text(encoding="utf-8"))
+    job = web_app._jobs[job_id]
+
+    assert job["status"] == "done"
+    assert job["progress"] == ["fetched works"]
+    assert job["result"]["job_status_path"] == "workspace/web_output/jobstatus1/job_status.json"
+    assert status_payload["schema_version"] == "sciscape_live_job_status_v1"
+    assert status_payload["status"] == "done"
+    assert status_payload["run_state"]["status"] == "complete"
+    assert status_payload["started_at_utc"]
+    assert status_payload["finished_at_utc"]
+    assert status_payload["updated_at_utc"]
+    assert status_payload["progress"] == ["fetched works"]
+    assert manifest_payload["schema_version"] == "sciscape_result_manifest_v1"
+    assert manifest_payload["source"]["query"] == "graph neural networks"
+    assert manifest_payload["source"]["filters"] == {"publication_year": "2020-2024"}
+    assert manifest_payload["run_state"]["status"] == "complete"
+    assert manifest_payload["run_state"]["progress"]["unit"] == "messages"
+    assert manifest_payload["artifacts"]["job_status"]["path"] == "job_status.json"
+    assert len(manifest_calls) == 2
+
+    reloaded = JobStore(Path(web_app._jobs._db_path))
+    reloaded_job = reloaded.get(job_id)
+    assert reloaded_job is not None
+    assert reloaded_job["started_at_utc"] == status_payload["started_at_utc"]
+    assert reloaded_job["finished_at_utc"] == status_payload["finished_at_utc"]
+    assert reloaded_job["updated_at_utc"] == status_payload["updated_at_utc"]
 
 
 def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
@@ -179,6 +325,7 @@ def test_demo_presets_endpoint_finds_timestamped_demo_output(monkeypatch, tmp_pa
                             "edges.parquet",
                             "landscape/membership.parquet",
                             "landscape/keywords.parquet",
+                            "landscape/edge_evidence_samples.json",
                             "landscape/report/data.json",
                         ],
                     }
@@ -196,6 +343,7 @@ def test_demo_presets_endpoint_finds_timestamped_demo_output(monkeypatch, tmp_pa
     (output_dir / "edges.parquet").write_bytes(b"edges")
     (output_dir / "landscape" / "membership.parquet").write_bytes(b"membership")
     (output_dir / "landscape" / "keywords.parquet").write_bytes(b"keywords")
+    (output_dir / "landscape" / "edge_evidence_samples.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr("sciscape.web.app._DEMO_MANIFEST_PATH", manifest_path)
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
@@ -291,6 +439,16 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         output_dir / "edges.parquet",
         index=False,
     )
+    (output_dir / "result_manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_result_manifest_v1",
+                "result_id": "curated-web-result",
+                "title": "Curated Web Result",
+            }
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
         [tmp_path / "workspace" / "web_output"],
@@ -313,7 +471,19 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["result_state"] == "loaded"
     assert job_payload["result"]["features"]["term_network"] is True
     assert job_payload["result"]["features"]["keyword"] is True
+    assert job_payload["result"]["feature_states"]["keyword"] == "stable"
+    assert job_payload["result"]["result_manifest"]["schema_version"] == "sciscape_result_manifest_v1"
+    assert job_payload["result"]["result_manifest"]["manifest_state"] == "present"
+    assert job_payload["result"]["result_manifest"]["title"] == "Curated Web Result"
+    assert job_payload["result"]["result_manifest"]["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
     assert job_payload["result"]["artifact_contract"]["ok"] is True
+    assert job_payload["result"]["atlas"]["node_count"] == 1
+    assert job_payload["result"]["atlas"]["nodes"][0]["label"] == "perovskite"
+    assert job_payload["result"]["atlas"]["nodes"][0]["doc_count"] == 2
+    assert job_payload["result"]["atlas"]["nodes"][0]["doc_count_source"] == "membership:cluster"
+    assert job_payload["result"]["atlas"]["nodes"][0]["representative_work_count"] == 2
+    assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["title"] == "Stable perovskite device"
+    assert job_payload["result"]["atlas_report_rel_path"] == "landscape/report/data.json"
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

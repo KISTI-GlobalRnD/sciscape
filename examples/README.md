@@ -62,6 +62,9 @@ The local web app also reads `demo_presets.json`. Its Recommended Demos panel
 discovers these generated outputs under `workspace/examples_output/`, including
 timestamped `openalex_live_<timestamp>/` roots, and opens the matching
 `landscape/report/data.json` without rerunning the pipeline.
+Canonical demo outputs are expected to include
+`landscape/edge_evidence_samples.json`, which lets the Atlas neighbor inspector
+show bounded raw work-pair samples instead of aggregate-only relations.
 
 Validate generated demo outputs:
 

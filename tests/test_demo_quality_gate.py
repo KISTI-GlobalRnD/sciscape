@@ -17,8 +17,10 @@ def test_demo_manifest_defines_canonical_public_presets():
     assert PRESETS["gnn"].filters["title_and_abstract.search"] == "graph neural networks"
 
     for preset in manifest["presets"].values():
+        assert "result_manifest.json" in preset["expected_artifacts"]
         assert "landscape/report/data.json" in preset["expected_artifacts"]
         assert "landscape/keywords.parquet" in preset["expected_artifacts"]
+        assert "landscape/edge_evidence_samples.json" in preset["expected_artifacts"]
 
 
 def test_quality_gate_smoke_runs_without_external_data():
@@ -50,3 +52,4 @@ def test_quality_gate_web_demo_smoke_runs_without_external_data():
     assert smoke["status"] == "passed"
     assert smoke["term_network_nodes"] > 0
     assert smoke["term_network_edges"] > 0
+    assert smoke["edge_evidence_samples"] > 0

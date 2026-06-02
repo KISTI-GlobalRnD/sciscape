@@ -12,6 +12,7 @@ import hashlib
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
@@ -21,7 +22,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
-from sciscape.artifacts import validate_result_root
+from sciscape.artifacts import (
+    build_atlas_payload_from_report_data,
+    infer_result_artifacts,
+    load_result_manifest,
+    validate_result_root,
+    write_result_manifest,
+)
 
 log = logging.getLogger(__name__)
 
@@ -72,10 +79,12 @@ _LOCAL_DATA_ROOTS = [
 ]
 _DEMO_MANIFEST_PATH = Path("examples/demo_presets.json")
 _DEFAULT_DEMO_ARTIFACTS = [
+    "result_manifest.json",
     "abstracts.parquet",
     "edges.parquet",
     "landscape/membership.parquet",
     "landscape/keywords.parquet",
+    "landscape/edge_evidence_samples.json",
     "landscape/report/data.json",
 ]
 
@@ -392,10 +401,86 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     if edges.exists():
         result["edges_path"] = str(edges)
     contract = validate_result_root(path).to_dict()
+    manifest = load_result_manifest(path)
     result["artifact_contract"] = contract
+    result["result_manifest"] = manifest
     result["features"] = contract["features"]
+    result["feature_states"] = {
+        name: feature.get("state", "hidden")
+        for name, feature in manifest.get("features", {}).items()
+    }
     result["result_state"] = contract["result_state"]
+    _attach_report_atlas(result)
     return result
+
+
+def _report_data_path_for_result(result: dict[str, Any]) -> Path | None:
+    landscape_dir = result.get("landscape_dir")
+    if landscape_dir:
+        path = Path(landscape_dir) / "report" / "data.json"
+        if path.exists():
+            return path
+    output_dir = result.get("output_dir")
+    if output_dir:
+        path = Path(output_dir) / "data.json"
+        if path.exists():
+            return path
+    return None
+
+
+def _first_landscape_file(result: dict[str, Any], pattern: str) -> Path | None:
+    landscape_dir = result.get("landscape_dir")
+    if not landscape_dir:
+        return None
+    root = Path(landscape_dir)
+    if not root.exists():
+        return None
+    for path in root.glob(pattern):
+        if path.is_file():
+            return path
+    return None
+
+
+def _attach_report_atlas(result: dict[str, Any]) -> None:
+    """Attach the report-level Atlas payload when a viewer data file is present."""
+    data_path = _report_data_path_for_result(result)
+    if data_path is None:
+        return
+    try:
+        report_data = json.loads(data_path.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    if not isinstance(report_data, dict):
+        return
+
+    meta = report_data.get("_sciscape")
+    embedded_atlas = meta.get("atlas") if isinstance(meta, dict) else None
+    membership_path = _first_landscape_file(result, "membership*.parquet")
+    edges_path = result.get("edges_path")
+    abstracts_path = result.get("abstracts_path")
+    edge_evidence_paths = infer_result_artifacts(data_path).edge_evidence_paths
+    atlas = build_atlas_payload_from_report_data(
+        report_data,
+        membership_path=membership_path,
+        edges_path=edges_path,
+        abstracts_path=abstracts_path,
+        edge_evidence_paths=edge_evidence_paths,
+    )
+    if not isinstance(atlas, dict) or not atlas.get("nodes"):
+        atlas = embedded_atlas
+    if not isinstance(atlas, dict) or not atlas.get("nodes"):
+        return
+
+    result["atlas"] = atlas
+    output_dir = result.get("output_dir")
+    try:
+        result["atlas_report_rel_path"] = (
+            data_path.relative_to(Path(output_dir)).as_posix()
+            if output_dir
+            else str(data_path)
+        )
+    except ValueError:
+        result["atlas_report_rel_path"] = str(data_path)
 
 
 def _artifact_role(path: Path) -> str:
@@ -1266,22 +1351,188 @@ async def export_network(job_id: str, fmt: str):
 
 # ── Background job runner ────────────────────────────────────
 
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _job_status_for_manifest(status: str) -> str:
+    return {
+        "pending": "queued",
+        "running": "running",
+        "done": "complete",
+        "error": "failed",
+    }.get(status, status)
+
+
+def _query_filters(req: QueryRequest) -> dict[str, Any]:
+    filters: dict[str, Any] = {}
+    if req.years:
+        filters["publication_year"] = req.years
+    return filters
+
+
+def _rel_output_path(path: Path, output_dir: Path) -> str:
+    try:
+        return path.relative_to(output_dir).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def _live_job_partial_outputs(output_dir: Path, result: Any | None = None) -> list[dict[str, Any]]:
+    candidates: list[tuple[str, Path | None]] = [
+        ("abstracts", output_dir / "abstracts.parquet"),
+        ("edges", output_dir / "edges.parquet"),
+        ("job_status", output_dir / "job_status.json"),
+        ("membership", output_dir / "landscape" / "membership.parquet"),
+        ("keywords", output_dir / "landscape" / "keywords.parquet"),
+        ("report_data", output_dir / "landscape" / "report" / "data.json"),
+    ]
+    if result is not None:
+        candidates.extend(
+            [
+                ("abstracts", getattr(result, "abstracts_path", None)),
+                ("edges", getattr(result, "edges_path", None)),
+                ("landscape", getattr(result, "landscape_dir", None)),
+            ]
+        )
+    outputs: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for kind, candidate in candidates:
+        if candidate is None:
+            continue
+        path = Path(candidate)
+        if not path.exists():
+            continue
+        rel_path = _rel_output_path(path, output_dir)
+        key = (kind, rel_path)
+        if key in seen:
+            continue
+        seen.add(key)
+        outputs.append(
+            {
+                "kind": kind,
+                "path": rel_path,
+                "status": "present",
+                "size_bytes": int(path.stat().st_size) if path.is_file() else None,
+            }
+        )
+    return outputs
+
+
+def _write_live_job_status_artifacts(
+    *,
+    job_id: str,
+    job: dict[str, Any],
+    output_dir: Path,
+    req: QueryRequest,
+    filters: dict[str, Any],
+    status: str,
+    result: Any | None = None,
+    error: str | None = None,
+    validation_path: Path | None = None,
+    write_manifest: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    now = _utc_now()
+    job["updated_at_utc"] = now
+    progress_messages = list(job.get("progress") or [])
+    if status in {"done", "error"}:
+        job.setdefault("finished_at_utc", now)
+    partial_outputs = _live_job_partial_outputs(output_dir, result)
+    run_state = {
+        "status": _job_status_for_manifest(status),
+        "started_at_utc": job.get("started_at_utc"),
+        "finished_at_utc": job.get("finished_at_utc"),
+        "heartbeat_at_utc": now,
+        "progress": {
+            "current": len(progress_messages),
+            "total": len(progress_messages) if status in {"done", "error"} else None,
+            "unit": "messages",
+        },
+        "shards": {"total": 0, "complete": 0, "failed": 0, "running": 0},
+        "checkpoints": [{"path": "job_status.json", "kind": "job_status", "status": "present"}],
+        "partial_outputs": partial_outputs,
+        "failure": {"reason": error} if error else None,
+        "resume": {"supported": False, "command": None},
+    }
+    record_count = getattr(result, "n_works", None) if result is not None else None
+    source_overrides = {
+        "source_type": "openalex_query",
+        "query": req.query,
+        "filters": filters,
+        "record_count": record_count,
+    }
+    payload = {
+        "schema_version": "sciscape_live_job_status_v1",
+        "job_id": job_id,
+        "status": status,
+        "updated_at_utc": now,
+        "started_at_utc": job.get("started_at_utc"),
+        "finished_at_utc": job.get("finished_at_utc"),
+        "request": req.model_dump(),
+        "output_dir": str(output_dir),
+        "progress": progress_messages,
+        "progress_messages_count": len(progress_messages),
+        "partial_outputs": partial_outputs,
+        "run_state": run_state,
+        "error": error,
+    }
+    _write_json_atomic(output_dir / "job_status.json", payload)
+
+    manifest_payload = None
+    if write_manifest:
+        try:
+            manifest = write_result_manifest(
+                validation_path or output_dir,
+                mode="live_query",
+                source_overrides=source_overrides,
+                run_state_overrides=run_state,
+            )
+            manifest_payload = manifest.to_dict()
+        except Exception as exc:  # pragma: no cover - defensive status metadata sidecar
+            log.warning("Result manifest status update skipped for job %s: %s", job_id, exc)
+    return payload, manifest_payload
+
+
 def _run_job(job_id: str, req: QueryRequest) -> None:
     """Execute the OpenAlex pipeline in background."""
     from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
 
     job = _jobs[job_id]
     job["status"] = "running"
+    job["started_at_utc"] = _utc_now()
+    output_dir = Path("workspace/web_output") / job_id
+    filters = _query_filters(req)
+    _write_live_job_status_artifacts(
+        job_id=job_id,
+        job=job,
+        output_dir=output_dir,
+        req=req,
+        filters=filters,
+        status="running",
+    )
+    _jobs.persist(job_id)
 
     def progress_cb(msg: str) -> None:
         job["progress"].append(msg)
+        _write_live_job_status_artifacts(
+            job_id=job_id,
+            job=job,
+            output_dir=output_dir,
+            req=req,
+            filters=filters,
+            status="running",
+            write_manifest=False,
+        )
+        _jobs.persist(job_id)
 
     try:
-        output_dir = Path("workspace/web_output") / job_id
-        filters = {}
-        if req.years:
-            filters["publication_year"] = req.years
-
         config = OpenAlexPipelineConfig(
             query=req.query,
             filters=filters,
@@ -1299,18 +1550,64 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
         result = run_openalex_pipeline(config)
 
         job["status"] = "done"
-        job["result"] = {
+        job_result = {
             "n_works": result.n_works,
             "n_edges": result.n_edges,
             "output_dir": str(output_dir),
             "abstracts_path": str(result.abstracts_path) if result.abstracts_path else None,
             "edges_path": str(result.edges_path) if result.edges_path else None,
             "landscape_dir": str(result.landscape_dir) if result.landscape_dir else None,
+            "job_status_path": str(output_dir / "job_status.json"),
         }
+        try:
+            validation_path = result.landscape_dir or output_dir
+            contract = validate_result_root(validation_path, mode="live_query").to_dict()
+            _, manifest = _write_live_job_status_artifacts(
+                job_id=job_id,
+                job=job,
+                output_dir=output_dir,
+                req=req,
+                filters=filters,
+                status="done",
+                result=result,
+                validation_path=validation_path,
+            )
+            if manifest is None:
+                manifest = load_result_manifest(
+                    validation_path,
+                    mode="live_query",
+                    source_overrides={
+                        "source_type": "openalex_query",
+                        "query": req.query,
+                        "filters": filters,
+                        "record_count": result.n_works,
+                    },
+                )
+            job_result["artifact_contract"] = contract
+            job_result["result_manifest"] = manifest
+            job_result["features"] = contract["features"]
+            job_result["feature_states"] = {
+                name: feature.get("state", "hidden")
+                for name, feature in manifest.get("features", {}).items()
+            }
+            job_result["result_state"] = contract["result_state"]
+        except Exception as exc:
+            job_result["artifact_contract_error"] = str(exc)
+        _attach_report_atlas(job_result)
+        job["result"] = job_result
         _jobs.persist(job_id)
     except Exception as e:
         job["status"] = "error"
         job["progress"].append(f"ERROR: {e}")
         job["result"] = {"error": str(e)}
+        _write_live_job_status_artifacts(
+            job_id=job_id,
+            job=job,
+            output_dir=output_dir,
+            req=req,
+            filters=filters,
+            status="error",
+            error=str(e),
+        )
         _jobs.persist(job_id)
         log.exception("Job %s failed", job_id)

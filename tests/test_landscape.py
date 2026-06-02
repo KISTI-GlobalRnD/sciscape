@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+import json
+
 import igraph as ig
 import pandas as pd
 import polars as pl
@@ -320,3 +322,67 @@ class TestConfig:
         # Resolution happens inside _run_clustering, not in config
         expected = 10.0 * cfg.gamma_range[1]
         assert expected == pytest.approx(1e-2)
+
+
+def test_run_landscape_writes_edge_evidence_sidecar_when_cached(monkeypatch, tmp_path):
+    from sciscape.landscape import run_landscape
+
+    output_dir = tmp_path / "landscape"
+    output_dir.mkdir()
+    edge_path = tmp_path / "edges.parquet"
+    abstract_path = tmp_path / "abstracts.parquet"
+    pd.DataFrame(
+        {
+            "uid1": ["D0", "D1", "D2"],
+            "uid2": ["D1", "D2", "D3"],
+            "rel_sum2": [2.0, 1.0, 2.0],
+        }
+    ).to_parquet(edge_path, index=False)
+    pd.DataFrame(
+        {
+            "uid": ["D0", "D1", "D2", "D3"],
+            "title": [
+                "Perovskite interface passivation",
+                "Perovskite device stability",
+                "Graph neural traffic forecasting",
+                "Graph neural anomaly detection",
+            ],
+            "abstract": ["a", "b", "c", "d"],
+            "pubyear": [2021, 2022, 2021, 2022],
+        }
+    ).to_parquet(abstract_path, index=False)
+    pd.DataFrame(
+        {
+            "uid": ["D0", "D1", "D2", "D3"],
+            "cluster_nano": [0, 0, 1, 1],
+        }
+    ).to_parquet(output_dir / "membership.parquet", index=False)
+    pd.DataFrame(
+        {
+            "cluster_id": [0, 1],
+            "term": ["perovskite solar cells", "graph neural networks"],
+            "score": [0.9, 0.8],
+            "frequency": [2, 2],
+        }
+    ).to_parquet(output_dir / "keywords.parquet", index=False)
+    monkeypatch.setattr("sciscape.landscape._generate_report", lambda *args, **kwargs: [])
+
+    result = run_landscape(
+        edge_path,
+        abstract_path,
+        output_dir,
+        LandscapeConfig(n_hierarchy_levels=1, edge_evidence_samples_per_relation=1),
+    )
+
+    evidence_path = output_dir / "edge_evidence_samples.json"
+    manifest_path = tmp_path / "result_manifest.json"
+    assert result["edge_evidence_path"] == evidence_path
+    assert result["result_manifest_path"] == manifest_path
+    assert manifest_path.exists()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == "sciscape_result_manifest_v1"
+    assert manifest["features"]["keyword"]["state"] == "stable"
+    payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+    assert payload["relations"][0]["source_uid"] == "cluster:0"
+    assert payload["relations"][0]["target_uid"] == "cluster:1"
+    assert payload["relations"][0]["samples"][0]["source_title"] == "Perovskite device stability"

@@ -1,23 +1,20 @@
 # SciScape Feature Definition
 
 Status: product contract draft
-Date: 2026-05-30
+Date: 2026-06-01
 
-This document defines SciScape's intended product capabilities before the web
-UI is redesigned. It is not a screen-level UI specification. It is the contract
-for app modes, analysis lenses, inputs, outputs, and validation rules that the
-UI, CLI, and static viewer should eventually share.
+This document defines SciScape features by product capability. It is not a
+screen-level UI specification. It is the contract that future CLI, local web
+app, static viewer, and report surfaces should share.
 
-For the higher-level project identity, governance levels, project invariants,
-and north-star definition, see `branding_positioning.md`. This feature
-definition should remain subordinate to that document: a feature is in scope
-only if it strengthens the validated science-landscape workflow without
-violating the stated invariants.
+For project identity, immutable rules, north-star direction, and claim
+boundaries, see `branding_positioning.md`. For Atlas Map-specific adoption from
+the NanoClustering Science Atlas Explorer, see `atlas_app_benchmark.md`. For
+result-root schema and feature inference details, see `artifact_contract.md`.
 
-## Positioning
+## Product Shape
 
-SciScape should be framed as a local-first workbench for validated science
-landscapes:
+SciScape is a local-first workbench for validated science landscapes:
 
 ```text
 query or files
@@ -25,37 +22,36 @@ query or files
 -> network and matrix construction
 -> clustering and hierarchy
 -> keyword cleaning and labeling
--> cluster maps, hierarchy maps, evolution maps, and evidence review
--> cluster narratives
+-> maps, evidence, temporal/evolution review, and narratives
 -> export, report, and validation artifacts
 ```
 
-The primary differentiation should not be a single map view. It should be a
-reproducible, QA-visible workflow that combines:
+The product promise is not a single map. It is a reproducible workflow that
+combines:
 
-- VOSviewer-style science mapping and term co-occurrence visualization.
-- Biblioshiny-style full-cycle bibliometric workflow.
-- CiteSpace-style temporal and structural knowledge-domain review.
-- KnowledgeMatrix and VantagePoint-style tech mining, matrix building, cleaning,
-  thesaurus, and analyst refinement.
+- VOSviewer-style science maps, term co-occurrence, thesaurus cleaning, and
+  shareable maps.
+- bibliometrix/Biblioshiny-style full-cycle bibliometric workflow.
+- CiteSpace/SciMAT-style temporal knowledge-domain review, with advanced claims
+  deferred until method artifacts exist.
+- KnowledgeMatrix/VantagePoint-style tech mining, matrix building, cleaning,
+  thesaurus rules, and analyst refinement.
 - SciScape's own Rust CPM/Leiden clustering, keyword QA, artifact filtering,
-  and local/static deployment path.
+  local web app, static viewer, and release gates.
 
 ## Benchmark Baseline
 
-Use this table as the functional baseline. SciScape does not need to match every
-feature in v1, but each feature should have an explicit decision: support,
-defer, or exclude.
+Use these tool families as benchmark pressure, not as UI templates.
 
 | Tool family | Reference tools | Baseline capability | SciScape response |
 | --- | --- | --- | --- |
-| Science mapping | VOSviewer | co-authorship, citation, bibliographic coupling, co-citation, term co-occurrence, density and overlay maps, thesaurus-based cleaning | Support core network and term-map equivalents, with explicit artifact contracts |
-| Bibliometric workflow | bibliometrix / Biblioshiny | import, filtering, source/author/document metrics, conceptual/intellectual/social structures | Support a smaller workflow first: ingest, network, landscape, keywords, report |
-| Temporal knowledge mapping | CiteSpace, SciMAT | timeline, burst, thematic evolution, strategic diagram | Defer advanced burst/thematic evolution, but reserve temporal lens contracts |
-| Tech mining | KnowledgeMatrix, VantagePoint | user-defined lists, occurrence/co-occurrence/proximity matrices, clustering, visualization, preprocessing, string/thesaurus editors | Make Matrix Builder and Cleaning modes first-class app modes |
-| Institutional analytics | SciVal, InCites, Dimensions Analytics | institutional benchmarking, normalized impact, portfolio analytics | Defer as out of scope unless an institutional data contract is added |
-| General graph exploration | Gephi, Pajek, Cytoscape | flexible layout, filtering, graph export | Export GEXF/GraphML and avoid duplicating full graph-editor behavior |
-| Literature exploration | Connected Papers, ResearchRabbit, Litmaps, Open Knowledge Maps | seed/query-based exploratory maps | Support query-to-map and curated static result bundles |
+| Science mapping | VOSviewer | citation, bibliographic coupling, co-citation, co-authorship, term co-occurrence, density/overlay maps, thesaurus cleaning | support core network, term-map, cleaning, and export equivalents with artifact contracts |
+| Bibliometric workflow | bibliometrix / Biblioshiny | import, filtering, source/author/document metrics, conceptual/intellectual/social structures | support a smaller complete workflow first: ingest, network, landscape, keywords, report |
+| Temporal knowledge mapping | CiteSpace / SciMAT | timeline, burst detection, thematic evolution, strategic diagram | support simple temporal lenses first; defer burst/thematic evolution until method contracts exist |
+| Tech mining | KnowledgeMatrix / VantagePoint | user lists, matrix generation, cleaning, thesaurus, analyst refinement | make Matrix Builder and Cleaning first-class modes |
+| Literature exploration | Connected Papers / ResearchRabbit / Litmaps / Open Knowledge Maps | query or seed to exploratory map | support query-to-result and curated static bundles with stronger QA/provenance |
+| Graph exploration | Gephi / Cytoscape / Pajek | flexible graph editing, filtering, graph export | export to graph tools; do not become a full graph editor |
+| Institutional analytics | SciVal / InCites / Dimensions Analytics | normalized impact, portfolio analytics, institutional benchmarking | defer until metric and data-license contracts exist |
 
 References to verify when expanding scope:
 
@@ -66,201 +62,214 @@ References to verify when expanding scope:
 - KnowledgeMatrix paper: https://www.kci.go.kr/kciportal/ci/sereArticleSearch/ciSereArtiView.kci?sereArticleSearchBean.artiId=ART001223521
 - VantagePoint overview: https://www.thevantagepoint.com/
 
-## Feature Support Matrix
+## Feature Maturity Labels
 
-Use this matrix to prevent benchmark drift. Each capability must have one
-product decision before it is exposed in the app.
+| Label | Meaning |
+| --- | --- |
+| `support-v1` | required for the first coherent app or already part of the stable product contract |
+| `support-v1.5` | required for the analyst-workbench pass after v1 contracts stabilize |
+| `support-v2` | supported later after core artifacts and UI are stable |
+| `defer` | promising but not a product promise yet |
+| `exclude` | intentionally outside SciScape scope |
 
-Decision labels:
+## Workspace Model
 
-- `support-v1`: required for the first coherent app.
-- `support-v1.5`: required for the KnowledgeMatrix/VantagePoint-facing
-  refinement pass.
-- `support-v2`: supported later after the core contracts stabilize.
-- `defer`: promising, but no product promise yet.
-- `exclude`: intentionally outside SciScape's scope.
+The workspace is the user's analysis state, not a folder browser. UI/UX should
+open modes and lenses from workspace objects and artifact contracts, not from
+guessed paths.
 
-| Capability | Benchmark pressure | Decision | Contract note |
-| --- | --- | --- | --- |
-| Curated demo result | VOSviewer, Open Knowledge Maps | `support-v1` | must load without knowing local folders |
-| Hosted `data.json` static viewer | VOSviewer sharing, Atlas datapacks | `support-v1` | must work on GitHub Pages or any static host |
-| OpenAlex query-to-result | literature exploration tools | `support-v1` | small jobs only, with job state and saved result root |
-| Existing result-root loading | Atlas, local analysis workflows | `support-v1` | must validate before enabling lenses |
-| WoS, Scopus, OpenAlex, BibTeX import | Biblioshiny, KnowledgeMatrix | `support-v1` for CLI, `support-v2` for app | app should not claim unsupported import adapters |
-| PubMed, Dimensions, Lens, Crossref import | Biblioshiny, commercial platforms | `defer` | mention only as future adapter targets |
-| Direct citation, bibliographic coupling, co-citation | VOSviewer, CiteSpace | `support-v1` | edge family and weight semantics must be recorded |
-| Semantic or embedding KNN edges | SciScape differentiation | `support-v1` when embeddings exist | feature flag must expose missing embedding data |
-| Co-authorship, institution, source, country networks | VOSviewer, Biblioshiny | `support-v1.5` | depends on normalized entity fields |
-| Term co-occurrence graph/table/map | VOSviewer, KnowledgeMatrix | `support-v1` | must have edge counts and artifact validation |
-| General matrix builder | KnowledgeMatrix, VantagePoint | `support-v1.5` | document-term, cluster-term, term-term first |
-| Proximity/similarity matrices beyond co-occurrence | VantagePoint | `support-v1.5` | must distinguish occurrence, proximity, similarity |
-| CPM/Leiden clustering | SciScape core | `support-v1` | backend, parameters, seed, and version must be preserved |
-| User-configurable clustering app mode | VOSviewer/Gephi-like exploration | `support-v2` | avoid exposing research defaults prematurely |
-| Keyword extraction and representative labels | all science mapping tools | `support-v1` | counts, score, n-gram, rank, and flags required |
-| Artifact filtering and keyword QA | SciScape differentiation | `support-v1` | blocking artifacts must prevent release-quality status |
-| Read-only cleaning audit | KnowledgeMatrix, VantagePoint | `support-v1` | show raw, normalized, display, family, flags |
-| Editable thesaurus/alias/stop-term rules | VOSviewer, VantagePoint | `support-v1.5` | rule log must be replayable |
-| Acronym expansion from local text | tech mining workflows | `support-v1.5` | preserve evidence source and ambiguity state |
-| Temporal trend summary | Biblioshiny, CiteSpace | `support-v1` if `pubyear` exists | simple yearly counts before advanced evolution |
-| Cluster evolution map | Science Atlas, CiteSpace/SciMAT | `support-v1.5` when evolution artifacts exist | yearly activity, phase topics, topic/child trajectories, representative works |
-| Evidence-backed cluster narratives | Science Atlas, analyst review workflows | `support-v1.5` | must cite terms, representatives, lineage, neighbors, evolution, and QA caveats |
-| Burst detection and thematic evolution | CiteSpace, SciMAT | `support-v2` | do not claim without separate method contract |
-| Institutional benchmarking and normalized impact | SciVal, InCites | `defer` | requires controlled metric and data-license contracts |
-| Full graph editor behavior | Gephi, Cytoscape | `exclude` | export to graph tools instead |
-| LLM canonicalization | modern workflow expectation | `defer` | optional, auditable, never required for deterministic output |
+### Workspace Objects
 
-## Product Principles
+| Object | Meaning | Required fields |
+| --- | --- | --- |
+| `workspace` | top-level container for projects, runs, reusable rules, settings | `workspace_id`, `name`, `root`, `created_at_utc`, `updated_at_utc` |
+| `project` | research question or review topic | `project_id`, `title`, `description`, `status`, `tags` |
+| `dataset` | imported or fetched records before analysis | `dataset_id`, `source_type`, `record_count`, `source_manifest`, `records_path` |
+| `run` | pipeline execution from query/files/dataset to result artifacts | `run_id`, `mode`, `state`, `config`, `started_at_utc`, `completed_at_utc` |
+| `result` | validated result root that can power lenses | `result_id`, `result_root`, `artifact_contract`, `features`, `versions` |
+| `artifact` | typed file or payload used by a mode or lens | `artifact_id`, `role`, `path`, `schema_version`, `checksum` |
+| `rule_set` | replayable cleaning, alias, thesaurus, acronym, or filter rules | `rule_set_id`, `rule_type`, `rules_path`, `source`, `version` |
+| `matrix` | matrix artifact plus row/column metadata and QA | `matrix_id`, `matrix_type`, `shape`, `weighting`, `qa_path` |
+| `export` | generated shareable or downstream package | `export_id`, `format`, `source_result_id`, `path`, `created_at_utc` |
 
-1. Start from the user's analysis state, not from an implementation folder.
+### Workspace States
 
-   The app should make clear whether the user is opening a static result,
-   running a live query, validating a bundle, cleaning terms, or building a
-   matrix.
+| State | Meaning | UI implication |
+| --- | --- | --- |
+| `no_workspace` | no readable or writable root is selected | offer create/open workspace and curated demo |
+| `workspace_loaded` | workspace manifest is valid | show projects, demos, recent results, and runnable modes |
+| `dataset_loaded` | records can be addressed by stable IDs | enable filtering, network construction, matrix builder, and pipeline start |
+| `run_active` | a job has heartbeat, logs, or partial artifacts | show progress, partial outputs, retry/cancel state |
+| `result_loaded` | validation enables at least one lens | show artifact-backed lenses and export |
+| `refinement_active` | rule edits or matrix/cleaning comparisons are staged | show compare, replay, and commit controls |
+| `publish_ready` | result passes release/demo gates | enable static viewer bundle, report, or demo packaging |
 
-2. Separate app mode from analysis lens.
+### Workspace Navigation Targets
 
-   An app mode decides how data enters and whether the pipeline can run. An
-   analysis lens decides how an already-loaded result is inspected.
+| Target | Primary objects | Role |
+| --- | --- | --- |
+| `Home` | workspace, project, demo, recent result | start from analysis state, not folders |
+| `Run` | run, dataset, partial artifacts | job state, logs, partial outputs, recoverable failures |
+| `Atlas` | result, membership, keywords, edges, evidence | cluster map, hierarchy, evidence, temporal/evolution, narrative |
+| `Matrices` | matrix, dataset, result, rule_set | matrix builder, matrix QA, matrix table, matrix export |
+| `Cleaning` | rule_set, keyword/entity tables, abstracts | raw/normalized/display audit, rule replay, before/after QA |
+| `Validation` | artifact contract, QA artifacts | blocking issues, warnings, release readiness |
+| `Exports` | result, export manifests | static viewer, reports, graph/matrix exports |
 
-3. Advertise features from artifacts.
+Workspace acceptance rules:
 
-   The UI should not assume that keywords, term networks, temporal data,
-   hierarchy, or representative documents exist. These should be inferred from
-   files and schema columns.
-
-4. Make cleaning and matrices product surfaces.
-
-   Keyword cleaning, thesaurus rules, aliases, acronym expansion, and
-   co-occurrence matrices are not internal utilities. They are core to
-   analyst-grade SciSci work.
-
-5. Keep validation visible.
-
-   Every complete result should expose manifest, schema, QA, and warning
-   information in a machine-readable form.
+- A UI screen may display only modes and lenses backed by loaded workspace
+  objects or advertised as unavailable with a reason.
+- A disabled mode or lens must name the missing artifact, schema field, or
+  blocking validation rule.
+- User edits create or update rule artifacts; raw source data is not silently
+  mutated.
+- A result can be published only from a validated result object.
+- Workspace state must be serializable so CLI, local web, and future static
+  viewers can agree on what exists.
 
 ## App Modes
 
-App modes are entry states. They determine what input is accepted, whether
-SciScape runs computation, and what result contract must be produced.
+Modes are entry states. They decide what inputs are accepted, whether SciScape
+runs computation, and what output state must be produced.
 
 | Mode ID | User goal | Primary inputs | Runs pipeline | Required output state | Priority |
 | --- | --- | --- | --- | --- | --- |
-| `demo` | Open a curated example immediately | bundled manifest or hosted `data.json` | no | loaded result, read-only provenance | v1 |
-| `static_viewer` | View a GitHub Pages or shared static result | hosted `data.json` or report bundle | no | loaded result, read-only provenance | v1 |
-| `local_result` | Inspect an existing SciScape output folder | result root, `data.json`, or report directory | no | loaded result plus validation report | v1 |
-| `live_query` | Paste a query and build a small analysis | OpenAlex query and limits | yes | job state, result root, report bundle | v1 |
-| `file_pipeline` | Run from user-provided bibliographic files | abstracts, references, edges, metadata | yes | result root with manifest | v2 |
-| `matrix_builder` | Build occurrence, co-occurrence, proximity, and 1-mode/2-mode tables | records, term lists, fields, cluster labels | partial | matrix artifacts and matrix QA | v1.5 |
-| `cleaning` | Review terms, aliases, stop terms, acronyms, and artifacts | keyword table, abstracts, thesaurus rules | partial | cleaned keyword table, rule log, QA | v1.5 |
-| `clustering` | Configure and run CPM/Leiden landscape building | edge table, weights, levels, clustering config | yes | membership, hierarchy, clustering QA | v2 |
-| `report` | Produce shareable report and exports | loaded result root | partial | HTML, JSON, graph exports, QA | v1 |
-| `validation` | Check whether a result is safe to inspect or publish | result root or `data.json` | no | artifact contract report | v1 |
-
-Mode rules:
-
-- `demo`, `static_viewer`, and `local_result` must never pretend that a pipeline
-  has run.
-- `live_query`, `file_pipeline`, and `clustering` must expose job state and
-  partial failure state.
-- `matrix_builder` and `cleaning` may operate on partial results and should
-  preserve rule/provenance logs.
-- `validation` should be callable from CLI, web, and release gate.
-
-### Mode Acceptance Criteria
-
-Each mode must define success, partial success, and blocking conditions. The app
-can then show a useful state instead of failing silently or enabling empty
-lenses.
-
-| Mode ID | Success criteria | Partial state | Blocking state |
-| --- | --- | --- | --- |
-| `demo` | curated result loads, feature block is present, at least one cluster and one keyword surface are non-empty | result loads but optional lenses are disabled | bundled result is missing, malformed, or fails validation |
-| `static_viewer` | hosted `data.json` parses, schema/version is known or safely inferred, enabled lenses have data | `data.json` loads but advanced artifacts such as term network are absent | CORS/load failure, malformed JSON, empty result |
-| `local_result` | result root or report directory validates and maps to feature flags | some files exist but count reconciliation or optional artifacts are missing | required files for all claimed features are missing or inconsistent |
-| `live_query` | query job completes, result root is saved, report data and validation report exist | fetch or downstream step succeeds partially and exposes recoverable outputs | source fetch fails, no usable records, pipeline error without saved state |
-| `file_pipeline` | records and edge/matrix inputs produce a manifest-backed result root | records parse but some network or keyword outputs are unavailable | input schema is unknown, IDs cannot be reconciled, or required files are unreadable |
-| `matrix_builder` | selected fields produce matrix artifact with row/column metadata and QA | matrix exists but selected labels or weights are incomplete | no valid fields, empty matrix, or unsupported weighting request |
-| `cleaning` | cleaned keyword table, rule log, and QA summary are produced | audit exists but no rule changes are applied | rule replay fails, cleaned output loses required keyword columns |
-| `clustering` | membership, cluster sizes, backend metadata, and QA are produced | clustering completes but hierarchy, keywords, or report are missing | edge table invalid, backend fails, or membership cannot join to records |
-| `report` | HTML/JSON/export artifacts are written with version and feature blocks | some export formats unavailable due to missing inputs | report data cannot be parsed or output directory cannot be written |
-| `validation` | contract report classifies features, warnings, and blocking issues | warnings exist but at least one lens can load | no supported input artifact can be validated |
-
-Minimum mode payload fields:
-
-- `mode`
-- `result_state`
-- `result_root` or `source_uri`
-- `features`
-- `warnings`
-- `versions`
-- `created_at_utc`
-- `source_summary`
+| `demo` | open a curated example immediately | demo manifest or hosted `data.json` | no | loaded result, provenance, validation | v1 |
+| `static_viewer` | view a shared static result | hosted `data.json` or report bundle | no | loaded result, read-only provenance | v1 |
+| `local_result` | inspect an existing output | result root, `data.json`, report dir | no | loaded result plus artifact contract | v1 |
+| `live_query` | paste a query and build a small analysis | OpenAlex query and limits | yes | job state, saved result root, report bundle | v1 |
+| `validation` | check whether a result is safe to inspect or publish | result root or `data.json` | no | artifact contract report | v1 |
+| `report` | produce shareable report and exports | loaded result root | partial | HTML, JSON, export manifests, QA | v1 |
+| `matrix_builder` | build occurrence/co-occurrence/proximity/similarity matrices | records, terms, fields, clusters | partial | matrix artifacts and matrix QA | v1.5 |
+| `cleaning` | review and refine terms/entities/rules | keywords/entities, abstracts, rules | partial | cleaned table, rule log, QA | v1.5 |
+| `file_pipeline` | run from user-provided bibliographic files | records, references, edges, metadata | yes | result root with manifest | v2 |
+| `clustering` | configure and run CPM/Leiden landscape building | edge table, weights, levels, clustering config | yes | membership, hierarchy, clustering QA | v2 |
 
 ## Analysis Lenses
 
-Analysis lenses are inspectable surfaces over a loaded result. They should be
-enabled or disabled by feature availability, not by hard-coded UI assumptions.
+Lenses inspect a loaded result. They are enabled by feature availability, not by
+hard-coded UI assumptions.
 
-| Lens ID | Purpose | Required artifacts | v1 behavior |
+| Lens ID | Purpose | Required artifacts | Empty behavior |
 | --- | --- | --- | --- |
-| `overview` | Dataset size, year span, source counts, warning summary | abstracts or report data | show counts and missing-feature warnings |
-| `cluster_map` | Explore clusters and hierarchy | membership, optional edges, report data | show cluster sizes, labels, parent/child levels when present |
-| `keyword` | Review representative terms | keywords table | show common vs cluster-specific terms, n-gram mix, counts, flags |
-| `term_network` | Inspect keyword co-occurrence | term network or co-occurrence matrix | show graph/table/map with counts and evidence links when present |
-| `matrix` | Inspect occurrence, co-occurrence, proximity, 1-mode, and 2-mode matrices | matrix artifacts | show rows, columns, weighting, sparsity, top pairs |
-| `evidence` | Inspect representative works and text evidence | abstracts, membership, representative docs | show titles, abstracts/snippets, term evidence |
-| `temporal` | Inspect change over publication years or periods | pubyear, temporal summaries | show trend summaries; advanced evolution deferred |
-| `evolution` | Inspect cluster lifecycle and composition shifts | evolution artifact, temporal summaries, representative works | show activity timeline, evolution map, topic/child trajectories, and milestones when present |
-| `narrative` | Read an evidence-backed interpretation of a cluster | labels, terms, lineage, representatives, neighbors, optional evolution | show cluster narrative with citations to available evidence and QA caveats |
-| `quality` | Inspect data contamination, duplicates, artifacts, imbalance, schema warnings | QA artifacts | show blocking and non-blocking issues |
-| `export` | Prepare downstream files | report data, membership, edges, keywords | export JSON, CSV/TSV, GEXF/GraphML, HTML |
+| `overview` | dataset size, year span, source counts, warning summary | report data or abstracts | show validation summary only |
+| `cluster_map` | inspect clusters, hierarchy, layout, lineage | membership or report cluster payload | disable with `missing_membership` |
+| `keyword` | review representative terms and labels | keyword table or report keywords | disable with `missing_keywords` |
+| `term_network` | inspect keyword co-occurrence | term-network or co-occurrence payload | disable with `missing_term_network` |
+| `matrix` | inspect occurrence/co-occurrence/proximity/similarity matrices | matrix artifact plus metadata | disable with `missing_matrix` |
+| `evidence` | inspect representative works and text evidence | abstracts plus membership or representative docs | show evidence unavailable warning |
+| `temporal` | inspect publication-year or period trends | `pubyear` or temporal summary | disable with `missing_temporal_data` |
+| `evolution` | inspect cluster lifecycle and composition shifts | evolution artifact | disable with `missing_evolution_data` |
+| `narrative` | read evidence-backed cluster interpretation | narrative artifact or enough evidence for deterministic narrative | disable with `missing_narrative_evidence` |
+| `quality` | inspect contamination, duplicates, schema issues | QA artifact or validation output | run lightweight validation when possible |
+| `export` | prepare downstream outputs | result data plus writable/target location | show only available formats |
 
-### Lens Artifact Requirements
+## Feature Catalog
 
-This table is the bridge from product lens to result-root contract. The
-dedicated artifact contract can later split these into stricter schema files.
+Each feature below states product intent, benchmark pressure, maturity, modes,
+lenses, inputs, outputs, feature flag rules, blocking conditions, and UI/UX
+placement. This is the source of truth for future UI/UX discussion.
 
-| Lens ID | Required artifacts | Minimum fields | Empty behavior |
-| --- | --- | --- | --- |
-| `overview` | `report/data.json` or abstracts table | record count, optional year span, source summary | show validation summary only |
-| `cluster_map` | membership table or report cluster payload | `uid`, one cluster column or cluster payload with IDs and sizes | disable lens with `missing_membership` |
-| `keyword` | keyword table or report keyword payload | `cluster_id`, `term`, rank or score, frequency/count when available | disable lens with `missing_keywords` |
-| `term_network` | term co-occurrence or term-network payload | source term, target term, count or weight | disable lens with `missing_term_network` |
-| `matrix` | matrix artifact plus row/column labels | matrix type, row IDs, column IDs, values, weighting | disable lens with `missing_matrix` |
-| `evidence` | abstracts plus membership, or representative docs | `uid`, `title`, optional `abstract`, joined cluster ID | show cluster-level evidence unavailable warning |
-| `temporal` | abstracts or report payload with year data | `pubyear`, counts by year or period | disable lens with `missing_temporal_data` |
-| `evolution` | cluster evolution payload | `cluster_id`, year counts, lifecycle or trajectory fields | disable lens with `missing_evolution_data` |
-| `narrative` | narrative payload or enough evidence to generate a deterministic summary | cluster label, terms, lineage, representative works or evidence snippets | disable lens with `missing_narrative_evidence` |
-| `quality` | QA artifact or validation output | severity, code, message, affected artifact | run lightweight validation if possible |
-| `export` | loaded result data plus writable target | available artifact list and export formats | show only formats whose inputs exist |
+### F01. Workspace And Project Management
 
-Required count reconciliation:
+Purpose:
 
-- every `membership.uid` should exist in the abstract/record table when both
-  are present.
-- every keyword `cluster_id` should exist in membership or report cluster
-  payload when both are present.
-- term-network terms should resolve to keyword terms or carry an explicit
-  `external_term=true` marker.
-- report cluster counts should match membership counts or carry a documented
-  sampling/filtering note.
+- Let users start from projects, datasets, runs, results, rules, and exports
+  instead of internal folders.
+- Make every analysis state recoverable and inspectable.
 
-## Capability Catalog
+Benchmark pressure:
 
-The following capabilities define what SciScape should support. They are grouped
-by user-facing workflow rather than package directory.
+- Biblioshiny no-code workflow.
+- Open Knowledge Maps query-first start.
+- Atlas datapack identity and package QA.
 
-### 1. Ingest And Normalize
+Maturity:
 
-Goal: load research records into a standard table.
+- `support-v1` for workspace-loaded demos, local results, recent runs.
+- `support-v1.5` for reusable rule sets and matrix objects.
+
+Modes and lenses:
+
+- Modes: `demo`, `local_result`, `live_query`, `validation`, `report`.
+- Lenses: `overview`, `quality`, `export`.
 
 Inputs:
 
-- OpenAlex query results.
-- Web of Science, Scopus, PubMed, Dimensions, Lens, Crossref, or CSV-like
-  records when adapters exist.
-- Local BibTeX or JSON/JSONL records.
+- workspace root
+- demo manifest
+- existing result root
+- job store
+
+Artifacts:
+
+- workspace manifest
+- project manifest
+- run status/logs
+- result artifact contract
+- export manifest
+
+Feature flag and state rules:
+
+- `workspace_loaded=true` when manifest is valid or a lightweight workspace can
+  be inferred safely.
+- `result_loaded=true` only after artifact validation enables at least one lens.
+- `publish_ready=true` only after release/demo gates pass.
+
+Success:
+
+- User can see recent results and supported entry modes.
+- Local result opening does not require knowing internal folder structure.
+- Missing modules are visible with reasons.
+
+Partial:
+
+- workspace opens but some projects or runs are missing artifacts.
+- old result root loads with inferred features and warnings.
+
+Blocking:
+
+- workspace manifest is malformed.
+- selected result has no supported artifact.
+- validation finds a blocking issue for the requested action.
+
+UI/UX placement:
+
+- `Home` is a neutral workspace dashboard, not a marketing page and not an
+  automatic demo-query overlay.
+- Dense details belong in bounded inspectors, drawers, or validation panels.
+
+### F02. Ingest And Normalize
+
+Purpose:
+
+- Convert research records into a standard, provenance-preserving table.
+- Keep input adapters separate from downstream analysis claims.
+
+Benchmark pressure:
+
+- Biblioshiny import/conversion.
+- VOSviewer source support.
+- KnowledgeMatrix/VantagePoint preprocessing.
+
+Maturity:
+
+- `support-v1` for OpenAlex and existing local tables in CLI/local workflows.
+- `support-v2` for broader app-level file adapters.
+- `defer` for commercial/source-specific adapters without contract coverage.
+
+Modes and lenses:
+
+- Modes: `live_query`, `file_pipeline`, `validation`.
+- Lenses: `overview`, `quality`.
+
+Inputs:
+
+- OpenAlex query results
+- Web of Science, Scopus, PubMed, Dimensions, Lens, Crossref, BibTeX, CSV-like
+  records when adapters exist
+- local JSON/JSONL/parquet record tables
 
 Minimum standard columns:
 
@@ -268,154 +277,964 @@ Minimum standard columns:
 - `title`
 - `abstract`
 - `pubyear`
-- optional author, venue, institution, reference, citation, DOI, and URL fields
+- optional author, venue, institution, reference, citation, DOI, URL fields
 
-Required behaviors:
+Artifacts:
 
-- Preserve source identifiers.
-- Record source and conversion metadata.
-- Flag blank title/abstract rows.
-- Apply safe text normalization such as HTML unescape/tag removal and metadata
-  artifact detection before keyword extraction.
+- `records/records.parquet`
+- `records/source_manifest.json`
+- optional `records/raw/`
+- optional `filters/*.json`
 
-### 2. Network And Matrix Construction
+Feature flag rule:
 
-Goal: build graph and matrix representations that support both clustering and
-tech-mining analysis.
+- `overview=true` when records or report data include non-empty count fields.
+- `temporal=true` only when `pubyear` exists and temporal grouping can run.
 
-Network families:
+Success:
 
-- direct citation
-- bibliographic coupling
-- co-citation
-- semantic or embedding KNN
-- keyword co-occurrence
-- author, institution, source, and country co-occurrence where fields exist
+- Stable IDs are preserved.
+- Source metadata and conversion metadata are recorded.
+- Blank title/abstract and unsafe text artifacts are flagged.
 
-Matrix families:
+Partial:
 
-- document-term
-- cluster-term
-- term-term co-occurrence
-- author-keyword
-- institution-keyword
-- source-keyword
-- paper-cluster
-- cluster-cluster proximity
+- Records load but optional entity fields are missing.
+- Records parse but references/citations are absent.
 
-Required behaviors:
+Blocking:
 
-- Expose weighting scheme and normalization.
-- Distinguish occurrence, co-occurrence, proximity, and similarity.
-- Preserve enough row/column labels for review.
-- Report matrix shape, sparsity, top values, and dropped rows.
+- IDs cannot be reconciled.
+- required fields are absent for the requested downstream mode.
+- source conversion loses provenance.
 
-### 3. Clustering And Landscape
+UI/UX placement:
 
-Goal: generate stable, interpretable research-topic landscapes.
+- `Home` and `Run` show source summary, record count, and field coverage.
+- Adapter limitations appear before network or matrix construction starts.
 
-Supported surfaces:
+### F03. Demo, Static Viewer, And Local Result Loading
 
-- Rust CPM/Leiden backend.
-- Python compatibility surfaces under `sciscape.clustering`.
-- optional hierarchy and postprocess outputs.
+Purpose:
 
-Required behaviors:
+- Let users inspect precomputed results without understanding folder layout.
+- Support GitHub Pages-style static sharing and local result reopening.
 
-- Preserve clustering parameters and backend version.
-- Report cluster sizes and singleton/small-cluster behavior.
-- Distinguish production clustering from research-only Dongdaemun diagnostics.
-- Keep membership-level outputs available for validation and re-labeling.
+Benchmark pressure:
 
-### 4. Keyword Extraction And Cleaning
+- VOSviewer sharing.
+- Open Knowledge Maps immediate map.
+- Atlas datapack loading.
 
-Goal: produce interpretable labels that work across user domains.
+Maturity:
 
-Required surfaces:
+- `support-v1`.
 
-- raw candidate terms
-- normalized terms
-- display labels
-- n-gram type
-- score and frequency
-- cluster-specificity signal
-- common-vs-cluster-specific flag
-- alias or keyword-family group
-- acronym expansion evidence when available
-- artifact and metadata flags
+Modes and lenses:
 
-Required behaviors:
+- Modes: `demo`, `static_viewer`, `local_result`, `validation`.
+- Lenses: all artifact-backed lenses.
 
-- Keep unigram, bigram, and trigram behavior explicit.
-- Prefer interpretable bigrams/trigrams when they are strong, but keep useful
-  unigrams instead of suppressing them globally.
-- Preserve lower-level derivative terms under a representative family when
-  string or semantic similarity supports grouping.
-- Extract acronym definitions from local text when patterns such as
-  `long form (ACR)` or `ACR (long form)` appear.
-- Treat HTML, LaTeX preamble fragments, publisher metadata, and boilerplate as
-  blocking artifacts in release-quality results.
+Inputs:
 
-### 5. Visualization And Exploration
+- demo manifest
+- hosted `data.json`
+- local result root
+- `landscape/report/data.json`
+- report directory
 
-Goal: make results inspectable without requiring the user to know file paths.
-
-Required surfaces:
-
-- static viewer for hosted `data.json`
-- local web app for query-to-result and result-folder inspection
-- report/dashboard export for local sharing
-- graph export for external tools
-
-Required behaviors:
-
-- Clearly show which mode is active.
-- Disable unavailable lenses with a visible reason.
-- Show result root, manifest, and source query when available.
-- Avoid requiring users to know internal folder structure before loading a
-  curated demo or recent result.
-
-### 6. Report And Export
-
-Goal: preserve outputs in forms useful for review, publication, and downstream
-tools.
-
-Outputs:
+Artifacts:
 
 - `report/data.json`
-- HTML report or dashboard
-- `keywords.parquet` or CSV/TSV equivalent
-- `membership.parquet`
-- graph export such as GEXF or GraphML
-- optional matrix artifacts
-- QA artifacts
+- `landscape/report/index.html`
+- `landscape/report/report.html`
+- `landscape/qa/artifact_contract.json`
+- expected demo artifacts from `examples/demo_presets.json`
 
-Required behaviors:
+Feature flag rule:
 
-- Embed or sidecar a version block.
-- Include feature availability.
-- Include warnings that explain missing or partial outputs.
-- Keep static viewer bundles small enough to host directly.
+- Feature flags come from validation and embedded `_sciscape`, not from UI
+  assumptions.
 
-### 7. Validation And QA
+Success:
 
-Goal: prevent contaminated or incomplete outputs from becoming demos or release
-artifacts.
+- Demo loads with non-empty cluster/keyword surfaces.
+- Static viewer loads a hosted `data.json`.
+- Local result validates and enables only supported lenses.
 
-Required checks:
+Partial:
 
-- required files exist for the claimed mode
+- `data.json` loads but advanced sidecars are absent.
+- old result root lacks optional manifest or version artifacts.
+
+Blocking:
+
+- malformed JSON
+- no supported result artifact
+- claimed features do not match files
+- release-quality demo missing expected artifacts
+
+UI/UX placement:
+
+- `Home` should show curated demos and recent local results.
+- `Validation` should explain missing or blocked features.
+
+### F04. Live Query And Job Execution
+
+Purpose:
+
+- Turn a bounded query into a saved result root with job state and recoverable
+  partial outputs.
+
+Benchmark pressure:
+
+- Open Knowledge Maps query-first experience.
+- ResearchRabbit/Litmaps exploratory starts.
+
+Maturity:
+
+- `support-v1` for small OpenAlex jobs.
+- `support-v2` for broader sources and larger interactive pipelines.
+
+Modes and lenses:
+
+- Modes: `live_query`, `validation`, `report`.
+- Lenses: `overview`, `cluster_map`, `keyword`, `term_network`, `quality`,
+  `export` when artifacts exist.
+
+Inputs:
+
+- OpenAlex query
+- filters
+- maximum record count
+- edge family choices
+- clustering/keyword settings appropriate for small jobs
+
+Artifacts:
+
+- `runs/<run_id>/source_query.json`
+- job status/logs
+- result root under workspace output
+- report bundle
+- artifact contract
+
+Feature flag rule:
+
+- job output becomes `result_loaded` only after validation.
+
+Success:
+
+- Query fetch completes.
+- Result root is saved.
+- Report data and validation report exist.
+
+Partial:
+
+- fetch succeeds but downstream network, clustering, keyword, or report step
+  fails with partial artifacts preserved.
+
+Blocking:
+
+- source fetch fails
+- no usable records
+- pipeline error leaves no inspectable state
+
+UI/UX placement:
+
+- `Run` shows progress, logs, partial artifacts, retry/cancel state.
+- Query limits should be visible before execution.
+
+### F05. Network Construction
+
+Purpose:
+
+- Build graph representations that support clustering, maps, evidence, and
+  export.
+
+Benchmark pressure:
+
+- VOSviewer citation/bibliographic-coupling/co-citation/co-authorship networks.
+- CiteSpace structural knowledge-domain review.
+- Gephi/Cytoscape export expectations.
+
+Maturity:
+
+- `support-v1` for direct citation, bibliographic coupling, co-citation,
+  semantic/embedding KNN when embeddings exist, and keyword co-occurrence.
+- `support-v1.5` for co-authorship, institution, source, country networks when
+  normalized fields exist.
+
+Modes and lenses:
+
+- Modes: `live_query`, `file_pipeline`, `report`, `validation`.
+- Lenses: `cluster_map`, `term_network`, `evidence`, `export`.
+
+Inputs:
+
+- records
+- references/citations
+- embeddings when applicable
+- normalized entity fields
+- term tables
+
+Artifacts:
+
+- `edges.parquet`
+- optional `networks/<network_id>/edges.parquet`
+- network metadata
+- optional layout artifacts
+- edge-evidence samples
+
+Required metadata:
+
+- network type
+- source fields
+- weight field
+- counting method
+- normalization method
+- threshold/filtering rules
+- generated timestamp and SciScape version
+
+Feature flag rule:
+
+- `cluster_map` may use membership/report data without edges.
+- `evidence` for neighbor relations requires edges plus membership.
+- raw neighbor samples require an edge-evidence sidecar.
+
+Success:
+
+- Edge endpoints resolve to stable record IDs.
+- Weight semantics are recorded.
+- Network family is explicit.
+
+Partial:
+
+- edges exist but no layout or raw sample sidecar exists.
+- some entity networks are unavailable due to missing fields.
+
+Blocking:
+
+- edge endpoints cannot join to records.
+- weight field is missing or non-numeric when required.
+- network type is unknown.
+
+UI/UX placement:
+
+- `Run` shows network build state.
+- `Atlas` shows aggregate neighbor evidence.
+- `Exports` sends graph data to external tools.
+
+### F06. Matrix Builder
+
+Purpose:
+
+- Build VantagePoint/KnowledgeMatrix-style occurrence, co-occurrence,
+  proximity, similarity, and 1-mode/2-mode matrices.
+- Make matrices reusable for visualization, clustering, export, and analyst
+  review.
+
+Benchmark pressure:
+
+- KnowledgeMatrix matrix generation.
+- VantagePoint tech-mining matrices and analyst refinement.
+- VOSviewer term maps and thesaurus workflows.
+
+Maturity:
+
+- `support-v1` for minimum term co-occurrence tables/maps.
+- `support-v1.5` for general Matrix Builder mode.
+
+Modes and lenses:
+
+- Modes: `matrix_builder`, `validation`, `report`.
+- Lenses: `matrix`, `term_network`, `quality`, `export`.
+
+Inputs:
+
+- record table with stable `uid`
+- row field or row list
+- column field or column list
+- optional cluster labels, year bins, entity fields, or term rules
+- weighting and normalization configuration
+
+Supported matrix types:
+
+| Matrix type | Example | Minimum output |
+| --- | --- | --- |
+| occurrence | document-term, cluster-term, author-keyword | sparse matrix plus row/column metadata |
+| co-occurrence | term-term, author-author, institution-keyword | pair table or sparse symmetric matrix |
+| proximity | terms within sentence/window/field | pair table with window metadata |
+| similarity | cosine/Jaccard/association strength | pair table with metric metadata |
+| 2-mode | document-term, author-institution, paper-cluster | rectangular matrix with row/column roles |
+| 1-mode projection | term-term from document-term, author-author from paper-author | projected edge table plus projection rule |
+
+Artifacts:
+
+- `matrices/<matrix_id>/matrix.parquet` or `matrix.npz`
+- `matrices/<matrix_id>/rows.parquet`
+- `matrices/<matrix_id>/columns.parquet`
+- `matrices/<matrix_id>/metadata.json`
+- `matrices/<matrix_id>/qa.json`
+
+Required metadata:
+
+- `matrix_id`
+- `matrix_type`
+- row and column roles
+- source artifact paths
+- source field names
+- weighting method
+- normalization method
+- filtering thresholds
+- shape, density, non-zero count
+- dropped row/column counts
+- created timestamp and SciScape version
+
+Feature flag rule:
+
+- `matrix=true` only when matrix values and row/column metadata exist.
+- `term_network=true` can be inferred from co-occurrence rows only when at
+  least one edge exists.
+
+Success:
+
+- Matrix shape and row/column labels reconcile with source tables.
+- Empty rows, empty columns, and dropped records are counted.
+- Weighting is visible before visualization.
+
+Partial:
+
+- matrix exists but selected labels, weights, or source coverage are incomplete.
+
+Blocking:
+
+- no stable row IDs
+- no stable column IDs
+- unsupported weighting request
+- empty matrix after filtering
+- matrix values cannot be traced to source fields
+
+UI/UX placement:
+
+- `Matrices` starts from a loaded dataset or result, not a file picker alone.
+- Preview shows shape, sparsity, top rows/columns, and top pairs before a map
+  renders.
+- Matrix builder controls are saved as replayable configuration.
+
+### F07. Clustering And Hierarchy
+
+Purpose:
+
+- Generate stable, interpretable topic landscapes while preserving membership
+  evidence and backend configuration.
+
+Benchmark pressure:
+
+- VOSviewer/Gephi expectations for configurable map construction.
+- SciScape differentiation through Rust CPM/Leiden.
+- Atlas hierarchy and lineage reading.
+
+Maturity:
+
+- `support-v1` for backend-preserved landscape generation in CLI/query flows.
+- `support-v2` for user-configurable app-level clustering mode.
+
+Modes and lenses:
+
+- Modes: `live_query`, `file_pipeline`, `clustering`, `validation`.
+- Lenses: `cluster_map`, `evidence`, `quality`, `export`.
+
+Inputs:
+
+- edge table
+- weight column
+- clustering config
+- hierarchy/postprocess config when used
+- random seed
+
+Artifacts:
+
+- `landscape/membership.parquet`
+- hierarchy metadata
+- clustering QA
+- backend/version metadata
+- optional postprocess artifacts
+
+Feature flag rule:
+
+- `cluster_map=true` when membership or report cluster payload exists.
+- lineage and child overlays require parent/child columns or parent UID fields.
+
+Success:
+
+- membership joins to records
+- backend, objective, parameters, seed, and version are preserved
+- cluster sizes and small-cluster behavior are reported
+
+Partial:
+
+- clustering completes but keywords, hierarchy, or report are missing.
+
+Blocking:
+
+- edge table invalid
+- backend fails without useful partial output
+- membership cannot join to records
+- research-only Dongdaemun diagnostics are promoted as production clustering
+
+UI/UX placement:
+
+- `Run` reports clustering state.
+- `Atlas` reads cluster map and hierarchy from result artifacts.
+- Advanced clustering controls stay out of v1 UI.
+
+### F08. Keyword Extraction, Labels, And Cleaning
+
+Purpose:
+
+- Produce interpretable labels across user domains and preserve the analyst
+  cleaning path from raw terms to display labels.
+
+Benchmark pressure:
+
+- VOSviewer thesaurus cleaning.
+- KnowledgeMatrix/VantagePoint cleaning and analyst refinement.
+- SciScape keyword QA and artifact filtering.
+
+Maturity:
+
+- `support-v1` for extraction, representative labels, artifact filtering,
+  read-only cleaning audit.
+- `support-v1.5` for editable/replayable rules, aliasing, acronyms, and family
+  hierarchy.
+
+Modes and lenses:
+
+- Modes: `live_query`, `cleaning`, `report`, `validation`.
+- Lenses: `keyword`, `quality`, `narrative`, `export`.
+
+Inputs:
+
+- records/abstracts
+- membership
+- keyword extraction config
+- optional rule sets
+- optional thesaurus/alias/acronym files
+
+Artifacts:
+
+- `landscape/keywords.parquet`
+- cleaned keyword table
+- rule set files
+- rule application log
+- before/after QA summary
+
+Required cleaned keyword fields:
+
+- `raw_term`
+- `normalized_term`
+- `display_label`
+- `representative_label`
+- `family_id`
+- `cluster_id`
+- `score`
+- `frequency` or `count`
+- `ngram`
+- `quality_flags`
+- `rule_ids`
+- `review_status`
+
+Feature flag rule:
+
+- `keyword=true` when keyword table or report keywords exist.
+- release-quality keyword display is blocked by top-ranked metadata, HTML, or
+  LaTeX artifacts.
+
+Success:
+
+- unigram, bigram, and trigram behavior is explicit
+- score/frequency/count are preserved
+- common-vs-cluster-specific terms are distinguishable
+- acronym evidence is preserved when extracted
+- raw terms are preserved through cleaning
+
+Partial:
+
+- audit exists but no rules are applied
+- acronym or alias match is ambiguous and flagged for review
+
+Blocking:
+
+- cleaned output loses required keyword columns
+- rule replay is not reproducible
+- raw terms cannot be recovered
+- metadata/HTML/LaTeX artifacts appear in top-ranked display labels
+
+UI/UX placement:
+
+- `Cleaning` shows raw, normalized, display, family, count, score, and flags in
+  one audit table.
+- Edits are staged, previewed, replayed, and then committed to rule artifacts.
+- Dense review tables belong in bounded panels or drawers.
+
+### F09. Atlas Map, Evidence, And Cluster Reading
+
+Purpose:
+
+- Make cluster landscapes readable through identity, hierarchy, lineage,
+  neighbor relations, representative works, and QA badges.
+
+Benchmark pressure:
+
+- Science Atlas Explorer cluster-reading workflow.
+- VOSviewer science maps.
+- Open Knowledge Maps knowledge-map experience.
+
+Maturity:
+
+- `support-v1` for cluster map, hierarchy, representative works when joinable,
+  neighbor aggregate evidence, module readiness, and URL state.
+- `support-v1.5` for richer boundary, terrain, and evolution-backed map views.
+
+Modes and lenses:
+
+- Modes: `demo`, `static_viewer`, `local_result`, `live_query`.
+- Lenses: `cluster_map`, `evidence`, `quality`, `temporal`, `evolution`,
+  `narrative`.
+
+Inputs:
+
+- report data
+- membership
+- abstracts
+- edges
+- keywords
+- optional edge-evidence sidecars
+- optional layout/evolution/narrative artifacts
+
+Artifacts:
+
+- Atlas payload under `_sciscape.atlas`
+- `landscape/membership.parquet`
+- `landscape/report/data.json`
+- `landscape/edge_evidence_samples.json`
+- optional layout/evolution/narrative sidecars
+
+Feature flag rule:
+
+- `cluster_map=true` with membership or report cluster payload.
+- representative works require abstracts plus membership.
+- raw neighbor samples require edge-evidence sidecar.
+- evolution/narrative panels require their own artifacts.
+
+Success:
+
+- nodes have stable `cluster_uid`, `level`, `cluster_id`, label, and keyword
+  counts
+- membership enriches doc counts, hierarchy, lineage, and child counts
+- evidence surfaces distinguish aggregate neighbor facts from raw samples
+
+Partial:
+
+- report payload loads but doc counts or raw evidence are unavailable
+- aggregate neighbor edges exist without raw sample sidecar
+
+Blocking:
+
+- identity fields are missing
+- advertised lens lacks backing artifact
+- hierarchy assumptions are hard-coded to one dataset family
+
+UI/UX placement:
+
+- `Atlas` is the primary loaded-result reading surface.
+- Start from a neutral atlas default, not an automatic demo-query overlay.
+- Detail-heavy evidence uses progressive-disclosure drawers or bounded panels.
+
+### F10. Term Network And Co-Occurrence Visualization
+
+Purpose:
+
+- Let users inspect keyword co-occurrence as graph, table, and map evidence.
+
+Benchmark pressure:
+
+- VOSviewer term co-occurrence.
+- KnowledgeMatrix matrix views.
+
+Maturity:
+
+- `support-v1` for term network graph/table/map from keyword/co-occurrence
+  artifacts.
+
+Modes and lenses:
+
+- Modes: `report`, `validation`, `matrix_builder`.
+- Lenses: `term_network`, `matrix`, `keyword`, `quality`, `export`.
+
+Inputs:
+
+- keyword table
+- term co-occurrence rows
+- optional matrix artifact
+
+Artifacts:
+
+- term-network payload
+- co-occurrence table
+- optional matrix artifact
+- report/dashboard data
+
+Feature flag rule:
+
+- `term_network=true` only when at least one term edge exists.
+- term-network terms should resolve to keyword terms or carry
+  `external_term=true`.
+
+Success:
+
+- graph, table, and map agree on edge counts
+- co-occurrence rows preserve counts/weights
+- top terms remain inspectable by cluster
+
+Partial:
+
+- terms exist but no co-occurrence edges after filtering
+
+Blocking:
+
+- advertised term network has no edges
+- terms cannot be reconciled with keyword table and have no external marker
+
+UI/UX placement:
+
+- `Atlas` may show compact term evidence.
+- `Matrices` and `Exports` provide dense term-pair tables and downstream files.
+
+### F11. Temporal And Evolution
+
+Purpose:
+
+- Support temporal reasoning while preventing unsupported burst/evolution
+  claims.
+
+Benchmark pressure:
+
+- CiteSpace burst/timeline.
+- SciMAT thematic evolution and strategic diagrams.
+- Science Atlas cluster evolution maps.
+
+Maturity:
+
+- `support-v1` for simple temporal trend when `pubyear` exists.
+- `support-v1.5` for cluster evolution map when evolution artifacts exist.
+- `support-v2` for burst/thematic evolution after method contracts exist.
+
+Modes and lenses:
+
+- Modes: `report`, `validation`, future `file_pipeline`.
+- Lenses: `temporal`, `evolution`, `narrative`, `quality`.
+
+Inputs:
+
+- records with `pubyear`
+- membership or cluster payload
+- period definitions
+- transition/evolution artifacts for evolution
+
+Artifacts:
+
+- `temporal/yearly_counts.parquet`
+- `temporal/metadata.json`
+- `evolution/cluster_evolution.json` or parquet equivalent
+- `evolution/cluster_year_counts.parquet`
+- `evolution/transitions.parquet`
+- `evolution/metadata.json`
+
+Feature flag rule:
+
+- `temporal=true` with `pubyear` and yearly grouping.
+- `evolution=true` only with non-empty evolution/trajectory artifacts.
+- burst/thematic evolution remains disabled without method-specific artifacts.
+
+Success:
+
+- period definitions are explicit
+- cluster IDs reconcile with membership/report payload
+- transition weights explain their denominator
+- missing years or sparse periods are visible
+
+Partial:
+
+- yearly trends exist but no cluster evolution artifact exists
+
+Blocking:
+
+- publication years exist but cluster-year mapping is missing for evolution
+- transition endpoints cannot resolve to cluster UIDs
+- temporal metric lacks method metadata
+- burst/thematic output lacks method parameters
+
+UI/UX placement:
+
+- `Temporal` can be a simple trend panel.
+- `Evolution` is separate and appears only when evolution artifacts exist.
+
+### F12. Evidence-Backed Narratives
+
+Purpose:
+
+- Convert cluster labels into auditable interpretations linked to evidence.
+
+Benchmark pressure:
+
+- Science Atlas Explorer narrative direction.
+- Analyst review workflows.
+
+Maturity:
+
+- `support-v1.5` for evidence-backed cluster narrative view.
+- LLM canonicalization remains `defer` unless fully auditable and optional.
+
+Modes and lenses:
+
+- Modes: `report`, `validation`, future `cleaning`.
+- Lenses: `narrative`, `evidence`, `temporal`, `evolution`, `quality`.
+
+Allowed evidence sources:
+
+- representative keywords and keyword families
+- common-vs-cluster-specific terms
+- representative works
+- abstracts or snippets when permitted
+- lineage and child clusters
+- neighbor relations and edge-evidence samples
+- temporal or evolution artifacts
+- matrix/co-occurrence evidence
+- QA warnings and missing-feature caveats
+
+Artifacts:
+
+- `narratives/<cluster_uid>.json` or bundled narrative table
+- narrative metadata with generation method
+- evidence references by artifact path, row ID, or cluster UID
+- QA caveat list
+
+Feature flag rule:
+
+- `narrative=true` only when narrative artifact exists, or deterministic
+  narrative requirements are met and evidence references can be resolved.
+
+Success:
+
+- every claim links to evidence
+- missing evidence appears as a caveat
+- generated narratives include prompt/model metadata when LLMs are used
+- narrative edits are recorded as review decisions
+
+Partial:
+
+- deterministic scaffold exists but some optional evidence folds are missing
+
+Blocking:
+
+- narrative text has no evidence references
+- evidence references cannot be resolved
+- narrative contradicts QA flags or missing-feature state
+- model-generated text is presented as deterministic analysis without metadata
+
+UI/UX placement:
+
+- `Narrative` is a reading surface with evidence folds, not a decorative card.
+- Users can jump from a sentence to terms, works, neighbors, evolution rows, or
+  QA caveats.
+
+### F13. Validation And QA
+
+Purpose:
+
+- Prevent contaminated, incomplete, or unsupported outputs from becoming demos,
+  release artifacts, or trustworthy narratives.
+
+Benchmark pressure:
+
+- Atlas package QA.
+- SciScape artifact filtering and release gate needs.
+
+Maturity:
+
+- `support-v1`.
+
+Modes and lenses:
+
+- Modes: `validation`, all result-loading modes.
+- Lenses: `quality`, all feature-gated lenses.
+
+Inputs:
+
+- result root
+- report data
+- abstracts
+- membership
+- keywords
+- edges
+- optional matrix/evolution/narrative/export artifacts
+
+Artifacts:
+
+- `landscape/qa/artifact_contract.json`
+- validation JSON
+- warnings and blocking issue list
+
+Feature flag rule:
+
+- all features are inferred from artifacts, embedded contracts, or validation.
+
+Success:
+
+- required files exist for claimed mode
 - required columns exist
-- counts reconcile between abstracts, membership, keywords, and report data
-- keyword artifacts are below release thresholds
-- term network/co-occurrence payloads are non-empty when advertised
-- feature flags match actual artifacts
-- warnings distinguish blocking errors from informational gaps
+- counts reconcile or carry a documented caveat
+- keyword artifact checks pass release thresholds
+- feature flags match artifacts
 
-## Feature Availability Contract
+Partial:
 
-Every loaded result should be reducible to a compact feature block. This block
-should be generated by validation, not hand-written in the UI.
+- warnings exist but at least one lens can load safely
+
+Blocking:
+
+- no supported artifact can be validated
+- claimed features are missing artifacts
+- top-ranked keyword artifacts leak into release-quality outputs
+- schema inconsistencies prevent interpretation
+
+UI/UX placement:
+
+- `Validation` shows blocking issues first, then warnings, then feature
+  availability.
+- Empty panels are avoided; disabled lenses explain missing inputs.
+
+### F14. Report, Export, And Interoperability
+
+Purpose:
+
+- Preserve outputs for review, publication, static sharing, and downstream
+  graph/matrix tools.
+
+Benchmark pressure:
+
+- VOSviewer sharing and thesaurus interop.
+- Gephi/Cytoscape/Pajek graph workflows.
+- Biblioshiny report-style outputs.
+
+Maturity:
+
+- `support-v1` for report/static viewer, keywords, membership, JSON/HTML.
+- `support-v1.5` for matrix export and richer graph/VOSviewer interop.
+
+Modes and lenses:
+
+- Modes: `report`, `demo`, `static_viewer`, `local_result`.
+- Lenses: `export`, `quality`, all loaded result lenses.
+
+Export families:
+
+| Export | Source artifacts | Required metadata |
+| --- | --- | --- |
+| static viewer | `report/data.json`, optional compact assets | schema version and feature flags |
+| HTML report | report payload and QA | source result and generated timestamp |
+| keyword table | cleaned keywords | rule set and QA hash |
+| graph export | nodes, edges, labels, layout | graph type, weight field, coordinate source |
+| matrix export | matrix plus row/column metadata | matrix type and weighting |
+| VOSviewer export | map/network/thesaurus-compatible tables | field mapping and counting method |
+| package manifest | complete result or demo bundle | artifact list and checksums |
+
+Artifacts:
+
+- `report/data.json`
+- HTML report/dashboard
+- keyword CSV/TSV/parquet
+- graph export files
+- matrix export files
+- static viewer bundle
+- package/export manifest
+
+Feature flag rule:
+
+- `export=true` when loaded result has enough data to write at least one
+  supported export.
+
+Success:
+
+- exported files identify the source result
+- stable IDs are preserved
+- node/edge/matrix labels remain interpretable outside SciScape
+- selected/visible subset exports record the selection
+
+Partial:
+
+- some export formats are unavailable due to missing inputs
+
+Blocking:
+
+- export drops required IDs
+- export uses labels without stable source keys
+- graph export lacks required weight or relation type
+- public bundle includes private paths or unintended raw text
+
+UI/UX placement:
+
+- `Exports` shows available formats, missing requirements, and privacy caveats.
+- Public static bundles should omit raw abstracts unless explicitly requested.
+
+### F15. Institutional Analytics
+
+Purpose:
+
+- Reserve space for future portfolio, normalized impact, and institutional
+  benchmarking without promising it prematurely.
+
+Benchmark pressure:
+
+- SciVal, InCites, Dimensions Analytics.
+
+Maturity:
+
+- `defer`.
+
+Modes and lenses:
+
+- none in v1 or v1.5.
+
+Inputs:
+
+- controlled citation metrics
+- field-normalized baselines
+- institutional/entity disambiguation
+- data-license contract
+
+Feature flag rule:
+
+- disabled until metric definitions and data-license boundaries exist.
+
+Blocking:
+
+- no normalized metric contract
+- no field normalization rule
+- no data-license permission
+- entity disambiguation not auditable
+
+UI/UX placement:
+
+- Do not show portfolio or normalized impact dashboards in the first app.
+
+## Cross-Feature Contracts
+
+### Feature Availability Block
+
+Every loaded result should reduce to a compact block generated by validation,
+not hand-written in the UI.
 
 ```json
 {
@@ -455,12 +1274,12 @@ Recommended feature inference:
 | `matrix` | matrix artifact exists with row/column metadata |
 | `evidence` | abstracts and membership can be joined, or representative docs exist |
 | `temporal` | `pubyear` exists and temporal summaries or yearly grouping are available |
-| `evolution` | cluster evolution artifact exists and has non-empty yearly or trajectory data |
-| `narrative` | narrative artifact exists, or labels/terms/evidence meet the deterministic narrative contract |
+| `evolution` | evolution/trajectory artifact exists and has non-empty yearly or trajectory data |
+| `narrative` | narrative artifact exists, or deterministic narrative evidence requirements are met |
 | `quality` | QA report exists or validation can run |
 | `export` | loaded result has enough data to write at least one supported export |
 
-## Result States
+### Result States
 
 Use these states consistently across CLI, web jobs, and viewer code.
 
@@ -475,32 +1294,18 @@ Use these states consistently across CLI, web jobs, and viewer code.
 | `blocked` | validation found a blocking issue |
 | `failed` | computation or load failed |
 
-## Product Constraints
+### Required Count Reconciliation
 
-These constraints prevent the app from claiming capabilities that are only safe
-in a CLI, batch, or precomputed setting.
-
-### Data Size Classes
-
-Size classes are product guidance, not performance guarantees. Claims must be
-verified with release-gate artifacts before they become public limits.
-
-| Class | Approximate size | Recommended surface | Notes |
-| --- | --- | --- | --- |
-| `demo_small` | up to about 1,500 records | web app, static viewer, docs demos | target for query-to-result examples |
-| `analyst_medium` | about 1,500 to 50,000 records | CLI pipeline plus local result viewer | app may inspect precomputed outputs |
-| `batch_large` | more than 50,000 records | CLI/batch only unless precomputed | do not run interactively in the browser |
-| `atlas_scale` | hundreds of thousands or more | separate datapack-style architecture | outside normal SciScape app v1 |
-
-### Web And Static Limits
-
-- Static viewer mode can only inspect artifacts that are already hosted or
-  bundled. It cannot fetch OpenAlex directly unless a separate backend exists.
-- GitHub Pages-style deployments should assume read-only, precomputed data.
-- Browser upload can inspect files, but long-running clustering and network
-  building should go through the local web backend or CLI.
-- The app should show missing capability reasons instead of hiding disabled
-  lenses.
+- every `membership.uid` should exist in the abstract/record table when both
+  are present
+- every keyword `cluster_id` should exist in membership or report cluster
+  payload when both are present
+- term-network terms should resolve to keyword terms or carry an explicit
+  `external_term=true` marker
+- report cluster counts should match membership counts or carry a documented
+  sampling/filtering note
+- matrix rows/columns should resolve to source records, terms, entities, or
+  documented external labels
 
 ### Reproducibility Fields
 
@@ -519,15 +1324,25 @@ run:
 
 ### Privacy And Locality
 
-SciScape should be safe for local bibliometric and tech-mining work:
-
 - Local file and local result modes should not require remote upload.
-- Optional LLM or external API features must be explicit and disabled by
-  default for private data.
+- Optional LLM or external API features must be explicit and disabled by default
+  for private data.
 - Reports should not silently embed raw abstracts when a compact public bundle
   is requested.
 - Exported demos should include enough provenance to be interpretable without
   leaking private local paths.
+
+### Data Size Classes
+
+Size classes are product guidance, not performance guarantees. Claims must be
+verified with release-gate artifacts before they become public limits.
+
+| Class | Approximate size | Recommended surface | Notes |
+| --- | --- | --- | --- |
+| `demo_small` | up to about 1,500 records | web app, static viewer, docs demos | target for query-to-result examples |
+| `analyst_medium` | about 1,500 to 50,000 records | CLI pipeline plus local result viewer | app may inspect precomputed outputs |
+| `batch_large` | more than 50,000 records | CLI/batch only unless precomputed | do not run interactively in the browser |
+| `atlas_scale` | hundreds of thousands or more | separate datapack-style architecture | outside normal SciScape app v1 |
 
 ### Release Quality Gates
 
@@ -540,9 +1355,25 @@ No output should be promoted to a curated demo or release artifact unless:
 - count reconciliation is recorded or explicitly explained
 - source and version metadata are visible to users
 
-## V1 Product Scope
+### Workspace-Ready Feature Checklist
 
-The first coherent Sciscape app should support:
+A feature is ready for UI/UX design only when all of the following are defined:
+
+1. user goal and mode or lens placement
+2. required input objects
+3. generated artifact names and schemas
+4. feature flag inference rule
+5. success, partial, and blocking states
+6. QA checks and release gate behavior
+7. export behavior if applicable
+8. privacy/locality caveats
+9. interaction entry point in the workspace navigation model
+
+## Product Scope
+
+### V1 Scope
+
+The first coherent SciScape app should support:
 
 1. `demo` mode with a curated result.
 2. `static_viewer` mode for GitHub Pages-style `data.json`.
@@ -551,12 +1382,12 @@ The first coherent Sciscape app should support:
 5. `validation` mode as a shared contract.
 6. `overview`, `cluster_map`, `keyword`, `term_network`, `quality`, and
    `export` lenses.
-7. Minimum matrix support for term co-occurrence tables and maps.
-8. Read-only cleaning audit for raw, normalized, display, family, and artifact
+7. minimum matrix support for term co-occurrence tables and maps.
+8. read-only cleaning audit for raw, normalized, display, family, and artifact
    fields.
-9. Lightweight temporal trend summaries when `pubyear` is available.
+9. lightweight temporal trend summaries when `pubyear` is available.
 
-## V1.5 Product Scope
+### V1.5 Scope
 
 Next, add the features that make SciScape closer to KnowledgeMatrix and
 VantagePoint:
@@ -571,7 +1402,7 @@ VantagePoint:
 8. co-authorship, institution, source, and country co-occurrence where
    normalized entity fields exist.
 
-## V2 Product Scope
+### V2 Scope
 
 Later, add heavier or more research-dependent features:
 
@@ -585,7 +1416,7 @@ Later, add heavier or more research-dependent features:
 
 - Do not copy the NanoClustering Atlas UI directly.
 - Do not copy the full Atlas sidecar architecture.
-- Do not turn the Sciscape web app into a general graph editor.
+- Do not turn the SciScape web app into a general graph editor.
 - Do not claim institutional benchmarking without controlled data and metric
   contracts.
 - Do not hard-code field-specific labels or cluster levels into the public
@@ -594,9 +1425,25 @@ Later, add heavier or more research-dependent features:
 
 ## Implementation Order
 
-1. Add artifact validation and feature inference for existing result roots.
-2. Embed feature/version blocks into `report/data.json`.
-3. Make the current web/static viewer consume the feature block.
-4. Add matrix/co-occurrence artifact contracts.
-5. Add cleaning rule artifacts for aliases, stop terms, acronyms, and artifacts.
-6. Redesign the UI around modes and lenses after the contract stabilizes.
+1. Define a minimal result/workspace manifest so users can load outputs without
+   knowing the internal folder layout.
+2. Stabilize artifact validation, feature inference, and exposure states for
+   existing result roots.
+3. Embed feature/version/export blocks into `report/data.json`, static reports,
+   and result manifests.
+4. Add long-run progress, shard, checkpoint, partial-output, and resume metadata
+   for live query and keyword extraction.
+5. Stabilize demo/static/local/query loading around manifest-backed result
+   states.
+6. Stabilize the query-to-atlas analysis spine: source records, networks,
+   clustering, hierarchy, minimal keywords, atlas payload, co-occurrence table,
+   exports, and QA.
+7. Add cleaning rule artifacts for aliases, stop terms, acronyms, metadata
+   fragments, and artifact filters.
+8. Add stable co-occurrence table/map artifact contracts before the general
+   Matrix Builder.
+9. Add general matrix artifact contracts, writers, validators, and exports.
+10. Add temporal/evolution artifact contracts before exposing evolution UI.
+11. Add narrative artifacts only after evidence references are resolvable.
+12. Redesign the UI around workspace, modes, and lenses after P0, P1, and P1.5
+   contracts stabilize.

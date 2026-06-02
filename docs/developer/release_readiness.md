@@ -49,8 +49,8 @@ The gate performs:
 - editable rebuild of both PyO3 extensions with `maturin develop`;
 - `scripts/sciscape_quality_gate.py --smoke --web-demo-smoke`, covering
   artifact filtering, term co-occurrence, dashboard generation, the web demo
-  launcher, local demo opening, and key visualization/download endpoints without
-  external data;
+  launcher, local demo opening, Atlas neighbor edge-evidence sidecars, and key
+  visualization/download endpoints without external data;
 - full Python test suite with `pytest -q`;
 - CLI import/help smoke check.
 
@@ -66,6 +66,8 @@ uv run --extra dev python scripts/sciscape_quality_gate.py \
 
 Use `--allow-missing` when documenting a machine that has not generated the
 live examples yet.
+The canonical manifest now treats `landscape/edge_evidence_samples.json` as an
+expected demo artifact so stale demo outputs fail before release packaging.
 
 ## Optional Artifact Contract Gate
 
