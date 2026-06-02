@@ -148,6 +148,15 @@ Current Dongdaemun implementation status:
       controls.
 - [ ] Closure-gated expand-from-candidate pilot, if one final one-sided
       mechanism test is still worth running after the negative repair control.
+- [ ] NanoClustering scale-emergence diagnostic: after the primitive basin
+      distinction pass, test at which hierarchy scale the folded citation
+      graph begins to expose recurrent endpoint fragmentation. Treat the
+      hypothesis as "58M paper-level fat-tailed citation edges are compressed
+      into 78k intermediate-cluster weak inter-cluster edge mass"; compare
+      hierarchy levels by node count, cluster-size distribution, average
+      degree, top-neighbor concentration, and full-graph versus sparse
+      projection behavior. This is a deferred causal diagnostic, not a basin
+      definition gate.
 
 Branch target-growth search result:
 

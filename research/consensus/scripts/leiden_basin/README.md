@@ -13,6 +13,7 @@ Second-level buckets:
 | `evidence_panels/` | Reviews, audits, field eligibility, relation taxonomy, phase panels, and claim evidence |
 | `materialization/` | Cache, membership, prepare, join, and materialization scripts |
 | `hysteresis/` | Leiden hysteresis runs, monitors, and graph materialization |
+| `demo/` | Tiny controlled Leiden + CPM demo graphs and baseline seed sweeps |
 
 The largest buckets are split once more. `operator_probes/` uses
 `selector_sources/`, `selector_signals/`, `attachment_margin/`, `aligned_core/`,

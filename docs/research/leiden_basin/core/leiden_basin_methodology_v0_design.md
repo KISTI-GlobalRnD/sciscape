@@ -100,6 +100,212 @@ The boundary band is not a nuisance to eliminate. It is a definition result.
 Rows in the boundary band cannot be converted into wall evidence because a
 route is stable or because a final endpoint looks interesting.
 
+## NanoClustering Endpoint-Boundary Addendum
+
+The external NanoClustering seed-ensemble evidence uses a different endpoint
+universe from the local Leiden wall-route panel, so it must not be merged into
+route or operator claims. It can, however, inform the primitive boundary
+definition.
+
+Current NanoClustering evidence supports a fragmentation-first endpoint
+boundary rule:
+
+- event axis: `top_split_share_ref_weight`, the largest surviving share of a
+  seed0 reference cluster in another seed endpoint;
+- strong fragmentation event: `top_split_share_ref_weight < 0.5`;
+- recurrent strong fragmentation candidate: at least `2` strong events across
+  comparison seeds;
+- persistent strong fragmentation candidate: at least `5` strong events across
+  comparison seeds;
+- stable-like reference: no moderate fragmentation event under
+  `top_split_share_ref_weight < 0.8`.
+
+The stratified panel check currently favors recurrent strong fragmentation as
+the primitive endpoint-boundary candidate rule. Recurrent strong candidates
+mostly expand into severe-split or split-and-merge archetypes, while single
+strong and moderate candidates are too mixed and stable-like controls remain
+mild relabeling. Absorption must remain a separate archetype axis because
+matched stable controls can show absorption without fragmentation.
+
+The recurrent boundary-family registry makes this candidate rule operational
+for the next definition pass. It identifies 478 recurrent families, then
+separates 179 definition-core rows (`repeat_severe_core` plus
+`persistent_mixed_core`), 163 stress-test rows (`multi_seed_mixed_recurrent`),
+and 136 edge-control rows (`pair_only_*`). The pair-construction pass should
+start from the definition-core rows, use stress-test rows to probe definition
+fragility, and retain edge controls as counterexamples.
+
+The first definition-core endpoint-pair expansion uses the pair-construction
+panel, not the full 179-row core. It expands 20 panel-selected core families
+into 147 strong endpoint-pair events with 0 mild relabeling events. The two
+core tiers are not interchangeable: `repeat_severe_core` yields 60
+split-and-merge, 13 severe-split, 3 moderate-split, and 2 merge-absorption
+events, while `persistent_mixed_core` yields 42 merge-absorption, 19
+moderate-split, 6 split-and-merge, and 2 severe-split events. The next
+definition check should therefore test internal family coherence separately
+for these two core tiers before reopening any optimizer-native pathway or wall
+protocol.
+
+The dataset-contrast diagnostic adds a separate density read. Current
+NanoClustering full/candidate graphs are dense at the nano level, with
+available summaries around 78k-80k nodes, 105M-107M edges, average degree near
+2.7k, and undirected density near 0.033-0.035. However, the same data family's
+top20-union projection is sparse, and prior Track C edge rows are not locally
+available for direct density recomputation. Density should therefore be
+treated as a plausible contributor to near-boundary alternatives, not as a
+proven cause of the basin-fragmentation signal. Any promotion requires a
+within-current-graph control over local degree, cut ratio, top-neighbor
+concentration, and full versus top20-sparse behavior.
+
+The primitive basin-distinction panel now separates endpoint handles and
+source-target relations over the definition-core pair cases. It materializes 20
+source reference endpoint handles, 147 comparison endpoint handles, and 147
+relation rows. Under the current gate, 115 relations are accepted as primitive
+distinct endpoint-pair relations. The important distinction is not quality:
+`repeat_severe_core` mostly becomes fragmentation-dominant multi-endpoint
+families, while `persistent_mixed_core` mostly becomes host-absorption or mixed
+families. These are support-local basin candidates and relation archetypes, not
+final global attraction basins.
+
+The basin-vector panel is the next refinement of that definition. It treats an
+event as a split-segment vector plus dominant host context, rather than as one
+top comparison endpoint. This reveals that the strongest `repeat_severe_core`
+families are diffuse multiway fragmentation families, and that some
+`persistent_mixed_core` rows are not weak failures but source-host balanced
+two-way splits or external-host absorption families. The current primitive
+basin object should therefore be a support-local endpoint-vector family, not a
+single top endpoint-pair handle.
+
+The basin-vector coherence diagnostic adds the next gate over the same
+definition-core events. A family is treated as definition-core stronger when its
+split-vector class, shape core, dominant host context, and dominant host handle
+repeat across comparison seeds. Under this diagnostic, 8 of 20 families are
+coherent in both vector and host context, 1 is class-coherent with numeric
+variation, and 11 are host-variable, split-mixed, or heterogeneous rule-edge
+candidates. The resulting primitive is therefore not just an endpoint-vector
+family, but an endpoint-vector family with an explicit coherence status.
+
+The full definition-core expansion applies the same endpoint-vector and
+coherence gates to all 179 definition-core families rather than the 20-family
+pilot panel. It yields 1026 endpoint-pair events, 179 family-vector rows, and a
+v1 family registry with 81 `definition_core_v1_coherent` accepted primitive
+families. The remaining 98 rows are not negative evidence against basin
+existence; they are definition-refinement queues: numeric-stress, split-coherent
+host-variable, host-coherent split-mixed, or heterogeneous/rule-edge families.
+This makes the current primitive basin definition operational but still
+support-local and membership-derived.
+
+The refinement-queue decomposition checks whether those 98 refinement rows are
+true failures or overly coarse family units. Primary subfamily decomposition
+recovers 134 coherent endpoint-vector subfamilies across 81 source families and
+398 of 538 queue events, while 58 singleton/tiny events are deliberately not
+promoted. The strongest v2 signal is not the initially expected fine
+shape-core split. For split-mixed and heterogeneous queues, `split_vector_class`
+is the better first split; for host-variable queues, `host_context_class` is the
+better first split. Shape-core signatures should be retained as a secondary
+coherence check rather than the first partition axis.
+
+The resulting v2 primitive registry freezes the current operational basin
+definition without opening the wall/pathway question. A v2 primitive is either
+an accepted v1 coherent family or a primary-axis recovered coherent
+endpoint-vector subfamily. This produces 215 coherent primitives covering 886
+of 1026 definition-core events and 162 of 179 source families. The residual
+140 primary-subfamily events, 17 source families without primary-axis v2
+recovery, and alternative-axis-only recoveries remain definition-audit cases.
+
+The v2 audit-surface review makes the definition less brittle by separating
+support depth from the primitive definition. The inclusive v2 registry uses a
+minimum recovered-subfamily support of 2 events, but many recovered rows are
+thin: coverage falls to 766/1026, 658/1026, 550/1026, and 520/1026 if that
+support floor is raised to 3, 4, 5, or 6. The primary decomposition rule remains
+the default because it recovers most queue evidence, but 12 families have a
+better alternative axis and 4 of those are strong exception candidates with
+primary recovery zero and alternative recovery of at least 75% of source events.
+
+V2.1 therefore does not change the primitive count. It retains the 215 v2
+primitives and 886 covered events, but annotates them with confidence tiers and
+separates exception handling from primitive promotion. Strong and weak
+alternative-axis exceptions remain outside the primitive registry until their
+event-level exception axis is materialized. Marginal secondary-axis gains stay
+in the registry as primary-axis primitives with an explicit caveat.
+
+The v2.1 detail review shows that the thin-support caveat is distributed, not
+localized: 60 thin recovered primitives are spread across 51 source families.
+The strong exception candidates are also concrete enough for the next
+definition pass: recomputing their best-axis subfamilies from event-vector rows
+recovers 24 coherent events, but those rows remain non-promoted until an
+exception-axis rule is explicitly defined. The remaining non-tiny residuals
+point to second-axis and joint-axis definition design rather than wall/pathway
+search.
+
+The axis-rule candidate materialization then tests these definition rules
+without changing the registry. Strong exception-axis candidates are the
+cleanest: all four recover most events under the preidentified best axis, for
+24 recovered events out of 29 source events. Joint-axis candidates recover 12
+of 18 residual events and are plausible for a narrower definition pass.
+Second-axis candidates recover 22 of 53 residual events at best-per-target, but
+no single axis cleanly resolves the host-coherent split-mixed queue.
+
+The v2.2 exception-axis registry turns only the strong exception-axis signal
+into primitive definition rows. It adds 8 exception-axis recovered coherent
+subfamilies covering 24 events, raises primitive coverage from 886 to 910 of
+1026 definition-core events, and reduces the residual queue from 140 to 116
+events. The remaining 5 exception-axis events stay as singleton/tiny holdouts.
+Second-axis and joint-axis candidates are deliberately left unpromoted because
+their rule design is not yet clean enough.
+
+The post-v2.2 option review checks whether that judgment should change before
+freezing the definition. It does not. The remaining second/joint queues contain
+15 targets and 44 events; current best axes recover 12 events, all as support-2
+subfamilies, and no remaining target recovers most events. The operational
+choice is therefore to freeze v2.2 as the current basin-definition surface and
+carry the remaining second-axis, joint-axis, rule-edge, and tiny-support rows as
+an explicit residual-debt ledger.
+
+This addendum is still endpoint cartography. It does not define a final global
+attraction basin and does not supply wall/pathway evidence.
+
+The v2.2 instrumentation-surface audit checks whether the frozen definition can
+serve as the next measurement surface. It preserves the 1026-event definition
+universe as 910 accepted primitive events plus 116 residual-debt events, with
+0 duplicate primitive-event rows. The accepted surface covers 166 source
+families, of which 41 still carry residual debt; 13 definition-core families
+are residual-only. Stress-test and edge-case control families remain
+non-promoted, and matched stable controls contribute only context: they show
+0 severe-like split or split-and-merge events, but they are not causal
+validation. The next methodological unit is therefore an accepted-primitive
+instrumentation panel with residual exclusions, not a v2.3 definition pass and
+not a wall/pathway or quality/cost claim.
+
+The accepted-primitive measurement panel then converts the frozen surface into
+measurement rows. It has 223 primitive rows, 910 accepted event rows, and 166
+accepted source families. The panel keeps residual debt as source-family
+caveats: 41 accepted families carry residual debt, while residual-only families
+are not converted into accepted measurement rows. The support distribution is
+part of the measurement object: 82 deep-support, 72 moderate-support, and 69
+thin-support primitives. Endpoint-vector fields are complete for all accepted
+event rows, so the first distribution review can inspect split-vector,
+host-context, shape-core, boundary-pattern, and host-handle concentration
+without opening route, wall/pathway, quality, or cost claims.
+
+The measurement distribution review turns that inspection into conservative
+claim bands. The stable descriptive nucleus is 83 primitives over 452 accepted
+events and 79 source families. The remaining accepted primitives require
+caveats: 42 are thin but clean, 52 carry residual definition debt, and 46 have
+host/shape/boundary concentration caveats. This means the first result should
+claim a stable nucleus plus visible caveat classes, not a uniformly strong set
+of 223 accepted primitives. Persistent mixed core supplies most of the stable
+nucleus; repeat severe core remains the harder boundary class.
+
+The claim-tier ladder makes the extension from 83 to 223 explicit. T1 is the
+headline descriptive nucleus; T2 is thin-clean extension; T3 is thin with
+concentration caveats; T4 is non-residual concentration caveat; T5 is standard
+residual-debt caveat; and T6 is high-residual-debt audit priority. The
+cumulative ladder is 83/452/79, 106/498/90, 125/536/99, 171/756/125,
+218/899/161, and 223/910/166 for primitives/events/source families. This
+changes result wording only and still excludes route execution, wall/pathway
+promotion, basin-quality claims, cost claims, and directed-search claims.
+
 ## Precommitted Non-Field34 Panel
 
 The next panel should be selected before route execution from the broader
@@ -342,6 +548,37 @@ Current M3 counts:
 M3 remains schema review only. It does not execute routes, promote wall claims,
 or inspect basin quality/cost. Support-distance distinctness is treated as
 basin-pair relation evidence, not wall evidence.
+
+## M4a Partial-Wall Trace Audit Status
+
+The first M4a trace audit has been generated in the same result directory:
+
+`research/consensus/results/adaptive_refinement/leiden_basin_methodology_v0_20260529/`
+
+It adds:
+
+- `methodology_v0_partial_wall_trace_audit_schedule_rows.csv`;
+- `methodology_v0_partial_wall_trace_audit_pair_rows.csv`;
+- `methodology_v0_partial_wall_trace_audit_summary.json`;
+- `methodology_v0_partial_wall_trace_audit_report.md`.
+
+Current M4a counts:
+
+- `2` field26 partial-wall protocol references audited;
+- `6` schedule rows audited;
+- `2` pairs pass W1-W6 as
+  `crosses_reference_schedule_stable_target_polish`;
+- `2` pairs remain `not_promoted_constructed_pathway_reference_only`;
+- `0` new route executions;
+- `0` wall promotions.
+
+The allowed claim is now narrower and more precise: schedule-stable constructed
+pathway references exist for two field26 pairs under the v0 trace audit. The
+forbidden claim remains a supported wall, basin-quality result, cost result, or
+validated basin-tunneling operator. The reason is substantive: objective
+debt/recovery and target endpoint assignment are present, but support
+incompatibility is not observed and the post-polish support footprint remains
+target-like rather than exact.
 
 ## Claim Ladder
 
