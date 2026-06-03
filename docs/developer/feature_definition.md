@@ -1020,15 +1020,21 @@ Allowed evidence sources:
 
 Artifacts:
 
-- `narratives/<cluster_uid>.json` or bundled narrative table
-- narrative metadata with generation method
-- evidence references by artifact path, row ID, or cluster UID
-- QA caveat list
+- `narrative/narrative_manifest.json`
+- `narrative/narrative_targets.parquet`
+- `narrative/claims.parquet`
+- `narrative/evidence_sources.parquet`
+- `narrative/evidence_refs.parquet`
+- `narrative/claim_evidence_links.parquet`
+- `narrative/narrative_sections.parquet`
+- `narrative/review_decisions.parquet`
+- `narrative/narrative_qa.json`
 
 Feature flag rule:
 
-- `narrative=true` only when narrative artifact exists, or deterministic
-  narrative requirements are met and evidence references can be resolved.
+- `narrative=true` only when validated narrative artifacts exist and evidence
+  references can be resolved. Deterministic scaffolds without written
+  artifacts do not enable the narrative lens.
 
 Success:
 
@@ -1280,7 +1286,7 @@ Recommended feature inference:
 | `evidence` | abstracts and membership can be joined, or representative docs exist |
 | `temporal` | `pubyear` exists and temporal summaries or yearly grouping are available |
 | `evolution` | validated evolution artifact exists with non-empty states, transitions, lineages, events, and QA |
-| `narrative` | narrative artifact exists, or deterministic narrative evidence requirements are met |
+| `narrative` | validated narrative artifact exists with supported claims and resolvable evidence refs |
 | `quality` | QA report exists or validation can run |
 | `export` | loaded result has enough data to write at least one supported export |
 

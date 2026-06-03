@@ -220,7 +220,7 @@ Initial stable artifact refs:
 | `matrix` | `matrices/<matrix_id>/matrix_manifest.json` plus values and entity tables |
 | `temporal` | `temporal/temporal_manifest.json` plus periods, activity, entity series, events, and QA |
 | `evolution` | `evolution/evolution_manifest.json` plus slices, states, transitions, lineages, events, and QA |
-| `narrative` | future narrative artifact |
+| `narrative` | `narrative/narrative_manifest.json` plus targets, claims, evidence refs, links, sections, reviews, and QA |
 | `export_manifest` | future export manifest |
 | `job_status` | live query status JSON |
 | `keyword_progress` / `pipeline_progress` | keyword or pipeline progress JSON |

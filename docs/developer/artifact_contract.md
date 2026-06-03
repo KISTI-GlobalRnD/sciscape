@@ -88,8 +88,16 @@ writers should emit `result_manifest.json`.
 | `evolution/lineages.parquet` | `schema_version`, `evolution_id`, `lineage_id`, `state_id`, `slice_id`, `role`, `stability_score` | Derived identity paths across slices. |
 | `evolution/evolution_events.parquet` | `schema_version`, `evolution_id`, `event_id`, `event_type`, `slice_id`, `state_id`, `transition_refs`, `score`, `method` | Continuation, split, merge, emergence, decline, or ambiguous event rows. |
 | `evolution/evolution_qa.json` | `schema_version`, `evolution_id`, `status`, `checks`, `counts`, `event_counts`, `warnings`, `blocking_issues` | Evolution artifact QA summary. |
+| `narrative/narrative_manifest.json` | `schema_version`, `narrative_id`, `narrative_scope`, `claim_policy`, `evidence_policy`, `outputs` | Narrative evidence-reference artifact contract defined in `narrative_artifact_design.md`. |
+| `narrative/narrative_targets.parquet` | `schema_version`, `narrative_id`, `target_id`, `target_type`, `target_key`, `target_label`, `feature_state` | Entities that may receive narrative claims. |
+| `narrative/claims.parquet` | `schema_version`, `narrative_id`, `claim_id`, `target_id`, `section_id`, `claim_type`, `claim_text`, `support_state`, `confidence`, `evidence_ref_count` | Claim rows with support state and text origin. |
+| `narrative/evidence_sources.parquet` | `schema_version`, `narrative_id`, `evidence_source_id`, `artifact_ref`, `artifact_role`, `artifact_path`, `resolver`, `source_state` | Artifact sources that evidence refs can point to. |
+| `narrative/evidence_refs.parquet` | `schema_version`, `narrative_id`, `evidence_ref_id`, `evidence_source_id`, `evidence_type`, `entity_type`, `entity_key`, `locator_type`, `locator` | Row-level or aggregate evidence pointers. |
+| `narrative/claim_evidence_links.parquet` | `schema_version`, `narrative_id`, `claim_id`, `evidence_ref_id`, `evidence_role`, `link_strength`, `required` | Claim-to-evidence links. |
+| `narrative/narrative_sections.parquet` | `schema_version`, `narrative_id`, `section_id`, `target_id`, `section_type`, `section_title`, `section_state`, `claim_count` | Narrative display grouping and section state. |
+| `narrative/review_decisions.parquet` | `schema_version`, `narrative_id`, `decision_id`, `claim_id`, `decision_type`, `reviewer`, `decided_at_utc`, `reason` | Optional review decisions when review state is advertised. |
+| `narrative/narrative_qa.json` | `schema_version`, `narrative_id`, `status`, `checks`, `counts`, `claim_counts`, `unsupported_claims`, `warnings`, `blocking_issues` | Narrative artifact QA summary. |
 | matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
-| narrative artifacts | `*narrative*` JSON/parquet | Powers narrative only when present or embedded in `data.json`. |
 
 ## Feature Block
 
@@ -132,7 +140,7 @@ Feature inference rules:
 | `evidence` | abstracts and membership both exist |
 | `temporal` | stable temporal artifacts exist, or abstracts include `pubyear` for beta temporal views |
 | `evolution` | stable evolution artifacts exist; embedded legacy evolution payloads may support beta views only |
-| `narrative` | narrative artifact exists or report data embeds narrative payloads |
+| `narrative` | stable narrative artifacts exist; embedded legacy narrative payloads may support beta views only |
 | `quality` | validation can run |
 | `export` | keyword, cluster map, or report data exists |
 

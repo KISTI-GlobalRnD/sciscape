@@ -249,9 +249,11 @@ unsupported prose.
 Primary work:
 
 - Define a narrative artifact schema with claim IDs, evidence references,
-  confidence, unsupported-claim flags, and source rows.
-- Generate cluster summaries from terms, representative works, temporal signals,
-  neighbor evidence, and quality warnings.
+  confidence, unsupported-claim flags, and source rows using the contract in
+  `narrative_artifact_design.md`.
+- Prepare deterministic claim scaffolds from terms, representative works,
+  temporal signals, neighbor evidence, and quality warnings before any optional
+  generation step.
 - Add a narrative QA gate that rejects claims without attached evidence.
 - Expose narrative as a review layer, not as the source of cluster truth.
 
@@ -259,6 +261,8 @@ Completion criteria:
 
 - Every cluster narrative claim links to concrete records, terms, metrics, or
   relation evidence.
+- Narrative evidence-reference outputs can be validated independently from the
+  UI and without generation.
 - Missing or weak evidence is visible to the user.
 - Narrative artifacts can be regenerated after cleaning, matrix, or evolution
   changes.
@@ -316,7 +320,8 @@ Do not do yet:
     `temporal_artifact_design.md`.
 11. Maintain the cluster evolution artifact schema and synthetic smoke example
     in `evolution_artifact_design.md`.
-12. Define narrative evidence-reference schema without generation.
+12. Maintain the narrative evidence-reference schema without generation in
+    `narrative_artifact_design.md`.
 13. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.
 
 ## Priority Review Cadence

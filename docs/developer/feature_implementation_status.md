@@ -47,7 +47,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
 | F11 | Temporal and evolution | `[~]` | 38% | temporal keyword utilities, burst/trend helpers, feature detection, temporal and evolution artifact designs | writers, validators, and map UI |
-| F12 | Evidence-backed narratives | `[ ]` | 15% | narrative feature detection and target definition | narrative generator, evidence references, QA contract |
+| F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 80% | artifact contract, result validation, quality gate, keyword artifact checks | strict checks for matrix/evolution/narrative features |
 | F14 | Report, export, interoperability | `[~]` | 70% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data | VOSviewer-style exports and export manifest completeness |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
@@ -264,18 +264,19 @@ validator, and UI implementation.
 
 ### F12. Evidence-Backed Narratives
 
-Status: `[ ]` Missing. Rough completeness: 15%.
+Status: `[~]` Partial. Rough completeness: 24%.
 
 - `[~]` Narrative is named in the feature definition and artifact feature
   inference can detect narrative-like payloads.
+- `[x]` Narrative evidence-reference artifact contract is defined in
+  `docs/developer/narrative_artifact_design.md`.
+- `[ ]` There is no stable narrative evidence-reference writer.
+- `[ ]` There is no narrative artifact validator or QA gate.
 - `[ ]` There is no stable narrative generation pipeline.
-- `[ ]` There is no required evidence-reference schema for narrative claims.
-- `[ ]` There is no narrative QA gate for unsupported claims, hallucination risk,
-  or missing citations.
 - `[ ]` There is no final app surface for cluster narrative review.
 
-Review: this should remain a future feature until the evidence reference
-contract and QA gate exist.
+Review: the evidence-reference contract now exists, but narrative should remain
+hidden or beta until writer, validator, QA gate, and review UI exist.
 
 ### F13. Validation And QA
 
@@ -341,5 +342,6 @@ evolution map, and narrative system are stable.
 4. Define replayable keyword cleaning rule artifacts and before/after diffs.
 5. Implement the cluster evolution writer, validator, and synthetic smoke gate
    from `evolution_artifact_design.md`.
-6. Define narrative evidence-reference schema before adding generation.
+6. Implement the narrative evidence-reference writer, validator, and unsupported
+   claim gate from `narrative_artifact_design.md`.
 7. Add export manifests for every generated report, graph, table, and map.
