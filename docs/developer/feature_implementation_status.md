@@ -49,7 +49,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F11 | Temporal and evolution | `[~]` | 38% | temporal keyword utilities, burst/trend helpers, feature detection, temporal and evolution artifact designs | writers, validators, and map UI |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 80% | artifact contract, result validation, quality gate, keyword artifact checks | strict checks for matrix/evolution/narrative features |
-| F14 | Report, export, interoperability | `[~]` | 70% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data | VOSviewer-style exports and export manifest completeness |
+| F14 | Report, export, interoperability | `[~]` | 74% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data, export manifest design | export manifest writer/validator and VOSviewer-style exports |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
 ## Code Surface Inventory
@@ -295,18 +295,22 @@ features are exposed in the UI.
 
 ### F14. Report, Export, And Interoperability
 
-Status: `[~]` Partial. Rough completeness: 70%.
+Status: `[~]` Partial. Rough completeness: 74%.
 
 - `[x]` Dashboard, report, and viewer export helpers exist.
 - `[x]` CLI export supports GEXF and GraphML.
 - `[x]` Static report data can be used by the web viewer.
+- `[x]` Export manifest contract is defined in
+  `docs/developer/export_manifest_design.md`.
 - `[~]` Artifact contracts can summarize export availability.
+- `[ ]` Export manifest writer and validator are not yet implemented.
 - `[ ]` VOSviewer-style map/network exports are not clearly complete.
 - `[ ]` Export manifests do not yet describe every exported view, filter, and
   data transformation.
 
-Review: good enough for graph/report exports, but not complete as an
-interoperability layer.
+Review: good enough for graph/report exports, and the manifest contract is now
+defined, but this is not complete as an interoperability layer until export
+manifests are written and validated.
 
 ### F15. Institutional Analytics
 
@@ -344,4 +348,5 @@ evolution map, and narrative system are stable.
    from `evolution_artifact_design.md`.
 6. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-7. Add export manifests for every generated report, graph, table, and map.
+7. Implement the export manifest writer and validator from
+   `export_manifest_design.md`.

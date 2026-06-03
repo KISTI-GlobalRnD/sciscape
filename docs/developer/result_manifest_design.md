@@ -221,7 +221,7 @@ Initial stable artifact refs:
 | `temporal` | `temporal/temporal_manifest.json` plus periods, activity, entity series, events, and QA |
 | `evolution` | `evolution/evolution_manifest.json` plus slices, states, transitions, lineages, events, and QA |
 | `narrative` | `narrative/narrative_manifest.json` plus targets, claims, evidence refs, links, sections, reviews, and QA |
-| `export_manifest` | future export manifest |
+| `export_manifest` | `exports/<export_id>/export_manifest.json` plus files, inputs, transforms, and QA |
 | `job_status` | live query status JSON |
 | `keyword_progress` / `pipeline_progress` | keyword or pipeline progress JSON |
 | `scoring_shard_manifest` | keyword scoring shard manifest |
@@ -313,6 +313,7 @@ Allowed validation states:
     "format": "html",
     "feature_refs": ["overview", "keyword", "cluster_map"],
     "source_artifact_refs": ["report_data"],
+    "export_manifest_ref": "exports/report_html/export_manifest.json",
     "status": "present"
   }
 ]
@@ -328,6 +329,12 @@ Export kinds should start small:
 - `keyword_table`
 - `cooccurrence_table`
 - `matrix_table`
+- `vosviewer_network`
+- `package_bundle`
+
+When an export manifest exists, the list entry should include
+`export_manifest_ref`. Legacy entries may omit it and should be treated as beta
+until export QA is available.
 
 ## Source Block
 

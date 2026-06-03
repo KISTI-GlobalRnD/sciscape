@@ -97,6 +97,11 @@ writers should emit `result_manifest.json`.
 | `narrative/narrative_sections.parquet` | `schema_version`, `narrative_id`, `section_id`, `target_id`, `section_type`, `section_title`, `section_state`, `claim_count` | Narrative display grouping and section state. |
 | `narrative/review_decisions.parquet` | `schema_version`, `narrative_id`, `decision_id`, `claim_id`, `decision_type`, `reviewer`, `decided_at_utc`, `reason` | Optional review decisions when review state is advertised. |
 | `narrative/narrative_qa.json` | `schema_version`, `narrative_id`, `status`, `checks`, `counts`, `claim_counts`, `unsupported_claims`, `warnings`, `blocking_issues` | Narrative artifact QA summary. |
+| `exports/<export_id>/export_manifest.json` | `schema_version`, `export_id`, `export_family`, `export_kind`, `format`, `status`, `feature_refs`, `source_artifacts`, `outputs` | Export manifest contract defined in `export_manifest_design.md`. |
+| `exports/<export_id>/export_files.parquet` | `schema_version`, `export_id`, `file_id`, `path`, `role`, `format`, `public_share_state` | Output file inventory. |
+| `exports/<export_id>/export_inputs.parquet` | `schema_version`, `export_id`, `input_id`, `artifact_ref`, `artifact_role`, `artifact_path`, `feature_state`, `required` | Source artifacts and feature states used by the export. |
+| `exports/<export_id>/export_transforms.parquet` | `schema_version`, `export_id`, `transform_id`, `step_index`, `transform_type`, `description`, `parameters` | Filters, field mappings, layout, packaging, and format conversion steps. |
+| `exports/<export_id>/export_qa.json` | `schema_version`, `export_id`, `status`, `checks`, `counts`, `compatibility`, `warnings`, `blocking_issues` | Export QA summary. |
 | matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
 
 ## Feature Block
@@ -142,7 +147,7 @@ Feature inference rules:
 | `evolution` | stable evolution artifacts exist; embedded legacy evolution payloads may support beta views only |
 | `narrative` | stable narrative artifacts exist; embedded legacy narrative payloads may support beta views only |
 | `quality` | validation can run |
-| `export` | keyword, cluster map, or report data exists |
+| `export` | stable export manifests exist, or keyword/cluster map/report data exists for beta legacy exports |
 
 ## Report Data Contract
 

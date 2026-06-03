@@ -11,6 +11,7 @@
 | `temporal_artifact_design.md` | Temporal trend artifact schema, writer, validator, and QA contract |
 | `evolution_artifact_design.md` | Cluster evolution artifact schema, synthetic smoke example, validator, and QA contract |
 | `narrative_artifact_design.md` | Narrative evidence-reference artifact schema, validator, and QA contract |
+| `export_manifest_design.md` | Export manifest schema, file inventory, interoperability, and QA contract |
 | `release_readiness.md` | Local validation and release checklist |
 | `atlas_app_benchmark.md` | Atlas Map feature absorption matrix and result-contract patterns |
 | `feature_definition.md` | Product modes, lenses, capabilities, and validation contract |

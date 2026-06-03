@@ -1169,12 +1169,17 @@ Artifacts:
 - graph export files
 - matrix export files
 - static viewer bundle
-- package/export manifest
+- `exports/<export_id>/export_manifest.json`
+- `exports/<export_id>/export_files.parquet`
+- `exports/<export_id>/export_inputs.parquet`
+- `exports/<export_id>/export_transforms.parquet`
+- `exports/<export_id>/export_qa.json`
 
 Feature flag rule:
 
 - `export=true` when loaded result has enough data to write at least one
-  supported export.
+  supported export. Stable export exposure requires an export manifest and QA;
+  legacy file-only exports are beta.
 
 Success:
 
@@ -1182,6 +1187,7 @@ Success:
 - stable IDs are preserved
 - node/edge/matrix labels remain interpretable outside SciScape
 - selected/visible subset exports record the selection
+- export manifests record source artifacts, transforms, file inventory, and QA
 
 Partial:
 
@@ -1193,6 +1199,7 @@ Blocking:
 - export uses labels without stable source keys
 - graph export lacks required weight or relation type
 - public bundle includes private paths or unintended raw text
+- advertised export manifest has missing primary files or blocked QA
 
 UI/UX placement:
 
@@ -1288,7 +1295,7 @@ Recommended feature inference:
 | `evolution` | validated evolution artifact exists with non-empty states, transitions, lineages, events, and QA |
 | `narrative` | validated narrative artifact exists with supported claims and resolvable evidence refs |
 | `quality` | QA report exists or validation can run |
-| `export` | loaded result has enough data to write at least one supported export |
+| `export` | validated export manifest exists, or loaded result has enough data for beta legacy exports |
 
 ### Result States
 

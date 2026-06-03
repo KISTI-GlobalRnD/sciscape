@@ -74,7 +74,7 @@ Primary work:
 - Add exposure states for atlas, keywords, term network, co-occurrence, matrix,
   temporal, evolution, narrative, quality, and export surfaces.
 - Add export manifests for reports, graph files, tables, maps, and static viewer
-  bundles.
+  bundles using the contract in `export_manifest_design.md`.
 - Add long-run status metadata: progress, heartbeat, shard state, checkpoint
   path, partial outputs, failure reason, and resume markers.
 - Strengthen `sciscape_quality_gate.py` so incomplete features are hidden or
@@ -322,7 +322,9 @@ Do not do yet:
     in `evolution_artifact_design.md`.
 12. Maintain the narrative evidence-reference schema without generation in
     `narrative_artifact_design.md`.
-13. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.
+13. Maintain the export manifest schema for reports, graph files, tables, maps,
+    and bundles in `export_manifest_design.md`.
+14. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.
 
 ## Priority Review Cadence
 
