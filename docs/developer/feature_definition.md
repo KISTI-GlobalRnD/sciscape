@@ -944,17 +944,22 @@ Inputs:
 
 Artifacts:
 
-- `temporal/yearly_counts.parquet`
-- `temporal/metadata.json`
-- `evolution/cluster_evolution.json` or parquet equivalent
-- `evolution/cluster_year_counts.parquet`
+- `temporal/temporal_manifest.json`
+- `temporal/periods.parquet`
+- `temporal/activity.parquet`
+- `temporal/entity_series.parquet`
+- `evolution/evolution_manifest.json`
+- `evolution/time_slices.parquet`
+- `evolution/cluster_states.parquet`
 - `evolution/transitions.parquet`
-- `evolution/metadata.json`
+- `evolution/lineages.parquet`
+- `evolution/evolution_events.parquet`
+- `evolution/evolution_qa.json`
 
 Feature flag rule:
 
 - `temporal=true` with `pubyear` and yearly grouping.
-- `evolution=true` only with non-empty evolution/trajectory artifacts.
+- `evolution=true` only with non-empty, validated evolution artifacts.
 - burst/thematic evolution remains disabled without method-specific artifacts.
 
 Success:
@@ -1274,7 +1279,7 @@ Recommended feature inference:
 | `matrix` | matrix artifact exists with row/column metadata |
 | `evidence` | abstracts and membership can be joined, or representative docs exist |
 | `temporal` | `pubyear` exists and temporal summaries or yearly grouping are available |
-| `evolution` | evolution/trajectory artifact exists and has non-empty yearly or trajectory data |
+| `evolution` | validated evolution artifact exists with non-empty states, transitions, lineages, events, and QA |
 | `narrative` | narrative artifact exists, or deterministic narrative evidence requirements are met |
 | `quality` | QA report exists or validation can run |
 | `export` | loaded result has enough data to write at least one supported export |

@@ -81,8 +81,14 @@ writers should emit `result_manifest.json`.
 | `temporal/entity_series.parquet` | `schema_version`, `temporal_id`, `entity_type`, `entity_key`, `period_id`, `metric`, `value` | Long-format temporal series for result, cluster, term, and term-family entities. |
 | `temporal/temporal_events.parquet` | `schema_version`, `temporal_id`, `event_id`, `event_type`, `entity_type`, `entity_key`, `start_period_id`, `end_period_id`, `metric`, `score`, `method` | Optional growth, decline, burst, or peak signal rows. |
 | `temporal/temporal_qa.json` | `schema_version`, `temporal_id`, `status`, `checks`, `counts`, `warnings`, `blocking_issues` | Temporal artifact QA summary. |
+| `evolution/evolution_manifest.json` | `schema_version`, `evolution_id`, `slice_method`, `matching_method`, `event_rules`, `outputs` | Cluster evolution artifact contract defined in `evolution_artifact_design.md`. |
+| `evolution/time_slices.parquet` | `schema_version`, `evolution_id`, `slice_id`, `slice_index`, `start_year`, `end_year`, `doc_count` | Slice axis for cluster-state evolution. |
+| `evolution/cluster_states.parquet` | `schema_version`, `evolution_id`, `state_id`, `slice_id`, `cluster_key`, `cluster_label`, `doc_count` | Slice-specific cluster states. |
+| `evolution/transitions.parquet` | `schema_version`, `evolution_id`, `transition_id`, `source_state_id`, `target_state_id`, `score`, `support_count`, `relation` | Directed transition evidence between adjacent slice states. |
+| `evolution/lineages.parquet` | `schema_version`, `evolution_id`, `lineage_id`, `state_id`, `slice_id`, `role`, `stability_score` | Derived identity paths across slices. |
+| `evolution/evolution_events.parquet` | `schema_version`, `evolution_id`, `event_id`, `event_type`, `slice_id`, `state_id`, `transition_refs`, `score`, `method` | Continuation, split, merge, emergence, decline, or ambiguous event rows. |
+| `evolution/evolution_qa.json` | `schema_version`, `evolution_id`, `status`, `checks`, `counts`, `event_counts`, `warnings`, `blocking_issues` | Evolution artifact QA summary. |
 | matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
-| evolution artifacts | `*evolution*` or `*trajectory*` JSON/parquet | Powers the evolution lens only when present or embedded in `data.json`. |
 | narrative artifacts | `*narrative*` JSON/parquet | Powers narrative only when present or embedded in `data.json`. |
 
 ## Feature Block
@@ -125,7 +131,7 @@ Feature inference rules:
 | `matrix` | matrix/co-occurrence artifact exists or report term edges exist |
 | `evidence` | abstracts and membership both exist |
 | `temporal` | stable temporal artifacts exist, or abstracts include `pubyear` for beta temporal views |
-| `evolution` | evolution/trajectory artifact exists or report data embeds evolution payloads |
+| `evolution` | stable evolution artifacts exist; embedded legacy evolution payloads may support beta views only |
 | `narrative` | narrative artifact exists or report data embeds narrative payloads |
 | `quality` | validation can run |
 | `export` | keyword, cluster map, or report data exists |

@@ -220,7 +220,8 @@ Primary work:
 - Stabilize temporal trend artifacts for documents, keywords, clusters, and term
   families using the contract in `temporal_artifact_design.md`.
 - Define cluster evolution artifacts: time slice, lineage, split, merge,
-  emergence, decline, stability, and evidence rows.
+  emergence, decline, stability, and evidence rows using the contract in
+  `evolution_artifact_design.md`.
 - Add growth and burst summaries as analysis artifacts.
 - Build a small evolution smoke example before adding the full UI lens.
 - Keep the evolution map separate from generic temporal charts until lineage
@@ -229,6 +230,7 @@ Primary work:
 Completion criteria:
 
 - Temporal trend outputs can be validated independently from the UI.
+- Cluster evolution outputs can be validated independently from the UI.
 - The same cluster can be followed across time slices with explicit evidence.
 - Split, merge, emergence, and decline events have reproducible input rows.
 - Evolution UI can be enabled or disabled by feature states.
@@ -312,7 +314,8 @@ Do not do yet:
    `matrix_artifact_design.md`.
 10. Maintain the temporal trend artifact schema in
     `temporal_artifact_design.md`.
-11. Define cluster evolution artifact schema and one synthetic smoke example.
+11. Maintain the cluster evolution artifact schema and synthetic smoke example
+    in `evolution_artifact_design.md`.
 12. Define narrative evidence-reference schema without generation.
 13. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.
 

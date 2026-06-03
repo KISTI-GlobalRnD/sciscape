@@ -219,7 +219,7 @@ Initial stable artifact refs:
 | `cooccurrence` | `landscape/term_cooccurrence.parquet` and `landscape/term_cooccurrence_map.json` |
 | `matrix` | `matrices/<matrix_id>/matrix_manifest.json` plus values and entity tables |
 | `temporal` | `temporal/temporal_manifest.json` plus periods, activity, entity series, events, and QA |
-| `evolution` | future evolution artifact |
+| `evolution` | `evolution/evolution_manifest.json` plus slices, states, transitions, lineages, events, and QA |
 | `narrative` | future narrative artifact |
 | `export_manifest` | future export manifest |
 | `job_status` | live query status JSON |
