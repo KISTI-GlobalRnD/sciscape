@@ -4,6 +4,7 @@
 |---|---|
 | `project_structure.md` | Repo map and placement rules |
 | `branding_positioning.md` | Product identity, competitive positioning, and claim boundaries |
+| `workspace_manifest_design.md` | Workspace, project, dataset, run, result, rule-set, view, and export registry contract |
 | `result_manifest_design.md` | Result-root manifest schema for navigation, provenance, feature states, and run status |
 | `artifact_contract.md` | Result-root schema, feature inference, and validation rules |
 | `atlas_evidence_inspector_design.md` | Validated-payload Atlas evidence inspector contract and implementation order |

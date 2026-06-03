@@ -69,6 +69,9 @@ Primary work:
 - Define a minimal `result_manifest.json` or equivalent manifest for result
   roots. It should include source files, run metadata, artifact paths, feature
   states, export paths, warnings, and provenance.
+- Define a lightweight `workspace.json` registry for projects, datasets, runs,
+  results, rule sets, views, and exports using the contract in
+  `workspace_manifest_design.md`.
 - Extend result manifests so `data.json`, result roots, and static reports share
   the same feature/version block.
 - Add exposure states for atlas, keywords, term network, co-occurrence, matrix,
@@ -324,7 +327,9 @@ Do not do yet:
     `narrative_artifact_design.md`.
 13. Maintain the export manifest schema for reports, graph files, tables, maps,
     and bundles in `export_manifest_design.md`.
-14. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.
+14. Maintain the workspace/project/run manifest schema in
+    `workspace_manifest_design.md`.
+15. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.
 
 ## Priority Review Cadence
 

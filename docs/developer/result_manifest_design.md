@@ -35,7 +35,7 @@ open, what is safe to show, and where are the files?"
 | `artifact_contract.json` | validator snapshot | artifact existence, inferred features, warnings, blocking errors, counts |
 | `report/data.json` | static viewer payload | bounded viewer data, atlas nodes/edges, embedded report feature block |
 | `demo_presets.json` | curated examples | demo list, expected files, suggested command |
-| future `workspace.json` | multi-result workspace | projects, recent results, rule sets, reusable views |
+| `workspace.json` | multi-result workspace | projects, recent results, rule sets, reusable views; see `workspace_manifest_design.md` |
 
 The manifest can point to the artifact contract, but the artifact contract
 remains stricter. If the manifest says a feature is available and the validator

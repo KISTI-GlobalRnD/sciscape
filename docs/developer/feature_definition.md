@@ -204,8 +204,12 @@ Inputs:
 
 Artifacts:
 
-- workspace manifest
-- project manifest
+- `workspace.json`
+- `projects/<project_id>/project_manifest.json`
+- `datasets/<dataset_id>/dataset_manifest.json`
+- `runs/<run_id>/run_manifest.json`
+- `rules/<rule_set_id>/rule_set_manifest.json`
+- `views/<view_id>/view_manifest.json`
 - run status/logs
 - result artifact contract
 - export manifest
@@ -1443,8 +1447,8 @@ Later, add heavier or more research-dependent features:
 
 ## Implementation Order
 
-1. Define a minimal result/workspace manifest so users can load outputs without
-   knowing the internal folder layout.
+1. Maintain result and workspace manifest contracts so users can load outputs
+   without knowing the internal folder layout.
 2. Stabilize artifact validation, feature inference, and exposure states for
    existing result roots.
 3. Embed feature/version/export blocks into `report/data.json`, static reports,

@@ -36,7 +36,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 
 | ID | Feature Area | Status | Rough Completeness | Current Evidence | Main Missing Piece |
 |---|---:|---:|---:|---|---|
-| F01 | Workspace and project management | `[~]` | 35% | local result discovery, job store, demo presets | stable workspace/project/run manifest model |
+| F01 | Workspace and project management | `[~]` | 41% | local result discovery, job store, demo presets, workspace manifest design | workspace writer/validator and durable browser |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
 | F04 | Live query and job execution | `[~]` | 65% | `/api/query`, job status, SSE, OpenAlex pipeline output | cancellation, retry policy, partial artifact recovery UI |
@@ -80,14 +80,15 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 
 ### F01. Workspace And Project Management
 
-Status: `[~]` Partial. Rough completeness: 35%.
+Status: `[~]` Partial. Rough completeness: 41%.
 
 - `[x]` Local result roots can be discovered and opened from the web app.
 - `[x]` Query jobs have persisted status and output directories.
 - `[x]` Demo presets point users to prepared local result artifacts.
+- `[x]` Workspace/project/run manifest contract is defined in
+  `docs/developer/workspace_manifest_design.md`.
 - `[~]` Result-root validation can infer available features from files.
-- `[ ]` Workspace, project, dataset, run, rule-set, view, and export objects are
-  not formalized as a single manifest model.
+- `[ ]` Workspace writer and validator are not yet implemented.
 - `[ ]` There is no durable workspace browser with rename, archive, compare, or
   provenance editing semantics.
 
@@ -338,7 +339,8 @@ evolution map, and narrative system are stable.
 
 ## Next Implementation Targets
 
-1. Define `workspace.json` or equivalent project/run manifest.
+1. Implement the workspace writer, validator, and legacy result registration
+   helpers from `workspace_manifest_design.md`.
 2. Implement the general matrix artifact writer and validator from
    `matrix_artifact_design.md`.
 3. Implement the temporal trend writer and validator from
