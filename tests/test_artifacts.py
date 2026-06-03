@@ -13,6 +13,9 @@ from sciscape.artifacts import (
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
     RESULT_MANIFEST_SCHEMA_VERSION,
+    TEMPORAL_ACTIVITY_SCHEMA_VERSION,
+    TEMPORAL_MANIFEST_SCHEMA_VERSION,
+    TEMPORAL_QA_SCHEMA_VERSION,
     WORKSPACE_MANIFEST_SCHEMA_VERSION,
     WORKSPACE_QA_SCHEMA_VERSION,
     build_atlas_payload_from_report_data,
@@ -22,11 +25,13 @@ from sciscape.artifacts import (
     register_result_in_workspace,
     validate_matrix_artifact,
     validate_result_root,
+    validate_temporal_artifact,
     validate_workspace,
     write_cooccurrence_artifacts,
     write_edge_evidence_samples,
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
+    write_temporal_artifacts,
     write_artifact_contract,
     write_result_manifest,
     write_workspace_manifest,
@@ -326,6 +331,94 @@ def test_write_matrix_from_term_cooccurrence_wraps_existing_sidecar(tmp_path):
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["cooccurrence"]["state"] == "stable"
     assert manifest["features"]["matrix"]["state"] == "stable"
+
+
+def test_write_temporal_artifacts_promotes_stable_temporal_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    records = pd.read_parquet(root / "abstracts.parquet")
+    membership = pd.read_parquet(root / "landscape" / "membership.parquet")
+    keywords = pd.read_parquet(root / "landscape" / "keywords.parquet")
+    keywords["pub_year_series"] = [
+        {"2021": 1, "2022": 2},
+        {"2021": 1},
+        {"2021": 2, "2022": 1},
+        {"2022": 1},
+    ]
+
+    written = write_temporal_artifacts(
+        root,
+        temporal_id="yearly_trends",
+        records_df=records,
+        membership_df=membership,
+        keywords_df=keywords,
+        event_methods=["growth_rate"],
+    )
+
+    assert written["manifest_path"] == root / "temporal" / "temporal_manifest.json"
+    assert written["qa"]["schema_version"] == TEMPORAL_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+
+    activity = pd.read_parquet(written["activity_path"])
+    series = pd.read_parquet(written["series_path"])
+    events = pd.read_parquet(written["events_path"])
+    assert set(activity["schema_version"]) == {TEMPORAL_ACTIVITY_SCHEMA_VERSION}
+    assert activity["doc_count"].sum() == 4
+    assert set(series["entity_type"]) == {"result", "cluster", "term"}
+    assert set(series["metric"]) == {"doc_count", "pub_year_series"}
+    assert not events.empty
+
+    validation = validate_temporal_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["periods"] == 2
+    assert validation["counts"]["activity_rows"] == 2
+    assert validation["counts"]["event_rows"] == len(events)
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["features"]["temporal"] is True
+    assert contract["counts"]["temporal_artifacts"] == 1
+    assert contract["counts"]["stable_temporal_artifacts"] == 1
+    assert contract["counts"]["temporal_periods"] == 2
+    assert contract["counts"]["temporal_series_rows"] == len(series)
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["temporal"]["state"] == "stable"
+    assert "temporal" in manifest["features"]["temporal"]["artifact_refs"]
+    assert manifest["artifacts"]["temporal"]["schema_version"] == TEMPORAL_MANIFEST_SCHEMA_VERSION
+
+
+def test_validate_temporal_artifact_blocks_unknown_series_period(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    records = pd.read_parquet(root / "abstracts.parquet")
+    membership = pd.read_parquet(root / "landscape" / "membership.parquet")
+    written = write_temporal_artifacts(
+        root,
+        temporal_id="yearly_trends",
+        records_df=records,
+        membership_df=membership,
+    )
+    series_path = written["series_path"]
+    series = pd.read_parquet(series_path)
+    series.loc[0, "period_id"] = "year:2099"
+    series.to_parquet(series_path, index=False)
+
+    validation = validate_temporal_artifact(written["manifest_path"]).to_dict()
+
+    assert validation["status"] == "blocked"
+    assert any(issue["code"] == "unknown_temporal_series_periods" for issue in validation["blocking_issues"])
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["ok"] is False
+    assert contract["result_state"] == "blocked"
+    assert any(w["code"] == "unknown_temporal_series_periods" for w in contract["warnings"])
+
+
+def test_result_manifest_marks_pubyear_only_temporal_as_beta(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+
+    manifest = build_result_manifest(root).to_dict()
+
+    assert manifest["features"]["temporal"]["state"] == "beta"
+    assert manifest["features"]["temporal"]["reason"] == "pubyear exists but no temporal artifact has been written yet"
 
 
 def test_validate_result_root_blocks_advertised_missing_feature(tmp_path):

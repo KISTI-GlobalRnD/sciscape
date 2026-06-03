@@ -30,6 +30,12 @@ MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
 MATRIX_ENTITIES_SCHEMA_VERSION = "sciscape_matrix_entities_v1"
 MATRIX_QA_SCHEMA_VERSION = "sciscape_matrix_qa_v1"
+TEMPORAL_MANIFEST_SCHEMA_VERSION = "sciscape_temporal_manifest_v1"
+TEMPORAL_PERIODS_SCHEMA_VERSION = "sciscape_temporal_periods_v1"
+TEMPORAL_ACTIVITY_SCHEMA_VERSION = "sciscape_temporal_activity_v1"
+TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION = "sciscape_temporal_entity_series_v1"
+TEMPORAL_EVENTS_SCHEMA_VERSION = "sciscape_temporal_events_v1"
+TEMPORAL_QA_SCHEMA_VERSION = "sciscape_temporal_qa_v1"
 FEATURE_KEYS = (
     "overview",
     "cluster_map",
@@ -110,6 +116,55 @@ REQUIRED_MATRIX_ENTITY_COLUMNS = {
 SUPPORTED_MATRIX_FAMILIES = frozenset(
     {"occurrence", "cooccurrence", "proximity", "similarity", "projection", "temporal"}
 )
+REQUIRED_TEMPORAL_PERIOD_COLUMNS = {
+    "schema_version",
+    "temporal_id",
+    "period_id",
+    "period_index",
+    "period_label",
+    "start_year",
+    "end_year",
+    "unit",
+}
+REQUIRED_TEMPORAL_ACTIVITY_COLUMNS = {
+    "schema_version",
+    "temporal_id",
+    "period_id",
+    "start_year",
+    "end_year",
+    "doc_count",
+    "edge_count",
+    "active_cluster_count",
+    "unknown_year_count",
+}
+REQUIRED_TEMPORAL_SERIES_COLUMNS = {
+    "schema_version",
+    "temporal_id",
+    "entity_type",
+    "entity_key",
+    "entity_label",
+    "period_id",
+    "metric",
+    "value",
+    "raw_value",
+    "denominator",
+    "support_count",
+}
+REQUIRED_TEMPORAL_EVENTS_COLUMNS = {
+    "schema_version",
+    "temporal_id",
+    "event_id",
+    "event_type",
+    "entity_type",
+    "entity_key",
+    "entity_label",
+    "start_period_id",
+    "end_period_id",
+    "metric",
+    "score",
+    "method",
+    "support_count",
+}
 WEIGHT_COLUMN_CANDIDATES = (
     "rel_sum2",
     "weight",
@@ -164,6 +219,7 @@ class ResultArtifacts:
     keywords_path: Path | None = None
     matrix_paths: tuple[Path, ...] = ()
     matrix_manifest_paths: tuple[Path, ...] = ()
+    temporal_manifest_paths: tuple[Path, ...] = ()
     edge_evidence_paths: tuple[Path, ...] = ()
     evolution_paths: tuple[Path, ...] = ()
     narrative_paths: tuple[Path, ...] = ()
@@ -312,6 +368,31 @@ class MatrixArtifactValidationResult:
         return data
 
 
+@dataclass(frozen=True)
+class TemporalArtifactValidationResult:
+    schema_version: str
+    temporal_id: str | None
+    status: str
+    temporal_dir: str
+    manifest_path: str
+    paths: dict[str, str | None]
+    counts: dict[str, int]
+    event_counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -427,6 +508,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
 
     matrix_paths: list[Path] = []
     matrix_manifest_paths: list[Path] = []
+    temporal_manifest_paths: list[Path] = []
     for base in [landscape_dir, result_root]:
         if base is None or not base.exists() or not base.is_dir():
             continue
@@ -435,6 +517,9 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         matrix_manifest_paths.extend(
             path for path in (base / "matrices").glob("*/matrix_manifest.json") if path.is_file()
         )
+        temporal_manifest = base / "temporal" / "temporal_manifest.json"
+        if temporal_manifest.exists() and temporal_manifest.is_file():
+            temporal_manifest_paths.append(temporal_manifest)
 
     evolution_paths = _collect_optional_artifacts(
         [
@@ -491,6 +576,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         keywords_path=keywords,
         matrix_paths=tuple(sorted(set(matrix_paths))),
         matrix_manifest_paths=tuple(sorted(set(matrix_manifest_paths))),
+        temporal_manifest_paths=tuple(sorted(set(temporal_manifest_paths))),
         edge_evidence_paths=edge_evidence_paths,
         evolution_paths=evolution_paths,
         narrative_paths=narrative_paths,
@@ -2946,6 +3032,1095 @@ def write_matrix_from_term_cooccurrence(
     )
 
 
+def _temporal_issue(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    artifact: str | None = None,
+) -> dict[str, Any]:
+    issue = {"code": code, "severity": severity, "message": message}
+    if artifact:
+        issue["artifact"] = artifact
+    return issue
+
+
+def _temporal_dir_and_manifest(path: str | Path) -> tuple[Path, Path]:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        return candidate.parent, candidate
+    return candidate, candidate / "temporal_manifest.json"
+
+
+def _temporal_result_root(temporal_dir: Path) -> Path:
+    if temporal_dir.name == "temporal":
+        scope_root = temporal_dir.parent
+        if scope_root.name.startswith("landscape") and scope_root.parent.exists():
+            return scope_root.parent
+        return scope_root
+    return temporal_dir.parent
+
+
+def _temporal_output_paths(temporal_dir: Path, manifest: Mapping[str, Any]) -> dict[str, Path]:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    paths = {
+        "periods": temporal_dir / str(outputs.get("periods") or "periods.parquet"),
+        "activity": temporal_dir / str(outputs.get("activity") or "activity.parquet"),
+        "series": temporal_dir / str(outputs.get("series") or "entity_series.parquet"),
+        "qa": temporal_dir / str(outputs.get("qa") or "temporal_qa.json"),
+    }
+    events = outputs.get("events")
+    paths["events"] = temporal_dir / str(events or "temporal_events.parquet")
+    return paths
+
+
+def _temporal_path_payload(paths: Mapping[str, Path], temporal_dir: Path) -> dict[str, str | None]:
+    return {key: _rel(path, temporal_dir) for key, path in paths.items()}
+
+
+def _temporal_required_fields(manifest: Mapping[str, Any]) -> set[str]:
+    required = {
+        "schema_version",
+        "temporal_id",
+        "title",
+        "periodization",
+        "entity_types",
+        "metrics",
+        "event_types",
+        "source_artifacts",
+        "transforms",
+        "outputs",
+        "created_at_utc",
+    }
+    return {key for key in required if manifest.get(key) in (None, "")}
+
+
+def _temporal_read_parquet(
+    path: Path,
+    *,
+    artifact: str,
+    required: bool,
+    blocking_issues: list[dict[str, Any]],
+) -> pd.DataFrame | None:
+    if not path.exists():
+        if required:
+            blocking_issues.append(
+                _temporal_issue(
+                    "missing_temporal_table",
+                    "blocking",
+                    f"Missing temporal {artifact} table.",
+                    artifact=artifact,
+                )
+            )
+        return None
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:
+        blocking_issues.append(
+            _temporal_issue(
+                "invalid_temporal_parquet",
+                "blocking",
+                f"Could not read temporal {artifact} parquet: {exc}",
+                artifact=artifact,
+            )
+        )
+        return None
+
+
+def _temporal_missing_columns(
+    df: pd.DataFrame | None,
+    required: set[str],
+    *,
+    artifact: str,
+    blocking_issues: list[dict[str, Any]],
+) -> set[str]:
+    columns = set(df.columns) if df is not None else set()
+    missing = required - columns
+    if missing:
+        blocking_issues.append(
+            _temporal_issue(
+                "missing_temporal_columns",
+                "blocking",
+                f"Missing required temporal columns: {sorted(missing)}",
+                artifact=artifact,
+            )
+        )
+    return missing
+
+
+def _temporal_numeric_finite(
+    df: pd.DataFrame | None,
+    columns: list[str],
+    *,
+    artifact: str,
+    blocking_issues: list[dict[str, Any]],
+) -> None:
+    if df is None:
+        return
+    for column in columns:
+        if column not in df.columns:
+            continue
+        numeric = pd.to_numeric(df[column], errors="coerce")
+        mask = df[column].notna()
+        bad = numeric[mask].isna()
+        if bad.any() or (~numeric[mask].map(lambda value: math.isfinite(float(value)))).any():
+            blocking_issues.append(
+                _temporal_issue(
+                    "invalid_temporal_numeric_values",
+                    "blocking",
+                    f"Temporal {column} values must be finite numeric values.",
+                    artifact=artifact,
+                )
+            )
+
+
+def _temporal_period_checks(
+    periods: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if periods is None or _temporal_missing_columns(
+        periods,
+        REQUIRED_TEMPORAL_PERIOD_COLUMNS,
+        artifact="periods",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    temporal_id = str(manifest.get("temporal_id"))
+    if not set(periods["schema_version"]) <= {TEMPORAL_PERIODS_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _temporal_issue("unsupported_temporal_periods_schema", "blocking", "Unsupported periods schema.", artifact="periods")
+        )
+    if not set(periods["temporal_id"].map(str)) <= {temporal_id}:
+        blocking_issues.append(
+            _temporal_issue("temporal_period_id_mismatch", "blocking", "Period temporal_id does not match manifest.", artifact="periods")
+        )
+    if periods["period_id"].duplicated().any():
+        blocking_issues.append(
+            _temporal_issue("duplicate_temporal_periods", "blocking", "Temporal period_id values are duplicated.", artifact="periods")
+        )
+    try:
+        indices = sorted(int(value) for value in periods["period_index"].tolist())
+    except Exception:
+        indices = []
+        blocking_issues.append(
+            _temporal_issue("invalid_temporal_period_index", "blocking", "period_index must be integer-like.", artifact="periods")
+        )
+    if indices and indices != list(range(len(indices))):
+        warnings.append(
+            _temporal_issue(
+                "non_contiguous_temporal_period_index",
+                "warning",
+                "period_index is not contiguous from zero.",
+                artifact="periods",
+            )
+        )
+    return {"status": "passed", "count": int(len(periods))}
+
+
+def _temporal_activity_checks(
+    activity: pd.DataFrame | None,
+    periods: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if activity is None or _temporal_missing_columns(
+        activity,
+        REQUIRED_TEMPORAL_ACTIVITY_COLUMNS,
+        artifact="activity",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    temporal_id = str(manifest.get("temporal_id"))
+    if not set(activity["schema_version"]) <= {TEMPORAL_ACTIVITY_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _temporal_issue("unsupported_temporal_activity_schema", "blocking", "Unsupported activity schema.", artifact="activity")
+        )
+    if not set(activity["temporal_id"].map(str)) <= {temporal_id}:
+        blocking_issues.append(
+            _temporal_issue("temporal_activity_id_mismatch", "blocking", "Activity temporal_id does not match manifest.", artifact="activity")
+        )
+    period_ids = set(periods["period_id"].map(str)) if periods is not None and "period_id" in periods.columns else set()
+    activity_periods = set(activity["period_id"].map(str))
+    missing_periods = period_ids - activity_periods
+    unknown_periods = activity_periods - period_ids
+    if missing_periods:
+        blocking_issues.append(
+            _temporal_issue(
+                "missing_temporal_activity_periods",
+                "blocking",
+                f"Activity table is missing {len(missing_periods)} periods.",
+                artifact="activity",
+            )
+        )
+    if unknown_periods:
+        blocking_issues.append(
+            _temporal_issue(
+                "unknown_temporal_activity_periods",
+                "blocking",
+                f"Activity table references {len(unknown_periods)} unknown periods.",
+                artifact="activity",
+            )
+        )
+    for column in ("doc_count", "edge_count", "active_cluster_count", "unknown_year_count"):
+        numeric = pd.to_numeric(activity[column], errors="coerce")
+        if numeric.dropna().lt(0).any():
+            blocking_issues.append(
+                _temporal_issue(
+                    "negative_temporal_activity_count",
+                    "blocking",
+                    f"{column} must be non-negative.",
+                    artifact="activity",
+                )
+            )
+    if "unknown_year_count" in activity.columns and pd.to_numeric(activity["unknown_year_count"], errors="coerce").max() > 0:
+        warnings.append(
+            _temporal_issue(
+                "temporal_unknown_years",
+                "warning",
+                "Some records have missing or invalid publication years.",
+                artifact="activity",
+            )
+        )
+    return {"status": "passed", "count": int(len(activity))}
+
+
+def _temporal_declared_metrics(manifest: Mapping[str, Any]) -> set[str]:
+    metrics = manifest.get("metrics")
+    if not isinstance(metrics, list):
+        return set()
+    return {str(item.get("name")) for item in metrics if isinstance(item, Mapping) and item.get("name")}
+
+
+def _temporal_series_checks(
+    series: pd.DataFrame | None,
+    periods: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if series is None or _temporal_missing_columns(
+        series,
+        REQUIRED_TEMPORAL_SERIES_COLUMNS,
+        artifact="series",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    temporal_id = str(manifest.get("temporal_id"))
+    if not set(series["schema_version"]) <= {TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _temporal_issue("unsupported_temporal_series_schema", "blocking", "Unsupported entity series schema.", artifact="series")
+        )
+    if not set(series["temporal_id"].map(str)) <= {temporal_id}:
+        blocking_issues.append(
+            _temporal_issue("temporal_series_id_mismatch", "blocking", "Series temporal_id does not match manifest.", artifact="series")
+        )
+    period_ids = set(periods["period_id"].map(str)) if periods is not None and "period_id" in periods.columns else set()
+    unknown_periods = set(series["period_id"].map(str)) - period_ids
+    if unknown_periods:
+        blocking_issues.append(
+            _temporal_issue(
+                "unknown_temporal_series_periods",
+                "blocking",
+                f"Series table references {len(unknown_periods)} unknown periods.",
+                artifact="series",
+            )
+        )
+    metrics = _temporal_declared_metrics(manifest)
+    unknown_metrics = set(series["metric"].map(str)) - metrics
+    if unknown_metrics:
+        blocking_issues.append(
+            _temporal_issue(
+                "undeclared_temporal_series_metrics",
+                "blocking",
+                f"Series table uses undeclared metrics: {sorted(unknown_metrics)}",
+                artifact="series",
+            )
+        )
+    if series.duplicated(subset=["entity_type", "entity_key", "period_id", "metric"]).any():
+        blocking_issues.append(
+            _temporal_issue("duplicate_temporal_series_rows", "blocking", "Duplicate entity/period/metric rows found.", artifact="series")
+        )
+    _temporal_numeric_finite(series, ["value", "raw_value", "denominator"], artifact="series", blocking_issues=blocking_issues)
+    return {"status": "passed", "count": int(len(series))}
+
+
+def _temporal_events_checks(
+    events: pd.DataFrame | None,
+    periods: pd.DataFrame | None,
+    series: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    event_types = manifest.get("event_types") if isinstance(manifest.get("event_types"), list) else []
+    if events is None:
+        if event_types:
+            blocking_issues.append(
+                _temporal_issue(
+                    "missing_temporal_events_table",
+                    "blocking",
+                    "Manifest advertises event types but temporal_events.parquet is missing.",
+                    artifact="events",
+                )
+            )
+            return {"status": "blocked", "count": 0}
+        return {"status": "skipped", "count": 0}
+    if _temporal_missing_columns(events, REQUIRED_TEMPORAL_EVENTS_COLUMNS, artifact="events", blocking_issues=blocking_issues):
+        return {"status": "blocked", "count": int(len(events))}
+    temporal_id = str(manifest.get("temporal_id"))
+    if not events.empty and not set(events["schema_version"]) <= {TEMPORAL_EVENTS_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _temporal_issue("unsupported_temporal_events_schema", "blocking", "Unsupported events schema.", artifact="events")
+        )
+    if not events.empty and not set(events["temporal_id"].map(str)) <= {temporal_id}:
+        blocking_issues.append(
+            _temporal_issue("temporal_events_id_mismatch", "blocking", "Events temporal_id does not match manifest.", artifact="events")
+        )
+    period_ids = set(periods["period_id"].map(str)) if periods is not None and "period_id" in periods.columns else set()
+    unknown_periods = (set(events["start_period_id"].map(str)) | set(events["end_period_id"].map(str))) - period_ids
+    if unknown_periods:
+        blocking_issues.append(
+            _temporal_issue(
+                "unknown_temporal_event_periods",
+                "blocking",
+                f"Events reference {len(unknown_periods)} unknown periods.",
+                artifact="events",
+            )
+        )
+    if series is not None and not series.empty:
+        series_keys = set(
+            zip(
+                series["entity_type"].map(str),
+                series["entity_key"].map(str),
+                series["metric"].map(str),
+            )
+        )
+        event_keys = set(
+            zip(
+                events["entity_type"].map(str),
+                events["entity_key"].map(str),
+                events["metric"].map(str),
+            )
+        )
+        missing = event_keys - series_keys
+        if missing:
+            blocking_issues.append(
+                _temporal_issue(
+                    "temporal_event_series_ref_missing",
+                    "blocking",
+                    f"{len(missing)} event entity/metric refs are absent from series rows.",
+                    artifact="events",
+                )
+            )
+    _temporal_numeric_finite(events, ["score"], artifact="events", blocking_issues=blocking_issues)
+    return {"status": "passed", "count": int(len(events))}
+
+
+def _temporal_source_checks(
+    *,
+    result_root: Path,
+    manifest: Mapping[str, Any],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_artifacts = manifest.get("source_artifacts")
+    if not isinstance(source_artifacts, list) or not source_artifacts:
+        warnings.append(
+            _temporal_issue(
+                "missing_temporal_source_artifacts",
+                "warning",
+                "Temporal manifest should record at least one source artifact.",
+                artifact="manifest",
+            )
+        )
+        return {"status": "warning", "count": 0}
+    missing = 0
+    for source in source_artifacts:
+        if not isinstance(source, Mapping):
+            warnings.append(
+                _temporal_issue("invalid_temporal_source_artifact", "warning", "Source refs should be objects.", artifact="manifest")
+            )
+            continue
+        path = source.get("path")
+        if not path:
+            warnings.append(
+                _temporal_issue("missing_temporal_source_path", "warning", "Source ref has no path.", artifact="manifest")
+            )
+            continue
+        source_path = Path(str(path))
+        resolved = source_path if source_path.is_absolute() else result_root / source_path
+        if not resolved.exists():
+            missing += 1
+    if missing:
+        warnings.append(
+            _temporal_issue(
+                "missing_temporal_source_artifact",
+                "warning",
+                f"{missing} temporal source artifact refs do not exist.",
+                artifact="manifest",
+            )
+        )
+    return {"status": "warning" if missing else "passed", "count": len(source_artifacts), "missing": missing}
+
+
+def validate_temporal_artifact(path: str | Path) -> TemporalArtifactValidationResult:
+    """Validate an artifact-backed temporal trend directory."""
+
+    temporal_dir, manifest_path = _temporal_dir_and_manifest(path)
+    result_root = _temporal_result_root(temporal_dir)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+    manifest: dict[str, Any] = {}
+
+    if not manifest_path.exists():
+        blocking_issues.append(
+            _temporal_issue("missing_temporal_manifest", "blocking", "Missing temporal_manifest.json.", artifact="manifest")
+        )
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            blocking_issues.append(
+                _temporal_issue(
+                    "invalid_temporal_manifest_json",
+                    "blocking",
+                    f"Could not read temporal manifest: {exc}",
+                    artifact="manifest",
+                )
+            )
+        if not isinstance(manifest, dict):
+            blocking_issues.append(
+                _temporal_issue("invalid_temporal_manifest_shape", "blocking", "Temporal manifest must be an object.", artifact="manifest")
+            )
+            manifest = {}
+
+    if manifest:
+        if manifest.get("schema_version") != TEMPORAL_MANIFEST_SCHEMA_VERSION:
+            blocking_issues.append(
+                _temporal_issue(
+                    "unsupported_temporal_manifest_schema",
+                    "blocking",
+                    f"Unsupported temporal manifest schema: {manifest.get('schema_version')}",
+                    artifact="manifest",
+                )
+            )
+        missing_fields = _temporal_required_fields(manifest)
+        if missing_fields:
+            blocking_issues.append(
+                _temporal_issue(
+                    "missing_temporal_manifest_fields",
+                    "blocking",
+                    f"Missing temporal manifest fields: {sorted(missing_fields)}",
+                    artifact="manifest",
+                )
+            )
+        periodization = manifest.get("periodization")
+        if isinstance(periodization, Mapping) and periodization.get("unit") != "year":
+            warnings.append(
+                _temporal_issue(
+                    "unsupported_temporal_periodization_unit",
+                    "warning",
+                    "Only yearly periodization is supported by the first validator.",
+                    artifact="manifest",
+                )
+            )
+    checks["manifest"] = {
+        "status": "blocked" if blocking_issues else "passed",
+        "schema_version": manifest.get("schema_version"),
+    }
+
+    paths = _temporal_output_paths(temporal_dir, manifest)
+    periods = _temporal_read_parquet(paths["periods"], artifact="periods", required=True, blocking_issues=blocking_issues)
+    activity = _temporal_read_parquet(paths["activity"], artifact="activity", required=True, blocking_issues=blocking_issues)
+    series = _temporal_read_parquet(paths["series"], artifact="series", required=True, blocking_issues=blocking_issues)
+    event_required = bool(manifest.get("event_types")) if isinstance(manifest.get("event_types"), list) else False
+    events = _temporal_read_parquet(paths["events"], artifact="events", required=event_required, blocking_issues=blocking_issues)
+
+    checks["periods"] = _temporal_period_checks(
+        periods,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+        warnings=warnings,
+    )
+    checks["activity"] = _temporal_activity_checks(
+        activity,
+        periods,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+        warnings=warnings,
+    )
+    checks["series"] = _temporal_series_checks(
+        series,
+        periods,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+        warnings=warnings,
+    )
+    checks["events"] = _temporal_events_checks(
+        events,
+        periods,
+        series,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+    )
+    checks["sources"] = _temporal_source_checks(result_root=result_root, manifest=manifest, warnings=warnings)
+
+    qa_path = paths["qa"]
+    if not qa_path.exists():
+        warnings.append(
+            _temporal_issue(
+                "missing_temporal_qa_sidecar",
+                "warning",
+                "temporal_qa.json is missing; writers should persist the validation result.",
+                artifact="qa",
+            )
+        )
+
+    event_counts = (
+        {str(key): int(value) for key, value in events["event_type"].value_counts().to_dict().items()}
+        if events is not None and "event_type" in events.columns
+        else {}
+    )
+    counts = {
+        "periods": int(0 if periods is None else len(periods)),
+        "activity_rows": int(0 if activity is None else len(activity)),
+        "series_rows": int(0 if series is None else len(series)),
+        "event_rows": int(0 if events is None else len(events)),
+        "missing_years": int(
+            0
+            if activity is None or "unknown_year_count" not in activity.columns
+            else pd.to_numeric(activity["unknown_year_count"], errors="coerce").max() or 0
+        ),
+        "warnings": len(warnings),
+        "blocking_issues": len(blocking_issues),
+    }
+    if blocking_issues:
+        status = "blocked"
+    elif warnings:
+        status = "warning"
+    else:
+        status = "passed"
+
+    return TemporalArtifactValidationResult(
+        schema_version=TEMPORAL_QA_SCHEMA_VERSION,
+        temporal_id=str(manifest.get("temporal_id")) if manifest.get("temporal_id") else None,
+        status=status,
+        temporal_dir=str(temporal_dir),
+        manifest_path=_rel(manifest_path, temporal_dir) or str(manifest_path),
+        paths=_temporal_path_payload(paths, temporal_dir),
+        counts=counts,
+        event_counts=event_counts,
+        checks=checks,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
+
+
+def _temporal_year_column(records: pd.DataFrame) -> str | None:
+    for column in ("pubyear", "year", "publication_year"):
+        if column in records.columns:
+            return column
+    return None
+
+
+def _temporal_uid_column(records: pd.DataFrame) -> str | None:
+    for column in ("uid", "work_id", "id"):
+        if column in records.columns:
+            return column
+    return None
+
+
+def _temporal_metric_defs(metric_names: list[str]) -> list[dict[str, Any]]:
+    definitions: list[dict[str, Any]] = []
+    for metric in metric_names:
+        if metric == "doc_count":
+            definitions.append(
+                {
+                    "name": "doc_count",
+                    "value_type": "integer",
+                    "denominator": None,
+                    "normalization": "none",
+                    "interpretation": "documents assigned to the entity during the period",
+                }
+            )
+        else:
+            definitions.append(
+                {
+                    "name": metric,
+                    "value_type": "float",
+                    "denominator": None,
+                    "normalization": "as_recorded",
+                    "interpretation": f"temporal series value recorded in `{metric}`",
+                }
+            )
+    return definitions
+
+
+def _temporal_series_dict(value: Any) -> dict[int, float]:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return {}
+    payload = value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return {}
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            return {}
+    if not isinstance(payload, Mapping):
+        return {}
+    out: dict[int, float] = {}
+    for key, raw in payload.items():
+        year = _coerce_int(key)
+        amount = _coerce_float(raw)
+        if year is not None and amount is not None:
+            out[year] = float(amount)
+    return out
+
+
+def _temporal_cluster_columns(membership: pd.DataFrame | None) -> list[str]:
+    if membership is None:
+        return []
+    return [column for column in membership.columns if column == "cluster" or column.startswith("cluster_")]
+
+
+def _temporal_level_from_cluster_column(column: str) -> str:
+    if column == "cluster":
+        return "cluster"
+    return column.removeprefix("cluster_") or "cluster"
+
+
+def _temporal_default_sources(root: Path, artifacts: ResultArtifacts) -> list[dict[str, Any]]:
+    sources: list[dict[str, Any]] = []
+    for role, path in [
+        ("records", artifacts.abstracts_path),
+        ("membership", artifacts.membership_path),
+        ("keywords", artifacts.keywords_path),
+        ("edges", artifacts.edges_path),
+    ]:
+        rel_path = _rel(path, root)
+        if rel_path:
+            sources.append({"role": role, "path": rel_path})
+    return sources
+
+
+def _temporal_build_periods(temporal_id: str, years: list[int], periodization: Mapping[str, Any] | None) -> pd.DataFrame:
+    if not years:
+        raise ValueError("temporal artifacts require at least one valid publication year")
+    start_year = int(periodization.get("start_year", min(years))) if periodization else min(years)
+    end_year = int(periodization.get("end_year", max(years))) if periodization else max(years)
+    if end_year < start_year:
+        raise ValueError("temporal end_year must be greater than or equal to start_year")
+    rows = []
+    for index, year in enumerate(range(start_year, end_year + 1)):
+        rows.append(
+            {
+                "schema_version": TEMPORAL_PERIODS_SCHEMA_VERSION,
+                "temporal_id": temporal_id,
+                "period_id": f"year:{year}",
+                "period_index": int(index),
+                "period_label": str(year),
+                "start_year": int(year),
+                "end_year": int(year),
+                "unit": "year",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _temporal_activity_rows(
+    temporal_id: str,
+    records: pd.DataFrame,
+    periods: pd.DataFrame,
+    *,
+    year_column: str,
+    uid_column: str | None,
+    membership: pd.DataFrame | None,
+    edges: pd.DataFrame | None,
+    unknown_year_count: int,
+) -> pd.DataFrame:
+    year_values = pd.to_numeric(records[year_column], errors="coerce")
+    work = records.copy()
+    work["_temporal_year"] = year_values
+    if uid_column:
+        work["_temporal_uid"] = work[uid_column].map(str)
+
+    joined_membership = None
+    cluster_columns = _temporal_cluster_columns(membership)
+    if membership is not None and uid_column and "uid" in membership.columns and cluster_columns:
+        mem = membership[["uid", *cluster_columns]].copy()
+        mem["uid"] = mem["uid"].map(str)
+        joined_membership = work[["_temporal_uid", "_temporal_year"]].merge(
+            mem,
+            left_on="_temporal_uid",
+            right_on="uid",
+            how="left",
+        )
+
+    edge_years: pd.DataFrame | None = None
+    if edges is not None and uid_column and {"uid1", "uid2"}.issubset(edges.columns):
+        year_lookup = dict(zip(work["_temporal_uid"], work["_temporal_year"]))
+        edge_years = edges[["uid1", "uid2"]].copy()
+        edge_years["_year1"] = edge_years["uid1"].map(lambda value: year_lookup.get(str(value)))
+        edge_years["_year2"] = edge_years["uid2"].map(lambda value: year_lookup.get(str(value)))
+
+    rows = []
+    for period in periods.itertuples(index=False):
+        year = int(period.start_year)
+        year_records = work[work["_temporal_year"] == year]
+        active_cluster_count = None
+        if joined_membership is not None and cluster_columns:
+            active: set[str] = set()
+            period_membership = joined_membership[joined_membership["_temporal_year"] == year]
+            for column in cluster_columns:
+                active.update(period_membership[column].dropna().map(str).tolist())
+            active_cluster_count = len(active)
+        edge_count = None
+        if edge_years is not None:
+            edge_count = int(((edge_years["_year1"] == year) & (edge_years["_year2"] == year)).sum())
+        rows.append(
+            {
+                "schema_version": TEMPORAL_ACTIVITY_SCHEMA_VERSION,
+                "temporal_id": temporal_id,
+                "period_id": period.period_id,
+                "start_year": int(period.start_year),
+                "end_year": int(period.end_year),
+                "doc_count": int(len(year_records)),
+                "edge_count": edge_count,
+                "active_cluster_count": active_cluster_count,
+                "unknown_year_count": int(unknown_year_count),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _temporal_result_series(temporal_id: str, activity: pd.DataFrame) -> list[dict[str, Any]]:
+    rows = []
+    for row in activity.itertuples(index=False):
+        value = int(row.doc_count)
+        rows.append(
+            {
+                "schema_version": TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION,
+                "temporal_id": temporal_id,
+                "entity_type": "result",
+                "entity_key": "result",
+                "entity_label": "Result",
+                "period_id": row.period_id,
+                "metric": "doc_count",
+                "value": float(value),
+                "raw_value": float(value),
+                "denominator": None,
+                "support_count": value,
+            }
+        )
+    return rows
+
+
+def _temporal_cluster_series(
+    temporal_id: str,
+    records: pd.DataFrame,
+    periods: pd.DataFrame,
+    *,
+    year_column: str,
+    uid_column: str | None,
+    membership: pd.DataFrame | None,
+) -> list[dict[str, Any]]:
+    if membership is None or not uid_column or "uid" not in membership.columns:
+        return []
+    cluster_columns = _temporal_cluster_columns(membership)
+    if not cluster_columns:
+        return []
+    work = records[[uid_column, year_column]].copy()
+    work[uid_column] = work[uid_column].map(str)
+    work["_temporal_year"] = pd.to_numeric(work[year_column], errors="coerce")
+    mem = membership[["uid", *cluster_columns]].copy()
+    mem["uid"] = mem["uid"].map(str)
+    joined = work.merge(mem, left_on=uid_column, right_on="uid", how="inner")
+    year_to_period = {int(row.start_year): str(row.period_id) for row in periods.itertuples(index=False)}
+    rows = []
+    for column in cluster_columns:
+        level = _temporal_level_from_cluster_column(column)
+        grouped = (
+            joined.dropna(subset=[column, "_temporal_year"])
+            .groupby([column, "_temporal_year"], sort=True)
+            .size()
+            .reset_index(name="doc_count")
+        )
+        for _, item in grouped.iterrows():
+            year = _coerce_int(item["_temporal_year"])
+            if year is None or year not in year_to_period:
+                continue
+            cluster_id = str(item[column])
+            value = int(item["doc_count"])
+            rows.append(
+                {
+                    "schema_version": TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION,
+                    "temporal_id": temporal_id,
+                    "entity_type": "cluster",
+                    "entity_key": f"{level}:{cluster_id}",
+                    "entity_label": f"{level}:{cluster_id}",
+                    "period_id": year_to_period[year],
+                    "metric": "doc_count",
+                    "value": float(value),
+                    "raw_value": float(value),
+                    "denominator": None,
+                    "support_count": value,
+                    "cluster_id": cluster_id,
+                    "cluster_uid": f"{level}:{cluster_id}",
+                    "level": level,
+                }
+            )
+    return rows
+
+
+def _temporal_keyword_series(
+    temporal_id: str,
+    periods: pd.DataFrame,
+    keywords: pd.DataFrame | None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    if keywords is None or keywords.empty:
+        return [], []
+    label_col = _keyword_label_column(list(keywords.columns))
+    metric_cols = [column for column in ("pub_year_series", "ppm_series", "loglift_series", "temporal") if column in keywords.columns]
+    if not metric_cols:
+        return [], []
+    year_to_period = {int(row.start_year): str(row.period_id) for row in periods.itertuples(index=False)}
+    rows = []
+    for _, item in keywords.iterrows():
+        label = str(item.get(label_col) or "").strip()
+        if not label:
+            continue
+        cluster_id = str(item.get("cluster_id")) if "cluster_id" in keywords.columns and item.get("cluster_id") is not None else None
+        for metric in metric_cols:
+            series = _temporal_series_dict(item.get(metric))
+            for year, amount in sorted(series.items()):
+                if year not in year_to_period:
+                    continue
+                row = {
+                    "schema_version": TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION,
+                    "temporal_id": temporal_id,
+                    "entity_type": "term",
+                    "entity_key": f"term:{label}",
+                    "entity_label": label,
+                    "period_id": year_to_period[year],
+                    "metric": metric,
+                    "value": float(amount),
+                    "raw_value": float(amount),
+                    "denominator": None,
+                    "support_count": None,
+                    "term": label,
+                }
+                if cluster_id is not None:
+                    row["cluster_id"] = cluster_id
+                    row["cluster_uid"] = f"cluster:{cluster_id}"
+                rows.append(row)
+    return rows, metric_cols
+
+
+def _temporal_event_rows(
+    temporal_id: str,
+    series: pd.DataFrame,
+    *,
+    event_methods: list[str],
+) -> pd.DataFrame | None:
+    if not event_methods or series.empty:
+        return None
+    if "growth_rate" not in event_methods:
+        return None
+    rows = []
+    work = series.sort_values(["entity_type", "entity_key", "metric", "period_id"], kind="stable")
+    for (entity_type, entity_key, metric), group in work.groupby(["entity_type", "entity_key", "metric"], sort=True):
+        if len(group) < 2:
+            continue
+        first = group.iloc[0]
+        last = group.iloc[-1]
+        first_value = float(first["value"])
+        final_value = float(last["value"])
+        denom = abs(first_value) if abs(first_value) > 0 else 1.0
+        growth_rate = (final_value - first_value) / denom
+        if growth_rate == 0:
+            continue
+        event_type = "growth" if growth_rate > 0 else "decline"
+        event_id = _safe_id(f"{event_type}_{entity_type}_{entity_key}_{metric}", fallback=f"{event_type}_event")
+        rows.append(
+            {
+                "schema_version": TEMPORAL_EVENTS_SCHEMA_VERSION,
+                "temporal_id": temporal_id,
+                "event_id": event_id,
+                "event_type": event_type,
+                "entity_type": str(entity_type),
+                "entity_key": str(entity_key),
+                "entity_label": str(last.get("entity_label") or entity_key),
+                "start_period_id": str(first["period_id"]),
+                "end_period_id": str(last["period_id"]),
+                "metric": str(metric),
+                "score": float(abs(growth_rate)),
+                "method": "growth_rate",
+                "support_count": int(len(group)),
+                "baseline_value": first_value,
+                "final_value": final_value,
+                "growth_rate": float(growth_rate),
+                "duration_periods": int(len(group)),
+            }
+        )
+    return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_TEMPORAL_EVENTS_COLUMNS))
+
+
+def write_temporal_artifacts(
+    result_root: str | Path,
+    *,
+    temporal_id: str,
+    records_df: pd.DataFrame,
+    membership_df: pd.DataFrame | None = None,
+    keywords_df: pd.DataFrame | None = None,
+    edge_df: pd.DataFrame | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    metrics: list[Mapping[str, Any]] | None = None,
+    event_methods: list[str] | None = None,
+    source_artifacts: list[Mapping[str, Any]] | None = None,
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    output_dir: str | Path | None = None,
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Write yearly temporal trend artifacts for a result root."""
+
+    root = Path(result_root).expanduser().resolve()
+    temporal_id = _safe_id(temporal_id, fallback="yearly_trends")
+    if records_df.empty:
+        raise ValueError("records_df must not be empty")
+    year_column = _temporal_year_column(records_df)
+    if year_column is None:
+        raise ValueError("records_df must include pubyear, year, or publication_year")
+    years_raw = pd.to_numeric(records_df[year_column], errors="coerce")
+    valid_years = sorted({int(year) for year in years_raw.dropna().tolist() if int(year) > 0})
+    if not valid_years:
+        raise ValueError("records_df has no valid publication years")
+    unknown_year_count = int(len(records_df) - len(years_raw.dropna()))
+    periods = _temporal_build_periods(temporal_id, valid_years, periodization)
+    uid_column = _temporal_uid_column(records_df)
+    activity = _temporal_activity_rows(
+        temporal_id,
+        records_df,
+        periods,
+        year_column=year_column,
+        uid_column=uid_column,
+        membership=membership_df,
+        edges=edge_df,
+        unknown_year_count=unknown_year_count,
+    )
+    series_rows = _temporal_result_series(temporal_id, activity)
+    series_rows.extend(
+        _temporal_cluster_series(
+            temporal_id,
+            records_df,
+            periods,
+            year_column=year_column,
+            uid_column=uid_column,
+            membership=membership_df,
+        )
+    )
+    keyword_rows, keyword_metrics = _temporal_keyword_series(temporal_id, periods, keywords_df)
+    series_rows.extend(keyword_rows)
+    series = pd.DataFrame(series_rows)
+    if series.empty:
+        series = pd.DataFrame(columns=sorted(REQUIRED_TEMPORAL_SERIES_COLUMNS))
+
+    metric_names = ["doc_count", *[metric for metric in keyword_metrics if metric != "doc_count"]]
+    metric_defs = [dict(item) for item in metrics] if metrics is not None else _temporal_metric_defs(metric_names)
+    event_methods = [str(method) for method in (event_methods or [])]
+    events = _temporal_event_rows(temporal_id, series, event_methods=event_methods)
+    event_types = sorted(set(events["event_type"].map(str))) if events is not None and not events.empty else []
+
+    temporal_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "temporal"
+    temporal_dir.mkdir(parents=True, exist_ok=True)
+    outputs = {
+        "periods": "periods.parquet",
+        "activity": "activity.parquet",
+        "series": "entity_series.parquet",
+        "events": "temporal_events.parquet",
+        "qa": "temporal_qa.json",
+    }
+    sources = [dict(item) for item in source_artifacts] if source_artifacts is not None else _temporal_default_sources(root, infer_result_artifacts(root))
+    periodization_payload = {
+        "unit": "year",
+        "window_years": 1,
+        "step_years": 1,
+        "start_year": int(periods["start_year"].min()),
+        "end_year": int(periods["start_year"].max()),
+        "closed": "point",
+        "include_unknown_year": False,
+    }
+    if periodization:
+        periodization_payload.update(dict(periodization))
+        periodization_payload["unit"] = "year"
+    entity_types = sorted(set(series["entity_type"].map(str))) if not series.empty and "entity_type" in series.columns else ["result"]
+    manifest = {
+        "schema_version": TEMPORAL_MANIFEST_SCHEMA_VERSION,
+        "temporal_id": temporal_id,
+        "title": title or temporal_id.replace("_", " ").title(),
+        "result_id": _matrix_existing_result_id(root),
+        "periodization": periodization_payload,
+        "entity_types": entity_types,
+        "metrics": metric_defs,
+        "event_types": event_types,
+        "source_artifacts": sources,
+        "rule_sets": [dict(item) for item in (rule_sets or [])],
+        "transforms": [
+            {"step": "parse_publication_years"},
+            {"step": "build_yearly_periods"},
+            {"step": "aggregate_activity"},
+            {"step": "aggregate_entity_series"},
+            *([{"step": "detect_temporal_events", "methods": event_methods}] if event_methods else []),
+            *[dict(item) for item in (transforms or [])],
+        ],
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+    periods.to_parquet(temporal_dir / outputs["periods"], index=False)
+    activity.to_parquet(temporal_dir / outputs["activity"], index=False)
+    series.to_parquet(temporal_dir / outputs["series"], index=False)
+    if events is not None:
+        events.to_parquet(temporal_dir / outputs["events"], index=False)
+    (temporal_dir / "temporal_manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    validation = validate_temporal_artifact(temporal_dir)
+    qa_payload = validation.to_dict()
+    qa_payload["warnings"] = [
+        warning for warning in qa_payload["warnings"] if warning.get("code") != "missing_temporal_qa_sidecar"
+    ]
+    qa_payload["counts"]["warnings"] = len(qa_payload["warnings"])
+    if qa_payload["status"] == "warning" and not qa_payload["warnings"]:
+        qa_payload["status"] = "passed"
+    (temporal_dir / outputs["qa"]).write_text(json.dumps(qa_payload, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_temporal_artifact(temporal_dir)
+    return {
+        "schema_version": TEMPORAL_MANIFEST_SCHEMA_VERSION,
+        "temporal_id": temporal_id,
+        "temporal_dir": temporal_dir,
+        "manifest_path": temporal_dir / "temporal_manifest.json",
+        "periods_path": temporal_dir / outputs["periods"],
+        "activity_path": temporal_dir / outputs["activity"],
+        "series_path": temporal_dir / outputs["series"],
+        "events_path": temporal_dir / outputs["events"] if events is not None else None,
+        "qa_path": temporal_dir / outputs["qa"],
+        "qa": validation.to_dict(),
+    }
+
+
 def _non_empty_payload(value: Any) -> bool:
     if value is None:
         return False
@@ -3344,6 +4519,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "matrix_artifacts": [_rel(path, root) for path in artifacts.matrix_paths],
         "matrix_manifest_artifacts": [_rel(path, root) for path in artifacts.matrix_manifest_paths],
         "matrix_summaries": [],
+        "temporal_manifest_artifacts": [_rel(path, root) for path in artifacts.temporal_manifest_paths],
+        "temporal_summaries": [],
         "edge_evidence_artifacts": [_rel(path, root) for path in artifacts.edge_evidence_paths],
         "evolution_artifacts": [_rel(path, root) for path in artifacts.evolution_paths],
         "narrative_artifacts": [_rel(path, root) for path in artifacts.narrative_paths],
@@ -3500,6 +4677,50 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
             )
 
+    temporal_artifacts = 0
+    stable_temporal_artifacts = 0
+    temporal_periods = 0
+    temporal_series_rows = 0
+    temporal_event_rows = 0
+    temporal_missing_years = 0
+    for manifest_path in artifacts.temporal_manifest_paths:
+        temporal_validation = validate_temporal_artifact(manifest_path)
+        temporal_payload = temporal_validation.to_dict()
+        artifact_info["temporal_summaries"].append(
+            {
+                "temporal_id": temporal_payload.get("temporal_id"),
+                "status": temporal_payload.get("status"),
+                "path": _rel(manifest_path, root),
+                "counts": temporal_payload.get("counts", {}),
+                "event_counts": temporal_payload.get("event_counts", {}),
+            }
+        )
+        temporal_artifacts += 1
+        temporal_periods += int(temporal_validation.counts.get("periods", 0))
+        temporal_series_rows += int(temporal_validation.counts.get("series_rows", 0))
+        temporal_event_rows += int(temporal_validation.counts.get("event_rows", 0))
+        temporal_missing_years = max(temporal_missing_years, int(temporal_validation.counts.get("missing_years", 0)))
+        if temporal_validation.status == "passed":
+            stable_temporal_artifacts += 1
+        for issue in temporal_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "temporal_artifact_blocked"),
+                    "error",
+                    str(issue.get("message") or "Temporal artifact validation failed."),
+                    "temporal",
+                )
+            )
+        for warning in temporal_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "temporal_artifact_warning"),
+                    "warning",
+                    str(warning.get("message") or "Temporal artifact has validation warnings."),
+                    "temporal",
+                )
+            )
+
     _reconcile_counts(
         artifacts=artifacts,
         membership_info=membership_info,
@@ -3514,6 +4735,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
             artifacts.membership_path,
             artifacts.keywords_path,
             artifacts.edges_path,
+            artifacts.matrix_manifest_paths,
+            artifacts.temporal_manifest_paths,
         ]
     ):
         issues.append(
@@ -3541,6 +4764,12 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "cooccurrence_artifacts": int(cooccurrence_artifacts),
         "cooccurrence_rows": int(cooccurrence_rows),
         "edge_evidence_artifacts": len(artifacts.edge_evidence_paths),
+        "temporal_artifacts": int(temporal_artifacts),
+        "stable_temporal_artifacts": int(stable_temporal_artifacts),
+        "temporal_periods": int(temporal_periods),
+        "temporal_series_rows": int(temporal_series_rows),
+        "temporal_event_rows": int(temporal_event_rows),
+        "temporal_missing_years": int(temporal_missing_years),
         "evolution_artifacts": len(artifacts.evolution_paths),
         "narrative_artifacts": len(artifacts.narrative_paths),
         "keyword_artifact_rows": int(keyword_artifact_rows),
@@ -3557,7 +4786,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     features["term_network"] = report_edge_count > 0 or keyword_edge_count > 0 or cooccurrence_rows > 0
     features["matrix"] = bool(general_matrix_artifacts or artifacts.matrix_paths) or report_edge_count > 0
     features["evidence"] = counts["abstract_rows"] > 0 and counts["membership_rows"] > 0
-    features["temporal"] = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
+    has_pubyear = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
+    features["temporal"] = bool(temporal_artifacts or has_pubyear)
     features["evolution"] = bool(artifacts.evolution_paths) or report_has_evolution
     features["narrative"] = bool(artifacts.narrative_paths) or report_has_narrative
     features["quality"] = True
@@ -3851,6 +5081,17 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             description="General sparse-triplet matrix artifact manifest.",
         )
 
+    for i, rel_path in enumerate(artifact_info.get("temporal_manifest_artifacts", []), start=1):
+        key = "temporal" if i == 1 else f"temporal_{i}"
+        records[key] = _artifact_record(
+            root=root,
+            role="temporal",
+            path=rel_path,
+            required_for=["temporal"],
+            schema_version=TEMPORAL_MANIFEST_SCHEMA_VERSION,
+            description="Artifact-backed temporal trend manifest.",
+        )
+
     for i, rel_path in enumerate(artifact_info.get("evolution_artifacts", []), start=1):
         key = "evolution" if i == 1 else f"evolution_{i}"
         records[key] = _artifact_record(root=root, role="evolution", path=rel_path, required_for=["evolution"])
@@ -3920,6 +5161,15 @@ def _has_general_matrix_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> 
     )
 
 
+def _has_temporal_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
+    return any(
+        record.get("role") == "temporal"
+        and record.get("status") == "present"
+        and record.get("schema_version") == TEMPORAL_MANIFEST_SCHEMA_VERSION
+        for record in artifacts.values()
+    )
+
+
 def _manifest_feature_available(feature: str, validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     if feature == "cooccurrence":
         return _has_manifest_cooccurrence(validation, artifacts)
@@ -3935,6 +5185,8 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
         return "derived from keyword/report term edges; stable co-occurrence artifact not written yet"
     if feature == "matrix" and not _has_general_matrix_artifact(artifacts):
         return "derived from co-occurrence/report term edges; stable general matrix artifact not written yet"
+    if feature == "temporal" and not _has_temporal_artifact(artifacts):
+        return "pubyear exists but no temporal artifact has been written yet"
     if state == "beta":
         return "feature inferred with validation warnings or partial artifact coverage"
     return "feature validated"
@@ -3959,6 +5211,8 @@ def _feature_exposures(
         elif feature == "cooccurrence" and not any(record.get("role") == "cooccurrence" for record in artifacts.values()):
             state = "beta"
         elif feature == "matrix" and not _has_general_matrix_artifact(artifacts):
+            state = "beta"
+        elif feature == "temporal" and not _has_temporal_artifact(artifacts):
             state = "beta"
         elif warning_count:
             state = "beta"
@@ -5270,6 +6524,12 @@ __all__ = [
     "REPORT_DATA_CONTRACT_SCHEMA_VERSION",
     "RESULT_MANIFEST_SCHEMA_VERSION",
     "RESULT_MANIFEST_FEATURE_KEYS",
+    "TEMPORAL_ACTIVITY_SCHEMA_VERSION",
+    "TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION",
+    "TEMPORAL_EVENTS_SCHEMA_VERSION",
+    "TEMPORAL_MANIFEST_SCHEMA_VERSION",
+    "TEMPORAL_PERIODS_SCHEMA_VERSION",
+    "TEMPORAL_QA_SCHEMA_VERSION",
     "WORKSPACE_MANIFEST_SCHEMA_VERSION",
     "WORKSPACE_QA_SCHEMA_VERSION",
     "ArtifactRecord",
@@ -5280,6 +6540,7 @@ __all__ = [
     "ResultManifest",
     "ResultArtifacts",
     "RunState",
+    "TemporalArtifactValidationResult",
     "WorkspaceValidationResult",
     "build_atlas_payload_from_report_data",
     "build_report_data_contract",
@@ -5296,11 +6557,13 @@ __all__ = [
     "register_result_in_workspace",
     "validate_matrix_artifact",
     "validate_result_root",
+    "validate_temporal_artifact",
     "validate_workspace",
     "write_edge_evidence_samples",
     "write_cooccurrence_artifacts",
     "write_matrix_artifact",
     "write_matrix_from_term_cooccurrence",
+    "write_temporal_artifacts",
     "write_artifact_contract",
     "write_result_manifest",
     "write_workspace_manifest",

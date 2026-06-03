@@ -424,6 +424,22 @@ series from raw records.
 7. Only then build temporal controls or connect temporal signals to the Atlas
    evidence inspector.
 
+Initial implementation note:
+
+- `write_temporal_artifacts` and `validate_temporal_artifact` are available in
+  `sciscape.artifacts`.
+- The current writer supports yearly periods, result-level document activity,
+  cluster document activity, keyword year-series rows when temporal keyword
+  columns are present, and optional `growth_rate` signal rows.
+- Validation checks required columns, period refs, declared metrics, finite
+  numeric values, duplicate series rows, event refs, source artifact refs,
+  missing-year counts, and the QA sidecar.
+- `validate_result_root` identifies `temporal/temporal_manifest.json` and uses
+  artifact-backed rows for stable `temporal` exposure. Pubyear-only results
+  remain available as beta temporal views.
+- This contract still does not imply cluster lineage, split, merge, or
+  evolution claims; those remain under `evolution_artifact_design.md`.
+
 ## Acceptance Criteria
 
 - A temporal artifact can be validated without loading the web app.

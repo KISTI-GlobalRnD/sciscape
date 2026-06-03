@@ -46,7 +46,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
-| F11 | Temporal and evolution | `[~]` | 38% | temporal keyword utilities, burst/trend helpers, feature detection, temporal and evolution artifact designs | writers, validators, and map UI |
+| F11 | Temporal and evolution | `[~]` | 47% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, artifact-backed temporal feature state | evolution writer/validator and map UI |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 80% | artifact contract, result validation, quality gate, keyword artifact checks | strict checks for matrix/evolution/narrative features |
 | F14 | Report, export, interoperability | `[~]` | 74% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data, export manifest design | export manifest writer/validator and VOSviewer-style exports |
@@ -339,12 +339,10 @@ evolution map, and narrative system are stable.
 
 ## Next Implementation Targets
 
-1. Implement the temporal trend writer and validator from
-   `temporal_artifact_design.md`.
-2. Define replayable keyword cleaning rule artifacts and before/after diffs.
-3. Implement the cluster evolution writer, validator, and synthetic smoke gate
+1. Define replayable keyword cleaning rule artifacts and before/after diffs.
+2. Implement the cluster evolution writer, validator, and synthetic smoke gate
    from `evolution_artifact_design.md`.
-4. Implement the narrative evidence-reference writer, validator, and unsupported
+3. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-5. Implement the export manifest writer and validator from
+4. Implement the export manifest writer and validator from
    `export_manifest_design.md`.
