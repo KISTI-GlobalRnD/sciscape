@@ -1386,6 +1386,26 @@ variable node-pairs with local edge mass and CPM delta, then ask whether any
 object has a named weak-pair/bridge mechanism worth reproducing in the small
 demo surface.
 
+The variable-pair graph mechanism review is materialized at
+`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_graph_mechanisms_gamma1e5_20260603/`,
+with zero-variable-pair controls at
+`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_graph_mechanisms_gamma3e5_20260603/`
+and
+`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_graph_mechanisms_gamma1e4_20260603/`.
+All 114 `1e-5` variable node-pairs have direct graph edges and shared
+neighbors. Under the doc-weighted pair delta
+`edge_weight - gamma * doc_i * doc_j`, 79 of 114 pairs are direct-positive at
+`gamma=1e-5`; only 4 remain direct-positive at `3e-5`, and 0 at `1e-4`.
+Direct critical gamma has median `1.2620650978784917e-05` and max
+`3.8690815711357744e-05`; shared-neighbor bridge mass is also large, with
+median common-neighbor count 1117 and median common-neighbor min-weight sum
+119.21558048365567. This supports a concrete mechanism target:
+phase-sensitive weak-pair/small-bridge partial coarsening. It still does not
+establish a wall/pathway or method improvement. The next gate should pick a
+small predeclared set of top direct-positive and top bridge-mass variable pairs
+and test either a local ablation/counterfactual or a small Leiden+CPM demo that
+reproduces this partial-coarsening switch.
+
 The first prior-versus-current dataset contrast shows that the current
 NanoClustering full/candidate graphs are dense at the nano level: about
 78k-80k nodes, 105M-107M edges, average degree around 2.7k, and undirected

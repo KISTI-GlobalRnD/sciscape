@@ -479,6 +479,15 @@ Current terminal evidence:
   controls have zero variable node-pairs. This keeps the current mechanism read
   narrow: phase-sensitive partial coarsening around small node-pair sets, not a
   broad basin-wide rearrangement or wall/pathway claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_graph_mechanisms_gamma1e5_20260603/`
+  plus the `gamma3e5` and `gamma1e4` zero-variable-pair control siblings for
+  graph-local scoring of the 114 variable node-pairs. All 114 `1e-5` variable
+  pairs have direct edges and shared neighbors. Seventy-nine are
+  direct-positive under `edge_weight - gamma * doc_i * doc_j` at `gamma=1e-5`;
+  only 4 remain direct-positive at `3e-5`, and 0 at `1e-4`. Direct critical
+  gamma median is 1.2620650978784917e-05 and max is
+  3.8690815711357744e-05. This supports weak-pair/small-bridge partial
+  coarsening as the next mechanism target, not a wall/pathway or method claim.
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_assumption_inversion_audit_20260531/`
   for the audit that treats current assumptions as potentially wrong. It marks
   seed-anchor invariance, reference-cluster object choice, and basin-wall

@@ -301,3 +301,10 @@ scripts.
   variable node-pairs. It is read-only over completed multistart artifacts and
   does not run Leiden, promote wall/pathway, inspect basin quality/cost as a
   success claim, or claim method success.
+- `analyze_leiden_basin_nanoclustering_symmetric_object_variable_pair_graph_mechanisms.py`:
+  reads the saved variable terminal node-pairs and scores graph-local mechanism
+  evidence: direct pair edge weight, doc-weighted CPM pair delta, direct
+  critical gamma, and shared-neighbor bridge mass. It is read-only over
+  completed difference-review artifacts and does not run Leiden, promote
+  wall/pathway, inspect basin quality/cost as a success claim, or claim method
+  success.

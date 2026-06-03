@@ -253,6 +253,15 @@ partition rearrangement first. The closer target is a weak-pair or small-bridge
 partial-coarsening phase transition where a compact node set switches
 co-assignment under ordinary Leiden + CPM.
 
+The graph-local variable-pair review makes this target more concrete. All 114
+observed variable node-pairs have direct graph edges and shared neighbors; 79
+are direct-positive under doc-weighted CPM at `gamma=1e-5`, but only 4 remain
+direct-positive at `3e-5` and 0 at `1e-4`. A controlled demo should therefore
+try to reproduce a compact weak-pair switch whose critical gamma sits near the
+observed bracket, with shared-neighbor bridge mass as an alternate or coupled
+mechanism. The demo should keep quality/cost and wall claims closed until this
+mechanism is reproduced under ordinary Leiden + CPM.
+
 ## Immediate Next Work
 
 The next work should be split into two parallel threads:
