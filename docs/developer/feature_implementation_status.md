@@ -46,7 +46,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
-| F11 | Temporal and evolution | `[~]` | 58% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke | evolution map UI and richer time-slice matching |
+| F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
 | F14 | Report, export, interoperability | `[~]` | 74% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data, export manifest design | export manifest writer/validator and VOSviewer-style exports |
@@ -258,14 +258,18 @@ Status: `[~]` Partial. Rough completeness: 38%.
 - `[x]` Cluster evolution writer, validator, lineage transition artifacts, and
   synthetic split/merge/emergence/decline/continuation/ambiguous smoke are
   implemented.
+- `[x]` Web app exposes an artifact-backed Evolution lens and bounded
+  `/api/jobs/{job_id}/evolution` payload for slices, states, transitions,
+  lineages, and events.
 - `[~]` Membership-projection evolution writer intentionally emits only events
   that are supported by static membership continuity; split/merge are covered
   by the validator smoke and need richer time-slice matching for real data.
-- `[ ]` Evolution map UI is not product-ready.
+- `[ ]` Full evolution map layout is not product-ready.
 
 Review: temporal/evolution artifacts are now inspectable and independently
-validated, but the promised cluster evolution map remains gated on UI
-implementation and richer matching beyond static membership projection.
+validated, and the web app can inspect evolution rows. The promised cluster
+evolution map remains gated on richer visual layout and matching beyond static
+membership projection.
 
 ### F12. Evidence-Backed Narratives
 
@@ -344,8 +348,8 @@ evolution map, and narrative system are stable.
 ## Next Implementation Targets
 
 1. Define replayable keyword cleaning rule artifacts and before/after diffs.
-2. Implement the cluster evolution map UI lens, gated on
-   `evolution/evolution_manifest.json`.
+2. Implement richer time-slice matching for evolution beyond static membership
+   projection, then promote the Evolution lens into a true map layout.
 3. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
 4. Implement the export manifest writer and validator from

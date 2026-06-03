@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import sciscape.web.app as web_app
-from sciscape.artifacts import write_workspace_manifest
+from sciscape.artifacts import write_evolution_synthetic_smoke_artifact, write_workspace_manifest
 from sciscape.web.jobstore import JobStore
 
 app = web_app.app
@@ -122,6 +122,13 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlasNeighborSamples" in response.text
     assert "atlas_neighbor" in response.text
     assert "renderAtlasNeighborSummary" in response.text
+    assert 'data-tab="evolution"' in response.text
+    assert 'id="evolution-content"' in response.text
+    assert "loadEvolution" in response.text
+    assert "renderEvolutionLens" in response.text
+    assert "selectEvolutionEventFilter" in response.text
+    assert "/api/jobs/${currentJobId}/evolution" in response.text
+    assert "evolution-shell" in response.text
     assert "selectAtlasLens" in response.text
     assert "atlasEvidenceScore" in response.text
     assert "atlas_lens" in response.text
@@ -515,6 +522,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         ),
         encoding="utf-8",
     )
+    write_evolution_synthetic_smoke_artifact(output_dir)
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
         [tmp_path / "workspace" / "web_output"],
@@ -543,6 +551,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["result_manifest"]["title"] == "Curated Web Result"
     assert job_payload["result"]["result_manifest"]["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
     assert job_payload["result"]["artifact_contract"]["ok"] is True
+    assert job_payload["result"]["features"]["evolution"] is True
+    assert job_payload["result"]["feature_states"]["evolution"] == "stable"
+    assert job_payload["result"]["evolution_summary"]["status"] == "passed"
+    assert job_payload["result"]["evolution_summary"]["event_counts"]["continuation"] == 3
     assert job_payload["result"]["atlas"]["node_count"] == 1
     assert job_payload["result"]["atlas"]["nodes"][0]["label"] == "perovskite"
     assert job_payload["result"]["atlas"]["nodes"][0]["doc_count"] == 2
@@ -550,6 +562,16 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_work_count"] == 2
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["title"] == "Stable perovskite device"
     assert job_payload["result"]["atlas_report_rel_path"] == "landscape/report/data.json"
+
+    evolution_response = client.get(f"/api/jobs/{job_id}/evolution")
+    assert evolution_response.status_code == 200
+    evolution = evolution_response.json()
+    assert evolution["available"] is True
+    assert evolution["status"] == "passed"
+    assert evolution["event_counts"]["split"] == 1
+    assert evolution["event_counts"]["merge"] == 1
+    assert len(evolution["time_slices"]) == 3
+    assert len(evolution["events"]) == 8
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

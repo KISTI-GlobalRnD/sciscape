@@ -1344,6 +1344,197 @@ body {
   font-size: 0.82rem;
 }
 
+/* ── EVOLUTION LENS ───────────────────────────────────── */
+.evolution-shell {
+  border: 1px solid var(--fog);
+  border-radius: var(--radius);
+  background: var(--cream);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.evolution-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--fog);
+  background: var(--white);
+}
+.evolution-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.evolution-subtitle {
+  margin-top: 0.18rem;
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  overflow-wrap: anywhere;
+}
+.evolution-status {
+  border: 1px solid rgba(43, 168, 156, 0.35);
+  border-radius: 4px;
+  background: rgba(43, 168, 156, 0.08);
+  color: var(--teal-dim);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  padding: 0.22rem 0.42rem;
+  text-transform: uppercase;
+}
+.evolution-status.warning {
+  border-color: rgba(232, 168, 56, 0.42);
+  background: rgba(232, 168, 56, 0.1);
+  color: var(--amber-dim);
+}
+.evolution-status.blocked {
+  border-color: rgba(216, 90, 74, 0.35);
+  background: rgba(216, 90, 74, 0.1);
+  color: var(--coral);
+}
+.evolution-body {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+}
+.evolution-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.evolution-cell {
+  min-width: 0;
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 4px;
+  background: var(--white);
+  padding: 0.52rem 0.58rem;
+}
+.evolution-cell-label {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.evolution-cell-value {
+  margin-top: 0.12rem;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.evolution-slice-rail,
+.evolution-event-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.evolution-slice-card {
+  min-width: 112px;
+  border: 1px solid var(--fog);
+  border-left: 3px solid var(--teal);
+  border-radius: 4px;
+  background: var(--white);
+  padding: 0.45rem 0.52rem;
+}
+.evolution-slice-label {
+  color: var(--graphite);
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+.evolution-slice-meta {
+  margin-top: 0.16rem;
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+}
+.evolution-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
+  gap: 0.8rem;
+}
+.evolution-panel {
+  min-width: 0;
+  border: 1px solid var(--fog);
+  border-radius: 5px;
+  background: rgba(248, 249, 252, 0.74);
+  padding: 0.7rem;
+}
+.evolution-panel-title {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  margin-bottom: 0.48rem;
+  text-transform: uppercase;
+}
+.evolution-event-list,
+.evolution-state-list {
+  display: grid;
+  gap: 0.34rem;
+}
+.evolution-event-row,
+.evolution-state-row {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-left: 3px solid var(--amber);
+  border-radius: 4px;
+  background: var(--white);
+  padding: 0.46rem 0.52rem;
+}
+.evolution-event-row[data-event="continuation"] { border-left-color: var(--teal); }
+.evolution-event-row[data-event="emergence"] { border-left-color: var(--amber); }
+.evolution-event-row[data-event="decline"] { border-left-color: var(--coral); }
+.evolution-event-row[data-event="split"],
+.evolution-event-row[data-event="merge"],
+.evolution-event-row[data-event="ambiguous"] { border-left-color: var(--graphite); }
+.evolution-row-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+.evolution-row-title {
+  color: var(--graphite);
+  font-size: 0.74rem;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.evolution-row-meta {
+  margin-top: 0.2rem;
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  overflow-wrap: anywhere;
+}
+.evolution-mini-tag {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  padding: 0.08rem 0.24rem;
+  white-space: nowrap;
+}
+.evolution-empty {
+  padding: 1rem;
+  color: var(--silver);
+  border: 1px dashed var(--fog);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 760px) {
+  .evolution-head,
+  .evolution-grid,
+  .evolution-summary-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 760px) {
   .atlas-head,
   .atlas-body { display: block; }
@@ -1743,6 +1934,7 @@ input[type="range"]::-webkit-slider-thumb {
         <button class="tab-btn active" data-tab="overview">Network</button>
         <button class="tab-btn" data-tab="hierarchy">Hierarchy</button>
         <button class="tab-btn" data-tab="temporal">Temporal</button>
+        <button class="tab-btn" data-tab="evolution">Evolution</button>
         <button class="tab-btn" data-tab="clusters">Clusters</button>
         <button class="tab-btn" data-tab="keywords">Keywords</button>
         <button class="tab-btn" data-tab="whatif">What-if</button>
@@ -1774,6 +1966,12 @@ input[type="range"]::-webkit-slider-thumb {
         <div id="temporal-activity" style="width:100%;height:350px;"></div>
         <div id="temporal-growth" style="width:100%;height:400px;margin-top:1rem;"></div>
         <div id="temporal-emerging" style="margin-top:1rem;"></div>
+      </div>
+
+      <div class="tab-content" id="tab-evolution">
+        <div id="evolution-content" class="evolution-empty">
+          Evolution artifact rows will appear when a validated evolution manifest is attached.
+        </div>
       </div>
 
       <div class="tab-content" id="tab-clusters">
@@ -1937,6 +2135,8 @@ let currentAtlasResultMeta = {};
 let currentAtlasSessionKey = '';
 let currentAtlasPinnedUids = [];
 let currentAtlasRecentUids = [];
+let currentEvolutionPayload = null;
+let currentEvolutionEventFilter = 'all';
 const ATLAS_SESSION_LIMIT = 6;
 const RESULT_FEATURE_LABELS = {
   overview: 'Overview',
@@ -1965,6 +2165,7 @@ const TAB_FEATURES = {
   overview: 'cluster_map',
   hierarchy: 'cluster_map',
   temporal: 'temporal',
+  evolution: 'evolution',
   clusters: 'cluster_map',
   keywords: 'keyword',
   whatif: 'cluster_map',
@@ -3386,6 +3587,7 @@ function showResults(result) {
     loadClusterTable();
   }
   if (featureAvailable('temporal')) loadTemporal();
+  if (featureAvailable('evolution')) loadEvolution();
   if (featureAvailable('keyword')) loadKeywordTable();
   updateDownloads(result);
 
@@ -3666,6 +3868,10 @@ function updateDownloads(result) {
     grid.innerHTML += dlCard(landscapePath + '/keywords.parquet', 'Keywords', 'KW', currentJobId);
     grid.innerHTML += dlCard(landscapePath + '/report/data.json', 'Viewer-ready dashboard data', 'JSON', currentJobId);
   }
+  if (featureAvailable('evolution')) {
+    grid.innerHTML += dlCard('evolution/evolution_manifest.json', 'Cluster evolution manifest', 'EVO', currentJobId);
+    grid.innerHTML += dlCard('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT', currentJobId);
+  }
 }
 
 /* ── EXPORT ─────────────────────────────────────────────── */
@@ -3710,6 +3916,217 @@ async function loadTemporal() {
         ).join(' ');
     }
   } catch(e) {}
+}
+
+/* ── EVOLUTION LENS ───────────────────────────────────── */
+async function loadEvolution() {
+  if (!currentJobId) return;
+  const el = document.getElementById('evolution-content');
+  if (!el) return;
+  el.className = 'evolution-empty';
+  el.innerHTML = 'Loading cluster evolution artifact...';
+  try {
+    const r = await fetch(`/api/jobs/${currentJobId}/evolution`);
+    const data = await r.json();
+    if (!r.ok || data.error) {
+      currentEvolutionPayload = null;
+      el.innerHTML = esc(data.error || 'Evolution artifact unavailable.');
+      return;
+    }
+    currentEvolutionPayload = data;
+    renderEvolutionLens();
+  } catch(e) {
+    currentEvolutionPayload = null;
+    el.innerHTML = 'Evolution load failed: ' + esc(e.message);
+  }
+}
+
+function renderEvolutionLens() {
+  const data = currentEvolutionPayload;
+  const el = document.getElementById('evolution-content');
+  if (!el) return;
+  if (!data || !data.available) {
+    el.className = 'evolution-empty';
+    el.innerHTML = 'No evolution artifact is attached to this result.';
+    return;
+  }
+  const status = String(data.status || data.feature_state || 'unknown');
+  const statusClass = status === 'blocked' ? ' blocked' : status === 'warning' ? ' warning' : '';
+  el.className = 'evolution-shell';
+  el.innerHTML =
+    '<div class="evolution-head">' +
+      '<div><div class="evolution-title">' + esc(data.title || data.evolution_id || 'Cluster evolution') + '</div>' +
+      '<div class="evolution-subtitle">' + esc(data.schema_version || 'evolution artifact') + ' / ' +
+        esc(data.evolution_id || 'unlabeled') + '</div></div>' +
+      '<div class="evolution-status' + statusClass + '">' + esc(status) + '</div>' +
+    '</div>' +
+    '<div class="evolution-body">' +
+      renderEvolutionSummary(data) +
+      renderEvolutionMethodNote(data) +
+      renderEvolutionSliceRail(data) +
+      renderEvolutionEventFilter(data) +
+      '<div class="evolution-grid">' +
+        '<div class="evolution-panel"><div class="evolution-panel-title">Events</div>' +
+          renderEvolutionEvents(data) + '</div>' +
+        '<div class="evolution-panel"><div class="evolution-panel-title">States</div>' +
+          renderEvolutionStates(data) + '</div>' +
+      '</div>' +
+      '<div class="evolution-panel"><div class="evolution-panel-title">Transition Evidence</div>' +
+        renderEvolutionTransitions(data) + '</div>' +
+      renderEvolutionWarnings(data) +
+    '</div>';
+}
+
+function renderEvolutionSummary(data) {
+  const counts = data.counts || {};
+  const eventCounts = data.event_counts || {};
+  const cells = [
+    ['slices', counts.slices],
+    ['states', counts.states],
+    ['transitions', counts.transitions],
+    ['lineages', counts.lineages],
+    ['events', counts.events || counts.event_rows],
+    ['continuation', eventCounts.continuation || 0],
+    ['split', eventCounts.split || 0],
+    ['merge', eventCounts.merge || 0],
+    ['emergence', eventCounts.emergence || 0],
+    ['decline', eventCounts.decline || 0],
+  ];
+  return '<div class="evolution-summary-grid">' + cells.map(([label, value]) =>
+    '<div class="evolution-cell"><div class="evolution-cell-label">' + esc(label) + '</div>' +
+    '<div class="evolution-cell-value">' + formatAtlasCount(value || 0) + '</div></div>'
+  ).join('') + '</div>';
+}
+
+function renderEvolutionMethodNote(data) {
+  const matching = data.matching_method || {};
+  const scope = data.entity_scope || {};
+  const slice = data.slice_method || {};
+  const parts = [
+    'matching: ' + (matching.metric || 'unknown'),
+    'cluster level: ' + (scope.cluster_level || 'unknown'),
+    'slice: ' + (slice.unit || 'year') + (slice.start_year ? ' ' + slice.start_year + '-' + slice.end_year : ''),
+  ];
+  return '<div class="evolution-row-meta">' + esc(parts.join(' / ')) + '</div>';
+}
+
+function renderEvolutionSliceRail(data) {
+  const slices = Array.isArray(data.time_slices) ? data.time_slices : [];
+  if (!slices.length) return '<div class="evolution-empty">No time slices in this artifact.</div>';
+  return '<div class="evolution-slice-rail">' + slices.map(slice =>
+    '<div class="evolution-slice-card">' +
+      '<div class="evolution-slice-label">' + esc(slice.slice_label || slice.slice_id) + '</div>' +
+      '<div class="evolution-slice-meta">' + formatAtlasCount(slice.doc_count) + ' docs / ' +
+        formatAtlasCount(slice.active_cluster_count) + ' active</div>' +
+    '</div>'
+  ).join('') + '</div>';
+}
+
+function renderEvolutionEventFilter(data) {
+  const counts = data.event_counts || {};
+  const types = ['all', 'continuation', 'split', 'merge', 'emergence', 'decline', 'ambiguous']
+    .filter(type => type === 'all' || Number(counts[type] || 0) > 0);
+  return '<div class="evolution-event-filter">' + types.map(type => {
+    const active = currentEvolutionEventFilter === type ? ' active' : '';
+    const count = type === 'all'
+      ? Object.values(counts).reduce((total, value) => total + Number(value || 0), 0)
+      : Number(counts[type] || 0);
+    return '<button class="net-chip' + active + '" onclick="selectEvolutionEventFilter(decodeURIComponent(\'' +
+      encodeURIComponent(type) + '\'))">' + esc(type) + ' <span style="opacity:0.72;">' +
+      formatAtlasCount(count) + '</span></button>';
+  }).join('') + '</div>';
+}
+
+function selectEvolutionEventFilter(type) {
+  currentEvolutionEventFilter = type || 'all';
+  renderEvolutionLens();
+}
+
+function renderEvolutionEvents(data) {
+  const rows = (Array.isArray(data.events) ? data.events : []).filter(event =>
+    currentEvolutionEventFilter === 'all' || String(event.event_type || '') === currentEvolutionEventFilter
+  );
+  if (!rows.length) return '<div class="evolution-empty">No events for this filter.</div>';
+  return '<div class="evolution-event-list">' + rows.slice(0, 24).map(event => {
+    const state = evolutionStateById(data, event.state_id);
+    const title = event.event_label || event.event_type || 'event';
+    const target = state ? (state.cluster_label || state.cluster_key || state.state_id) : event.state_id;
+    const refs = Array.isArray(event.transition_refs) ? event.transition_refs : [];
+    return '<div class="evolution-event-row" data-event="' + escAttr(event.event_type || '') + '">' +
+      '<div class="evolution-row-head">' +
+        '<div class="evolution-row-title">' + esc(title) + ' / ' + esc(target || 'state') + '</div>' +
+        '<span class="evolution-mini-tag">' + esc(event.slice_id || '') + '</span>' +
+      '</div>' +
+      '<div class="evolution-row-meta">' +
+        'score ' + esc(formatEvolutionScore(event.score)) + ' / support ' + formatAtlasCount(event.support_count || 0) +
+        (refs.length ? ' / refs ' + refs.slice(0, 3).map(esc).join(', ') : '') +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderEvolutionStates(data) {
+  const states = Array.isArray(data.cluster_states) ? data.cluster_states : [];
+  if (!states.length) return '<div class="evolution-empty">No state rows loaded.</div>';
+  const sorted = states.slice().sort((a, b) => Number(b.doc_count || 0) - Number(a.doc_count || 0)).slice(0, 14);
+  return '<div class="evolution-state-list">' + sorted.map(state => {
+    const terms = Array.isArray(state.top_terms) && state.top_terms.length
+      ? ' / ' + state.top_terms.slice(0, 3).join(', ')
+      : '';
+    return '<div class="evolution-state-row">' +
+      '<div class="evolution-row-head">' +
+        '<div class="evolution-row-title">' + esc(state.cluster_label || state.cluster_key || state.state_id) + '</div>' +
+        '<span class="evolution-mini-tag">' + esc(state.slice_id || '') + '</span>' +
+      '</div>' +
+      '<div class="evolution-row-meta">' + formatAtlasCount(state.doc_count) + ' docs' + esc(terms) + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderEvolutionTransitions(data) {
+  const transitions = Array.isArray(data.transitions) ? data.transitions : [];
+  if (!transitions.length) return '<div class="evolution-empty">No transition evidence rows loaded.</div>';
+  return '<div class="evolution-event-list">' + transitions.slice(0, 18).map(row => {
+    const source = evolutionStateById(data, row.source_state_id);
+    const target = evolutionStateById(data, row.target_state_id);
+    return '<div class="evolution-event-row" data-event="' + escAttr(row.relation || '') + '">' +
+      '<div class="evolution-row-head">' +
+        '<div class="evolution-row-title">' +
+          esc(evolutionStateLabel(source, row.source_state_id)) + ' -> ' +
+          esc(evolutionStateLabel(target, row.target_state_id)) + '</div>' +
+        '<span class="evolution-mini-tag">' + esc(row.relation || 'transition') + '</span>' +
+      '</div>' +
+      '<div class="evolution-row-meta">' + esc(row.source_slice_id || '') + ' -> ' + esc(row.target_slice_id || '') +
+        ' / score ' + esc(formatEvolutionScore(row.score)) +
+        ' / support ' + formatAtlasCount(row.support_count || 0) +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderEvolutionWarnings(data) {
+  const warnings = (Array.isArray(data.blocking_issues) ? data.blocking_issues : [])
+    .concat(Array.isArray(data.warnings) ? data.warnings : [])
+    .concat(Array.isArray(data.read_errors) ? data.read_errors : []);
+  if (!warnings.length) return '';
+  return '<div class="evolution-empty">' + warnings.slice(0, 5).map(w =>
+    esc((w.severity || w.code || 'warning') + ': ' + (w.message || w.table || 'review artifact'))
+  ).join('<br>') + '</div>';
+}
+
+function evolutionStateById(data, stateId) {
+  const states = Array.isArray(data && data.cluster_states) ? data.cluster_states : [];
+  return states.find(state => String(state.state_id || '') === String(stateId || '')) || null;
+}
+
+function evolutionStateLabel(state, fallback) {
+  return state ? (state.cluster_label || state.cluster_key || state.state_id) : fallback;
+}
+
+function formatEvolutionScore(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'n/a';
+  return number.toFixed(2);
 }
 
 /* ── HIERARCHY VIZ ─────────────────────────────────────── */

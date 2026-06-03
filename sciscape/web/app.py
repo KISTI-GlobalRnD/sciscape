@@ -26,6 +26,7 @@ from sciscape.artifacts import (
     build_atlas_payload_from_report_data,
     infer_result_artifacts,
     load_result_manifest,
+    validate_evolution_artifact,
     validate_result_root,
     validate_workspace,
     write_result_manifest,
@@ -548,6 +549,7 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     }
     result["result_state"] = contract["result_state"]
     _attach_report_atlas(result)
+    _attach_evolution_summary(result)
     return result
 
 
@@ -618,6 +620,177 @@ def _attach_report_atlas(result: dict[str, Any]) -> None:
         )
     except ValueError:
         result["atlas_report_rel_path"] = str(data_path)
+
+
+def _json_safe(value: Any) -> Any:
+    """Convert pandas/numpy-ish values to strict JSON-friendly values."""
+    try:
+        import pandas as pd
+
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    if hasattr(value, "item"):
+        try:
+            return _json_safe(value.item())
+        except Exception:
+            return str(value)
+    return value
+
+
+def _read_evolution_table(path: Path, *, limit: int) -> tuple[list[dict[str, Any]], bool]:
+    import pandas as pd
+
+    df = pd.read_parquet(path)
+    truncated = len(df) > limit
+    if truncated:
+        df = df.head(limit)
+    return [_json_safe(row) for row in df.to_dict(orient="records")], truncated
+
+
+def _parse_evolution_refs(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = [part.strip() for part in text.replace(",", "|").split("|")]
+        if isinstance(payload, list):
+            return [str(item) for item in payload if str(item).strip()]
+        return [str(payload)] if str(payload).strip() else []
+    return [str(value)] if str(value).strip() else []
+
+
+def _normalize_evolution_rows(payload: dict[str, Any]) -> None:
+    for state in payload.get("cluster_states", []):
+        terms = _parse_evolution_refs(state.get("top_terms"))
+        state["top_terms"] = terms[:8]
+    for transition in payload.get("transitions", []):
+        transition["score"] = _json_safe(transition.get("score"))
+    for lineage in payload.get("lineages", []):
+        lineage["event_refs"] = _parse_evolution_refs(lineage.get("event_refs"))
+    for event in payload.get("events", []):
+        event["transition_refs"] = _parse_evolution_refs(event.get("transition_refs"))
+        event["source_state_ids"] = _parse_evolution_refs(event.get("source_state_ids"))
+        event["target_state_ids"] = _parse_evolution_refs(event.get("target_state_ids"))
+
+
+def _evolution_manifest_path_for_result(result: dict[str, Any]) -> Path | None:
+    output_dir = result.get("output_dir")
+    if not output_dir:
+        return None
+    try:
+        artifacts = infer_result_artifacts(output_dir)
+    except Exception:
+        return None
+    return artifacts.evolution_manifest_paths[0] if artifacts.evolution_manifest_paths else None
+
+
+def _load_evolution_payload(
+    result: dict[str, Any],
+    *,
+    state_limit: int = 120,
+    transition_limit: int = 180,
+    event_limit: int = 180,
+    lineage_limit: int = 180,
+) -> dict[str, Any]:
+    manifest_path = _evolution_manifest_path_for_result(result)
+    if manifest_path is None:
+        return {"available": False, "reason": "no evolution artifact"}
+
+    evolution_dir = manifest_path.parent
+    validation = validate_evolution_artifact(manifest_path).to_dict()
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "available": True,
+            "status": "blocked",
+            "reason": f"could not read evolution manifest: {exc}",
+            "validation": validation,
+        }
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
+    table_specs = {
+        "time_slices": ("time_slices", 500),
+        "cluster_states": ("cluster_states", state_limit),
+        "transitions": ("transitions", transition_limit),
+        "lineages": ("lineages", lineage_limit),
+        "events": ("events", event_limit),
+    }
+    tables: dict[str, list[dict[str, Any]]] = {}
+    truncated: dict[str, bool] = {}
+    errors: list[dict[str, Any]] = []
+    for key, (output_key, limit) in table_specs.items():
+        rel_path = outputs.get(output_key)
+        if not rel_path:
+            tables[key] = []
+            truncated[key] = False
+            continue
+        path = evolution_dir / str(rel_path)
+        try:
+            rows, is_truncated = _read_evolution_table(path, limit=limit)
+        except Exception as exc:
+            rows, is_truncated = [], False
+            errors.append({"code": "evolution_table_read_failed", "table": key, "message": str(exc)})
+        tables[key] = rows
+        truncated[key] = is_truncated
+    payload = {
+        "available": True,
+        "schema_version": manifest.get("schema_version"),
+        "evolution_id": manifest.get("evolution_id"),
+        "title": manifest.get("title"),
+        "status": validation.get("status"),
+        "feature_state": (result.get("feature_states") or {}).get("evolution"),
+        "manifest_path": str(manifest_path),
+        "counts": validation.get("counts", {}),
+        "event_counts": validation.get("event_counts", {}),
+        "warnings": validation.get("warnings", []),
+        "blocking_issues": validation.get("blocking_issues", []),
+        "matching_method": manifest.get("matching_method", {}),
+        "event_rules": manifest.get("event_rules", {}),
+        "slice_method": manifest.get("slice_method", {}),
+        "entity_scope": manifest.get("entity_scope", {}),
+        "paths": validation.get("paths", {}),
+        "truncated": truncated,
+        "read_errors": errors,
+        **tables,
+    }
+    _normalize_evolution_rows(payload)
+    return payload
+
+
+def _attach_evolution_summary(result: dict[str, Any]) -> None:
+    payload = _load_evolution_payload(
+        result,
+        state_limit=0,
+        transition_limit=0,
+        event_limit=0,
+        lineage_limit=0,
+    )
+    if not payload.get("available"):
+        return
+    result["evolution_summary"] = {
+        "available": True,
+        "evolution_id": payload.get("evolution_id"),
+        "title": payload.get("title"),
+        "status": payload.get("status"),
+        "feature_state": payload.get("feature_state"),
+        "counts": payload.get("counts", {}),
+        "event_counts": payload.get("event_counts", {}),
+        "warning_count": len(payload.get("warnings", [])),
+        "blocking_issue_count": len(payload.get("blocking_issues", [])),
+    }
 
 
 def _artifact_role(path: Path) -> str:
@@ -1256,6 +1429,32 @@ async def get_temporal_tracking(job_id: str, window: int = 5, step: int = 1):
         return {"error": str(e)}
 
 
+@app.get("/api/jobs/{job_id}/evolution")
+async def get_evolution_artifact(
+    job_id: str,
+    state_limit: int = 120,
+    transition_limit: int = 180,
+    event_limit: int = 180,
+):
+    """Get artifact-backed cluster evolution rows for the Evolution lens."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    try:
+        payload = _load_evolution_payload(
+            result,
+            state_limit=max(0, min(int(state_limit), 500)),
+            transition_limit=max(0, min(int(transition_limit), 1000)),
+            event_limit=max(0, min(int(event_limit), 1000)),
+        )
+    except Exception as exc:
+        return {"error": str(exc)}
+    if not payload.get("available"):
+        return {"error": payload.get("reason") or "no evolution artifact"}
+    return payload
+
+
 @app.get("/api/jobs/{job_id}/treemap")
 async def get_treemap(job_id: str, mode: str = "treemap"):
     """Get Plotly treemap/sunburst data for cluster hierarchy."""
@@ -1746,6 +1945,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
         except Exception as exc:
             job_result["artifact_contract_error"] = str(exc)
         _attach_report_atlas(job_result)
+        _attach_evolution_summary(job_result)
         job["result"] = job_result
         _jobs.persist(job_id)
     except Exception as e:
