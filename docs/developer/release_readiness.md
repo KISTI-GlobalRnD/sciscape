@@ -47,10 +47,12 @@ The gate performs:
 - staged diff whitespace/conflict-marker check with `git diff --cached --check`;
 - Rust tests for `rust/` and `rust-text/`;
 - editable rebuild of both PyO3 extensions with `maturin develop`;
-- `scripts/sciscape_quality_gate.py --smoke --web-demo-smoke`, covering
+- `scripts/sciscape_quality_gate.py --smoke --web-demo-smoke --p1-atlas-smoke`, covering
   artifact filtering, term co-occurrence, dashboard generation, the web demo
   launcher, local demo opening, Atlas neighbor edge-evidence sidecars, and key
-  visualization/download endpoints without external data;
+  visualization/download endpoints without external data. The P1 Atlas smoke
+  additionally runs a tiny real landscape pipeline before reopening it through
+  the web local-data API;
 - full Python test suite with `pytest -q`;
 - CLI import/help smoke check.
 

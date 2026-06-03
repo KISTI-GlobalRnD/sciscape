@@ -80,7 +80,9 @@ Primary work:
 - Strengthen `sciscape_quality_gate.py` so incomplete features are hidden or
   marked beta rather than silently exposed.
 - Keep demo, local, static, and small-query result loading as the canonical
-  smoke paths.
+  smoke paths. `scripts/sciscape_quality_gate.py --p1-atlas-smoke` is the
+  contract-level small-query path because it runs the actual landscape pipeline
+  before reopening the output through the web app.
 
 Completion criteria:
 
@@ -129,7 +131,9 @@ Completion criteria:
 - Term co-occurrence is available as a validated table artifact, even before the
   full matrix workbench exists.
 - One smoke fixture exercises network, clustering, hierarchy, keywords, atlas,
-  co-occurrence, export manifest, and quality gate.
+  co-occurrence, export manifest, and quality gate. This is covered by
+  `--p1-atlas-smoke`; future feature work should extend that gate instead of
+  adding disconnected fixtures.
 
 Do not do yet:
 
@@ -292,8 +296,9 @@ Do not do yet:
 3. Add exposure states and export manifest fields to result-root validation.
 4. Add long-run progress, shard, checkpoint, partial-output, and resume metadata
    contracts for live query and keyword extraction.
-5. Add a smoke fixture that exercises query/local load, network, clustering,
-   keywords, atlas, co-occurrence, export manifest, and quality gate.
+5. Maintain the P1 smoke fixture that exercises query/local load, network,
+   clustering, keywords, atlas, co-occurrence, export manifest, and quality
+   gate.
 6. Add replayable keyword cleaning rule artifacts and before/after impact
    summaries.
 7. Add the stable co-occurrence table/map artifact contract.

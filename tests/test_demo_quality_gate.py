@@ -53,3 +53,25 @@ def test_quality_gate_web_demo_smoke_runs_without_external_data():
     assert smoke["term_network_nodes"] > 0
     assert smoke["term_network_edges"] > 0
     assert smoke["edge_evidence_samples"] > 0
+
+
+def test_quality_gate_p1_atlas_smoke_runs_full_pipeline_without_external_data():
+    result = subprocess.run(
+        [sys.executable, "scripts/sciscape_quality_gate.py", "--p1-atlas-smoke", "--json"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    payload = json.loads(result.stdout)
+
+    smoke = payload["gates"]["p1_atlas_smoke"]
+    assert smoke["status"] == "passed"
+    assert smoke["clusters"] >= 2
+    assert smoke["keywords"] > 0
+    assert smoke["term_network_nodes"] > 0
+    assert smoke["term_network_edges"] > 0
+    assert smoke["edge_evidence_samples"] > 0
+    assert smoke["feature_states"]["cluster_map"] == "stable"
+    assert smoke["feature_states"]["keyword"] == "stable"
+    assert smoke["feature_states"]["term_network"] == "stable"
+    assert smoke["feature_states"]["cooccurrence"] in {"stable", "beta"}

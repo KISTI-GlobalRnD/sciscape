@@ -20,6 +20,7 @@ from sciscape.artifacts import (
 )
 from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
 from sciscape.keyword_extraction.visualization import export_dashboard
+from sciscape.landscape import LandscapeConfig, run_landscape
 from sciscape.web.network_data import build_term_network_json
 
 
@@ -425,6 +426,183 @@ def run_web_demo_smoke_gate() -> dict[str, Any]:
             web_app._jobs = old_jobs
 
 
+def _write_query_to_atlas_smoke_inputs(result_root: Path) -> tuple[Path, Path]:
+    """Create a tiny query-shaped corpus with two interpretable communities."""
+    result_root.mkdir(parents=True, exist_ok=True)
+    abstract_path = result_root / "abstracts.parquet"
+    edge_path = result_root / "edges.parquet"
+
+    pd.DataFrame(
+        {
+            "uid": [f"Q{i}" for i in range(8)],
+            "title": [
+                "Perovskite interface passivation",
+                "Perovskite solar cell stability",
+                "Perovskite defect transport",
+                "Perovskite tandem photovoltaic devices",
+                "Graph neural traffic forecasting",
+                "Graph neural anomaly detection",
+                "Temporal graph road networks",
+                "Graph embedding node classification",
+            ],
+            "abstract": [
+                "Interface passivation improves perovskite solar cell stability and defect tolerance.",
+                "Perovskite solar cells use passivation layers for stable photovoltaic performance.",
+                "Defect transport and ion migration affect perovskite device reliability.",
+                "Tandem perovskite devices improve photovoltaic conversion efficiency.",
+                "Graph neural networks forecast traffic over road sensor graphs.",
+                "Graph neural networks detect anomalies in dynamic traffic systems.",
+                "Temporal graph forecasting models capture road network flows.",
+                "Graph embedding networks learn representations for node classification.",
+            ],
+            "pubyear": [2021, 2022, 2023, 2024, 2021, 2022, 2023, 2024],
+        }
+    ).to_parquet(abstract_path, index=False)
+
+    edges: list[dict[str, Any]] = []
+    for group in ([0, 1, 2, 3], [4, 5, 6, 7]):
+        for left_idx, left in enumerate(group):
+            for right in group[left_idx + 1 :]:
+                edges.append({"uid1": f"Q{left}", "uid2": f"Q{right}", "rel_sum2": 2.0})
+    edges.append({"uid1": "Q3", "uid2": "Q4", "rel_sum2": 0.05})
+    pd.DataFrame(edges).to_parquet(edge_path, index=False)
+    return edge_path, abstract_path
+
+
+def run_p1_atlas_smoke_gate() -> dict[str, Any]:
+    """Run a tiny full pipeline result and reopen it through the web Atlas API."""
+    with tempfile.TemporaryDirectory(prefix="sciscape_p1_atlas_gate_") as tmp:
+        root = Path(tmp)
+        local_root = root / "workspace" / "examples_output"
+        result_root = local_root / "query_to_atlas_smoke"
+        landscape_dir = result_root / "landscape"
+        edge_path, abstract_path = _write_query_to_atlas_smoke_inputs(result_root)
+
+        pipeline_result = run_landscape(
+            edge_path,
+            abstract_path,
+            landscape_dir,
+            config=LandscapeConfig(
+                force=True,
+                gamma_pre=None,
+                gamma_range=(1e-4, 1e-1),
+                min_docs_per_cluster=2,
+                n_hierarchy_levels=1,
+                leiden_iterations=5,
+                min_df_unigram=1,
+                min_df_phrase=1,
+                top_n_unigrams=30,
+                top_n_keywords=20,
+                ngram_range=(1, 3),
+                n_jobs=1,
+                edge_evidence_max_relations=20,
+                edge_evidence_samples_per_relation=2,
+                report_title="SciScape P1 Query-to-Atlas Smoke",
+            ),
+        )
+
+        artifact_result = write_artifact_contract(result_root)
+        manifest = write_result_manifest(
+            result_root,
+            mode="demo",
+            source_overrides={
+                "query": "synthetic query-to-atlas smoke",
+                "max_works": 8,
+                "input_kind": "synthetic_fixture",
+            },
+        )
+        contract_path = default_artifact_contract_path(artifact_result)
+        report_data_path = landscape_dir / "report" / "data.json"
+        _assert(report_data_path.exists(), "pipeline did not write report data")
+        _assert(artifact_result.ok, "pipeline result artifact contract is blocked")
+
+        from fastapi.testclient import TestClient
+        import sciscape.web.app as web_app
+        from sciscape.web.jobstore import JobStore
+
+        old_roots = web_app._LOCAL_DATA_ROOTS
+        old_jobs = web_app._jobs
+        try:
+            web_app._LOCAL_DATA_ROOTS = [local_root]
+            web_app._jobs = JobStore(root / "jobs.db")
+
+            client = TestClient(web_app.app)
+            open_response = client.post("/api/local-data/open", json={"path": str(report_data_path)})
+            _assert(open_response.status_code == 200, "open full pipeline result endpoint failed")
+            job_id = open_response.json()["job_id"]
+
+            job_response = client.get(f"/api/jobs/{job_id}")
+            _assert(job_response.status_code == 200, "pipeline job status endpoint failed")
+            job = job_response.json()
+            _assert(job["status"] == "done", "pipeline result was not marked done")
+            result = job["result"]
+            _assert(result["landscape_rel_path"] == "landscape", "pipeline landscape rel path mismatch")
+            _assert(result.get("artifact_contract", {}).get("ok") is True, "web artifact contract is blocked")
+            loaded_manifest = result.get("result_manifest", {})
+            _assert(
+                loaded_manifest.get("manifest_state") == "present",
+                "web result manifest was not loaded from the pipeline fixture",
+            )
+            _assert(
+                loaded_manifest.get("manifest_path") == "result_manifest.json",
+                "web result manifest path was not canonical",
+            )
+
+            feature_states = result.get("feature_states", {})
+            for feature in ("cluster_map", "keyword", "term_network", "cooccurrence", "evidence", "export"):
+                _assert(
+                    feature_states.get(feature) in {"stable", "beta"},
+                    f"{feature} was not exposed by the pipeline manifest",
+                )
+
+            atlas = result.get("atlas", {})
+            _assert(atlas.get("nodes"), "pipeline Atlas payload has no nodes")
+            edge_evidence_samples = sum(
+                int(neighbor.get("sample_count") or 0)
+                for node in atlas.get("nodes", [])
+                for neighbor in node.get("neighbors", [])
+            )
+            _assert(edge_evidence_samples > 0, "pipeline Atlas payload has no neighbor evidence")
+
+            network_response = client.get(f"/api/jobs/{job_id}/network")
+            _assert(network_response.status_code == 200, "pipeline cluster network endpoint failed")
+            network = network_response.json()
+            _assert("error" not in network, f"pipeline cluster network error: {network.get('error')}")
+            _assert(network["nodes"], "pipeline cluster network has no nodes")
+
+            term_response = client.get(f"/api/jobs/{job_id}/term-network?top_k=5&min_cooc=1")
+            _assert(term_response.status_code == 200, "pipeline term network endpoint failed")
+            term_network = term_response.json()
+            _assert("error" not in term_network, f"pipeline term network error: {term_network.get('error')}")
+            _assert(term_network["nodes"], "pipeline term network has no nodes")
+            _assert(term_network["edges"], "pipeline term network has no edges")
+
+            report_response = client.get(f"/api/jobs/{job_id}/view/landscape/report/report.html")
+            _assert(report_response.status_code == 200, "pipeline report view endpoint failed")
+            data_response = client.get(f"/api/jobs/{job_id}/download/landscape/report/data.json")
+            _assert(data_response.status_code == 200, "pipeline data download endpoint failed")
+
+            keywords = pipeline_result["keywords_df"]
+            return {
+                "status": "passed",
+                "job_id": job_id,
+                "output_dir": str(result_root),
+                "keywords": int(len(keywords)),
+                "clusters": int(keywords["cluster_id"].nunique()),
+                "network_nodes": int(len(network["nodes"])),
+                "term_network_nodes": int(len(term_network["nodes"])),
+                "term_network_edges": int(len(term_network["edges"])),
+                "edge_evidence_samples": int(edge_evidence_samples),
+                "result_state": result["result_state"],
+                "feature_states": feature_states,
+                "artifact_contract_path": str(contract_path),
+                "result_kind": manifest.result_kind,
+            }
+        finally:
+            web_app._LOCAL_DATA_ROOTS = old_roots
+            web_app._jobs = old_jobs
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run SciScape release quality gates.")
     parser.add_argument(
@@ -455,6 +633,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run a synthetic web demo launcher smoke gate without external data.",
     )
     parser.add_argument(
+        "--p1-atlas-smoke",
+        action="store_true",
+        help="Run a tiny full pipeline and reopen it through the web Atlas API.",
+    )
+    parser.add_argument(
         "--artifact-root",
         type=Path,
         default=None,
@@ -477,7 +660,10 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = _build_parser().parse_args()
     run_smoke = args.smoke or (
-        args.demo_root is None and args.artifact_root is None and not args.web_demo_smoke
+        args.demo_root is None
+        and args.artifact_root is None
+        and not args.web_demo_smoke
+        and not args.p1_atlas_smoke
     )
     results: dict[str, Any] = {"status": "passed", "gates": {}}
     if run_smoke:
@@ -490,6 +676,8 @@ def main() -> None:
         )
     if args.web_demo_smoke:
         results["gates"]["web_demo_smoke"] = run_web_demo_smoke_gate()
+    if args.p1_atlas_smoke:
+        results["gates"]["p1_atlas_smoke"] = run_p1_atlas_smoke_gate()
     if args.artifact_root is not None:
         if args.write_artifact_contract:
             artifact_result = write_artifact_contract(args.artifact_root)
