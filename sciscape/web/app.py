@@ -27,6 +27,7 @@ from sciscape.artifacts import (
     infer_result_artifacts,
     load_result_manifest,
     validate_result_root,
+    validate_workspace,
     write_result_manifest,
 )
 
@@ -253,7 +254,131 @@ def _local_data_roots() -> list[Path]:
     for root in _LOCAL_DATA_ROOTS:
         resolved = root if root.is_absolute() else Path.cwd() / root
         roots.append(resolved.resolve())
-    return roots
+    workspace = _current_workspace_validation()
+    if workspace is not None and workspace.status != "blocked":
+        for root in workspace.defaults.get("output_roots") or []:
+            path = Path(str(root))
+            resolved = path if path.is_absolute() else Path.cwd() / path
+            roots.append(resolved.resolve())
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = root.as_posix()
+        if key not in seen:
+            unique.append(root)
+            seen.add(key)
+    return unique
+
+
+def _workspace_root() -> Path:
+    return Path.cwd().resolve()
+
+
+def _current_workspace_validation():
+    try:
+        return validate_workspace(_workspace_root())
+    except Exception as exc:
+        log.warning("workspace validation failed: %s", exc)
+        return None
+
+
+def _workspace_summary() -> dict[str, Any]:
+    validation = _current_workspace_validation()
+    if validation is None:
+        return {
+            "state": "unknown",
+            "status": "warning",
+            "manifest_path": None,
+            "warnings": [{"code": "workspace_validation_failed"}],
+            "blocking_issues": [],
+            "counts": {},
+        }
+    payload = validation.to_dict()
+    return {
+        "workspace_id": payload.get("workspace_id"),
+        "state": payload.get("state"),
+        "status": payload.get("status"),
+        "manifest_path": payload.get("manifest_path"),
+        "qa_path": payload.get("qa_path"),
+        "counts": payload.get("counts", {}),
+        "warnings": payload.get("warnings", []),
+        "blocking_issues": payload.get("blocking_issues", []),
+    }
+
+
+def _workspace_result_ref_root(row: dict[str, Any]) -> Path | None:
+    raw_path = row.get("path")
+    if not raw_path:
+        return None
+    path = Path(str(raw_path))
+    resolved = path if path.is_absolute() else _workspace_root() / path
+    if resolved.name in {"result_manifest.json", "MANIFEST.json"}:
+        return resolved.parent.resolve()
+    try:
+        return Path(infer_result_artifacts(resolved).result_root).resolve()
+    except Exception:
+        return resolved.resolve() if resolved.is_dir() else resolved.parent.resolve()
+
+
+def _workspace_registered_result_roots() -> list[Path]:
+    validation = _current_workspace_validation()
+    if validation is None or validation.status == "blocked":
+        return []
+    roots: list[Path] = []
+    for row in validation.objects.get("results", []):
+        if row.get("path_state") not in {"present", "external"}:
+            continue
+        root = _workspace_result_ref_root(row)
+        if root is not None:
+            roots.append(root)
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = root.as_posix()
+        if key not in seen:
+            unique.append(root)
+            seen.add(key)
+    return unique
+
+
+def _workspace_primary_result_path(root: Path) -> Path:
+    artifacts = infer_result_artifacts(root)
+    if artifacts.report_data_path and artifacts.report_data_path.exists():
+        return artifacts.report_data_path
+    manifest = root / "result_manifest.json"
+    if manifest.exists():
+        return manifest
+    legacy_manifest = root / "MANIFEST.json"
+    if legacy_manifest.exists():
+        return legacy_manifest
+    return root
+
+
+def _workspace_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
+    validation = _current_workspace_validation()
+    if validation is None or validation.status == "blocked":
+        return []
+    records: list[dict[str, Any]] = []
+    for row in validation.objects.get("results", []):
+        if row.get("path_state") not in {"present", "external"}:
+            continue
+        root = _workspace_result_ref_root(row)
+        if root is None or not root.exists():
+            continue
+        try:
+            path = _workspace_primary_result_path(root)
+            record = _local_artifact_record(path)
+        except Exception as exc:
+            log.warning("could not summarize workspace result %s: %s", row.get("result_id"), exc)
+            continue
+        record["source"] = "workspace"
+        record["workspace_result_id"] = row.get("result_id")
+        record["workspace_state"] = row.get("state")
+        record["result_title"] = row.get("title")
+        record["validation_state"] = row.get("validation_state")
+        records.append(record)
+    records.sort(key=lambda item: item["modified"], reverse=True)
+    return records[:limit]
 
 
 def _safe_local_path(path: str | Path) -> Path:
@@ -269,6 +394,12 @@ def _safe_local_path(path: str | Path) -> Path:
             return resolved
         except ValueError:
             continue
+    for root in _workspace_registered_result_roots():
+        try:
+            resolved.relative_to(root)
+            return resolved
+        except ValueError:
+            continue
     raise HTTPException(status_code=400, detail="local data path is outside allowed roots")
 
 
@@ -276,6 +407,12 @@ def _is_allowed_local_path(path: Path) -> bool:
     """Return True when a path resolves inside a configured local data root."""
     resolved = path.resolve()
     for root in _local_data_roots():
+        try:
+            resolved.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    for root in _workspace_registered_result_roots():
         try:
             resolved.relative_to(root)
             return True
@@ -525,8 +662,8 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
     }
 
 
-def _discover_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
-    """Find local SciScape outputs that can be opened from the web UI."""
+def _discover_legacy_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
+    """Find local SciScape outputs by scanning legacy output roots."""
     candidates: dict[str, Path] = {}
     globs = [
         "**/landscape/report/data.json",
@@ -547,9 +684,21 @@ def _discover_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
             if child.is_dir() and (child / "landscape").is_dir():
                 candidates[_display_local_path(child)] = child
 
-    records = [_local_artifact_record(path) for path in candidates.values()]
+    records = []
+    for path in candidates.values():
+        record = _local_artifact_record(path)
+        record["source"] = "legacy_scan"
+        records.append(record)
     records.sort(key=lambda item: item["modified"], reverse=True)
     return records[:limit]
+
+
+def _discover_local_artifacts(limit: int = 80) -> tuple[list[dict[str, Any]], str]:
+    """Find local SciScape outputs, preferring registered workspace results."""
+    workspace_records = _workspace_local_artifacts(limit=limit)
+    if workspace_records:
+        return workspace_records, "workspace_manifest"
+    return _discover_legacy_local_artifacts(limit=limit), "legacy_scan"
 
 
 def _demo_manifest_file() -> Path:
@@ -700,9 +849,12 @@ async def list_demo_presets():
 @app.get("/api/local-data")
 async def list_local_data(limit: int = 80):
     """List existing local SciScape output artifacts the web app can open."""
+    artifacts, discovery_source = _discover_local_artifacts(limit=limit)
     return {
+        "workspace": _workspace_summary(),
+        "discovery_source": discovery_source,
         "roots": [_display_local_path(root) for root in _local_data_roots()],
-        "artifacts": _discover_local_artifacts(limit=limit),
+        "artifacts": artifacts,
         "expected_files": [
             "workspace/web_output/<job>/landscape/report/data.json",
             "workspace/examples_output/<demo>/landscape/keywords.parquet",

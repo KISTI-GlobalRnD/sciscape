@@ -36,7 +36,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 
 | ID | Feature Area | Status | Rough Completeness | Current Evidence | Main Missing Piece |
 |---|---:|---:|---:|---|---|
-| F01 | Workspace and project management | `[~]` | 48% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration | durable browser and web discovery preference |
+| F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
 | F04 | Live query and job execution | `[~]` | 65% | `/api/query`, job status, SSE, OpenAlex pipeline output | cancellation, retry policy, partial artifact recovery UI |
@@ -339,16 +339,14 @@ evolution map, and narrative system are stable.
 
 ## Next Implementation Targets
 
-1. Wire local web result discovery to prefer `workspace.json` when present,
-   with legacy scan fallback.
-2. Implement the general matrix artifact writer and validator from
+1. Implement the general matrix artifact writer and validator from
    `matrix_artifact_design.md`.
-3. Implement the temporal trend writer and validator from
+2. Implement the temporal trend writer and validator from
    `temporal_artifact_design.md`.
-4. Define replayable keyword cleaning rule artifacts and before/after diffs.
-5. Implement the cluster evolution writer, validator, and synthetic smoke gate
+3. Define replayable keyword cleaning rule artifacts and before/after diffs.
+4. Implement the cluster evolution writer, validator, and synthetic smoke gate
    from `evolution_artifact_design.md`.
-6. Implement the narrative evidence-reference writer, validator, and unsupported
+5. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-7. Implement the export manifest writer and validator from
+6. Implement the export manifest writer and validator from
    `export_manifest_design.md`.

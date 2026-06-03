@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import sciscape.web.app as web_app
+from sciscape.artifacts import write_workspace_manifest
 from sciscape.web.jobstore import JobStore
 
 app = web_app.app
@@ -303,6 +304,71 @@ def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
     assert data_rows[0]["has_data_json"] is True
     assert data_rows[0]["has_keywords"] is True
     assert data_rows[0]["has_membership"] is True
+
+
+def test_local_data_endpoint_prefers_workspace_manifest_results(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    result_root = tmp_path / "registered_results" / "demo"
+    landscape = result_root / "landscape"
+    report_dir = landscape / "report"
+    report_dir.mkdir(parents=True)
+    (report_dir / "data.json").write_text(
+        json.dumps(
+            {
+                "0": {
+                    "label": "workspace result",
+                    "keywords": [{"term": "workspace result"}],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (result_root / "result_manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_result_manifest_v1",
+                "result_id": "registered_demo",
+                "title": "Registered Demo",
+            }
+        ),
+        encoding="utf-8",
+    )
+    write_workspace_manifest(
+        tmp_path,
+        workspace_id="workspace_test",
+        name="Workspace Test",
+        results=[
+            {
+                "result_id": "registered_demo",
+                "path": "registered_results/demo/result_manifest.json",
+                "state": "validated",
+                "title": "Registered Demo",
+            }
+        ],
+        defaults={"result_id": "registered_demo"},
+    )
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "web_output"],
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/local-data")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["workspace"]["state"] == "stable"
+    assert payload["discovery_source"] == "workspace_manifest"
+    assert len(payload["artifacts"]) == 1
+    artifact = payload["artifacts"][0]
+    assert artifact["source"] == "workspace"
+    assert artifact["workspace_result_id"] == "registered_demo"
+    assert artifact["result_title"] == "Registered Demo"
+    assert artifact["path"] == "registered_results/demo/landscape/report/data.json"
+
+    open_response = client.post("/api/local-data/open", json={"path": artifact["path"]})
+    assert open_response.status_code == 200
+    assert open_response.json()["result"]["output_dir"] == str(result_root)
 
 
 def test_demo_presets_endpoint_finds_timestamped_demo_output(monkeypatch, tmp_path):

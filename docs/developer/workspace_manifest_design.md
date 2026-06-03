@@ -497,8 +497,11 @@ Initial implementation note:
 - The current helper writes `workspace.json`, writes `workspace_qa.json`, blocks
   unmarked absolute object paths, validates registered result refs, and stores
   legacy result roots by relative path when they are inside the workspace.
-- Web discovery still needs to prefer `workspace.json` before the Home redesign
-  can be treated as implemented.
+- The local web data API now prefers registered workspace results when
+  `workspace.json` is present, then falls back to legacy output-root scanning
+  when no workspace result is registered.
+- The Home/workspace browser UX still needs to be redesigned around projects,
+  runs, results, rules, views, and exports.
 
 ## Acceptance Criteria
 
