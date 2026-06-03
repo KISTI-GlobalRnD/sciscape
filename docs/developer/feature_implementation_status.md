@@ -41,7 +41,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
 | F04 | Live query and job execution | `[~]` | 65% | `/api/query`, job status, SSE, OpenAlex pipeline output | cancellation, retry policy, partial artifact recovery UI |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
-| F06 | Matrix builder | `[~]` | 25% | sparse matrix internals, co-occurrence helpers, artifact feature detection | explicit matrix-builder mode, schema, writer, validator |
+| F06 | Matrix builder | `[~]` | 32% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design | writer, validator, and explicit matrix-builder mode |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
@@ -158,18 +158,21 @@ network families are still future work.
 
 ### F06. Matrix Builder
 
-Status: `[~]` Partial. Rough completeness: 25%.
+Status: `[~]` Partial. Rough completeness: 32%.
 
 - `[x]` Sparse matrix internals are used by BC/CC and keyword extraction.
 - `[x]` Co-occurrence table construction exists for keyword terms.
+- `[x]` A general matrix artifact contract is defined in
+  `matrix_artifact_design.md`.
 - `[~]` Artifact feature inference can recognize matrix-like outputs.
-- `[ ]` There is no explicit matrix-builder command, app mode, schema, writer, or
+- `[ ]` There is no explicit matrix-builder command, app mode, writer, or
   validator.
 - `[ ]` Matrix rows/columns, normalization, thresholding, and projection metadata
-  are not stored as a replayable artifact contract.
+  are not yet emitted as replayable artifacts.
 
-Review: implementation primitives exist, but the Matrix Builder should be marked
-as not product-complete.
+Review: implementation primitives and the artifact contract now exist, but the
+Matrix Builder should still be marked as not product-complete until writer,
+validator, and QA artifacts are implemented.
 
 ### F07. Clustering And Hierarchy
 
@@ -325,8 +328,8 @@ evolution map, and narrative system are stable.
 ## Next Implementation Targets
 
 1. Define `workspace.json` or equivalent project/run manifest.
-2. Define a general matrix artifact contract with writer and validator, building
-   on the stable term co-occurrence artifact.
+2. Implement the general matrix artifact writer and validator from
+   `matrix_artifact_design.md`.
 3. Define replayable keyword cleaning rule artifacts and before/after diffs.
 4. Define cluster evolution artifact schema before building the map UI.
 5. Define narrative evidence-reference schema before adding generation.

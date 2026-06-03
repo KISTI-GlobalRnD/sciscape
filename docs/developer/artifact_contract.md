@@ -72,6 +72,9 @@ writers should emit `result_manifest.json`.
 | `landscape/edge_evidence_samples.json` | `source_uid`, `target_uid`, bounded `samples` | Powers raw work-pair evidence for Atlas neighbor relations when generated. |
 | `landscape/term_cooccurrence.parquet` | `schema_version`, `cluster_uid`, `cluster_level`, `cluster_id`, `source`, `target`, `weight`, `relation` | Stable P1.5 term co-occurrence table artifact. |
 | `landscape/term_cooccurrence_map.json` | `schema_version`, `edge_count`, `term_count`, `cluster_count`, `terms` | Term lookup map paired with `term_cooccurrence.parquet`. |
+| `matrices/<matrix_id>/matrix_manifest.json` | `schema_version`, `matrix_id`, `matrix_family`, `format`, `shape`, `value`, `weighting`, `outputs` | General matrix artifact contract defined in `matrix_artifact_design.md`. |
+| `matrices/<matrix_id>/matrix_values.parquet` | `schema_version`, `matrix_id`, `row_key`, `column_key`, `row_index`, `column_index`, `value`, `relation` | Sparse triplet matrix values. |
+| `matrices/<matrix_id>/row_entities.parquet` and `column_entities.parquet` | `schema_version`, `matrix_id`, `entity_key`, `entity_index`, `entity_type`, `label` | Axis metadata for matrix rows and columns. |
 | matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
 | evolution artifacts | `*evolution*` or `*trajectory*` JSON/parquet | Powers the evolution lens only when present or embedded in `data.json`. |
 | narrative artifacts | `*narrative*` JSON/parquet | Powers narrative only when present or embedded in `data.json`. |

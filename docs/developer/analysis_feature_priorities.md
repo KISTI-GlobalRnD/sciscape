@@ -188,8 +188,9 @@ Primary work:
 
 - Define a general matrix artifact contract for occurrence, co-occurrence,
   proximity, similarity, and projection outputs.
-- Add matrix writer and validator utilities after the first term co-occurrence
-  artifact contract is stable.
+- Implement matrix writer and validator utilities from
+  `matrix_artifact_design.md` after the first term co-occurrence artifact
+  contract is stable.
 - Add matrix-level provenance: source table, row entity, column entity,
   normalization, threshold, projection, and filter history.
 - Make term network and co-occurrence views consume matrix artifacts rather than
@@ -306,8 +307,8 @@ Do not do yet:
 8. Implement the Atlas evidence inspector contract from
    `atlas_evidence_inspector_design.md`, consuming only validated payload fields
    and exposure states.
-9. Add general matrix writer and validator utilities after co-occurrence
-   artifacts are stable.
+9. Implement the general matrix artifact writer and validator from
+   `matrix_artifact_design.md`.
 10. Define temporal trend artifact schema.
 11. Define cluster evolution artifact schema and one synthetic smoke example.
 12. Define narrative evidence-reference schema without generation.
