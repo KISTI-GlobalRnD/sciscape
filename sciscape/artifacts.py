@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -25,6 +26,10 @@ REPORT_DATA_CONTRACT_SCHEMA_VERSION = "sciscape_report_data_contract_v1"
 ATLAS_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_payload_v1"
 EDGE_EVIDENCE_SCHEMA_VERSION = "sciscape_edge_evidence_samples_v1"
 COOCCURRENCE_ARTIFACT_SCHEMA_VERSION = "sciscape_cooccurrence_artifact_v1"
+MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
+MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
+MATRIX_ENTITIES_SCHEMA_VERSION = "sciscape_matrix_entities_v1"
+MATRIX_QA_SCHEMA_VERSION = "sciscape_matrix_qa_v1"
 FEATURE_KEYS = (
     "overview",
     "cluster_map",
@@ -84,6 +89,27 @@ REQUIRED_COOCCURRENCE_COLUMNS = {
     "weight",
     "relation",
 }
+REQUIRED_MATRIX_VALUES_COLUMNS = {
+    "schema_version",
+    "matrix_id",
+    "row_key",
+    "column_key",
+    "row_index",
+    "column_index",
+    "value",
+    "relation",
+}
+REQUIRED_MATRIX_ENTITY_COLUMNS = {
+    "schema_version",
+    "matrix_id",
+    "entity_key",
+    "entity_index",
+    "entity_type",
+    "label",
+}
+SUPPORTED_MATRIX_FAMILIES = frozenset(
+    {"occurrence", "cooccurrence", "proximity", "similarity", "projection", "temporal"}
+)
 WEIGHT_COLUMN_CANDIDATES = (
     "rel_sum2",
     "weight",
@@ -137,6 +163,7 @@ class ResultArtifacts:
     membership_path: Path | None = None
     keywords_path: Path | None = None
     matrix_paths: tuple[Path, ...] = ()
+    matrix_manifest_paths: tuple[Path, ...] = ()
     edge_evidence_paths: tuple[Path, ...] = ()
     evolution_paths: tuple[Path, ...] = ()
     narrative_paths: tuple[Path, ...] = ()
@@ -246,6 +273,31 @@ class WorkspaceValidationResult:
     objects: dict[str, list[dict[str, Any]]]
     defaults: dict[str, Any]
     recent: dict[str, list[str]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
+@dataclass(frozen=True)
+class MatrixArtifactValidationResult:
+    schema_version: str
+    matrix_id: str | None
+    matrix_family: str | None
+    status: str
+    matrix_dir: str
+    manifest_path: str
+    paths: dict[str, str | None]
+    counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
     warnings: list[dict[str, Any]]
     blocking_issues: list[dict[str, Any]]
     created_at_utc: str
@@ -374,11 +426,15 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
     ])
 
     matrix_paths: list[Path] = []
+    matrix_manifest_paths: list[Path] = []
     for base in [landscape_dir, result_root]:
         if base is None or not base.exists() or not base.is_dir():
             continue
         for pattern in ("*matrix*.parquet", "*cooccurrence*.parquet", "*cooccurrence*.json"):
             matrix_paths.extend(path for path in base.glob(pattern) if path.is_file())
+        matrix_manifest_paths.extend(
+            path for path in (base / "matrices").glob("*/matrix_manifest.json") if path.is_file()
+        )
 
     evolution_paths = _collect_optional_artifacts(
         [
@@ -434,6 +490,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         membership_path=membership,
         keywords_path=keywords,
         matrix_paths=tuple(sorted(set(matrix_paths))),
+        matrix_manifest_paths=tuple(sorted(set(matrix_manifest_paths))),
         edge_evidence_paths=edge_evidence_paths,
         evolution_paths=evolution_paths,
         narrative_paths=narrative_paths,
@@ -2011,6 +2068,884 @@ def write_cooccurrence_artifacts(
     }
 
 
+def _matrix_issue(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    artifact: str | None = None,
+) -> dict[str, Any]:
+    issue = {"code": code, "severity": severity, "message": message}
+    if artifact:
+        issue["artifact"] = artifact
+    return issue
+
+
+def _matrix_dir_and_manifest(path: str | Path) -> tuple[Path, Path]:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        return candidate.parent, candidate
+    return candidate, candidate / "matrix_manifest.json"
+
+
+def _matrix_result_root(matrix_dir: Path) -> Path:
+    if matrix_dir.parent.name == "matrices":
+        scope_root = matrix_dir.parent.parent
+        if scope_root.name.startswith("landscape") and scope_root.parent.exists():
+            return scope_root.parent
+        return scope_root
+    return matrix_dir.parent
+
+
+def _matrix_output_paths(matrix_dir: Path, manifest: Mapping[str, Any]) -> dict[str, Path]:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    return {
+        "values": matrix_dir / str(outputs.get("values") or "matrix_values.parquet"),
+        "rows": matrix_dir / str(outputs.get("rows") or "row_entities.parquet"),
+        "columns": matrix_dir / str(outputs.get("columns") or "column_entities.parquet"),
+        "qa": matrix_dir / str(outputs.get("qa") or "matrix_qa.json"),
+    }
+
+
+def _matrix_path_payload(paths: Mapping[str, Path], matrix_dir: Path) -> dict[str, str | None]:
+    return {key: _rel(path, matrix_dir) for key, path in paths.items()}
+
+
+def _matrix_required_fields(manifest: Mapping[str, Any]) -> set[str]:
+    required = {
+        "schema_version",
+        "matrix_id",
+        "title",
+        "matrix_family",
+        "format",
+        "row_entity_type",
+        "column_entity_type",
+        "shape",
+        "value",
+        "weighting",
+        "source_artifacts",
+        "outputs",
+        "created_at_utc",
+    }
+    return {key for key in required if manifest.get(key) in (None, "")}
+
+
+def _matrix_read_parquet(
+    path: Path,
+    *,
+    artifact: str,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> pd.DataFrame | None:
+    if not path.exists():
+        blocking_issues.append(
+            _matrix_issue(
+                "missing_matrix_table",
+                "blocking",
+                f"Missing matrix {artifact} table.",
+                artifact=artifact,
+            )
+        )
+        return None
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:
+        blocking_issues.append(
+            _matrix_issue(
+                "invalid_matrix_parquet",
+                "blocking",
+                f"Could not read matrix {artifact} parquet: {exc}",
+                artifact=artifact,
+            )
+        )
+        return None
+
+
+def _matrix_missing_columns(
+    df: pd.DataFrame | None,
+    required: set[str],
+    *,
+    artifact: str,
+    blocking_issues: list[dict[str, Any]],
+) -> set[str]:
+    columns = set(df.columns) if df is not None else set()
+    missing = required - columns
+    if missing:
+        blocking_issues.append(
+            _matrix_issue(
+                "missing_matrix_columns",
+                "blocking",
+                f"Missing required matrix columns: {sorted(missing)}",
+                artifact=artifact,
+            )
+        )
+    return missing
+
+
+def _matrix_entity_checks(
+    df: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    axis: str,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if df is None or _matrix_missing_columns(df, REQUIRED_MATRIX_ENTITY_COLUMNS, artifact=axis, blocking_issues=blocking_issues):
+        return {"status": "blocked", "count": 0}
+    entity_type = str(manifest.get(f"{axis}_entity_type") or "")
+    if not set(df["schema_version"]) <= {MATRIX_ENTITIES_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _matrix_issue(
+                "unsupported_matrix_entities_schema",
+                "blocking",
+                f"Unsupported {axis} entity schema.",
+                artifact=axis,
+            )
+        )
+    if not set(df["matrix_id"].map(str)) <= {str(manifest.get("matrix_id"))}:
+        blocking_issues.append(
+            _matrix_issue(
+                "matrix_entity_id_mismatch",
+                "blocking",
+                f"{axis} entity matrix_id does not match manifest.",
+                artifact=axis,
+            )
+        )
+    if entity_type and not set(df["entity_type"].map(str)) <= {entity_type}:
+        warnings.append(
+            _matrix_issue(
+                "matrix_entity_type_mismatch",
+                "warning",
+                f"{axis} entity_type values do not all match the manifest.",
+                artifact=axis,
+            )
+        )
+    duplicate_keys = int(df["entity_key"].duplicated().sum())
+    duplicate_indices = int(df["entity_index"].duplicated().sum())
+    if duplicate_keys:
+        blocking_issues.append(
+            _matrix_issue("duplicate_matrix_entity_keys", "blocking", f"{axis} entity keys are duplicated.", artifact=axis)
+        )
+    if duplicate_indices:
+        blocking_issues.append(
+            _matrix_issue(
+                "duplicate_matrix_entity_indices",
+                "blocking",
+                f"{axis} entity indices are duplicated.",
+                artifact=axis,
+            )
+        )
+    try:
+        indices = sorted(int(value) for value in df["entity_index"].tolist())
+    except Exception:
+        blocking_issues.append(
+            _matrix_issue("invalid_matrix_entity_index", "blocking", f"{axis} entity_index must be integer-like.", artifact=axis)
+        )
+        indices = []
+    if indices and indices != list(range(len(indices))):
+        warnings.append(
+            _matrix_issue(
+                "non_contiguous_matrix_entity_index",
+                "warning",
+                f"{axis} entity_index is not contiguous from zero.",
+                artifact=axis,
+            )
+        )
+    return {"status": "passed", "count": int(len(df))}
+
+
+def _matrix_values_checks(
+    values: pd.DataFrame | None,
+    rows: pd.DataFrame | None,
+    columns: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if values is None or _matrix_missing_columns(
+        values,
+        REQUIRED_MATRIX_VALUES_COLUMNS,
+        artifact="values",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    if not set(values["schema_version"]) <= {MATRIX_VALUES_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _matrix_issue(
+                "unsupported_matrix_values_schema",
+                "blocking",
+                "Unsupported matrix values schema.",
+                artifact="values",
+            )
+        )
+    matrix_id = str(manifest.get("matrix_id"))
+    if not set(values["matrix_id"].map(str)) <= {matrix_id}:
+        blocking_issues.append(
+            _matrix_issue(
+                "matrix_values_id_mismatch",
+                "blocking",
+                "Values matrix_id does not match manifest.",
+                artifact="values",
+            )
+        )
+    numeric = pd.to_numeric(values["value"], errors="coerce")
+    if numeric.isna().any() or (~numeric.map(lambda value: math.isfinite(float(value)))).any():
+        blocking_issues.append(
+            _matrix_issue(
+                "invalid_matrix_values",
+                "blocking",
+                "Matrix values must be finite numeric values.",
+                artifact="values",
+            )
+        )
+    if rows is not None and "entity_key" in rows.columns:
+        missing_rows = set(values["row_key"].map(str)) - set(rows["entity_key"].map(str))
+        if missing_rows:
+            blocking_issues.append(
+                _matrix_issue(
+                    "missing_matrix_row_refs",
+                    "blocking",
+                    f"{len(missing_rows)} value row_key refs are missing from row entities.",
+                    artifact="values",
+                )
+            )
+    if columns is not None and "entity_key" in columns.columns:
+        missing_columns = set(values["column_key"].map(str)) - set(columns["entity_key"].map(str))
+        if missing_columns:
+            blocking_issues.append(
+                _matrix_issue(
+                    "missing_matrix_column_refs",
+                    "blocking",
+                    f"{len(missing_columns)} value column_key refs are missing from column entities.",
+                    artifact="values",
+                )
+            )
+    duplicate_keys = ["row_key", "column_key"]
+    if "period" in values.columns:
+        duplicate_keys.append("period")
+    if not manifest.get("allow_duplicate_cells"):
+        duplicates = int(values.duplicated(subset=duplicate_keys).sum())
+        if duplicates:
+            blocking_issues.append(
+                _matrix_issue(
+                    "duplicate_matrix_cells",
+                    "blocking",
+                    f"{duplicates} duplicate matrix cells were found.",
+                    artifact="values",
+                )
+            )
+    return {"status": "passed", "count": int(len(values))}
+
+
+def _matrix_shape_checks(
+    *,
+    manifest: Mapping[str, Any],
+    values: pd.DataFrame | None,
+    rows: pd.DataFrame | None,
+    columns: pd.DataFrame | None,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    shape = manifest.get("shape") if isinstance(manifest.get("shape"), Mapping) else {}
+    expected = {
+        "rows": _coerce_int(shape.get("rows")),
+        "columns": _coerce_int(shape.get("columns")),
+        "nnz": _coerce_int(shape.get("nnz")),
+    }
+    actual = {
+        "rows": 0 if rows is None else int(len(rows)),
+        "columns": 0 if columns is None else int(len(columns)),
+        "nnz": 0 if values is None else int(len(values)),
+    }
+    mismatches = [key for key, value in expected.items() if value is not None and value != actual[key]]
+    if mismatches:
+        blocking_issues.append(
+            _matrix_issue(
+                "matrix_shape_mismatch",
+                "blocking",
+                f"Manifest shape does not match table counts for: {mismatches}.",
+                artifact="manifest",
+            )
+        )
+    if expected["rows"] is None or expected["columns"] is None or expected["nnz"] is None:
+        warnings.append(
+            _matrix_issue(
+                "incomplete_matrix_shape",
+                "warning",
+                "Manifest shape should record rows, columns, and nnz.",
+                artifact="manifest",
+            )
+        )
+    return {"status": "passed" if not mismatches else "blocked", "expected": expected, "actual": actual}
+
+
+def _matrix_symmetry_checks(
+    *,
+    manifest: Mapping[str, Any],
+    values: pd.DataFrame | None,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    weighting = manifest.get("weighting") if isinstance(manifest.get("weighting"), Mapping) else {}
+    if not weighting.get("symmetric"):
+        return {"status": "skipped", "reason": "matrix is not declared symmetric"}
+    if manifest.get("row_entity_type") != manifest.get("column_entity_type"):
+        blocking_issues.append(
+            _matrix_issue(
+                "symmetric_matrix_entity_type_mismatch",
+                "blocking",
+                "Symmetric matrices must use the same row and column entity type.",
+                artifact="manifest",
+            )
+        )
+    shape = manifest.get("shape") if isinstance(manifest.get("shape"), Mapping) else {}
+    if shape.get("rows") != shape.get("columns"):
+        blocking_issues.append(
+            _matrix_issue(
+                "symmetric_matrix_shape_mismatch",
+                "blocking",
+                "Symmetric matrices must be square.",
+                artifact="manifest",
+            )
+        )
+    if values is None or not {"row_index", "column_index", "value"}.issubset(values.columns):
+        return {"status": "blocked"}
+    storage = str(weighting.get("storage") or "upper_triangle")
+    row_index = pd.to_numeric(values["row_index"], errors="coerce")
+    column_index = pd.to_numeric(values["column_index"], errors="coerce")
+    if storage == "upper_triangle":
+        lower_rows = int((row_index > column_index).sum())
+        if lower_rows:
+            blocking_issues.append(
+                _matrix_issue(
+                    "invalid_upper_triangle_storage",
+                    "blocking",
+                    "Upper-triangle symmetric matrices cannot contain row_index > column_index cells.",
+                    artifact="values",
+                )
+            )
+        return {"status": "passed", "storage": storage}
+    if storage in {"both_directions", "full"} and not values.empty:
+        lookup = {
+            (str(row.row_key), str(row.column_key)): float(row.value)
+            for row in values.itertuples(index=False)
+        }
+        missing_reverse = 0
+        mismatched_reverse = 0
+        for (row_key, column_key), value in lookup.items():
+            if row_key == column_key:
+                continue
+            reverse = lookup.get((column_key, row_key))
+            if reverse is None:
+                missing_reverse += 1
+            elif not math.isclose(value, reverse, rel_tol=1e-9, abs_tol=1e-12):
+                mismatched_reverse += 1
+        if missing_reverse or mismatched_reverse:
+            blocking_issues.append(
+                _matrix_issue(
+                    "symmetric_matrix_reverse_mismatch",
+                    "blocking",
+                    "Both-direction symmetric matrix storage has missing or mismatched reverse cells.",
+                    artifact="values",
+                )
+            )
+        return {
+            "status": "passed" if not missing_reverse and not mismatched_reverse else "blocked",
+            "storage": storage,
+            "missing_reverse": missing_reverse,
+            "mismatched_reverse": mismatched_reverse,
+        }
+    warnings.append(
+        _matrix_issue(
+            "unknown_symmetric_matrix_storage",
+            "warning",
+            f"Unknown symmetric matrix storage mode: {storage}",
+            artifact="manifest",
+        )
+    )
+    return {"status": "warning", "storage": storage}
+
+
+def _matrix_source_checks(
+    *,
+    result_root: Path,
+    manifest: Mapping[str, Any],
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_artifacts = manifest.get("source_artifacts")
+    if not isinstance(source_artifacts, list) or not source_artifacts:
+        warnings.append(
+            _matrix_issue(
+                "missing_matrix_source_artifacts",
+                "warning",
+                "Matrix manifest should record at least one source artifact.",
+                artifact="manifest",
+            )
+        )
+        return {"status": "warning", "count": 0}
+    missing = 0
+    for source in source_artifacts:
+        if not isinstance(source, Mapping):
+            warnings.append(
+                _matrix_issue(
+                    "invalid_matrix_source_artifact",
+                    "warning",
+                    "Matrix source artifact refs should be objects.",
+                    artifact="manifest",
+                )
+            )
+            continue
+        path = source.get("path")
+        if not path:
+            warnings.append(
+                _matrix_issue(
+                    "missing_matrix_source_path",
+                    "warning",
+                    "Matrix source artifact ref has no path.",
+                    artifact="manifest",
+                )
+            )
+            continue
+        source_path = Path(str(path))
+        resolved = source_path if source_path.is_absolute() else result_root / source_path
+        if not resolved.exists():
+            missing += 1
+    if missing:
+        warnings.append(
+            _matrix_issue(
+                "missing_matrix_source_artifact",
+                "warning",
+                f"{missing} matrix source artifact refs do not exist.",
+                artifact="manifest",
+            )
+        )
+    return {"status": "warning" if missing else "passed", "count": len(source_artifacts), "missing": missing}
+
+
+def validate_matrix_artifact(path: str | Path) -> MatrixArtifactValidationResult:
+    """Validate a general sparse-triplet matrix artifact."""
+
+    matrix_dir, manifest_path = _matrix_dir_and_manifest(path)
+    result_root = _matrix_result_root(matrix_dir)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+    manifest: dict[str, Any] = {}
+
+    if not manifest_path.exists():
+        blocking_issues.append(
+            _matrix_issue(
+                "missing_matrix_manifest",
+                "blocking",
+                "Missing matrix_manifest.json.",
+                artifact="manifest",
+            )
+        )
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            blocking_issues.append(
+                _matrix_issue(
+                    "invalid_matrix_manifest_json",
+                    "blocking",
+                    f"Could not read matrix manifest: {exc}",
+                    artifact="manifest",
+                )
+            )
+        if not isinstance(manifest, dict):
+            blocking_issues.append(
+                _matrix_issue(
+                    "invalid_matrix_manifest_shape",
+                    "blocking",
+                    "Matrix manifest must be a JSON object.",
+                    artifact="manifest",
+                )
+            )
+            manifest = {}
+
+    if manifest:
+        if manifest.get("schema_version") != MATRIX_MANIFEST_SCHEMA_VERSION:
+            blocking_issues.append(
+                _matrix_issue(
+                    "unsupported_matrix_manifest_schema",
+                    "blocking",
+                    f"Unsupported matrix manifest schema: {manifest.get('schema_version')}",
+                    artifact="manifest",
+                )
+            )
+        if manifest.get("format") != "sparse_triplet":
+            blocking_issues.append(
+                _matrix_issue(
+                    "unsupported_matrix_format",
+                    "blocking",
+                    f"Unsupported matrix format: {manifest.get('format')}",
+                    artifact="manifest",
+                )
+            )
+        if manifest.get("matrix_family") not in SUPPORTED_MATRIX_FAMILIES:
+            blocking_issues.append(
+                _matrix_issue(
+                    "unsupported_matrix_family",
+                    "blocking",
+                    f"Unsupported matrix family: {manifest.get('matrix_family')}",
+                    artifact="manifest",
+                )
+            )
+        missing_fields = _matrix_required_fields(manifest)
+        if missing_fields:
+            blocking_issues.append(
+                _matrix_issue(
+                    "missing_matrix_manifest_fields",
+                    "blocking",
+                    f"Missing matrix manifest fields: {sorted(missing_fields)}",
+                    artifact="manifest",
+                )
+            )
+    checks["manifest"] = {
+        "status": "blocked" if blocking_issues else "passed",
+        "schema_version": manifest.get("schema_version"),
+    }
+
+    paths = _matrix_output_paths(matrix_dir, manifest)
+    rows = _matrix_read_parquet(paths["rows"], artifact="rows", warnings=warnings, blocking_issues=blocking_issues)
+    columns = _matrix_read_parquet(
+        paths["columns"],
+        artifact="columns",
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    values = _matrix_read_parquet(
+        paths["values"],
+        artifact="values",
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["rows"] = _matrix_entity_checks(
+        rows,
+        manifest=manifest,
+        axis="row",
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["columns"] = _matrix_entity_checks(
+        columns,
+        manifest=manifest,
+        axis="column",
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["values"] = _matrix_values_checks(
+        values,
+        rows,
+        columns,
+        manifest=manifest,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["shape"] = _matrix_shape_checks(
+        manifest=manifest,
+        values=values,
+        rows=rows,
+        columns=columns,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["symmetry"] = _matrix_symmetry_checks(
+        manifest=manifest,
+        values=values,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["sources"] = _matrix_source_checks(
+        result_root=result_root,
+        manifest=manifest,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+
+    qa_path = paths["qa"]
+    if not qa_path.exists():
+        warnings.append(
+            _matrix_issue(
+                "missing_matrix_qa_sidecar",
+                "warning",
+                "matrix_qa.json is missing; writers should persist the validation result.",
+                artifact="qa",
+            )
+        )
+
+    counts = {
+        "rows": int(0 if rows is None else len(rows)),
+        "columns": int(0 if columns is None else len(columns)),
+        "nnz": int(0 if values is None else len(values)),
+        "warnings": len(warnings),
+        "blocking_issues": len(blocking_issues),
+    }
+    if blocking_issues:
+        status = "blocked"
+    elif warnings:
+        status = "warning"
+    else:
+        status = "passed"
+
+    return MatrixArtifactValidationResult(
+        schema_version=MATRIX_QA_SCHEMA_VERSION,
+        matrix_id=str(manifest.get("matrix_id")) if manifest.get("matrix_id") else None,
+        matrix_family=str(manifest.get("matrix_family")) if manifest.get("matrix_family") else None,
+        status=status,
+        matrix_dir=str(matrix_dir),
+        manifest_path=_rel(manifest_path, matrix_dir) or str(manifest_path),
+        paths=_matrix_path_payload(paths, matrix_dir),
+        counts=counts,
+        checks=checks,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
+
+
+def _matrix_entity_type(df: pd.DataFrame, fallback: str) -> str:
+    if "entity_type" not in df.columns or df.empty:
+        return fallback
+    values = [str(value) for value in df["entity_type"].dropna().unique().tolist()]
+    return values[0] if values else fallback
+
+
+def _matrix_existing_result_id(result_root: Path) -> str | None:
+    manifest_path = find_result_manifest_path(result_root)
+    if manifest_path is None:
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    result_id = manifest.get("result_id")
+    return str(result_id) if result_id else None
+
+
+def write_matrix_artifact(
+    result_root: str | Path,
+    matrix_id: str,
+    matrix_family: str,
+    values_df: pd.DataFrame,
+    row_entities_df: pd.DataFrame,
+    column_entities_df: pd.DataFrame,
+    *,
+    value_spec: Mapping[str, Any],
+    weighting: Mapping[str, Any],
+    source_artifacts: list[Mapping[str, Any]],
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    title: str | None = None,
+    output_dir: str | Path | None = None,
+) -> dict[str, Any]:
+    """Write a general sparse-triplet matrix artifact and QA sidecar."""
+
+    root = Path(result_root).expanduser().resolve()
+    matrix_id = _safe_id(matrix_id, fallback="matrix")
+    if matrix_family not in SUPPORTED_MATRIX_FAMILIES:
+        raise ValueError(f"unsupported matrix family: {matrix_family}")
+    matrix_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "matrices" / matrix_id
+    matrix_dir.mkdir(parents=True, exist_ok=True)
+
+    values = values_df.copy()
+    rows = row_entities_df.copy()
+    columns = column_entities_df.copy()
+    values["schema_version"] = MATRIX_VALUES_SCHEMA_VERSION
+    values["matrix_id"] = matrix_id
+    rows["schema_version"] = MATRIX_ENTITIES_SCHEMA_VERSION
+    rows["matrix_id"] = matrix_id
+    columns["schema_version"] = MATRIX_ENTITIES_SCHEMA_VERSION
+    columns["matrix_id"] = matrix_id
+
+    row_entity_type = _matrix_entity_type(rows, "row")
+    column_entity_type = _matrix_entity_type(columns, "column")
+    shape = {"rows": int(len(rows)), "columns": int(len(columns)), "nnz": int(len(values))}
+    outputs = {
+        "values": "matrix_values.parquet",
+        "rows": "row_entities.parquet",
+        "columns": "column_entities.parquet",
+        "qa": "matrix_qa.json",
+    }
+    manifest = {
+        "schema_version": MATRIX_MANIFEST_SCHEMA_VERSION,
+        "matrix_id": matrix_id,
+        "title": title or matrix_id.replace("_", " ").title(),
+        "matrix_family": matrix_family,
+        "format": "sparse_triplet",
+        "result_id": _matrix_existing_result_id(root),
+        "row_entity_type": row_entity_type,
+        "column_entity_type": column_entity_type,
+        "shape": shape,
+        "value": dict(value_spec),
+        "weighting": dict(weighting),
+        "source_artifacts": [dict(item) for item in source_artifacts],
+        "rule_sets": [dict(item) for item in (rule_sets or [])],
+        "transforms": [dict(item) for item in (transforms or [])],
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+
+    values.to_parquet(matrix_dir / outputs["values"], index=False)
+    rows.to_parquet(matrix_dir / outputs["rows"], index=False)
+    columns.to_parquet(matrix_dir / outputs["columns"], index=False)
+    (matrix_dir / "matrix_manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    validation = validate_matrix_artifact(matrix_dir)
+    qa_payload = validation.to_dict()
+    qa_payload["warnings"] = [
+        warning for warning in qa_payload["warnings"] if warning.get("code") != "missing_matrix_qa_sidecar"
+    ]
+    qa_payload["counts"]["warnings"] = len(qa_payload["warnings"])
+    if qa_payload["status"] == "warning" and not qa_payload["warnings"]:
+        qa_payload["status"] = "passed"
+    (matrix_dir / outputs["qa"]).write_text(
+        json.dumps(qa_payload, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    validation = validate_matrix_artifact(matrix_dir)
+    return {
+        "schema_version": MATRIX_MANIFEST_SCHEMA_VERSION,
+        "matrix_id": matrix_id,
+        "matrix_dir": matrix_dir,
+        "manifest_path": matrix_dir / "matrix_manifest.json",
+        "values_path": matrix_dir / outputs["values"],
+        "row_entities_path": matrix_dir / outputs["rows"],
+        "column_entities_path": matrix_dir / outputs["columns"],
+        "qa_path": matrix_dir / outputs["qa"],
+        "qa": validation.to_dict(),
+    }
+
+
+def write_matrix_from_term_cooccurrence(
+    path: str | Path,
+    *,
+    matrix_id: str = "term_cooccurrence_default",
+) -> dict[str, Any] | None:
+    """Wrap P1.5 term co-occurrence sidecars as a general matrix artifact."""
+
+    artifacts = infer_result_artifacts(path)
+    landscape = artifacts.landscape_dir
+    if landscape is None:
+        return None
+    cooc_path = landscape / "term_cooccurrence.parquet"
+    map_path = landscape / "term_cooccurrence_map.json"
+    if not cooc_path.exists():
+        written = write_cooccurrence_artifacts(path)
+        if written is None:
+            return None
+        cooc_path = Path(written["table_path"])
+        map_path = Path(written["map_path"])
+    cooc = pd.read_parquet(cooc_path)
+    if cooc.empty:
+        return None
+    if not {"source", "target", "weight"}.issubset(cooc.columns):
+        raise ValueError("term co-occurrence table must include source, target, and weight columns")
+
+    terms = sorted(set(cooc["source"].map(str)) | set(cooc["target"].map(str)))
+    term_to_index = {term: index for index, term in enumerate(terms)}
+    pair_rows: dict[tuple[str, str], dict[str, Any]] = {}
+    for item in cooc.itertuples(index=False):
+        source = str(getattr(item, "source"))
+        target = str(getattr(item, "target"))
+        if source == target:
+            left, right = source, target
+        else:
+            left, right = sorted((source, target), key=lambda term: term_to_index[term])
+        key = (left, right)
+        raw_weight = float(getattr(item, "weight"))
+        support = _coerce_int(getattr(item, "count", None)) or 1
+        row = pair_rows.setdefault(
+            key,
+            {
+                "row_key": left,
+                "column_key": right,
+                "raw_value": 0.0,
+                "support_count": 0,
+                "relation": "term_cooccurrence",
+            },
+        )
+        row["raw_value"] += raw_weight
+        row["support_count"] += support
+
+    max_raw = max((float(row["raw_value"]) for row in pair_rows.values()), default=1.0) or 1.0
+    matrix_rows = []
+    for row in pair_rows.values():
+        row_key = str(row["row_key"])
+        column_key = str(row["column_key"])
+        matrix_rows.append(
+            {
+                "row_key": row_key,
+                "column_key": column_key,
+                "row_index": int(term_to_index[row_key]),
+                "column_index": int(term_to_index[column_key]),
+                "value": float(row["raw_value"]) / float(max_raw),
+                "raw_value": float(row["raw_value"]),
+                "support_count": int(row["support_count"]),
+                "relation": row["relation"],
+            }
+        )
+    matrix_rows.sort(key=lambda row: (int(row["row_index"]), -float(row["value"]), int(row["column_index"])))
+    row_ranks: dict[str, int] = {}
+    for row in matrix_rows:
+        row_key = str(row["row_key"])
+        row_ranks[row_key] = row_ranks.get(row_key, 0) + 1
+        row["rank"] = row_ranks[row_key]
+
+    entities = pd.DataFrame(
+        {
+            "entity_key": terms,
+            "entity_index": list(range(len(terms))),
+            "entity_type": ["term"] * len(terms),
+            "label": terms,
+            "term": terms,
+        }
+    )
+    values = pd.DataFrame(matrix_rows)
+    source_artifacts = [{"role": "cooccurrence", "path": _rel(cooc_path, artifacts.result_root)}]
+    if map_path.exists():
+        source_artifacts.append({"role": "cooccurrence_map", "path": _rel(map_path, artifacts.result_root)})
+    if artifacts.keywords_path:
+        source_artifacts.append({"role": "keywords", "path": _rel(artifacts.keywords_path, artifacts.result_root)})
+    return write_matrix_artifact(
+        artifacts.result_root,
+        matrix_id,
+        "cooccurrence",
+        values,
+        entities,
+        entities.copy(),
+        value_spec={
+            "name": "cooccurrence_weight",
+            "type": "float",
+            "range": [0.0, 1.0],
+            "interpretation": "normalized term co-occurrence strength",
+        },
+        weighting={
+            "raw_metric": "term_cooccurrence",
+            "normalization": "max",
+            "threshold": 0.0,
+            "symmetric": True,
+            "storage": "upper_triangle",
+        },
+        source_artifacts=source_artifacts,
+        transforms=[
+            {"step": "load_term_cooccurrence"},
+            {"step": "aggregate_term_pairs"},
+            {"step": "normalize_by_max_raw_value"},
+            {"step": "build_sparse_triplets"},
+        ],
+        title="Term co-occurrence matrix",
+    )
+
+
 def _non_empty_payload(value: Any) -> bool:
     if value is None:
         return False
@@ -2407,6 +3342,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "membership": _rel(artifacts.membership_path, root),
         "keywords": _rel(artifacts.keywords_path, root),
         "matrix_artifacts": [_rel(path, root) for path in artifacts.matrix_paths],
+        "matrix_manifest_artifacts": [_rel(path, root) for path in artifacts.matrix_manifest_paths],
+        "matrix_summaries": [],
         "edge_evidence_artifacts": [_rel(path, root) for path in artifacts.edge_evidence_paths],
         "evolution_artifacts": [_rel(path, root) for path in artifacts.evolution_paths],
         "narrative_artifacts": [_rel(path, root) for path in artifacts.narrative_paths],
@@ -2525,6 +3462,44 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
     cooccurrence_rows = max(cooccurrence_rows, cooccurrence_json_rows)
 
+    general_matrix_artifacts = 0
+    stable_matrix_artifacts = 0
+    matrix_nnz = 0
+    for manifest_path in artifacts.matrix_manifest_paths:
+        matrix_validation = validate_matrix_artifact(manifest_path)
+        matrix_payload = matrix_validation.to_dict()
+        artifact_info["matrix_summaries"].append(
+            {
+                "matrix_id": matrix_payload.get("matrix_id"),
+                "matrix_family": matrix_payload.get("matrix_family"),
+                "status": matrix_payload.get("status"),
+                "path": _rel(manifest_path, root),
+                "counts": matrix_payload.get("counts", {}),
+            }
+        )
+        general_matrix_artifacts += 1
+        matrix_nnz += int(matrix_validation.counts.get("nnz", 0))
+        if matrix_validation.status == "passed":
+            stable_matrix_artifacts += 1
+        for issue in matrix_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "matrix_artifact_blocked"),
+                    "error",
+                    str(issue.get("message") or "Matrix artifact validation failed."),
+                    "matrix",
+                )
+            )
+        for warning in matrix_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "matrix_artifact_warning"),
+                    "warning",
+                    str(warning.get("message") or "Matrix artifact has validation warnings."),
+                    "matrix",
+                )
+            )
+
     _reconcile_counts(
         artifacts=artifacts,
         membership_info=membership_info,
@@ -2560,6 +3535,9 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "report_term_edges": int(report_edge_count),
         "derived_keyword_term_edges": int(keyword_edge_count),
         "matrix_artifacts": len(artifacts.matrix_paths),
+        "general_matrix_artifacts": int(general_matrix_artifacts),
+        "stable_matrix_artifacts": int(stable_matrix_artifacts),
+        "matrix_nnz": int(matrix_nnz),
         "cooccurrence_artifacts": int(cooccurrence_artifacts),
         "cooccurrence_rows": int(cooccurrence_rows),
         "edge_evidence_artifacts": len(artifacts.edge_evidence_paths),
@@ -2577,7 +3555,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     features["cluster_map"] = counts["membership_rows"] > 0 or counts["report_clusters"] > 0
     features["keyword"] = counts["keyword_rows"] > 0 or _report_has_terms(report_clusters)
     features["term_network"] = report_edge_count > 0 or keyword_edge_count > 0 or cooccurrence_rows > 0
-    features["matrix"] = bool(artifacts.matrix_paths) or report_edge_count > 0
+    features["matrix"] = bool(general_matrix_artifacts or artifacts.matrix_paths) or report_edge_count > 0
     features["evidence"] = counts["abstract_rows"] > 0 and counts["membership_rows"] > 0
     features["temporal"] = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
     features["evolution"] = bool(artifacts.evolution_paths) or report_has_evolution
@@ -2858,6 +3836,21 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             ),
         )
 
+    for i, rel_path in enumerate(artifact_info.get("matrix_manifest_artifacts", []), start=1):
+        key = "matrix" if "matrix" not in records else f"matrix_{i}"
+        suffix = 2
+        while key in records:
+            key = f"matrix_{suffix}"
+            suffix += 1
+        records[key] = _artifact_record(
+            root=root,
+            role="matrix",
+            path=rel_path,
+            required_for=["matrix"],
+            schema_version=MATRIX_MANIFEST_SCHEMA_VERSION,
+            description="General sparse-triplet matrix artifact manifest.",
+        )
+
     for i, rel_path in enumerate(artifact_info.get("evolution_artifacts", []), start=1):
         key = "evolution" if i == 1 else f"evolution_{i}"
         records[key] = _artifact_record(root=root, role="evolution", path=rel_path, required_for=["evolution"])
@@ -2918,6 +3911,15 @@ def _has_manifest_cooccurrence(validation: ArtifactValidationResult, artifacts: 
     )
 
 
+def _has_general_matrix_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
+    return any(
+        record.get("role") == "matrix"
+        and record.get("status") == "present"
+        and record.get("schema_version") == MATRIX_MANIFEST_SCHEMA_VERSION
+        for record in artifacts.values()
+    )
+
+
 def _manifest_feature_available(feature: str, validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     if feature == "cooccurrence":
         return _has_manifest_cooccurrence(validation, artifacts)
@@ -2931,6 +3933,8 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
         return "feature is not backed by available artifacts"
     if feature == "cooccurrence" and not any(record.get("role") == "cooccurrence" for record in artifacts.values()):
         return "derived from keyword/report term edges; stable co-occurrence artifact not written yet"
+    if feature == "matrix" and not _has_general_matrix_artifact(artifacts):
+        return "derived from co-occurrence/report term edges; stable general matrix artifact not written yet"
     if state == "beta":
         return "feature inferred with validation warnings or partial artifact coverage"
     return "feature validated"
@@ -2953,6 +3957,8 @@ def _feature_exposures(
         elif not available:
             state = "hidden"
         elif feature == "cooccurrence" and not any(record.get("role") == "cooccurrence" for record in artifacts.values()):
+            state = "beta"
+        elif feature == "matrix" and not _has_general_matrix_artifact(artifacts):
             state = "beta"
         elif warning_count:
             state = "beta"
@@ -4257,6 +5263,10 @@ __all__ = [
     "ATLAS_PAYLOAD_SCHEMA_VERSION",
     "COOCCURRENCE_ARTIFACT_SCHEMA_VERSION",
     "EDGE_EVIDENCE_SCHEMA_VERSION",
+    "MATRIX_ENTITIES_SCHEMA_VERSION",
+    "MATRIX_MANIFEST_SCHEMA_VERSION",
+    "MATRIX_QA_SCHEMA_VERSION",
+    "MATRIX_VALUES_SCHEMA_VERSION",
     "REPORT_DATA_CONTRACT_SCHEMA_VERSION",
     "RESULT_MANIFEST_SCHEMA_VERSION",
     "RESULT_MANIFEST_FEATURE_KEYS",
@@ -4266,6 +5276,7 @@ __all__ = [
     "ArtifactIssue",
     "ArtifactValidationResult",
     "FeatureExposure",
+    "MatrixArtifactValidationResult",
     "ResultManifest",
     "ResultArtifacts",
     "RunState",
@@ -4283,10 +5294,13 @@ __all__ = [
     "read_result_manifest",
     "read_workspace_manifest",
     "register_result_in_workspace",
+    "validate_matrix_artifact",
     "validate_result_root",
     "validate_workspace",
     "write_edge_evidence_samples",
     "write_cooccurrence_artifacts",
+    "write_matrix_artifact",
+    "write_matrix_from_term_cooccurrence",
     "write_artifact_contract",
     "write_result_manifest",
     "write_workspace_manifest",

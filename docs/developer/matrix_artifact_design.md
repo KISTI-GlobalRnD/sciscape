@@ -349,6 +349,21 @@ normalization and threshold metadata.
 5. Add a synthetic matrix quality gate that writes and validates a tiny matrix.
 6. Only then add a Matrix Builder mode or UI panel.
 
+Initial implementation note:
+
+- `write_matrix_artifact`, `validate_matrix_artifact`, and
+  `write_matrix_from_term_cooccurrence` are available in `sciscape.artifacts`.
+- The current writer supports sparse-triplet Parquet values, row/column entity
+  tables, `matrix_manifest.json`, and `matrix_qa.json`.
+- Validation checks required columns, entity refs, finite numeric values,
+  duplicate cells, manifest shape, declared symmetry, and source artifact refs.
+- `validate_result_root` identifies `matrices/*/matrix_manifest.json` and uses
+  that manifest-backed artifact for stable general `matrix` exposure. Existing
+  P1.5 term co-occurrence artifacts remain separate and continue to expose the
+  narrower `cooccurrence` feature.
+- Matrix Builder UI, matrix exports, and partitioned large-matrix output remain
+  future work.
+
 ## Acceptance Criteria
 
 - A matrix artifact can be validated without loading the web app.

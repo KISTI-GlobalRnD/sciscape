@@ -41,7 +41,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
 | F04 | Live query and job execution | `[~]` | 65% | `/api/query`, job status, SSE, OpenAlex pipeline output | cancellation, retry policy, partial artifact recovery UI |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
-| F06 | Matrix builder | `[~]` | 32% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design | writer, validator, and explicit matrix-builder mode |
+| F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
@@ -339,14 +339,12 @@ evolution map, and narrative system are stable.
 
 ## Next Implementation Targets
 
-1. Implement the general matrix artifact writer and validator from
-   `matrix_artifact_design.md`.
-2. Implement the temporal trend writer and validator from
+1. Implement the temporal trend writer and validator from
    `temporal_artifact_design.md`.
-3. Define replayable keyword cleaning rule artifacts and before/after diffs.
-4. Implement the cluster evolution writer, validator, and synthetic smoke gate
+2. Define replayable keyword cleaning rule artifacts and before/after diffs.
+3. Implement the cluster evolution writer, validator, and synthetic smoke gate
    from `evolution_artifact_design.md`.
-5. Implement the narrative evidence-reference writer, validator, and unsupported
+4. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-6. Implement the export manifest writer and validator from
+5. Implement the export manifest writer and validator from
    `export_manifest_design.md`.

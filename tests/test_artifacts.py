@@ -9,6 +9,9 @@ import pandas as pd
 
 from sciscape.artifacts import (
     COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
+    MATRIX_MANIFEST_SCHEMA_VERSION,
+    MATRIX_QA_SCHEMA_VERSION,
+    MATRIX_VALUES_SCHEMA_VERSION,
     RESULT_MANIFEST_SCHEMA_VERSION,
     WORKSPACE_MANIFEST_SCHEMA_VERSION,
     WORKSPACE_QA_SCHEMA_VERSION,
@@ -17,10 +20,13 @@ from sciscape.artifacts import (
     build_report_data_contract,
     load_result_manifest,
     register_result_in_workspace,
+    validate_matrix_artifact,
     validate_result_root,
     validate_workspace,
     write_cooccurrence_artifacts,
     write_edge_evidence_samples,
+    write_matrix_artifact,
+    write_matrix_from_term_cooccurrence,
     write_artifact_contract,
     write_result_manifest,
     write_workspace_manifest,
@@ -182,6 +188,144 @@ def test_validate_result_root_blocks_malformed_cooccurrence_table(tmp_path):
     assert payload["ok"] is False
     assert payload["result_state"] == "blocked"
     assert any(w["code"] == "missing_columns" and w["artifact"] == "cooccurrence" for w in payload["warnings"])
+
+
+def test_write_matrix_artifact_promotes_stable_matrix_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    entities = pd.DataFrame(
+        {
+            "entity_key": ["term:perovskite", "term:passivation"],
+            "entity_index": [0, 1],
+            "entity_type": ["term", "term"],
+            "label": ["perovskite", "passivation"],
+        }
+    )
+    values = pd.DataFrame(
+        {
+            "row_key": ["term:perovskite"],
+            "column_key": ["term:passivation"],
+            "row_index": [0],
+            "column_index": [1],
+            "value": [1.0],
+            "raw_value": [3.0],
+            "support_count": [3],
+            "relation": ["cooccurrence"],
+        }
+    )
+
+    written = write_matrix_artifact(
+        root,
+        "term_matrix",
+        "cooccurrence",
+        values,
+        entities,
+        entities.copy(),
+        value_spec={"name": "cooccurrence_weight", "type": "float", "range": [0.0, 1.0]},
+        weighting={"raw_metric": "test_pair", "normalization": "max", "symmetric": True, "storage": "upper_triangle"},
+        source_artifacts=[{"role": "keywords", "path": "landscape/keywords.parquet"}],
+        transforms=[{"step": "synthetic_triplet"}],
+    )
+
+    assert written["manifest_path"] == root / "matrices" / "term_matrix" / "matrix_manifest.json"
+    assert written["qa"]["schema_version"] == MATRIX_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+
+    table = pd.read_parquet(written["values_path"])
+    assert set(table["schema_version"]) == {MATRIX_VALUES_SCHEMA_VERSION}
+    assert table["matrix_id"].iloc[0] == "term_matrix"
+
+    validation = validate_matrix_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["rows"] == 2
+    assert validation["counts"]["columns"] == 2
+    assert validation["counts"]["nnz"] == 1
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["features"]["matrix"] is True
+    assert contract["counts"]["general_matrix_artifacts"] == 1
+    assert contract["counts"]["stable_matrix_artifacts"] == 1
+    assert contract["counts"]["matrix_nnz"] == 1
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["matrix"]["state"] == "stable"
+    assert "matrix" in manifest["features"]["matrix"]["artifact_refs"]
+    assert manifest["artifacts"]["matrix"]["schema_version"] == MATRIX_MANIFEST_SCHEMA_VERSION
+
+
+def test_validate_matrix_artifact_blocks_missing_entity_refs(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    rows = pd.DataFrame(
+        {
+            "entity_key": ["term:perovskite"],
+            "entity_index": [0],
+            "entity_type": ["term"],
+            "label": ["perovskite"],
+        }
+    )
+    columns = pd.DataFrame(
+        {
+            "entity_key": ["term:passivation"],
+            "entity_index": [0],
+            "entity_type": ["term"],
+            "label": ["passivation"],
+        }
+    )
+    values = pd.DataFrame(
+        {
+            "row_key": ["term:missing"],
+            "column_key": ["term:passivation"],
+            "row_index": [0],
+            "column_index": [0],
+            "value": [1.0],
+            "relation": ["cooccurrence"],
+        }
+    )
+
+    written = write_matrix_artifact(
+        root,
+        "bad_matrix",
+        "cooccurrence",
+        values,
+        rows,
+        columns,
+        value_spec={"name": "cooccurrence_weight", "type": "float"},
+        weighting={"raw_metric": "test_pair", "normalization": "none"},
+        source_artifacts=[{"role": "keywords", "path": "landscape/keywords.parquet"}],
+    )
+
+    assert written["qa"]["status"] == "blocked"
+    assert any(issue["code"] == "missing_matrix_row_refs" for issue in written["qa"]["blocking_issues"])
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["ok"] is False
+    assert contract["result_state"] == "blocked"
+    assert any(w["code"] == "missing_matrix_row_refs" for w in contract["warnings"])
+
+
+def test_write_matrix_from_term_cooccurrence_wraps_existing_sidecar(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+
+    written = write_matrix_from_term_cooccurrence(root)
+
+    assert written is not None
+    assert written["matrix_id"] == "term_cooccurrence_default"
+    assert written["qa"]["status"] == "passed"
+    values = pd.read_parquet(written["values_path"])
+    rows = pd.read_parquet(written["row_entities_path"])
+    assert len(values) == 2
+    assert len(rows) == 4
+    assert set(values["relation"]) == {"term_cooccurrence"}
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["counts"]["cooccurrence_artifacts"] == 2
+    assert contract["counts"]["general_matrix_artifacts"] == 1
+    assert contract["counts"]["stable_matrix_artifacts"] == 1
+    assert contract["features"]["matrix"] is True
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["cooccurrence"]["state"] == "stable"
+    assert manifest["features"]["matrix"]["state"] == "stable"
 
 
 def test_validate_result_root_blocks_advertised_missing_feature(tmp_path):
