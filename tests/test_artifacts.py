@@ -10,15 +10,20 @@ import pandas as pd
 from sciscape.artifacts import (
     COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
     RESULT_MANIFEST_SCHEMA_VERSION,
+    WORKSPACE_MANIFEST_SCHEMA_VERSION,
+    WORKSPACE_QA_SCHEMA_VERSION,
     build_atlas_payload_from_report_data,
     build_result_manifest,
     build_report_data_contract,
     load_result_manifest,
+    register_result_in_workspace,
     validate_result_root,
+    validate_workspace,
     write_cooccurrence_artifacts,
     write_edge_evidence_samples,
     write_artifact_contract,
     write_result_manifest,
+    write_workspace_manifest,
 )
 from sciscape.keyword_extraction.visualization import export_dashboard, export_report
 
@@ -720,6 +725,108 @@ def test_load_result_manifest_accepts_legacy_manifest_alias(tmp_path):
     assert manifest["result_id"] == "legacy-result"
     assert manifest["title"] == "Legacy Result"
     assert manifest["features"]["keyword"]["state"] == "stable"
+
+
+def test_write_workspace_manifest_creates_registry_and_qa(tmp_path):
+    workspace = tmp_path / "workspace"
+
+    written = write_workspace_manifest(
+        workspace,
+        workspace_id="workspace_test",
+        name="Workspace Test",
+    )
+
+    manifest_path = workspace / "workspace.json"
+    qa_path = workspace / "workspace_qa.json"
+    assert written["manifest_path"] == manifest_path
+    assert written["qa_path"] == qa_path
+    assert manifest_path.exists()
+    assert qa_path.exists()
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    qa = json.loads(qa_path.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == WORKSPACE_MANIFEST_SCHEMA_VERSION
+    assert manifest["workspace_id"] == "workspace_test"
+    assert manifest["objects"]["results"] == []
+    assert qa["schema_version"] == WORKSPACE_QA_SCHEMA_VERSION
+    assert qa["status"] == "passed"
+    assert qa["state"] == "stable"
+    assert qa["counts"]["results"] == 0
+
+    validation = validate_workspace(workspace).to_dict()
+    assert validation["ok"] is True
+    assert validation["state"] == "stable"
+
+
+def test_register_result_in_workspace_adds_relative_result_ref(tmp_path):
+    workspace = tmp_path / "workspace"
+    result_root = _write_valid_result_root(workspace / "results" / "perovskite")
+    write_workspace_manifest(
+        workspace,
+        workspace_id="workspace_test",
+        name="Workspace Test",
+    )
+
+    written = register_result_in_workspace(workspace, result_root, project_id="project_pending")
+
+    result_ref = written["registered_result"]
+    assert result_ref["path"] == "results/perovskite/result_manifest.json"
+    assert result_ref["state"] == "validated"
+    assert result_ref["project_id"] == "project_pending"
+    assert (result_root / "result_manifest.json").exists()
+
+    manifest = json.loads((workspace / "workspace.json").read_text(encoding="utf-8"))
+    assert manifest["objects"]["results"][0]["path"] == "results/perovskite/result_manifest.json"
+    assert manifest["recent"]["results"] == [result_ref["result_id"]]
+    assert manifest["defaults"]["result_id"] == result_ref["result_id"]
+    assert "project_id" not in manifest["defaults"]
+
+    qa = json.loads((workspace / "workspace_qa.json").read_text(encoding="utf-8"))
+    assert qa["status"] == "passed"
+    assert qa["objects"]["results"][0]["validation_state"] == "passed"
+
+
+def test_validate_workspace_blocks_absolute_object_paths(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / "workspace.json").write_text(
+        json.dumps(
+            {
+                "schema_version": WORKSPACE_MANIFEST_SCHEMA_VERSION,
+                "workspace_id": "workspace_test",
+                "name": "Workspace Test",
+                "root": ".",
+                "created_at_utc": "2026-06-03T00:00:00+00:00",
+                "updated_at_utc": "2026-06-03T00:00:00+00:00",
+                "objects": {
+                    "projects": [],
+                    "datasets": [],
+                    "runs": [],
+                    "results": [
+                        {
+                            "result_id": "absolute",
+                            "path": str(tmp_path / "outside" / "result_manifest.json"),
+                            "state": "validated",
+                        }
+                    ],
+                    "rule_sets": [],
+                    "views": [],
+                    "exports": [],
+                },
+                "recent": {"results": ["absolute"]},
+                "defaults": {"result_id": "absolute"},
+                "settings": {},
+                "warnings": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    validation = validate_workspace(workspace).to_dict()
+
+    assert validation["ok"] is False
+    assert validation["state"] == "blocked"
+    assert any(issue["code"] == "absolute_workspace_path" for issue in validation["blocking_issues"])
 
 
 def test_quality_gate_validates_artifact_root_and_writes_contract(tmp_path):

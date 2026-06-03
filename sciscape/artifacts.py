@@ -19,6 +19,8 @@ from . import __version__ as SCISCAPE_VERSION
 
 ARTIFACT_CONTRACT_SCHEMA_VERSION = "sciscape_artifact_contract_v1"
 RESULT_MANIFEST_SCHEMA_VERSION = "sciscape_result_manifest_v1"
+WORKSPACE_MANIFEST_SCHEMA_VERSION = "sciscape_workspace_manifest_v1"
+WORKSPACE_QA_SCHEMA_VERSION = "sciscape_workspace_qa_v1"
 REPORT_DATA_CONTRACT_SCHEMA_VERSION = "sciscape_report_data_contract_v1"
 ATLAS_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_payload_v1"
 EDGE_EVIDENCE_SCHEMA_VERSION = "sciscape_edge_evidence_samples_v1"
@@ -50,6 +52,24 @@ RESULT_MANIFEST_FEATURE_KEYS = (
     "quality",
     "export",
 )
+WORKSPACE_OBJECT_FAMILIES = (
+    "projects",
+    "datasets",
+    "runs",
+    "results",
+    "rule_sets",
+    "views",
+    "exports",
+)
+WORKSPACE_OBJECT_ID_KEYS = {
+    "projects": "project_id",
+    "datasets": "dataset_id",
+    "runs": "run_id",
+    "results": "result_id",
+    "rule_sets": "rule_set_id",
+    "views": "view_id",
+    "exports": "export_id",
+}
 REQUIRED_ABSTRACT_COLUMNS = {"uid", "title", "abstract", "pubyear"}
 REQUIRED_MEMBERSHIP_COLUMNS = {"uid"}
 REQUIRED_KEYWORD_COLUMNS = {"cluster_id", "term"}
@@ -210,6 +230,34 @@ class ResultManifest:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class WorkspaceValidationResult:
+    schema_version: str
+    workspace_id: str | None
+    state: str
+    status: str
+    workspace_root: str
+    manifest_path: str | None
+    qa_path: str
+    counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    objects: dict[str, list[dict[str, Any]]]
+    defaults: dict[str, Any]
+    recent: dict[str, list[str]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
 
 
 def _utc_now() -> str:
@@ -3467,6 +3515,687 @@ def write_result_manifest(
     return manifest
 
 
+def default_workspace_manifest_path(workspace_root: str | Path) -> Path:
+    """Return the canonical ``workspace.json`` path for a workspace root."""
+
+    return Path(workspace_root).expanduser().resolve() / "workspace.json"
+
+
+def default_workspace_qa_path(workspace_root: str | Path) -> Path:
+    """Return the canonical ``workspace_qa.json`` path for a workspace root."""
+
+    return Path(workspace_root).expanduser().resolve() / "workspace_qa.json"
+
+
+def read_workspace_manifest(workspace_root: str | Path) -> dict[str, Any] | None:
+    """Read ``workspace.json`` when present."""
+
+    manifest_path = default_workspace_manifest_path(workspace_root)
+    if not manifest_path.exists():
+        return None
+    return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+def _workspace_empty_objects() -> dict[str, list[dict[str, Any]]]:
+    return {family: [] for family in WORKSPACE_OBJECT_FAMILIES}
+
+
+def _workspace_empty_recent() -> dict[str, list[str]]:
+    return {family: [] for family in ("projects", "runs", "results", "views", "exports")}
+
+
+def _workspace_issue(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    family: str | None = None,
+    object_id: str | None = None,
+    path: str | None = None,
+) -> dict[str, Any]:
+    issue: dict[str, Any] = {"code": code, "severity": severity, "message": message}
+    if family:
+        issue["family"] = family
+    if object_id:
+        issue["object_id"] = object_id
+    if path:
+        issue["path"] = path
+    return issue
+
+
+def _workspace_has_local_result_candidates(root: Path, *, max_dirs: int = 300) -> bool:
+    names = {"result_manifest.json", "MANIFEST.json", "data.json", "membership.parquet"}
+    for rel in ("workspace/output", "workspace/examples_output", "workspace/web_output", "viewer"):
+        base = root / rel
+        if not base.exists() or not base.is_dir():
+            continue
+        stack = [base]
+        seen = 0
+        while stack and seen < max_dirs:
+            current = stack.pop()
+            seen += 1
+            try:
+                children = list(current.iterdir())
+            except OSError:
+                continue
+            if any(child.is_file() and child.name in names for child in children):
+                return True
+            stack.extend(child for child in children if child.is_dir())
+    return False
+
+
+def _workspace_normalize_objects(
+    objects: Mapping[str, Any] | None = None,
+    **overrides: list[Mapping[str, Any]] | None,
+) -> dict[str, list[dict[str, Any]]]:
+    normalized = _workspace_empty_objects()
+    if isinstance(objects, Mapping):
+        for family in WORKSPACE_OBJECT_FAMILIES:
+            rows = objects.get(family)
+            if isinstance(rows, list):
+                normalized[family] = [dict(row) for row in rows if isinstance(row, Mapping)]
+    for family, rows in overrides.items():
+        if rows is not None:
+            normalized[family] = [dict(row) for row in rows]
+    return normalized
+
+
+def _workspace_object_ids(objects: Mapping[str, list[Mapping[str, Any]]]) -> dict[str, set[str]]:
+    ids: dict[str, set[str]] = {}
+    for family, rows in objects.items():
+        id_key = WORKSPACE_OBJECT_ID_KEYS.get(family, f"{family.rstrip('s')}_id")
+        ids[family] = {str(row.get(id_key)) for row in rows if row.get(id_key)}
+    return ids
+
+
+def _workspace_ref_path(root: Path, rel_path: object) -> Path | None:
+    if not rel_path:
+        return None
+    path = Path(str(rel_path))
+    if path.is_absolute():
+        return path
+    return root / path
+
+
+def _workspace_result_root_from_ref(root: Path, rel_path: object) -> Path | None:
+    path = _workspace_ref_path(root, rel_path)
+    if path is None:
+        return None
+    if path.name in {"result_manifest.json", "MANIFEST.json"}:
+        return path.parent
+    return infer_result_artifacts(path).result_root
+
+
+def _workspace_ref_status(
+    *,
+    root: Path,
+    family: str,
+    row: Mapping[str, Any],
+    object_id: str,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    ref = dict(row)
+    raw_path = ref.get("path")
+    if raw_path in (None, ""):
+        warnings.append(
+            _workspace_issue(
+                "missing_object_path",
+                "warning",
+                f"Workspace {family} entry has no manifest path.",
+                family=family,
+                object_id=object_id,
+            )
+        )
+        ref["path_state"] = "missing"
+        return ref
+
+    path_text = str(raw_path)
+    path = Path(path_text)
+    external = bool(ref.get("external"))
+    if path.is_absolute() and not external:
+        blocking_issues.append(
+            _workspace_issue(
+                "absolute_workspace_path",
+                "blocking",
+                "Workspace object paths must be relative unless marked external.",
+                family=family,
+                object_id=object_id,
+                path=path_text,
+            )
+        )
+        ref["path_state"] = "invalid"
+        return ref
+
+    if external:
+        warnings.append(
+            _workspace_issue(
+                "external_workspace_ref",
+                "warning",
+                "Workspace object is marked as external and may not be shareable.",
+                family=family,
+                object_id=object_id,
+                path=path_text,
+            )
+        )
+        ref["path_state"] = "external"
+        return ref
+
+    resolved = root / path_text
+    if resolved.exists():
+        ref["path_state"] = "present"
+    else:
+        ref["path_state"] = "missing"
+        if ref.get("state") not in {"missing", "stale", "archived", "external"}:
+            warnings.append(
+                _workspace_issue(
+                    "missing_object_manifest",
+                    "warning",
+                    "Workspace object manifest path does not exist.",
+                    family=family,
+                    object_id=object_id,
+                    path=path_text,
+                )
+            )
+
+    if family == "results" and ref["path_state"] == "present":
+        result_root = _workspace_result_root_from_ref(root, path_text)
+        if result_root is not None:
+            try:
+                result_manifest = load_result_manifest(result_root)
+            except Exception as exc:
+                warnings.append(
+                    _workspace_issue(
+                        "result_ref_validation_failed",
+                        "warning",
+                        f"Could not validate registered result: {exc}",
+                        family=family,
+                        object_id=object_id,
+                        path=path_text,
+                    )
+                )
+            else:
+                quality = dict(result_manifest.get("quality") or {})
+                ref["manifest_state"] = result_manifest.get("manifest_state")
+                ref["result_kind"] = result_manifest.get("result_kind")
+                ref["run_status"] = dict(result_manifest.get("run_state") or {}).get("status")
+                ref["validation_state"] = quality.get("validation_state")
+                ref["feature_states"] = {
+                    key: value.get("state")
+                    for key, value in dict(result_manifest.get("features") or {}).items()
+                    if isinstance(value, Mapping)
+                }
+                if quality.get("validation_state") == "blocked":
+                    warnings.append(
+                        _workspace_issue(
+                            "registered_result_blocked",
+                            "warning",
+                            "Registered result validates as blocked.",
+                            family=family,
+                            object_id=object_id,
+                            path=path_text,
+                        )
+                    )
+    return ref
+
+
+def _validate_workspace_payload(
+    root: Path,
+    manifest: Mapping[str, Any],
+    *,
+    manifest_path: Path,
+    qa_path: Path,
+) -> WorkspaceValidationResult:
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+
+    if manifest.get("schema_version") != WORKSPACE_MANIFEST_SCHEMA_VERSION:
+        blocking_issues.append(
+            _workspace_issue(
+                "unsupported_workspace_schema",
+                "blocking",
+                f"Unsupported workspace manifest schema: {manifest.get('schema_version')}",
+            )
+        )
+    checks["schema_supported"] = {
+        "status": "blocked" if blocking_issues else "passed",
+        "expected": WORKSPACE_MANIFEST_SCHEMA_VERSION,
+        "actual": manifest.get("schema_version"),
+    }
+
+    raw_objects = manifest.get("objects")
+    if not isinstance(raw_objects, Mapping):
+        blocking_issues.append(
+            _workspace_issue(
+                "missing_workspace_objects",
+                "blocking",
+                "Workspace manifest must include an objects mapping.",
+            )
+        )
+        raw_objects = {}
+
+    objects = _workspace_empty_objects()
+    counts: dict[str, int] = {}
+    missing_refs = 0
+    for family in WORKSPACE_OBJECT_FAMILIES:
+        rows = raw_objects.get(family, [])
+        if not isinstance(rows, list):
+            blocking_issues.append(
+                _workspace_issue(
+                    "invalid_workspace_object_family",
+                    "blocking",
+                    "Workspace object family must be a list.",
+                    family=family,
+                )
+            )
+            rows = []
+        id_key = WORKSPACE_OBJECT_ID_KEYS[family]
+        seen: set[str] = set()
+        normalized_rows: list[dict[str, Any]] = []
+        for index, row in enumerate(rows):
+            if not isinstance(row, Mapping):
+                blocking_issues.append(
+                    _workspace_issue(
+                        "invalid_workspace_object_ref",
+                        "blocking",
+                        "Workspace object ref must be an object.",
+                        family=family,
+                    )
+                )
+                continue
+            object_id = row.get(id_key)
+            if object_id in (None, ""):
+                blocking_issues.append(
+                    _workspace_issue(
+                        "missing_workspace_object_id",
+                        "blocking",
+                        f"Workspace {family} entry is missing {id_key}.",
+                        family=family,
+                    )
+                )
+                object_id = f"missing_{family}_{index}"
+            object_id_text = str(object_id)
+            if object_id_text in seen:
+                blocking_issues.append(
+                    _workspace_issue(
+                        "duplicate_workspace_object_id",
+                        "blocking",
+                        f"Workspace {family} contains a duplicate {id_key}.",
+                        family=family,
+                        object_id=object_id_text,
+                    )
+                )
+            seen.add(object_id_text)
+            ref = _workspace_ref_status(
+                root=root,
+                family=family,
+                row=row,
+                object_id=object_id_text,
+                warnings=warnings,
+                blocking_issues=blocking_issues,
+            )
+            if ref.get("path_state") == "missing":
+                missing_refs += 1
+            normalized_rows.append(ref)
+        objects[family] = normalized_rows
+        counts[family] = len(normalized_rows)
+
+    ids = _workspace_object_ids(objects)
+    default_map = {
+        "project_id": "projects",
+        "result_id": "results",
+        "view_id": "views",
+    }
+    defaults = dict(manifest.get("defaults") or {})
+    for key, family in default_map.items():
+        value = defaults.get(key)
+        if value and str(value) not in ids.get(family, set()):
+            blocking_issues.append(
+                _workspace_issue(
+                    "unresolved_workspace_default",
+                    "blocking",
+                    f"Workspace default {key} does not resolve to a registered {family} object.",
+                    family=family,
+                    object_id=str(value),
+                )
+            )
+    for path in defaults.get("output_roots") or []:
+        if Path(str(path)).is_absolute():
+            blocking_issues.append(
+                _workspace_issue(
+                    "absolute_workspace_output_root",
+                    "blocking",
+                    "Workspace default output roots must be relative.",
+                    path=str(path),
+                )
+            )
+
+    recent = _workspace_empty_recent()
+    raw_recent = manifest.get("recent") or {}
+    if isinstance(raw_recent, Mapping):
+        for family in recent:
+            values = raw_recent.get(family, [])
+            if isinstance(values, list):
+                recent[family] = [str(value) for value in values]
+            for value in recent[family]:
+                if value not in ids.get(family, set()):
+                    warnings.append(
+                        _workspace_issue(
+                            "unresolved_recent_workspace_ref",
+                            "warning",
+                            "Workspace recent ref does not resolve to a registered object.",
+                            family=family,
+                            object_id=value,
+                        )
+                    )
+    elif raw_recent:
+        warnings.append(
+            _workspace_issue(
+                "invalid_workspace_recent",
+                "warning",
+                "Workspace recent field should be an object.",
+            )
+        )
+
+    for warning in manifest.get("warnings") or []:
+        if isinstance(warning, Mapping):
+            warnings.append(dict(warning))
+        elif warning:
+            warnings.append(_workspace_issue("workspace_manifest_warning", "warning", str(warning)))
+
+    counts["missing_refs"] = missing_refs
+    counts["warnings"] = len(warnings)
+    counts["blocking_issues"] = len(blocking_issues)
+    checks["object_refs"] = {
+        "status": "blocked" if any(issue["code"].startswith("invalid_workspace_object") for issue in blocking_issues) else "passed",
+        "counts": {family: counts[family] for family in WORKSPACE_OBJECT_FAMILIES},
+        "missing_refs": missing_refs,
+    }
+    checks["unique_ids"] = {
+        "status": "blocked" if any(issue["code"] == "duplicate_workspace_object_id" for issue in blocking_issues) else "passed",
+    }
+    checks["default_refs"] = {
+        "status": "blocked" if any(issue["code"].startswith("unresolved_workspace_default") for issue in blocking_issues) else "passed",
+    }
+    checks["recent_refs"] = {
+        "status": "warning" if any(issue["code"] == "unresolved_recent_workspace_ref" for issue in warnings) else "passed",
+    }
+    checks["result_refs"] = {
+        "status": "warning" if any(issue["code"].startswith("registered_result") or issue["code"].startswith("result_ref") for issue in warnings) else "passed",
+        "count": counts["results"],
+    }
+
+    if blocking_issues:
+        state = "blocked"
+        status = "blocked"
+    elif warnings:
+        state = "beta"
+        status = "warning"
+    else:
+        state = "stable"
+        status = "passed"
+
+    return WorkspaceValidationResult(
+        schema_version=WORKSPACE_QA_SCHEMA_VERSION,
+        workspace_id=str(manifest.get("workspace_id")) if manifest.get("workspace_id") else None,
+        state=state,
+        status=status,
+        workspace_root=str(root),
+        manifest_path=_rel(manifest_path, root),
+        qa_path=_rel(qa_path, root) or "workspace_qa.json",
+        counts=counts,
+        checks=checks,
+        objects=objects,
+        defaults=defaults,
+        recent=recent,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
+
+
+def validate_workspace(workspace_root: str | Path) -> WorkspaceValidationResult:
+    """Validate a SciScape workspace registry."""
+
+    root = Path(workspace_root).expanduser().resolve()
+    manifest_path = default_workspace_manifest_path(root)
+    qa_path = default_workspace_qa_path(root)
+    if not manifest_path.exists():
+        warnings = [
+            _workspace_issue(
+                "missing_workspace_manifest",
+                "warning",
+                "No workspace.json exists at the workspace root.",
+                path="workspace.json",
+            )
+        ]
+        has_candidates = _workspace_has_local_result_candidates(root)
+        state = "inferred" if has_candidates else "hidden"
+        return WorkspaceValidationResult(
+            schema_version=WORKSPACE_QA_SCHEMA_VERSION,
+            workspace_id=None,
+            state=state,
+            status="warning" if has_candidates else "passed",
+            workspace_root=str(root),
+            manifest_path=None,
+            qa_path=_rel(qa_path, root) or "workspace_qa.json",
+            counts={**{family: 0 for family in WORKSPACE_OBJECT_FAMILIES}, "missing_refs": 0, "warnings": len(warnings), "blocking_issues": 0},
+            checks={
+                "schema_supported": {"status": "missing"},
+                "object_refs": {"status": "missing", "counts": {family: 0 for family in WORKSPACE_OBJECT_FAMILIES}},
+            },
+            objects=_workspace_empty_objects(),
+            defaults={},
+            recent=_workspace_empty_recent(),
+            warnings=warnings,
+            blocking_issues=[],
+            created_at_utc=_utc_now(),
+        )
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        blocking_issues = [
+            _workspace_issue(
+                "malformed_workspace_manifest",
+                "blocking",
+                f"Could not read workspace manifest: {exc}",
+                path="workspace.json",
+            )
+        ]
+        return WorkspaceValidationResult(
+            schema_version=WORKSPACE_QA_SCHEMA_VERSION,
+            workspace_id=None,
+            state="blocked",
+            status="blocked",
+            workspace_root=str(root),
+            manifest_path=_rel(manifest_path, root),
+            qa_path=_rel(qa_path, root) or "workspace_qa.json",
+            counts={**{family: 0 for family in WORKSPACE_OBJECT_FAMILIES}, "missing_refs": 0, "warnings": 0, "blocking_issues": len(blocking_issues)},
+            checks={"schema_supported": {"status": "blocked"}},
+            objects=_workspace_empty_objects(),
+            defaults={},
+            recent=_workspace_empty_recent(),
+            warnings=[],
+            blocking_issues=blocking_issues,
+            created_at_utc=_utc_now(),
+        )
+    if not isinstance(manifest, Mapping):
+        manifest = {"schema_version": None, "objects": {}}
+    return _validate_workspace_payload(root, manifest, manifest_path=manifest_path, qa_path=qa_path)
+
+
+def _write_workspace_payload(root: Path, manifest: Mapping[str, Any]) -> dict[str, Any]:
+    root.mkdir(parents=True, exist_ok=True)
+    manifest_path = default_workspace_manifest_path(root)
+    qa_path = default_workspace_qa_path(root)
+    payload = dict(manifest)
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_workspace(root)
+    qa = validation.to_dict()
+    qa_path.write_text(json.dumps(qa, indent=2, sort_keys=True), encoding="utf-8")
+    return {
+        "manifest_path": manifest_path,
+        "qa_path": qa_path,
+        "manifest": payload,
+        "qa": qa,
+        "validation": validation,
+    }
+
+
+def write_workspace_manifest(
+    workspace_root: str | Path,
+    *,
+    workspace_id: str,
+    name: str,
+    projects: list[Mapping[str, Any]] | None = None,
+    datasets: list[Mapping[str, Any]] | None = None,
+    runs: list[Mapping[str, Any]] | None = None,
+    results: list[Mapping[str, Any]] | None = None,
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    views: list[Mapping[str, Any]] | None = None,
+    exports: list[Mapping[str, Any]] | None = None,
+    defaults: Mapping[str, Any] | None = None,
+    settings: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Write a workspace registry and its QA sidecar."""
+
+    root = Path(workspace_root).expanduser().resolve()
+    existing = read_workspace_manifest(root) or {}
+    now = _utc_now()
+    objects = _workspace_normalize_objects(
+        existing.get("objects") if isinstance(existing, Mapping) else None,
+        projects=projects,
+        datasets=datasets,
+        runs=runs,
+        results=results,
+        rule_sets=rule_sets,
+        views=views,
+        exports=exports,
+    )
+    merged_defaults = {
+        "mode": "local_result",
+        "output_roots": ["workspace/output", "workspace/examples_output", "workspace/web_output"],
+    }
+    if isinstance(existing.get("defaults"), Mapping):
+        merged_defaults.update(dict(existing["defaults"]))
+    if defaults:
+        merged_defaults.update(dict(defaults))
+    merged_settings = {
+        "auto_register_completed_runs": True,
+        "show_legacy_results": True,
+    }
+    if isinstance(existing.get("settings"), Mapping):
+        merged_settings.update(dict(existing["settings"]))
+    if settings:
+        merged_settings.update(dict(settings))
+    recent = _workspace_empty_recent()
+    if isinstance(existing.get("recent"), Mapping):
+        for family in recent:
+            values = existing["recent"].get(family, [])
+            if isinstance(values, list):
+                recent[family] = [str(value) for value in values]
+
+    manifest = {
+        "schema_version": WORKSPACE_MANIFEST_SCHEMA_VERSION,
+        "workspace_id": workspace_id,
+        "name": name,
+        "root": ".",
+        "created_at_utc": existing.get("created_at_utc") or now,
+        "updated_at_utc": now,
+        "objects": objects,
+        "recent": recent,
+        "defaults": merged_defaults,
+        "settings": merged_settings,
+        "warnings": list(existing.get("warnings") or []),
+    }
+    return _write_workspace_payload(root, manifest)
+
+
+def register_result_in_workspace(
+    workspace_root: str | Path,
+    result_root: str | Path,
+    *,
+    project_id: str | None = None,
+) -> dict[str, Any]:
+    """Register an existing result root in ``workspace.json`` without moving it."""
+
+    root = Path(workspace_root).expanduser().resolve()
+    existing = read_workspace_manifest(root)
+    if existing is None:
+        existing = write_workspace_manifest(
+            root,
+            workspace_id=_safe_id(root.name, fallback="workspace_local_default"),
+            name=root.name or "SciScape Local Workspace",
+        )["manifest"]
+
+    result_validation = validate_result_root(result_root)
+    written_manifest = write_result_manifest(result_validation.result_root)
+    result_manifest = written_manifest.to_dict()
+    result_manifest_path = Path(result_validation.result_root) / "result_manifest.json"
+    result_path = _rel(result_manifest_path, root)
+    external = Path(result_path).is_absolute()
+    result_id = str(result_manifest.get("result_id") or _safe_id(Path(result_validation.result_root).name))
+    result_ref: dict[str, Any] = {
+        "result_id": result_id,
+        "path": result_path,
+        "state": "validated" if result_validation.ok else "blocked",
+        "title": result_manifest.get("title"),
+        "result_kind": result_manifest.get("result_kind"),
+        "validation_state": result_manifest.get("quality", {}).get("validation_state"),
+        "updated_at_utc": _utc_now(),
+    }
+    if external:
+        result_ref["external"] = True
+    if project_id:
+        result_ref["project_id"] = project_id
+
+    objects = _workspace_normalize_objects(existing.get("objects") if isinstance(existing, Mapping) else None)
+    results = objects["results"]
+    replaced = False
+    for index, row in enumerate(results):
+        if row.get("result_id") == result_id or row.get("path") == result_path:
+            results[index] = {**row, **result_ref}
+            replaced = True
+            break
+    if not replaced:
+        results.append(result_ref)
+    objects["results"] = results
+
+    recent = _workspace_empty_recent()
+    raw_recent = existing.get("recent") if isinstance(existing, Mapping) else None
+    if isinstance(raw_recent, Mapping):
+        for family in recent:
+            values = raw_recent.get(family, [])
+            if isinstance(values, list):
+                recent[family] = [str(value) for value in values]
+    recent["results"] = [result_id] + [value for value in recent["results"] if value != result_id]
+    recent["results"] = recent["results"][:10]
+
+    defaults = dict(existing.get("defaults") or {}) if isinstance(existing, Mapping) else {}
+    defaults.setdefault("result_id", result_id)
+    if project_id and any(row.get("project_id") == project_id for row in objects["projects"]):
+        defaults.setdefault("project_id", project_id)
+
+    manifest = {
+        "schema_version": WORKSPACE_MANIFEST_SCHEMA_VERSION,
+        "workspace_id": existing.get("workspace_id") or _safe_id(root.name, fallback="workspace_local_default"),
+        "name": existing.get("name") or root.name or "SciScape Local Workspace",
+        "root": ".",
+        "created_at_utc": existing.get("created_at_utc") or _utc_now(),
+        "updated_at_utc": _utc_now(),
+        "objects": objects,
+        "recent": recent,
+        "defaults": defaults,
+        "settings": dict(existing.get("settings") or {}),
+        "warnings": list(existing.get("warnings") or []),
+    }
+    written = _write_workspace_payload(root, manifest)
+    written["registered_result"] = result_ref
+    return written
+
+
 def _feature_block_from_report_data(report_data: dict[str, Any]) -> dict[str, bool]:
     clusters = _report_clusters(report_data)
     term_edges = _report_term_edge_count(clusters)
@@ -3531,6 +4260,8 @@ __all__ = [
     "REPORT_DATA_CONTRACT_SCHEMA_VERSION",
     "RESULT_MANIFEST_SCHEMA_VERSION",
     "RESULT_MANIFEST_FEATURE_KEYS",
+    "WORKSPACE_MANIFEST_SCHEMA_VERSION",
+    "WORKSPACE_QA_SCHEMA_VERSION",
     "ArtifactRecord",
     "ArtifactIssue",
     "ArtifactValidationResult",
@@ -3538,18 +4269,25 @@ __all__ = [
     "ResultManifest",
     "ResultArtifacts",
     "RunState",
+    "WorkspaceValidationResult",
     "build_atlas_payload_from_report_data",
     "build_report_data_contract",
     "build_result_manifest",
     "default_artifact_contract_path",
     "default_result_manifest_path",
+    "default_workspace_manifest_path",
+    "default_workspace_qa_path",
     "find_result_manifest_path",
     "infer_result_artifacts",
     "load_result_manifest",
     "read_result_manifest",
+    "read_workspace_manifest",
+    "register_result_in_workspace",
     "validate_result_root",
+    "validate_workspace",
     "write_edge_evidence_samples",
     "write_cooccurrence_artifacts",
     "write_artifact_contract",
     "write_result_manifest",
+    "write_workspace_manifest",
 ]

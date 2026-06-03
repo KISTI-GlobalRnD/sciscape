@@ -490,6 +490,16 @@ folders on every load.
    completed run, one stale ref, and one export ref.
 7. Only then redesign Home around workspace objects rather than folders.
 
+Initial implementation note:
+
+- `validate_workspace`, `write_workspace_manifest`, and
+  `register_result_in_workspace` are available in `sciscape.artifacts`.
+- The current helper writes `workspace.json`, writes `workspace_qa.json`, blocks
+  unmarked absolute object paths, validates registered result refs, and stores
+  legacy result roots by relative path when they are inside the workspace.
+- Web discovery still needs to prefer `workspace.json` before the Home redesign
+  can be treated as implemented.
+
 ## Acceptance Criteria
 
 - A workspace can be validated without loading the web app.
