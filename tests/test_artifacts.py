@@ -9,6 +9,9 @@ import pandas as pd
 
 from sciscape.artifacts import (
     COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
+    EVOLUTION_EVENTS_SCHEMA_VERSION,
+    EVOLUTION_MANIFEST_SCHEMA_VERSION,
+    EVOLUTION_QA_SCHEMA_VERSION,
     MATRIX_MANIFEST_SCHEMA_VERSION,
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
@@ -23,12 +26,15 @@ from sciscape.artifacts import (
     build_report_data_contract,
     load_result_manifest,
     register_result_in_workspace,
+    validate_evolution_artifact,
     validate_matrix_artifact,
     validate_result_root,
     validate_temporal_artifact,
     validate_workspace,
     write_cooccurrence_artifacts,
     write_edge_evidence_samples,
+    write_evolution_artifacts,
+    write_evolution_synthetic_smoke_artifact,
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_temporal_artifacts,
@@ -419,6 +425,109 @@ def test_result_manifest_marks_pubyear_only_temporal_as_beta(tmp_path):
 
     assert manifest["features"]["temporal"]["state"] == "beta"
     assert manifest["features"]["temporal"]["reason"] == "pubyear exists but no temporal artifact has been written yet"
+
+
+def test_write_evolution_synthetic_smoke_covers_all_event_types(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+
+    written = write_evolution_synthetic_smoke_artifact(root)
+
+    assert written["manifest_path"] == root / "evolution" / "evolution_manifest.json"
+    assert written["qa"]["schema_version"] == EVOLUTION_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+
+    events = pd.read_parquet(written["events_path"])
+    assert set(events["schema_version"]) == {EVOLUTION_EVENTS_SCHEMA_VERSION}
+    assert events["event_type"].value_counts().to_dict() == {
+        "continuation": 3,
+        "split": 1,
+        "merge": 1,
+        "emergence": 1,
+        "decline": 1,
+        "ambiguous": 1,
+    }
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["event_counts"] == {
+        "ambiguous": 1,
+        "continuation": 3,
+        "decline": 1,
+        "emergence": 1,
+        "merge": 1,
+        "split": 1,
+    }
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["features"]["evolution"] is True
+    assert contract["counts"]["evolution_artifacts"] == 1
+    assert contract["counts"]["stable_evolution_artifacts"] == 1
+    assert contract["counts"]["evolution_event_rows"] == len(events)
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
+    assert "evolution" in manifest["features"]["evolution"]["artifact_refs"]
+    assert manifest["artifacts"]["evolution"]["schema_version"] == EVOLUTION_MANIFEST_SCHEMA_VERSION
+
+
+def test_write_evolution_artifacts_promotes_stable_evolution_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    records = pd.read_parquet(root / "abstracts.parquet")
+    membership = pd.read_parquet(root / "landscape" / "membership.parquet")
+    keywords = pd.read_parquet(root / "landscape" / "keywords.parquet")
+
+    written = write_evolution_artifacts(
+        root,
+        evolution_id="yearly_cluster_evolution",
+        records_df=records,
+        membership_df=membership,
+        keywords_df=keywords,
+    )
+
+    assert written["manifest_path"] == root / "evolution" / "evolution_manifest.json"
+    assert written["qa"]["schema_version"] == EVOLUTION_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+
+    states = pd.read_parquet(written["cluster_states_path"])
+    transitions = pd.read_parquet(written["transitions_path"])
+    events = pd.read_parquet(written["events_path"])
+    assert len(states) == 4
+    assert len(transitions) == 2
+    assert set(events["event_type"]) == {"continuation"}
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["slices"] == 2
+    assert validation["counts"]["states"] == 4
+    assert validation["counts"]["transitions"] == 2
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["features"]["evolution"] is True
+    assert contract["counts"]["stable_evolution_artifacts"] == 1
+    assert contract["counts"]["evolution_slices"] == 2
+    assert contract["counts"]["evolution_transitions"] == 2
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
+
+
+def test_validate_evolution_artifact_blocks_unknown_transition_state_ref(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    written = write_evolution_synthetic_smoke_artifact(root)
+    transitions_path = written["transitions_path"]
+    transitions = pd.read_parquet(transitions_path)
+    transitions.loc[0, "target_state_id"] = "missing_state"
+    transitions.to_parquet(transitions_path, index=False)
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+
+    assert validation["status"] == "blocked"
+    assert any(issue["code"] == "missing_evolution_transition_state_refs" for issue in validation["blocking_issues"])
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["ok"] is False
+    assert contract["result_state"] == "blocked"
+    assert any(w["code"] == "missing_evolution_transition_state_refs" for w in contract["warnings"])
 
 
 def test_validate_result_root_blocks_advertised_missing_feature(tmp_path):

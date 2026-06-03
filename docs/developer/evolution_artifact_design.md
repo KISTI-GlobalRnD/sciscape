@@ -560,6 +560,29 @@ lineage from raw records.
 - The full result contract can tell whether `evolution` is hidden, beta,
   stable, or blocked from artifacts alone.
 
+## Initial Implementation Note
+
+`sciscape.artifacts` now implements the v1 artifact contract:
+
+- `write_evolution_artifacts` writes yearly membership-projection evolution
+  artifacts under `<result_root>/evolution/`.
+- `validate_evolution_artifact` validates manifests, slices, states,
+  transitions, lineages, events, QA, references, adjacent-slice transitions,
+  event support, and score ranges.
+- `write_evolution_synthetic_smoke_artifact` writes a deterministic fixture
+  that covers continuation, split, merge, emergence, decline, and ambiguous
+  events.
+- `validate_result_root` identifies `evolution/evolution_manifest.json`, blocks
+  malformed evolution artifacts, and exposes stable/beta/hidden evolution
+  feature state through the result manifest.
+
+The real-data writer intentionally uses static membership projection in v1. It
+can safely emit continuation, emergence, and decline from projected cluster
+presence, but it should not fabricate split or merge claims without richer
+time-slice-specific clustering or matching evidence. Split, merge, and
+ambiguous validation are covered by the synthetic smoke fixture until a richer
+matching writer is added.
+
 ## Open Questions
 
 - Should v1 support only adjacent-slice transitions, or allow skip-slice

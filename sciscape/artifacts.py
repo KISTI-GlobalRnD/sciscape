@@ -36,6 +36,14 @@ TEMPORAL_ACTIVITY_SCHEMA_VERSION = "sciscape_temporal_activity_v1"
 TEMPORAL_ENTITY_SERIES_SCHEMA_VERSION = "sciscape_temporal_entity_series_v1"
 TEMPORAL_EVENTS_SCHEMA_VERSION = "sciscape_temporal_events_v1"
 TEMPORAL_QA_SCHEMA_VERSION = "sciscape_temporal_qa_v1"
+EVOLUTION_MANIFEST_SCHEMA_VERSION = "sciscape_evolution_manifest_v1"
+EVOLUTION_TIME_SLICES_SCHEMA_VERSION = "sciscape_evolution_time_slices_v1"
+EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION = "sciscape_evolution_cluster_states_v1"
+EVOLUTION_TRANSITIONS_SCHEMA_VERSION = "sciscape_evolution_transitions_v1"
+EVOLUTION_LINEAGES_SCHEMA_VERSION = "sciscape_evolution_lineages_v1"
+EVOLUTION_EVENTS_SCHEMA_VERSION = "sciscape_evolution_events_v1"
+EVOLUTION_QA_SCHEMA_VERSION = "sciscape_evolution_qa_v1"
+EVOLUTION_SYNTHETIC_SMOKE_SCHEMA_VERSION = "sciscape_evolution_synthetic_smoke_v1"
 FEATURE_KEYS = (
     "overview",
     "cluster_map",
@@ -165,6 +173,68 @@ REQUIRED_TEMPORAL_EVENTS_COLUMNS = {
     "method",
     "support_count",
 }
+REQUIRED_EVOLUTION_TIME_SLICE_COLUMNS = {
+    "schema_version",
+    "evolution_id",
+    "slice_id",
+    "slice_index",
+    "slice_label",
+    "start_year",
+    "end_year",
+    "unit",
+    "doc_count",
+}
+REQUIRED_EVOLUTION_STATE_COLUMNS = {
+    "schema_version",
+    "evolution_id",
+    "state_id",
+    "slice_id",
+    "slice_index",
+    "cluster_key",
+    "cluster_label",
+    "doc_count",
+    "term_count",
+    "top_terms",
+}
+REQUIRED_EVOLUTION_TRANSITION_COLUMNS = {
+    "schema_version",
+    "evolution_id",
+    "transition_id",
+    "source_state_id",
+    "target_state_id",
+    "source_slice_id",
+    "target_slice_id",
+    "metric",
+    "score",
+    "support_count",
+    "source_doc_count",
+    "target_doc_count",
+    "relation",
+}
+REQUIRED_EVOLUTION_LINEAGE_COLUMNS = {
+    "schema_version",
+    "evolution_id",
+    "lineage_id",
+    "state_id",
+    "slice_id",
+    "slice_index",
+    "role",
+    "stability_score",
+}
+REQUIRED_EVOLUTION_EVENT_COLUMNS = {
+    "schema_version",
+    "evolution_id",
+    "event_id",
+    "event_type",
+    "slice_id",
+    "state_id",
+    "lineage_id",
+    "transition_refs",
+    "score",
+    "support_count",
+    "method",
+}
+EVOLUTION_EVENT_TYPES = frozenset({"continuation", "split", "merge", "emergence", "decline", "ambiguous"})
 WEIGHT_COLUMN_CANDIDATES = (
     "rel_sum2",
     "weight",
@@ -220,6 +290,7 @@ class ResultArtifacts:
     matrix_paths: tuple[Path, ...] = ()
     matrix_manifest_paths: tuple[Path, ...] = ()
     temporal_manifest_paths: tuple[Path, ...] = ()
+    evolution_manifest_paths: tuple[Path, ...] = ()
     edge_evidence_paths: tuple[Path, ...] = ()
     evolution_paths: tuple[Path, ...] = ()
     narrative_paths: tuple[Path, ...] = ()
@@ -393,6 +464,31 @@ class TemporalArtifactValidationResult:
         return data
 
 
+@dataclass(frozen=True)
+class EvolutionArtifactValidationResult:
+    schema_version: str
+    evolution_id: str | None
+    status: str
+    evolution_dir: str
+    manifest_path: str
+    paths: dict[str, str | None]
+    counts: dict[str, int]
+    event_counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -509,6 +605,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
     matrix_paths: list[Path] = []
     matrix_manifest_paths: list[Path] = []
     temporal_manifest_paths: list[Path] = []
+    evolution_manifest_paths: list[Path] = []
     for base in [landscape_dir, result_root]:
         if base is None or not base.exists() or not base.is_dir():
             continue
@@ -520,6 +617,9 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         temporal_manifest = base / "temporal" / "temporal_manifest.json"
         if temporal_manifest.exists() and temporal_manifest.is_file():
             temporal_manifest_paths.append(temporal_manifest)
+        evolution_manifest = base / "evolution" / "evolution_manifest.json"
+        if evolution_manifest.exists() and evolution_manifest.is_file():
+            evolution_manifest_paths.append(evolution_manifest)
 
     evolution_paths = _collect_optional_artifacts(
         [
@@ -529,6 +629,13 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
             result_root,
         ],
         ("*evolution*.json", "*evolution*.parquet", "*trajectory*.json", "*trajectory*.parquet"),
+    )
+    evolution_manifest_set = set(evolution_manifest_paths)
+    evolution_paths = tuple(
+        path
+        for path in evolution_paths
+        if path not in evolution_manifest_set
+        and not (path.parent.name == "evolution" and (path.parent / "evolution_manifest.json").exists())
     )
     edge_evidence_paths = _collect_optional_artifacts(
         [
@@ -577,6 +684,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         matrix_paths=tuple(sorted(set(matrix_paths))),
         matrix_manifest_paths=tuple(sorted(set(matrix_manifest_paths))),
         temporal_manifest_paths=tuple(sorted(set(temporal_manifest_paths))),
+        evolution_manifest_paths=tuple(sorted(set(evolution_manifest_paths))),
         edge_evidence_paths=edge_evidence_paths,
         evolution_paths=evolution_paths,
         narrative_paths=narrative_paths,
@@ -4121,6 +4229,1677 @@ def write_temporal_artifacts(
     }
 
 
+def _evolution_issue(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    artifact: str | None = None,
+) -> dict[str, Any]:
+    issue = {"code": code, "severity": severity, "message": message}
+    if artifact:
+        issue["artifact"] = artifact
+    return issue
+
+
+def _evolution_dir_and_manifest(path: str | Path) -> tuple[Path, Path]:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        return candidate.parent, candidate
+    return candidate, candidate / "evolution_manifest.json"
+
+
+def _evolution_result_root(evolution_dir: Path) -> Path:
+    if evolution_dir.name == "evolution":
+        scope_root = evolution_dir.parent
+        if scope_root.name.startswith("landscape") and scope_root.parent.exists():
+            return scope_root.parent
+        return scope_root
+    return evolution_dir.parent
+
+
+def _evolution_output_paths(evolution_dir: Path, manifest: Mapping[str, Any]) -> dict[str, Path]:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    paths = {
+        "time_slices": evolution_dir / str(outputs.get("time_slices") or "time_slices.parquet"),
+        "cluster_states": evolution_dir / str(outputs.get("cluster_states") or "cluster_states.parquet"),
+        "transitions": evolution_dir / str(outputs.get("transitions") or "transitions.parquet"),
+        "lineages": evolution_dir / str(outputs.get("lineages") or "lineages.parquet"),
+        "events": evolution_dir / str(outputs.get("events") or "evolution_events.parquet"),
+        "qa": evolution_dir / str(outputs.get("qa") or "evolution_qa.json"),
+    }
+    if outputs.get("synthetic_smoke"):
+        paths["synthetic_smoke"] = evolution_dir / str(outputs.get("synthetic_smoke"))
+    return paths
+
+
+def _evolution_path_payload(paths: Mapping[str, Path], evolution_dir: Path) -> dict[str, str | None]:
+    return {key: _rel(path, evolution_dir) for key, path in paths.items()}
+
+
+def _evolution_required_fields(manifest: Mapping[str, Any]) -> set[str]:
+    required = {
+        "schema_version",
+        "evolution_id",
+        "title",
+        "slice_method",
+        "matching_method",
+        "event_rules",
+        "entity_scope",
+        "metrics",
+        "source_artifacts",
+        "rule_sets",
+        "transforms",
+        "outputs",
+        "created_at_utc",
+    }
+    return {key for key in required if manifest.get(key) in (None, "")}
+
+
+def _evolution_read_parquet(
+    path: Path,
+    *,
+    artifact: str,
+    required: bool,
+    blocking_issues: list[dict[str, Any]],
+) -> pd.DataFrame | None:
+    if not path.exists():
+        if required:
+            blocking_issues.append(
+                _evolution_issue(
+                    "missing_evolution_table",
+                    "blocking",
+                    f"Missing evolution {artifact} table.",
+                    artifact=artifact,
+                )
+            )
+        return None
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:
+        blocking_issues.append(
+            _evolution_issue(
+                "invalid_evolution_parquet",
+                "blocking",
+                f"Could not read evolution {artifact} parquet: {exc}",
+                artifact=artifact,
+            )
+        )
+        return None
+
+
+def _evolution_missing_columns(
+    df: pd.DataFrame | None,
+    required: set[str],
+    *,
+    artifact: str,
+    blocking_issues: list[dict[str, Any]],
+) -> set[str]:
+    columns = set(df.columns) if df is not None else set()
+    missing = required - columns
+    if missing:
+        blocking_issues.append(
+            _evolution_issue(
+                "missing_evolution_columns",
+                "blocking",
+                f"Missing required evolution columns: {sorted(missing)}",
+                artifact=artifact,
+            )
+        )
+    return missing
+
+
+def _evolution_numeric_finite(
+    df: pd.DataFrame | None,
+    columns: list[str],
+    *,
+    artifact: str,
+    blocking_issues: list[dict[str, Any]],
+) -> None:
+    if df is None:
+        return
+    for column in columns:
+        if column not in df.columns:
+            continue
+        numeric = pd.to_numeric(df[column], errors="coerce")
+        mask = df[column].notna()
+        bad = numeric[mask].isna()
+        if bad.any() or (~numeric[mask].map(lambda value: math.isfinite(float(value)))).any():
+            blocking_issues.append(
+                _evolution_issue(
+                    "invalid_evolution_numeric_values",
+                    "blocking",
+                    f"Evolution {column} values must be finite numeric values.",
+                    artifact=artifact,
+                )
+            )
+
+
+def _evolution_metric_ranges(manifest: Mapping[str, Any]) -> dict[str, tuple[float, float]]:
+    ranges: dict[str, tuple[float, float]] = {}
+    metrics = manifest.get("metrics")
+    if not isinstance(metrics, list):
+        return ranges
+    for metric in metrics:
+        if not isinstance(metric, Mapping) or not metric.get("name"):
+            continue
+        raw_range = metric.get("range")
+        if isinstance(raw_range, (list, tuple)) and len(raw_range) == 2:
+            low = _coerce_float(raw_range[0])
+            high = _coerce_float(raw_range[1])
+            if low is not None and high is not None:
+                ranges[str(metric["name"])] = (float(low), float(high))
+    return ranges
+
+
+def _evolution_refs(value: Any) -> list[str]:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return []
+    payload = value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = [part.strip() for part in re.split(r"[|,]", text) if part.strip()]
+    if isinstance(payload, (list, tuple, set)):
+        return [str(item) for item in payload if str(item).strip()]
+    return [str(payload)] if str(payload).strip() else []
+
+
+def _evolution_time_slice_checks(
+    slices: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if slices is None or _evolution_missing_columns(
+        slices,
+        REQUIRED_EVOLUTION_TIME_SLICE_COLUMNS,
+        artifact="time_slices",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    evolution_id = str(manifest.get("evolution_id"))
+    if slices.empty:
+        blocking_issues.append(
+            _evolution_issue("empty_evolution_slices", "blocking", "Evolution must contain at least one time slice.", artifact="time_slices")
+        )
+    if not set(slices["schema_version"]) <= {EVOLUTION_TIME_SLICES_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _evolution_issue("unsupported_evolution_slices_schema", "blocking", "Unsupported time_slices schema.", artifact="time_slices")
+        )
+    if not set(slices["evolution_id"].map(str)) <= {evolution_id}:
+        blocking_issues.append(
+            _evolution_issue("evolution_slices_id_mismatch", "blocking", "Slice evolution_id does not match manifest.", artifact="time_slices")
+        )
+    if slices["slice_id"].duplicated().any():
+        blocking_issues.append(
+            _evolution_issue("duplicate_evolution_slices", "blocking", "slice_id values are duplicated.", artifact="time_slices")
+        )
+    try:
+        indices = sorted(int(value) for value in slices["slice_index"].tolist())
+    except Exception:
+        indices = []
+        blocking_issues.append(
+            _evolution_issue("invalid_evolution_slice_index", "blocking", "slice_index must be integer-like.", artifact="time_slices")
+        )
+    if indices and indices != list(range(len(indices))):
+        warnings.append(
+            _evolution_issue("non_contiguous_evolution_slice_index", "warning", "slice_index is not contiguous from zero.", artifact="time_slices")
+        )
+    if len(slices) < 2:
+        warnings.append(
+            _evolution_issue("sparse_evolution_slices", "warning", "Evolution artifact has fewer than two time slices.", artifact="time_slices")
+        )
+    for column in ("doc_count",):
+        numeric = pd.to_numeric(slices[column], errors="coerce")
+        if numeric.dropna().lt(0).any():
+            blocking_issues.append(
+                _evolution_issue("negative_evolution_slice_count", "blocking", f"{column} must be non-negative.", artifact="time_slices")
+            )
+    return {"status": "passed", "count": int(len(slices))}
+
+
+def _evolution_state_checks(
+    states: pd.DataFrame | None,
+    slices: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if states is None or _evolution_missing_columns(
+        states,
+        REQUIRED_EVOLUTION_STATE_COLUMNS,
+        artifact="cluster_states",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    evolution_id = str(manifest.get("evolution_id"))
+    if states.empty:
+        blocking_issues.append(
+            _evolution_issue("empty_evolution_states", "blocking", "Evolution must contain at least one cluster state.", artifact="cluster_states")
+        )
+    if not set(states["schema_version"]) <= {EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _evolution_issue("unsupported_evolution_states_schema", "blocking", "Unsupported cluster_states schema.", artifact="cluster_states")
+        )
+    if not set(states["evolution_id"].map(str)) <= {evolution_id}:
+        blocking_issues.append(
+            _evolution_issue("evolution_states_id_mismatch", "blocking", "State evolution_id does not match manifest.", artifact="cluster_states")
+        )
+    if states["state_id"].duplicated().any():
+        blocking_issues.append(
+            _evolution_issue("duplicate_evolution_states", "blocking", "state_id values are duplicated.", artifact="cluster_states")
+        )
+    slice_ids = set(slices["slice_id"].map(str)) if slices is not None and "slice_id" in slices.columns else set()
+    unknown_slices = set(states["slice_id"].map(str)) - slice_ids
+    if unknown_slices:
+        blocking_issues.append(
+            _evolution_issue(
+                "unknown_evolution_state_slices",
+                "blocking",
+                f"Cluster states reference {len(unknown_slices)} unknown slices.",
+                artifact="cluster_states",
+            )
+        )
+    doc_count = pd.to_numeric(states["doc_count"], errors="coerce")
+    if doc_count.isna().any() or doc_count.le(0).any():
+        blocking_issues.append(
+            _evolution_issue("invalid_evolution_state_doc_count", "blocking", "State doc_count must be positive.", artifact="cluster_states")
+        )
+    return {"status": "passed", "count": int(len(states))}
+
+
+def _evolution_transition_checks(
+    transitions: pd.DataFrame | None,
+    slices: pd.DataFrame | None,
+    states: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if transitions is None or _evolution_missing_columns(
+        transitions,
+        REQUIRED_EVOLUTION_TRANSITION_COLUMNS,
+        artifact="transitions",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    evolution_id = str(manifest.get("evolution_id"))
+    if not transitions.empty and not set(transitions["schema_version"]) <= {EVOLUTION_TRANSITIONS_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _evolution_issue("unsupported_evolution_transitions_schema", "blocking", "Unsupported transitions schema.", artifact="transitions")
+        )
+    if not transitions.empty and not set(transitions["evolution_id"].map(str)) <= {evolution_id}:
+        blocking_issues.append(
+            _evolution_issue("evolution_transitions_id_mismatch", "blocking", "Transition evolution_id does not match manifest.", artifact="transitions")
+        )
+    if transitions.duplicated(subset=["source_state_id", "target_state_id", "metric"]).any():
+        blocking_issues.append(
+            _evolution_issue("duplicate_evolution_transitions", "blocking", "Duplicate source/target/metric transitions found.", artifact="transitions")
+        )
+    state_ids = set(states["state_id"].map(str)) if states is not None and "state_id" in states.columns else set()
+    missing_sources = set(transitions["source_state_id"].map(str)) - state_ids
+    missing_targets = set(transitions["target_state_id"].map(str)) - state_ids
+    if missing_sources or missing_targets:
+        blocking_issues.append(
+            _evolution_issue(
+                "missing_evolution_transition_state_refs",
+                "blocking",
+                f"Transitions reference {len(missing_sources) + len(missing_targets)} unknown states.",
+                artifact="transitions",
+            )
+        )
+    slice_index = (
+        {str(row.slice_id): int(row.slice_index) for row in slices.itertuples(index=False)}
+        if slices is not None and {"slice_id", "slice_index"}.issubset(slices.columns)
+        else {}
+    )
+    unknown_slices = (set(transitions["source_slice_id"].map(str)) | set(transitions["target_slice_id"].map(str))) - set(slice_index)
+    if unknown_slices:
+        blocking_issues.append(
+            _evolution_issue("unknown_evolution_transition_slices", "blocking", "Transitions reference unknown slices.", artifact="transitions")
+        )
+    allow_skip = bool((manifest.get("matching_method") or {}).get("allow_skip_slices")) if isinstance(manifest.get("matching_method"), Mapping) else False
+    for row in transitions.itertuples(index=False):
+        source_index = slice_index.get(str(row.source_slice_id))
+        target_index = slice_index.get(str(row.target_slice_id))
+        if source_index is None or target_index is None:
+            continue
+        if not allow_skip and target_index != source_index + 1:
+            blocking_issues.append(
+                _evolution_issue(
+                    "non_adjacent_evolution_transition",
+                    "blocking",
+                    "Transitions must connect adjacent slices unless allow_skip_slices is declared.",
+                    artifact="transitions",
+                )
+            )
+            break
+    _evolution_numeric_finite(
+        transitions,
+        ["score", "support_count", "source_doc_count", "target_doc_count"],
+        artifact="transitions",
+        blocking_issues=blocking_issues,
+    )
+    metric_ranges = _evolution_metric_ranges(manifest)
+    for row in transitions.itertuples(index=False):
+        score = _coerce_float(row.score)
+        if score is None:
+            continue
+        low, high = metric_ranges.get(str(row.metric), (0.0, 1.0))
+        if score < low or score > high:
+            blocking_issues.append(
+                _evolution_issue(
+                    "evolution_transition_score_out_of_range",
+                    "blocking",
+                    f"Transition score for metric `{row.metric}` is outside [{low}, {high}].",
+                    artifact="transitions",
+                )
+            )
+            break
+    relations = {"candidate", "continuation", "split_child", "merge_parent", "ambiguous"}
+    unknown_relations = set(transitions["relation"].dropna().map(str)) - relations
+    if unknown_relations:
+        blocking_issues.append(
+            _evolution_issue("unknown_evolution_transition_relation", "blocking", f"Unknown transition relations: {sorted(unknown_relations)}", artifact="transitions")
+        )
+    if slices is not None and len(slices) > 1 and transitions.empty:
+        warnings.append(
+            _evolution_issue("empty_evolution_transitions", "warning", "No adjacent-slice transition evidence was recorded.", artifact="transitions")
+        )
+    return {"status": "passed", "count": int(len(transitions))}
+
+
+def _evolution_lineage_checks(
+    lineages: pd.DataFrame | None,
+    slices: pd.DataFrame | None,
+    states: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if lineages is None or _evolution_missing_columns(
+        lineages,
+        REQUIRED_EVOLUTION_LINEAGE_COLUMNS,
+        artifact="lineages",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    evolution_id = str(manifest.get("evolution_id"))
+    if lineages.empty:
+        blocking_issues.append(
+            _evolution_issue("empty_evolution_lineages", "blocking", "Evolution must contain at least one lineage row.", artifact="lineages")
+        )
+    if not set(lineages["schema_version"]) <= {EVOLUTION_LINEAGES_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _evolution_issue("unsupported_evolution_lineages_schema", "blocking", "Unsupported lineages schema.", artifact="lineages")
+        )
+    if not set(lineages["evolution_id"].map(str)) <= {evolution_id}:
+        blocking_issues.append(
+            _evolution_issue("evolution_lineages_id_mismatch", "blocking", "Lineage evolution_id does not match manifest.", artifact="lineages")
+        )
+    state_ids = set(states["state_id"].map(str)) if states is not None and "state_id" in states.columns else set()
+    unknown_states = set(lineages["state_id"].map(str)) - state_ids
+    if unknown_states:
+        blocking_issues.append(
+            _evolution_issue("missing_evolution_lineage_state_refs", "blocking", "Lineages reference unknown states.", artifact="lineages")
+        )
+    slice_ids = set(slices["slice_id"].map(str)) if slices is not None and "slice_id" in slices.columns else set()
+    unknown_slices = set(lineages["slice_id"].map(str)) - slice_ids
+    if unknown_slices:
+        blocking_issues.append(
+            _evolution_issue("missing_evolution_lineage_slice_refs", "blocking", "Lineages reference unknown slices.", artifact="lineages")
+        )
+    allow_multi = bool((manifest.get("matching_method") or {}).get("allow_multi_lineage_state")) if isinstance(manifest.get("matching_method"), Mapping) else False
+    if not allow_multi and lineages["state_id"].duplicated().any():
+        blocking_issues.append(
+            _evolution_issue("duplicate_evolution_lineage_state_refs", "blocking", "A state appears in multiple lineages.", artifact="lineages")
+        )
+    _evolution_numeric_finite(lineages, ["stability_score"], artifact="lineages", blocking_issues=blocking_issues)
+    score = pd.to_numeric(lineages["stability_score"], errors="coerce")
+    if score.dropna().lt(0).any() or score.dropna().gt(1).any():
+        blocking_issues.append(
+            _evolution_issue("evolution_lineage_stability_out_of_range", "blocking", "Lineage stability_score must be in [0, 1].", artifact="lineages")
+        )
+    return {"status": "passed", "count": int(len(lineages))}
+
+
+def _evolution_transition_lookup(transitions: pd.DataFrame | None) -> dict[str, dict[str, str]]:
+    if transitions is None or transitions.empty or "transition_id" not in transitions.columns:
+        return {}
+    lookup: dict[str, dict[str, str]] = {}
+    for row in transitions.itertuples(index=False):
+        lookup[str(row.transition_id)] = {
+            "source": str(row.source_state_id),
+            "target": str(row.target_state_id),
+            "source_slice": str(row.source_slice_id),
+            "target_slice": str(row.target_slice_id),
+        }
+    return lookup
+
+
+def _evolution_event_checks(
+    events: pd.DataFrame | None,
+    states: pd.DataFrame | None,
+    lineages: pd.DataFrame | None,
+    transitions: pd.DataFrame | None,
+    *,
+    manifest: Mapping[str, Any],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if events is None or _evolution_missing_columns(
+        events,
+        REQUIRED_EVOLUTION_EVENT_COLUMNS,
+        artifact="events",
+        blocking_issues=blocking_issues,
+    ):
+        return {"status": "blocked", "count": 0}
+    evolution_id = str(manifest.get("evolution_id"))
+    if not events.empty and not set(events["schema_version"]) <= {EVOLUTION_EVENTS_SCHEMA_VERSION}:
+        blocking_issues.append(
+            _evolution_issue("unsupported_evolution_events_schema", "blocking", "Unsupported evolution_events schema.", artifact="events")
+        )
+    if not events.empty and not set(events["evolution_id"].map(str)) <= {evolution_id}:
+        blocking_issues.append(
+            _evolution_issue("evolution_events_id_mismatch", "blocking", "Event evolution_id does not match manifest.", artifact="events")
+        )
+    unknown_event_types = set(events["event_type"].dropna().map(str)) - EVOLUTION_EVENT_TYPES
+    if unknown_event_types:
+        blocking_issues.append(
+            _evolution_issue("unknown_evolution_event_type", "blocking", f"Unknown event types: {sorted(unknown_event_types)}", artifact="events")
+        )
+    state_ids = set(states["state_id"].map(str)) if states is not None and "state_id" in states.columns else set()
+    unknown_states = set(events["state_id"].dropna().map(str)) - state_ids
+    if unknown_states:
+        blocking_issues.append(
+            _evolution_issue("missing_evolution_event_state_refs", "blocking", "Events reference unknown states.", artifact="events")
+        )
+    lineage_ids = set(lineages["lineage_id"].map(str)) if lineages is not None and "lineage_id" in lineages.columns else set()
+    event_lineages = {value for value in events["lineage_id"].dropna().map(str) if value and value.lower() != "none"}
+    unknown_lineages = event_lineages - lineage_ids
+    if unknown_lineages:
+        blocking_issues.append(
+            _evolution_issue("missing_evolution_event_lineage_refs", "blocking", "Events reference unknown lineages.", artifact="events")
+        )
+    transition_lookup = _evolution_transition_lookup(transitions)
+    transition_ids = set(transition_lookup)
+    for row in events.itertuples(index=False):
+        event_type = str(row.event_type)
+        refs = _evolution_refs(row.transition_refs)
+        unknown_refs = set(refs) - transition_ids
+        if unknown_refs:
+            blocking_issues.append(
+                _evolution_issue("missing_evolution_event_transition_refs", "blocking", "Events reference unknown transitions.", artifact="events")
+            )
+            break
+        if event_type in {"continuation", "split", "merge", "ambiguous"} and not refs:
+            blocking_issues.append(
+                _evolution_issue(
+                    "missing_evolution_event_support",
+                    "blocking",
+                    f"{event_type} events require transition_refs.",
+                    artifact="events",
+                )
+            )
+            break
+        if event_type == "split":
+            targets = set(_evolution_refs(getattr(row, "target_state_ids", None)))
+            if not targets:
+                targets = {transition_lookup[ref]["target"] for ref in refs if ref in transition_lookup}
+            if len(targets) < 2:
+                blocking_issues.append(
+                    _evolution_issue("invalid_evolution_split_event", "blocking", "Split events require at least two target states.", artifact="events")
+                )
+                break
+        if event_type == "merge":
+            sources = set(_evolution_refs(getattr(row, "source_state_ids", None)))
+            if not sources:
+                sources = {transition_lookup[ref]["source"] for ref in refs if ref in transition_lookup}
+            if len(sources) < 2:
+                blocking_issues.append(
+                    _evolution_issue("invalid_evolution_merge_event", "blocking", "Merge events require at least two source states.", artifact="events")
+                )
+                break
+        if event_type == "ambiguous" and len(refs) < 2:
+            blocking_issues.append(
+                _evolution_issue("invalid_evolution_ambiguous_event", "blocking", "Ambiguous events require at least two transition refs.", artifact="events")
+            )
+            break
+    _evolution_numeric_finite(events, ["score", "support_count"], artifact="events", blocking_issues=blocking_issues)
+    score = pd.to_numeric(events["score"], errors="coerce")
+    if score.dropna().lt(0).any() or score.dropna().gt(1).any():
+        blocking_issues.append(
+            _evolution_issue("evolution_event_score_out_of_range", "blocking", "Event score must be in [0, 1].", artifact="events")
+        )
+    return {"status": "passed", "count": int(len(events))}
+
+
+def _evolution_source_checks(
+    *,
+    result_root: Path,
+    manifest: Mapping[str, Any],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    source_artifacts = manifest.get("source_artifacts")
+    if not isinstance(source_artifacts, list) or not source_artifacts:
+        warnings.append(
+            _evolution_issue(
+                "missing_evolution_source_artifacts",
+                "warning",
+                "Evolution manifest should record at least one source artifact.",
+                artifact="manifest",
+            )
+        )
+        return {"status": "warning", "count": 0, "missing": 0}
+    missing = 0
+    for source in source_artifacts:
+        if not isinstance(source, Mapping):
+            warnings.append(_evolution_issue("invalid_evolution_source_artifact", "warning", "Source refs should be objects.", artifact="manifest"))
+            continue
+        path = source.get("path")
+        if not path:
+            warnings.append(_evolution_issue("missing_evolution_source_path", "warning", "Source ref has no path.", artifact="manifest"))
+            continue
+        source_path = Path(str(path))
+        resolved = source_path if source_path.is_absolute() else result_root / source_path
+        if not resolved.exists():
+            missing += 1
+    if missing:
+        warnings.append(
+            _evolution_issue(
+                "missing_evolution_source_artifact",
+                "warning",
+                f"{missing} evolution source artifact refs do not exist.",
+                artifact="manifest",
+            )
+        )
+    return {"status": "warning" if missing else "passed", "count": len(source_artifacts), "missing": missing}
+
+
+def _evolution_qa_checks(
+    qa_path: Path,
+    *,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not qa_path.exists():
+        warnings.append(
+            _evolution_issue("missing_evolution_qa_sidecar", "warning", "evolution_qa.json has not been written yet.", artifact="qa")
+        )
+        return {"status": "warning"}
+    try:
+        payload = json.loads(qa_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        blocking_issues.append(
+            _evolution_issue("invalid_evolution_qa_json", "blocking", f"Could not read evolution QA sidecar: {exc}", artifact="qa")
+        )
+        return {"status": "blocked"}
+    if not isinstance(payload, dict):
+        blocking_issues.append(_evolution_issue("invalid_evolution_qa_shape", "blocking", "Evolution QA sidecar must be an object.", artifact="qa"))
+        return {"status": "blocked"}
+    if payload.get("schema_version") != EVOLUTION_QA_SCHEMA_VERSION:
+        blocking_issues.append(_evolution_issue("unsupported_evolution_qa_schema", "blocking", "Unsupported evolution QA schema.", artifact="qa"))
+        return {"status": "blocked"}
+    if payload.get("status") == "blocked":
+        blocking_issues.append(_evolution_issue("evolution_qa_blocked", "blocking", "Evolution QA sidecar records blocked status.", artifact="qa"))
+        return {"status": "blocked"}
+    return {"status": "passed" if payload.get("status") == "passed" else "warning"}
+
+
+def validate_evolution_artifact(path: str | Path) -> EvolutionArtifactValidationResult:
+    """Validate a lineage-backed cluster evolution artifact directory."""
+
+    evolution_dir, manifest_path = _evolution_dir_and_manifest(path)
+    result_root = _evolution_result_root(evolution_dir)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+    manifest: dict[str, Any] = {}
+
+    if not manifest_path.exists():
+        blocking_issues.append(
+            _evolution_issue("missing_evolution_manifest", "blocking", "Missing evolution_manifest.json.", artifact="manifest")
+        )
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            blocking_issues.append(
+                _evolution_issue("invalid_evolution_manifest_json", "blocking", f"Could not read evolution manifest: {exc}", artifact="manifest")
+            )
+        if not isinstance(manifest, dict):
+            blocking_issues.append(_evolution_issue("invalid_evolution_manifest_shape", "blocking", "Evolution manifest must be an object.", artifact="manifest"))
+            manifest = {}
+
+    if manifest:
+        if manifest.get("schema_version") != EVOLUTION_MANIFEST_SCHEMA_VERSION:
+            blocking_issues.append(
+                _evolution_issue(
+                    "unsupported_evolution_manifest_schema",
+                    "blocking",
+                    f"Unsupported evolution manifest schema: {manifest.get('schema_version')}",
+                    artifact="manifest",
+                )
+            )
+        missing_fields = _evolution_required_fields(manifest)
+        if missing_fields:
+            blocking_issues.append(
+                _evolution_issue(
+                    "missing_evolution_manifest_fields",
+                    "blocking",
+                    f"Missing evolution manifest fields: {sorted(missing_fields)}",
+                    artifact="manifest",
+                )
+            )
+
+    paths = _evolution_output_paths(evolution_dir, manifest)
+    slices = _evolution_read_parquet(paths["time_slices"], artifact="time_slices", required=True, blocking_issues=blocking_issues)
+    states = _evolution_read_parquet(paths["cluster_states"], artifact="cluster_states", required=True, blocking_issues=blocking_issues)
+    transitions = _evolution_read_parquet(paths["transitions"], artifact="transitions", required=True, blocking_issues=blocking_issues)
+    lineages = _evolution_read_parquet(paths["lineages"], artifact="lineages", required=True, blocking_issues=blocking_issues)
+    events = _evolution_read_parquet(paths["events"], artifact="events", required=True, blocking_issues=blocking_issues)
+
+    checks["time_slices"] = _evolution_time_slice_checks(
+        slices,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+        warnings=warnings,
+    )
+    checks["cluster_states"] = _evolution_state_checks(
+        states,
+        slices,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+    )
+    checks["transitions"] = _evolution_transition_checks(
+        transitions,
+        slices,
+        states,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+        warnings=warnings,
+    )
+    checks["lineages"] = _evolution_lineage_checks(
+        lineages,
+        slices,
+        states,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+    )
+    checks["events"] = _evolution_event_checks(
+        events,
+        states,
+        lineages,
+        transitions,
+        manifest=manifest,
+        blocking_issues=blocking_issues,
+    )
+    checks["source_artifacts"] = _evolution_source_checks(result_root=result_root, manifest=manifest, warnings=warnings)
+    checks["qa"] = _evolution_qa_checks(paths["qa"], warnings=warnings, blocking_issues=blocking_issues)
+
+    event_counts = (
+        {str(key): int(value) for key, value in events["event_type"].value_counts().sort_index().items()}
+        if events is not None and "event_type" in events.columns
+        else {}
+    )
+    missing_refs = sum(
+        1
+        for issue in blocking_issues
+        if "ref" in str(issue.get("code", "")) or "unknown" in str(issue.get("code", ""))
+    )
+    counts = {
+        "slices": int(len(slices)) if slices is not None else 0,
+        "states": int(len(states)) if states is not None else 0,
+        "transitions": int(len(transitions)) if transitions is not None else 0,
+        "lineages": int(len(lineages)) if lineages is not None else 0,
+        "events": int(len(events)) if events is not None else 0,
+        "event_rows": int(len(events)) if events is not None else 0,
+        "missing_refs": int(missing_refs),
+        "warnings": len(warnings),
+        "blocking_issues": len(blocking_issues),
+    }
+    status = "blocked" if blocking_issues else "warning" if warnings else "passed"
+    return EvolutionArtifactValidationResult(
+        schema_version=EVOLUTION_QA_SCHEMA_VERSION,
+        evolution_id=str(manifest.get("evolution_id")) if manifest.get("evolution_id") else None,
+        status=status,
+        evolution_dir=str(evolution_dir),
+        manifest_path=str(manifest_path),
+        paths=_evolution_path_payload(paths, evolution_dir),
+        counts=counts,
+        event_counts=event_counts,
+        checks=checks,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
+
+
+def _evolution_cluster_column(membership: pd.DataFrame) -> str | None:
+    columns = _temporal_cluster_columns(membership)
+    if "cluster" in columns:
+        return "cluster"
+    return sorted(columns)[0] if columns else None
+
+
+def _evolution_build_time_slices(evolution_id: str, years: list[int], periodization: Mapping[str, Any] | None) -> pd.DataFrame:
+    if not years:
+        raise ValueError("evolution artifacts require at least one valid publication year")
+    start_year = int(periodization.get("start_year", min(years))) if periodization else min(years)
+    end_year = int(periodization.get("end_year", max(years))) if periodization else max(years)
+    if end_year < start_year:
+        raise ValueError("evolution end_year must be greater than or equal to start_year")
+    rows = []
+    for index, year in enumerate(range(start_year, end_year + 1)):
+        rows.append(
+            {
+                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "slice_id": f"year:{year}",
+                "slice_index": int(index),
+                "slice_label": str(year),
+                "start_year": int(year),
+                "end_year": int(year),
+                "unit": "year",
+                "doc_count": 0,
+                "edge_count": None,
+                "active_cluster_count": 0,
+                "unknown_year_count": 0,
+                "warning_flags": "",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _evolution_state_id(slice_id: str, cluster_key: str) -> str:
+    return _safe_id(f"{slice_id}_{cluster_key}", fallback="state")
+
+
+def _evolution_lineage_id(cluster_key: str) -> str:
+    return _safe_id(f"lineage_{cluster_key}", fallback="lineage")
+
+
+def _evolution_cluster_label_map(keywords: pd.DataFrame | None, cluster_column: str) -> dict[str, dict[str, Any]]:
+    if keywords is None or keywords.empty or "cluster_id" not in keywords.columns:
+        return {}
+    label_col = _keyword_label_column(list(keywords.columns))
+    rows: dict[str, dict[str, Any]] = {}
+    for cluster_id, group in keywords.groupby("cluster_id", dropna=False, sort=True):
+        terms = [str(value).strip() for value in group[label_col].dropna().head(5).tolist() if str(value).strip()]
+        key = f"{_temporal_level_from_cluster_column(cluster_column)}:{cluster_id}"
+        rows[key] = {
+            "label": terms[0] if terms else key,
+            "top_terms": terms,
+            "term_count": int(len(terms)),
+        }
+    return rows
+
+
+def _evolution_state_rows(
+    evolution_id: str,
+    records: pd.DataFrame,
+    membership: pd.DataFrame,
+    slices: pd.DataFrame,
+    *,
+    year_column: str,
+    uid_column: str,
+    cluster_column: str,
+    keywords: pd.DataFrame | None,
+) -> tuple[pd.DataFrame, dict[str, set[str]]]:
+    level = _temporal_level_from_cluster_column(cluster_column)
+    label_map = _evolution_cluster_label_map(keywords, cluster_column)
+    work = records[[uid_column, year_column]].copy()
+    work[uid_column] = work[uid_column].map(str)
+    work["_evolution_year"] = pd.to_numeric(work[year_column], errors="coerce")
+    mem = membership[["uid", cluster_column]].copy()
+    mem["uid"] = mem["uid"].map(str)
+    joined = work.merge(mem, left_on=uid_column, right_on="uid", how="inner")
+    year_to_slice = {
+        int(row.start_year): (str(row.slice_id), int(row.slice_index))
+        for row in slices.itertuples(index=False)
+    }
+    rows = []
+    state_docs: dict[str, set[str]] = {}
+    grouped = (
+        joined.dropna(subset=["_evolution_year", cluster_column])
+        .groupby(["_evolution_year", cluster_column], sort=True)
+        .agg(doc_count=(uid_column, "count"), work_ids=(uid_column, lambda values: sorted(set(map(str, values)))))
+        .reset_index()
+    )
+    for _, item in grouped.iterrows():
+        year = _coerce_int(item["_evolution_year"])
+        if year is None or year not in year_to_slice:
+            continue
+        cluster_id = str(item[cluster_column])
+        cluster_key = f"{level}:{cluster_id}"
+        slice_id, slice_index = year_to_slice[year]
+        state_id = _evolution_state_id(slice_id, cluster_key)
+        label_info = label_map.get(cluster_key, {})
+        top_terms = label_info.get("top_terms") or []
+        doc_ids = set(item["work_ids"])
+        state_docs[state_id] = doc_ids
+        rows.append(
+            {
+                "schema_version": EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "state_id": state_id,
+                "slice_id": slice_id,
+                "slice_index": int(slice_index),
+                "cluster_key": cluster_key,
+                "cluster_label": str(label_info.get("label") or cluster_key),
+                "doc_count": int(item["doc_count"]),
+                "term_count": int(label_info.get("term_count") or len(top_terms)),
+                "top_terms": json.dumps(top_terms, ensure_ascii=True),
+                "cluster_uid": cluster_key,
+                "cluster_id": cluster_id,
+                "level": level,
+                "representative_work_ids": json.dumps(sorted(doc_ids), ensure_ascii=True),
+                "source_cluster_key": cluster_key,
+                "warning_flags": "",
+            }
+        )
+    states = pd.DataFrame(rows)
+    if states.empty:
+        states = pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_STATE_COLUMNS))
+    return states, state_docs
+
+
+def _evolution_update_slice_counts(slices: pd.DataFrame, states: pd.DataFrame) -> pd.DataFrame:
+    out = slices.copy()
+    if states.empty:
+        return out
+    counts = states.groupby("slice_id").agg(doc_count=("doc_count", "sum"), active_cluster_count=("state_id", "count"))
+    for index, row in out.iterrows():
+        slice_id = row["slice_id"]
+        if slice_id in counts.index:
+            out.at[index, "doc_count"] = int(counts.loc[slice_id, "doc_count"])
+            out.at[index, "active_cluster_count"] = int(counts.loc[slice_id, "active_cluster_count"])
+    return out
+
+
+def _evolution_transition_rows(
+    evolution_id: str,
+    slices: pd.DataFrame,
+    states: pd.DataFrame,
+    state_docs: Mapping[str, set[str]],
+    *,
+    matching_method: Mapping[str, Any],
+) -> pd.DataFrame:
+    if states.empty or len(slices) < 2:
+        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
+    metric = str(matching_method.get("metric") or "projected_cluster_identity")
+    threshold = float(matching_method.get("min_transition_score", 0.5))
+    states_by_slice = {slice_id: group.copy() for slice_id, group in states.groupby("slice_id", sort=False)}
+    ordered_slices = slices.sort_values("slice_index", kind="stable")
+    rows = []
+    for source_slice, target_slice in zip(ordered_slices.iloc[:-1].itertuples(index=False), ordered_slices.iloc[1:].itertuples(index=False)):
+        source_states = states_by_slice.get(str(source_slice.slice_id), pd.DataFrame())
+        target_states = states_by_slice.get(str(target_slice.slice_id), pd.DataFrame())
+        if source_states.empty or target_states.empty:
+            continue
+        for source in source_states.itertuples(index=False):
+            for target in target_states.itertuples(index=False):
+                if metric == "jaccard_doc_overlap":
+                    source_docs = state_docs.get(str(source.state_id), set())
+                    target_docs = state_docs.get(str(target.state_id), set())
+                    union = source_docs | target_docs
+                    shared = len(source_docs & target_docs)
+                    score = float(shared / len(union)) if union else 0.0
+                    support = shared
+                else:
+                    same_cluster = str(source.cluster_key) == str(target.cluster_key)
+                    score = 1.0 if same_cluster else 0.0
+                    support = min(int(source.doc_count), int(target.doc_count)) if same_cluster else 0
+                if score < threshold:
+                    continue
+                transition_id = _safe_id(f"{source.state_id}_to_{target.state_id}_{metric}", fallback="transition")
+                rows.append(
+                    {
+                        "schema_version": EVOLUTION_TRANSITIONS_SCHEMA_VERSION,
+                        "evolution_id": evolution_id,
+                        "transition_id": transition_id,
+                        "source_state_id": str(source.state_id),
+                        "target_state_id": str(target.state_id),
+                        "source_slice_id": str(source.slice_id),
+                        "target_slice_id": str(target.slice_id),
+                        "metric": metric,
+                        "score": float(score),
+                        "support_count": int(support),
+                        "source_doc_count": int(source.doc_count),
+                        "target_doc_count": int(target.doc_count),
+                        "relation": "continuation",
+                        "shared_doc_count": int(support),
+                        "rank_from_source": 1,
+                        "rank_to_target": 1,
+                        "warning_flags": "",
+                    }
+                )
+    return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
+
+
+def _evolution_lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
+    if states.empty:
+        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_LINEAGE_COLUMNS))
+    incoming_scores: dict[str, list[float]] = {}
+    outgoing_scores: dict[str, list[float]] = {}
+    if not transitions.empty:
+        for row in transitions.itertuples(index=False):
+            incoming_scores.setdefault(str(row.target_state_id), []).append(float(row.score))
+            outgoing_scores.setdefault(str(row.source_state_id), []).append(float(row.score))
+    rows = []
+    for cluster_key, group in states.sort_values(["cluster_key", "slice_index"], kind="stable").groupby("cluster_key", sort=True):
+        ordered = group.sort_values("slice_index", kind="stable")
+        lineage_id = _evolution_lineage_id(str(cluster_key))
+        for offset, row in enumerate(ordered.itertuples(index=False)):
+            if len(ordered) == 1:
+                role = "singleton"
+            elif offset == 0:
+                role = "root"
+            elif offset == len(ordered) - 1:
+                role = "terminal"
+            else:
+                role = "continuation"
+            scores = incoming_scores.get(str(row.state_id), []) + outgoing_scores.get(str(row.state_id), [])
+            stability = float(sum(scores) / len(scores)) if scores else 1.0
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_LINEAGES_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "lineage_id": lineage_id,
+                    "state_id": str(row.state_id),
+                    "slice_id": str(row.slice_id),
+                    "slice_index": int(row.slice_index),
+                    "role": role,
+                    "stability_score": max(0.0, min(1.0, stability)),
+                    "root_state_id": str(ordered.iloc[0]["state_id"]),
+                    "lineage_label": str(row.cluster_label),
+                    "event_refs": "[]",
+                    "warning_flags": "",
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _lineage_by_state(lineages: pd.DataFrame) -> dict[str, str]:
+    if lineages.empty or "state_id" not in lineages.columns:
+        return {}
+    return {str(row.state_id): str(row.lineage_id) for row in lineages.itertuples(index=False)}
+
+
+def _evolution_event_rows_from_graph(
+    evolution_id: str,
+    slices: pd.DataFrame,
+    states: pd.DataFrame,
+    transitions: pd.DataFrame,
+    lineages: pd.DataFrame,
+    *,
+    event_rules: Mapping[str, Any],
+) -> pd.DataFrame:
+    if states.empty:
+        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_EVENT_COLUMNS))
+    continuation_min = float(event_rules.get("continuation_min_score", 0.5))
+    ambiguous_margin = float(event_rules.get("ambiguous_score_margin", 0.05))
+    lineage_lookup = _lineage_by_state(lineages)
+    last_slice_index = int(slices["slice_index"].max()) if not slices.empty else 0
+    incoming: dict[str, list[Any]] = {}
+    outgoing: dict[str, list[Any]] = {}
+    if not transitions.empty:
+        for row in transitions.itertuples(index=False):
+            if float(row.score) < continuation_min:
+                continue
+            outgoing.setdefault(str(row.source_state_id), []).append(row)
+            incoming.setdefault(str(row.target_state_id), []).append(row)
+    rows = []
+    for row in transitions.itertuples(index=False) if not transitions.empty else []:
+        if str(row.relation) != "continuation" or float(row.score) < continuation_min:
+            continue
+        event_id = _safe_id(f"continuation_{row.transition_id}", fallback="continuation_event")
+        rows.append(
+            {
+                "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "event_id": event_id,
+                "event_type": "continuation",
+                "slice_id": str(row.target_slice_id),
+                "state_id": str(row.target_state_id),
+                "lineage_id": lineage_lookup.get(str(row.target_state_id)),
+                "transition_refs": json.dumps([str(row.transition_id)], ensure_ascii=True),
+                "score": float(row.score),
+                "support_count": int(row.support_count),
+                "method": "projected_membership_transition",
+                "source_state_ids": json.dumps([str(row.source_state_id)], ensure_ascii=True),
+                "target_state_ids": json.dumps([str(row.target_state_id)], ensure_ascii=True),
+                "event_label": "Continuation",
+                "warning_flags": "",
+            }
+        )
+    for state in states.itertuples(index=False):
+        state_id = str(state.state_id)
+        slice_index = int(state.slice_index)
+        in_rows = incoming.get(state_id, [])
+        out_rows = outgoing.get(state_id, [])
+        if slice_index > 0 and not in_rows:
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "event_id": _safe_id(f"emergence_{state_id}", fallback="emergence_event"),
+                    "event_type": "emergence",
+                    "slice_id": str(state.slice_id),
+                    "state_id": state_id,
+                    "lineage_id": lineage_lookup.get(state_id),
+                    "transition_refs": "[]",
+                    "score": 1.0,
+                    "support_count": int(state.doc_count),
+                    "method": "no_incoming_transition_above_threshold",
+                    "source_state_ids": "[]",
+                    "target_state_ids": json.dumps([state_id], ensure_ascii=True),
+                    "event_label": "Emergence",
+                    "warning_flags": "",
+                }
+            )
+        if slice_index < last_slice_index and not out_rows:
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "event_id": _safe_id(f"decline_{state_id}", fallback="decline_event"),
+                    "event_type": "decline",
+                    "slice_id": str(state.slice_id),
+                    "state_id": state_id,
+                    "lineage_id": lineage_lookup.get(state_id),
+                    "transition_refs": "[]",
+                    "score": 1.0,
+                    "support_count": int(state.doc_count),
+                    "method": "no_outgoing_transition_above_threshold",
+                    "source_state_ids": json.dumps([state_id], ensure_ascii=True),
+                    "target_state_ids": "[]",
+                    "event_label": "Decline",
+                    "warning_flags": "",
+                }
+            )
+        if len(out_rows) >= 2:
+            scores = sorted((float(item.score) for item in out_rows), reverse=True)
+            if len(scores) >= 2 and abs(scores[0] - scores[1]) <= ambiguous_margin:
+                rows.append(
+                    {
+                        "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+                        "evolution_id": evolution_id,
+                        "event_id": _safe_id(f"ambiguous_{state_id}", fallback="ambiguous_event"),
+                        "event_type": "ambiguous",
+                        "slice_id": str(state.slice_id),
+                        "state_id": state_id,
+                        "lineage_id": lineage_lookup.get(state_id),
+                        "transition_refs": json.dumps([str(item.transition_id) for item in out_rows], ensure_ascii=True),
+                        "score": float(scores[0]),
+                        "support_count": int(sum(int(item.support_count) for item in out_rows)),
+                        "method": "near_tie_transition_scores",
+                        "source_state_ids": json.dumps([state_id], ensure_ascii=True),
+                        "target_state_ids": json.dumps([str(item.target_state_id) for item in out_rows], ensure_ascii=True),
+                        "event_label": "Ambiguous transition",
+                        "warning_flags": "",
+                    }
+                )
+    return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_EVENT_COLUMNS))
+
+
+def _evolution_default_sources(root: Path, artifacts: ResultArtifacts, temporal_manifest: str | Path | None = None) -> list[dict[str, Any]]:
+    sources: list[dict[str, Any]] = []
+    for role, path in [
+        ("records", artifacts.abstracts_path),
+        ("membership", artifacts.membership_path),
+        ("keywords", artifacts.keywords_path),
+        ("edges", artifacts.edges_path),
+    ]:
+        rel_path = _rel(path, root)
+        if rel_path:
+            sources.append({"role": role, "path": rel_path})
+    if temporal_manifest:
+        temporal_path = Path(temporal_manifest)
+        sources.append({"role": "temporal", "path": _rel(temporal_path, root) or str(temporal_manifest)})
+    return sources
+
+
+def _write_evolution_payload(
+    root: Path,
+    evolution_dir: Path,
+    *,
+    manifest: dict[str, Any],
+    slices: pd.DataFrame,
+    states: pd.DataFrame,
+    transitions: pd.DataFrame,
+    lineages: pd.DataFrame,
+    events: pd.DataFrame,
+) -> dict[str, Any]:
+    evolution_dir.mkdir(parents=True, exist_ok=True)
+    outputs = manifest["outputs"]
+    slices.to_parquet(evolution_dir / outputs["time_slices"], index=False)
+    states.to_parquet(evolution_dir / outputs["cluster_states"], index=False)
+    transitions.to_parquet(evolution_dir / outputs["transitions"], index=False)
+    lineages.to_parquet(evolution_dir / outputs["lineages"], index=False)
+    events.to_parquet(evolution_dir / outputs["events"], index=False)
+    (evolution_dir / "evolution_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_evolution_artifact(evolution_dir)
+    qa_payload = validation.to_dict()
+    qa_payload["warnings"] = [
+        warning for warning in qa_payload["warnings"] if warning.get("code") != "missing_evolution_qa_sidecar"
+    ]
+    qa_payload["counts"]["warnings"] = len(qa_payload["warnings"])
+    if qa_payload["status"] == "warning" and not qa_payload["warnings"]:
+        qa_payload["status"] = "passed"
+    (evolution_dir / outputs["qa"]).write_text(json.dumps(qa_payload, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_evolution_artifact(evolution_dir)
+    return {
+        "schema_version": EVOLUTION_MANIFEST_SCHEMA_VERSION,
+        "evolution_id": manifest["evolution_id"],
+        "evolution_dir": evolution_dir,
+        "manifest_path": evolution_dir / "evolution_manifest.json",
+        "time_slices_path": evolution_dir / outputs["time_slices"],
+        "cluster_states_path": evolution_dir / outputs["cluster_states"],
+        "transitions_path": evolution_dir / outputs["transitions"],
+        "lineages_path": evolution_dir / outputs["lineages"],
+        "events_path": evolution_dir / outputs["events"],
+        "qa_path": evolution_dir / outputs["qa"],
+        "qa": validation.to_dict(),
+    }
+
+
+def write_evolution_artifacts(
+    result_root: str | Path,
+    *,
+    evolution_id: str,
+    records_df: pd.DataFrame,
+    membership_df: pd.DataFrame,
+    keywords_df: pd.DataFrame | None = None,
+    temporal_manifest: str | Path | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    source_artifacts: list[Mapping[str, Any]] | None = None,
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    output_dir: str | Path | None = None,
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Write v1 membership-projection cluster evolution artifacts."""
+
+    root = Path(result_root).expanduser().resolve()
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    if records_df.empty:
+        raise ValueError("records_df must not be empty")
+    if membership_df.empty:
+        raise ValueError("membership_df must not be empty")
+    year_column = _temporal_year_column(records_df)
+    uid_column = _temporal_uid_column(records_df)
+    cluster_column = _evolution_cluster_column(membership_df)
+    if year_column is None:
+        raise ValueError("records_df must include pubyear, year, or publication_year")
+    if uid_column is None:
+        raise ValueError("records_df must include uid, work_id, paper_id, or id")
+    if "uid" not in membership_df.columns:
+        raise ValueError("membership_df must include uid")
+    if cluster_column is None:
+        raise ValueError("membership_df must include cluster or cluster_* column")
+    years_raw = pd.to_numeric(records_df[year_column], errors="coerce")
+    valid_years = sorted({int(year) for year in years_raw.dropna().tolist() if int(year) > 0})
+    if not valid_years:
+        raise ValueError("records_df has no valid publication years")
+    matching = {
+        "metric": "projected_cluster_identity",
+        "min_transition_score": 0.5,
+        "min_support_count": 1,
+        "tie_policy": "keep_all_above_threshold",
+        "normalization": "static_membership_projection",
+    }
+    if matching_method:
+        matching.update(dict(matching_method))
+    rules = {
+        "continuation_min_score": 0.5,
+        "split_min_children": 2,
+        "merge_min_parents": 2,
+        "emergence_max_incoming_score": 0.0,
+        "decline_max_outgoing_score": 0.0,
+        "ambiguous_score_margin": 0.05,
+    }
+    if event_rules:
+        rules.update(dict(event_rules))
+    slices = _evolution_build_time_slices(evolution_id, valid_years, periodization)
+    states, state_docs = _evolution_state_rows(
+        evolution_id,
+        records_df,
+        membership_df,
+        slices,
+        year_column=year_column,
+        uid_column=uid_column,
+        cluster_column=cluster_column,
+        keywords=keywords_df,
+    )
+    slices = _evolution_update_slice_counts(slices, states)
+    transitions = _evolution_transition_rows(
+        evolution_id,
+        slices,
+        states,
+        state_docs,
+        matching_method=matching,
+    )
+    lineages = _evolution_lineage_rows(evolution_id, states, transitions)
+    events = _evolution_event_rows_from_graph(
+        evolution_id,
+        slices,
+        states,
+        transitions,
+        lineages,
+        event_rules=rules,
+    )
+    evolution_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "evolution"
+    outputs = {
+        "time_slices": "time_slices.parquet",
+        "cluster_states": "cluster_states.parquet",
+        "transitions": "transitions.parquet",
+        "lineages": "lineages.parquet",
+        "events": "evolution_events.parquet",
+        "qa": "evolution_qa.json",
+    }
+    sources = (
+        [dict(item) for item in source_artifacts]
+        if source_artifacts is not None
+        else _evolution_default_sources(root, infer_result_artifacts(root), temporal_manifest=temporal_manifest)
+    )
+    periodization_payload = {
+        "unit": "year",
+        "window_years": 1,
+        "step_years": 1,
+        "start_year": int(slices["start_year"].min()),
+        "end_year": int(slices["start_year"].max()),
+        "state_method": "membership_projection",
+        "include_unknown_year": False,
+    }
+    if periodization:
+        periodization_payload.update(dict(periodization))
+        periodization_payload["unit"] = "year"
+    manifest = {
+        "schema_version": EVOLUTION_MANIFEST_SCHEMA_VERSION,
+        "evolution_id": evolution_id,
+        "title": title or evolution_id.replace("_", " ").title(),
+        "result_id": _matrix_existing_result_id(root),
+        "slice_method": periodization_payload,
+        "matching_method": matching,
+        "event_rules": rules,
+        "entity_scope": {
+            "cluster_level": _temporal_level_from_cluster_column(cluster_column),
+            "cluster_id_namespace": "projected_static_membership",
+            "document_universe": "records_with_valid_pubyear_and_membership",
+            "filter_refs": [],
+        },
+        "metrics": [
+            {
+                "name": str(matching["metric"]),
+                "value_type": "float",
+                "range": [0.0, 1.0],
+                "interpretation": "continuity score between adjacent slice-local cluster states",
+            },
+            {
+                "name": "lineage_stability",
+                "value_type": "float",
+                "range": [0.0, 1.0],
+                "interpretation": "aggregate continuity strength across a lineage",
+            },
+        ],
+        "source_artifacts": sources,
+        "rule_sets": [dict(item) for item in (rule_sets or [])],
+        "transforms": [
+            {"step": "parse_publication_years"},
+            {"step": "build_time_slices"},
+            {"step": "project_static_membership_to_slices", "cluster_column": cluster_column},
+            {"step": "score_adjacent_slice_transitions"},
+            {"step": "build_lineages"},
+            {"step": "assign_evolution_events"},
+            *[dict(item) for item in (transforms or [])],
+        ],
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+    return _write_evolution_payload(
+        root,
+        evolution_dir,
+        manifest=manifest,
+        slices=slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+        events=events,
+    )
+
+
+def _synthetic_evolution_state(
+    evolution_id: str,
+    state_id: str,
+    slice_id: str,
+    slice_index: int,
+    cluster_key: str,
+    doc_count: int = 3,
+) -> dict[str, Any]:
+    return {
+        "schema_version": EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
+        "evolution_id": evolution_id,
+        "state_id": state_id,
+        "slice_id": slice_id,
+        "slice_index": int(slice_index),
+        "cluster_key": cluster_key,
+        "cluster_label": cluster_key,
+        "doc_count": int(doc_count),
+        "term_count": 1,
+        "top_terms": json.dumps([cluster_key], ensure_ascii=True),
+        "cluster_uid": cluster_key,
+        "cluster_id": cluster_key.split(":")[-1],
+        "level": "synthetic",
+        "representative_work_ids": "[]",
+        "source_cluster_key": cluster_key,
+        "warning_flags": "",
+    }
+
+
+def _synthetic_evolution_transition(
+    evolution_id: str,
+    transition_id: str,
+    source: str,
+    target: str,
+    source_slice: str,
+    target_slice: str,
+    *,
+    relation: str,
+    score: float,
+    support_count: int = 3,
+) -> dict[str, Any]:
+    return {
+        "schema_version": EVOLUTION_TRANSITIONS_SCHEMA_VERSION,
+        "evolution_id": evolution_id,
+        "transition_id": transition_id,
+        "source_state_id": source,
+        "target_state_id": target,
+        "source_slice_id": source_slice,
+        "target_slice_id": target_slice,
+        "metric": "synthetic_overlap",
+        "score": float(score),
+        "support_count": int(support_count),
+        "source_doc_count": int(support_count),
+        "target_doc_count": int(support_count),
+        "relation": relation,
+        "shared_doc_count": int(support_count),
+        "rank_from_source": 1,
+        "rank_to_target": 1,
+        "warning_flags": "",
+    }
+
+
+def _synthetic_evolution_event(
+    evolution_id: str,
+    event_id: str,
+    event_type: str,
+    slice_id: str,
+    state_id: str,
+    lineage_id: str,
+    refs: list[str],
+    *,
+    source_state_ids: list[str] | None = None,
+    target_state_ids: list[str] | None = None,
+    score: float = 1.0,
+    support_count: int = 3,
+) -> dict[str, Any]:
+    return {
+        "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+        "evolution_id": evolution_id,
+        "event_id": event_id,
+        "event_type": event_type,
+        "slice_id": slice_id,
+        "state_id": state_id,
+        "lineage_id": lineage_id,
+        "transition_refs": json.dumps(refs, ensure_ascii=True),
+        "score": float(score),
+        "support_count": int(support_count),
+        "method": "synthetic_smoke_fixture",
+        "source_state_ids": json.dumps(source_state_ids or [], ensure_ascii=True),
+        "target_state_ids": json.dumps(target_state_ids or [], ensure_ascii=True),
+        "event_label": event_type.replace("_", " ").title(),
+        "warning_flags": "",
+    }
+
+
+def write_evolution_synthetic_smoke_artifact(
+    result_root: str | Path,
+    *,
+    evolution_id: str = "synthetic_all_events",
+    output_dir: str | Path | None = None,
+) -> dict[str, Any]:
+    """Write a deterministic evolution smoke artifact that covers every event type."""
+
+    root = Path(result_root).expanduser().resolve()
+    evolution_id = _safe_id(evolution_id, fallback="synthetic_all_events")
+    evolution_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "evolution"
+    outputs = {
+        "time_slices": "time_slices.parquet",
+        "cluster_states": "cluster_states.parquet",
+        "transitions": "transitions.parquet",
+        "lineages": "lineages.parquet",
+        "events": "evolution_events.parquet",
+        "qa": "evolution_qa.json",
+        "synthetic_smoke": "synthetic_smoke_example.json",
+    }
+    slices = pd.DataFrame(
+        [
+            {
+                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "slice_id": "year:2020",
+                "slice_index": 0,
+                "slice_label": "2020",
+                "start_year": 2020,
+                "end_year": 2020,
+                "unit": "year",
+                "doc_count": 18,
+                "edge_count": None,
+                "active_cluster_count": 6,
+                "unknown_year_count": 0,
+                "warning_flags": "",
+            },
+            {
+                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "slice_id": "year:2021",
+                "slice_index": 1,
+                "slice_label": "2021",
+                "start_year": 2021,
+                "end_year": 2021,
+                "unit": "year",
+                "doc_count": 18,
+                "edge_count": None,
+                "active_cluster_count": 7,
+                "unknown_year_count": 0,
+                "warning_flags": "",
+            },
+            {
+                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "slice_id": "year:2022",
+                "slice_index": 2,
+                "slice_label": "2022",
+                "start_year": 2022,
+                "end_year": 2022,
+                "unit": "year",
+                "doc_count": 6,
+                "edge_count": None,
+                "active_cluster_count": 2,
+                "unknown_year_count": 0,
+                "warning_flags": "",
+            },
+        ]
+    )
+    state_specs = [
+        ("A20", "year:2020", 0, "synthetic:A"),
+        ("A21", "year:2021", 1, "synthetic:A"),
+        ("A22", "year:2022", 2, "synthetic:A"),
+        ("B20", "year:2020", 0, "synthetic:B"),
+        ("B21a", "year:2021", 1, "synthetic:B_a"),
+        ("B21b", "year:2021", 1, "synthetic:B_b"),
+        ("C20a", "year:2020", 0, "synthetic:C_a"),
+        ("C20b", "year:2020", 0, "synthetic:C_b"),
+        ("C21", "year:2021", 1, "synthetic:C"),
+        ("D21", "year:2021", 1, "synthetic:D"),
+        ("D22", "year:2022", 2, "synthetic:D"),
+        ("E20", "year:2020", 0, "synthetic:E"),
+        ("X20", "year:2020", 0, "synthetic:X"),
+        ("Y21", "year:2021", 1, "synthetic:Y"),
+        ("Z21", "year:2021", 1, "synthetic:Z"),
+    ]
+    states = pd.DataFrame([_synthetic_evolution_state(evolution_id, *spec) for spec in state_specs])
+    transitions = pd.DataFrame(
+        [
+            _synthetic_evolution_transition(evolution_id, "t_A20_A21", "A20", "A21", "year:2020", "year:2021", relation="continuation", score=0.95),
+            _synthetic_evolution_transition(evolution_id, "t_A21_A22", "A21", "A22", "year:2021", "year:2022", relation="continuation", score=0.96),
+            _synthetic_evolution_transition(evolution_id, "t_B20_B21a", "B20", "B21a", "year:2020", "year:2021", relation="split_child", score=0.76),
+            _synthetic_evolution_transition(evolution_id, "t_B20_B21b", "B20", "B21b", "year:2020", "year:2021", relation="split_child", score=0.74),
+            _synthetic_evolution_transition(evolution_id, "t_C20a_C21", "C20a", "C21", "year:2020", "year:2021", relation="merge_parent", score=0.81),
+            _synthetic_evolution_transition(evolution_id, "t_C20b_C21", "C20b", "C21", "year:2020", "year:2021", relation="merge_parent", score=0.79),
+            _synthetic_evolution_transition(evolution_id, "t_D21_D22", "D21", "D22", "year:2021", "year:2022", relation="continuation", score=0.88),
+            _synthetic_evolution_transition(evolution_id, "t_X20_Y21", "X20", "Y21", "year:2020", "year:2021", relation="ambiguous", score=0.61),
+            _synthetic_evolution_transition(evolution_id, "t_X20_Z21", "X20", "Z21", "year:2020", "year:2021", relation="ambiguous", score=0.60),
+        ]
+    )
+    lineage_map = {
+        "A20": "lineage_A",
+        "A21": "lineage_A",
+        "A22": "lineage_A",
+        "B20": "lineage_B",
+        "B21a": "lineage_B_a",
+        "B21b": "lineage_B_b",
+        "C20a": "lineage_C_a",
+        "C20b": "lineage_C_b",
+        "C21": "lineage_C",
+        "D21": "lineage_D",
+        "D22": "lineage_D",
+        "E20": "lineage_E",
+        "X20": "lineage_X",
+        "Y21": "lineage_Y",
+        "Z21": "lineage_Z",
+    }
+    lineages = pd.DataFrame(
+        [
+            {
+                "schema_version": EVOLUTION_LINEAGES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "lineage_id": lineage_map[state.state_id],
+                "state_id": state.state_id,
+                "slice_id": state.slice_id,
+                "slice_index": int(state.slice_index),
+                "role": "continuation" if state.state_id in {"A21", "D22"} else "terminal" if state.state_id in {"A22"} else "root",
+                "stability_score": 1.0,
+                "root_state_id": state.state_id,
+                "lineage_label": state.cluster_label,
+                "event_refs": "[]",
+                "warning_flags": "",
+            }
+            for state in states.itertuples(index=False)
+        ]
+    )
+    events = pd.DataFrame(
+        [
+            _synthetic_evolution_event(evolution_id, "e_cont_A20_A21", "continuation", "year:2021", "A21", "lineage_A", ["t_A20_A21"], source_state_ids=["A20"], target_state_ids=["A21"], score=0.95),
+            _synthetic_evolution_event(evolution_id, "e_cont_A21_A22", "continuation", "year:2022", "A22", "lineage_A", ["t_A21_A22"], source_state_ids=["A21"], target_state_ids=["A22"], score=0.96),
+            _synthetic_evolution_event(evolution_id, "e_cont_D21_D22", "continuation", "year:2022", "D22", "lineage_D", ["t_D21_D22"], source_state_ids=["D21"], target_state_ids=["D22"], score=0.88),
+            _synthetic_evolution_event(evolution_id, "e_split_B20", "split", "year:2020", "B20", "lineage_B", ["t_B20_B21a", "t_B20_B21b"], source_state_ids=["B20"], target_state_ids=["B21a", "B21b"], score=0.76, support_count=6),
+            _synthetic_evolution_event(evolution_id, "e_merge_C21", "merge", "year:2021", "C21", "lineage_C", ["t_C20a_C21", "t_C20b_C21"], source_state_ids=["C20a", "C20b"], target_state_ids=["C21"], score=0.81, support_count=6),
+            _synthetic_evolution_event(evolution_id, "e_emergence_D21", "emergence", "year:2021", "D21", "lineage_D", [], target_state_ids=["D21"], score=1.0),
+            _synthetic_evolution_event(evolution_id, "e_decline_E20", "decline", "year:2020", "E20", "lineage_E", [], source_state_ids=["E20"], score=1.0),
+            _synthetic_evolution_event(evolution_id, "e_ambiguous_X20", "ambiguous", "year:2020", "X20", "lineage_X", ["t_X20_Y21", "t_X20_Z21"], source_state_ids=["X20"], target_state_ids=["Y21", "Z21"], score=0.61, support_count=6),
+        ]
+    )
+    smoke = {
+        "schema_version": EVOLUTION_SYNTHETIC_SMOKE_SCHEMA_VERSION,
+        "evolution_id": evolution_id,
+        "time_slices": [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+            {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+            {"slice_id": "year:2022", "slice_index": 2, "start_year": 2022, "end_year": 2022},
+        ],
+        "expected_event_counts": {
+            "continuation": 3,
+            "split": 1,
+            "merge": 1,
+            "emergence": 1,
+            "decline": 1,
+            "ambiguous": 1,
+        },
+        "expected_blocking_issues": [],
+    }
+    evolution_dir.mkdir(parents=True, exist_ok=True)
+    (evolution_dir / outputs["synthetic_smoke"]).write_text(json.dumps(smoke, indent=2, sort_keys=True), encoding="utf-8")
+    manifest = {
+        "schema_version": EVOLUTION_MANIFEST_SCHEMA_VERSION,
+        "evolution_id": evolution_id,
+        "title": "Synthetic All-Events Evolution Smoke",
+        "result_id": _matrix_existing_result_id(root),
+        "slice_method": {
+            "unit": "year",
+            "window_years": 1,
+            "step_years": 1,
+            "start_year": 2020,
+            "end_year": 2022,
+            "state_method": "synthetic_fixture",
+            "include_unknown_year": False,
+        },
+        "matching_method": {
+            "metric": "synthetic_overlap",
+            "min_transition_score": 0.5,
+            "min_support_count": 1,
+            "tie_policy": "fixture_declared",
+            "normalization": "fixture",
+        },
+        "event_rules": {
+            "continuation_min_score": 0.5,
+            "split_min_children": 2,
+            "merge_min_parents": 2,
+            "emergence_max_incoming_score": 0.0,
+            "decline_max_outgoing_score": 0.0,
+            "ambiguous_score_margin": 0.05,
+        },
+        "entity_scope": {
+            "cluster_level": "synthetic",
+            "cluster_id_namespace": "fixture_state_ids",
+            "document_universe": "synthetic_fixture",
+            "filter_refs": [],
+        },
+        "metrics": [
+            {"name": "synthetic_overlap", "value_type": "float", "range": [0.0, 1.0], "interpretation": "fixture transition confidence"},
+            {"name": "lineage_stability", "value_type": "float", "range": [0.0, 1.0], "interpretation": "fixture lineage stability"},
+        ],
+        "source_artifacts": [{"role": "synthetic_fixture", "path": _rel(evolution_dir / outputs["synthetic_smoke"], root)}],
+        "rule_sets": [],
+        "transforms": [{"step": "write_synthetic_all_event_fixture"}],
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+    return _write_evolution_payload(
+        root,
+        evolution_dir,
+        manifest=manifest,
+        slices=slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+        events=events,
+    )
+
+
 def _non_empty_payload(value: Any) -> bool:
     if value is None:
         return False
@@ -4521,6 +6300,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "matrix_summaries": [],
         "temporal_manifest_artifacts": [_rel(path, root) for path in artifacts.temporal_manifest_paths],
         "temporal_summaries": [],
+        "evolution_manifest_artifacts": [_rel(path, root) for path in artifacts.evolution_manifest_paths],
+        "evolution_summaries": [],
         "edge_evidence_artifacts": [_rel(path, root) for path in artifacts.edge_evidence_paths],
         "evolution_artifacts": [_rel(path, root) for path in artifacts.evolution_paths],
         "narrative_artifacts": [_rel(path, root) for path in artifacts.narrative_paths],
@@ -4721,6 +6502,52 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
             )
 
+    evolution_artifacts = 0
+    stable_evolution_artifacts = 0
+    evolution_slices = 0
+    evolution_states = 0
+    evolution_transitions = 0
+    evolution_lineages = 0
+    evolution_event_rows = 0
+    for manifest_path in artifacts.evolution_manifest_paths:
+        evolution_validation = validate_evolution_artifact(manifest_path)
+        evolution_payload = evolution_validation.to_dict()
+        artifact_info["evolution_summaries"].append(
+            {
+                "evolution_id": evolution_payload.get("evolution_id"),
+                "status": evolution_payload.get("status"),
+                "path": _rel(manifest_path, root),
+                "counts": evolution_payload.get("counts", {}),
+                "event_counts": evolution_payload.get("event_counts", {}),
+            }
+        )
+        evolution_artifacts += 1
+        evolution_slices += int(evolution_validation.counts.get("slices", 0))
+        evolution_states += int(evolution_validation.counts.get("states", 0))
+        evolution_transitions += int(evolution_validation.counts.get("transitions", 0))
+        evolution_lineages += int(evolution_validation.counts.get("lineages", 0))
+        evolution_event_rows += int(evolution_validation.counts.get("event_rows", 0))
+        if evolution_validation.status == "passed":
+            stable_evolution_artifacts += 1
+        for issue in evolution_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "evolution_artifact_blocked"),
+                    "error",
+                    str(issue.get("message") or "Evolution artifact validation failed."),
+                    "evolution",
+                )
+            )
+        for warning in evolution_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "evolution_artifact_warning"),
+                    "warning",
+                    str(warning.get("message") or "Evolution artifact has validation warnings."),
+                    "evolution",
+                )
+            )
+
     _reconcile_counts(
         artifacts=artifacts,
         membership_info=membership_info,
@@ -4737,6 +6564,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
             artifacts.edges_path,
             artifacts.matrix_manifest_paths,
             artifacts.temporal_manifest_paths,
+            artifacts.evolution_manifest_paths,
         ]
     ):
         issues.append(
@@ -4770,7 +6598,14 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "temporal_series_rows": int(temporal_series_rows),
         "temporal_event_rows": int(temporal_event_rows),
         "temporal_missing_years": int(temporal_missing_years),
-        "evolution_artifacts": len(artifacts.evolution_paths),
+        "evolution_artifacts": int(evolution_artifacts + len(artifacts.evolution_paths)),
+        "stable_evolution_artifacts": int(stable_evolution_artifacts),
+        "evolution_slices": int(evolution_slices),
+        "evolution_states": int(evolution_states),
+        "evolution_transitions": int(evolution_transitions),
+        "evolution_lineages": int(evolution_lineages),
+        "evolution_event_rows": int(evolution_event_rows),
+        "legacy_evolution_artifacts": len(artifacts.evolution_paths),
         "narrative_artifacts": len(artifacts.narrative_paths),
         "keyword_artifact_rows": int(keyword_artifact_rows),
         "keyword_top_artifact_rows": int(keyword_top_artifact_rows),
@@ -4788,7 +6623,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     features["evidence"] = counts["abstract_rows"] > 0 and counts["membership_rows"] > 0
     has_pubyear = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
     features["temporal"] = bool(temporal_artifacts or has_pubyear)
-    features["evolution"] = bool(artifacts.evolution_paths) or report_has_evolution
+    features["evolution"] = bool(evolution_artifacts or artifacts.evolution_paths) or report_has_evolution
     features["narrative"] = bool(artifacts.narrative_paths) or report_has_narrative
     features["quality"] = True
     features["export"] = any([features["keyword"], features["cluster_map"], artifacts.report_data_path is not None])
@@ -5092,8 +6927,19 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             description="Artifact-backed temporal trend manifest.",
         )
 
-    for i, rel_path in enumerate(artifact_info.get("evolution_artifacts", []), start=1):
+    for i, rel_path in enumerate(artifact_info.get("evolution_manifest_artifacts", []), start=1):
         key = "evolution" if i == 1 else f"evolution_{i}"
+        records[key] = _artifact_record(
+            root=root,
+            role="evolution",
+            path=rel_path,
+            required_for=["evolution"],
+            schema_version=EVOLUTION_MANIFEST_SCHEMA_VERSION,
+            description="Lineage-backed cluster evolution manifest.",
+        )
+
+    for i, rel_path in enumerate(artifact_info.get("evolution_artifacts", []), start=1):
+        key = "evolution" if "evolution" not in records else f"evolution_legacy_{i}"
         records[key] = _artifact_record(root=root, role="evolution", path=rel_path, required_for=["evolution"])
 
     for i, rel_path in enumerate(artifact_info.get("narrative_artifacts", []), start=1):
@@ -5170,6 +7016,15 @@ def _has_temporal_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     )
 
 
+def _has_evolution_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
+    return any(
+        record.get("role") == "evolution"
+        and record.get("status") == "present"
+        and record.get("schema_version") == EVOLUTION_MANIFEST_SCHEMA_VERSION
+        for record in artifacts.values()
+    )
+
+
 def _manifest_feature_available(feature: str, validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     if feature == "cooccurrence":
         return _has_manifest_cooccurrence(validation, artifacts)
@@ -5187,6 +7042,8 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
         return "derived from co-occurrence/report term edges; stable general matrix artifact not written yet"
     if feature == "temporal" and not _has_temporal_artifact(artifacts):
         return "pubyear exists but no temporal artifact has been written yet"
+    if feature == "evolution" and not _has_evolution_artifact(artifacts):
+        return "legacy/report evolution payload exists but stable evolution artifact has not been written yet"
     if state == "beta":
         return "feature inferred with validation warnings or partial artifact coverage"
     return "feature validated"
@@ -5213,6 +7070,8 @@ def _feature_exposures(
         elif feature == "matrix" and not _has_general_matrix_artifact(artifacts):
             state = "beta"
         elif feature == "temporal" and not _has_temporal_artifact(artifacts):
+            state = "beta"
+        elif feature == "evolution" and not _has_evolution_artifact(artifacts):
             state = "beta"
         elif warning_count:
             state = "beta"
@@ -6517,6 +8376,14 @@ __all__ = [
     "ATLAS_PAYLOAD_SCHEMA_VERSION",
     "COOCCURRENCE_ARTIFACT_SCHEMA_VERSION",
     "EDGE_EVIDENCE_SCHEMA_VERSION",
+    "EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION",
+    "EVOLUTION_EVENTS_SCHEMA_VERSION",
+    "EVOLUTION_LINEAGES_SCHEMA_VERSION",
+    "EVOLUTION_MANIFEST_SCHEMA_VERSION",
+    "EVOLUTION_QA_SCHEMA_VERSION",
+    "EVOLUTION_SYNTHETIC_SMOKE_SCHEMA_VERSION",
+    "EVOLUTION_TIME_SLICES_SCHEMA_VERSION",
+    "EVOLUTION_TRANSITIONS_SCHEMA_VERSION",
     "MATRIX_ENTITIES_SCHEMA_VERSION",
     "MATRIX_MANIFEST_SCHEMA_VERSION",
     "MATRIX_QA_SCHEMA_VERSION",
@@ -6535,6 +8402,7 @@ __all__ = [
     "ArtifactRecord",
     "ArtifactIssue",
     "ArtifactValidationResult",
+    "EvolutionArtifactValidationResult",
     "FeatureExposure",
     "MatrixArtifactValidationResult",
     "ResultManifest",
@@ -6556,6 +8424,7 @@ __all__ = [
     "read_workspace_manifest",
     "register_result_in_workspace",
     "validate_matrix_artifact",
+    "validate_evolution_artifact",
     "validate_result_root",
     "validate_temporal_artifact",
     "validate_workspace",
@@ -6563,6 +8432,8 @@ __all__ = [
     "write_cooccurrence_artifacts",
     "write_matrix_artifact",
     "write_matrix_from_term_cooccurrence",
+    "write_evolution_artifacts",
+    "write_evolution_synthetic_smoke_artifact",
     "write_temporal_artifacts",
     "write_artifact_contract",
     "write_result_manifest",
