@@ -8,12 +8,14 @@ from pathlib import Path
 import pandas as pd
 
 from sciscape.artifacts import (
+    COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
     RESULT_MANIFEST_SCHEMA_VERSION,
     build_atlas_payload_from_report_data,
     build_result_manifest,
     build_report_data_contract,
     load_result_manifest,
     validate_result_root,
+    write_cooccurrence_artifacts,
     write_edge_evidence_samples,
     write_artifact_contract,
     write_result_manifest,
@@ -116,6 +118,65 @@ def test_validate_result_root_infers_features_and_counts(tmp_path):
     assert payload["counts"]["keyword_rows"] == 4
     assert payload["counts"]["report_clusters"] == 2
     assert not [w for w in payload["warnings"] if w["severity"] == "error"]
+
+
+def test_write_cooccurrence_artifacts_promotes_stable_manifest_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+
+    written = write_cooccurrence_artifacts(root)
+
+    assert written is not None
+    table_path = written["table_path"]
+    map_path = written["map_path"]
+    assert table_path == root / "landscape" / "term_cooccurrence.parquet"
+    assert map_path == root / "landscape" / "term_cooccurrence_map.json"
+    table = pd.read_parquet(table_path)
+    assert len(table) == 2
+    assert set(
+        [
+            "schema_version",
+            "cluster_uid",
+            "cluster_level",
+            "cluster_id",
+            "source",
+            "target",
+            "weight",
+            "relation",
+        ]
+    ).issubset(table.columns)
+    assert set(table["schema_version"]) == {COOCCURRENCE_ARTIFACT_SCHEMA_VERSION}
+
+    cooc_map = json.loads(map_path.read_text(encoding="utf-8"))
+    assert cooc_map["schema_version"] == COOCCURRENCE_ARTIFACT_SCHEMA_VERSION
+    assert cooc_map["edge_count"] == 2
+    assert "perovskite solar cells" in cooc_map["terms"]
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["counts"]["cooccurrence_artifacts"] == 2
+    assert contract["counts"]["cooccurrence_rows"] == 2
+    assert contract["features"]["term_network"] is True
+    assert contract["features"]["matrix"] is True
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["cooccurrence"]["state"] == "stable"
+    assert manifest["features"]["cooccurrence"]["reason"] == "feature validated"
+    assert "cooccurrence" in manifest["features"]["cooccurrence"]["artifact_refs"]
+    assert manifest["artifacts"]["cooccurrence"]["schema_version"] == COOCCURRENCE_ARTIFACT_SCHEMA_VERSION
+    assert manifest["artifacts"]["cooccurrence"]["rows"] == 2
+
+
+def test_validate_result_root_blocks_malformed_cooccurrence_table(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    pd.DataFrame({"source": ["a"], "target": ["b"]}).to_parquet(
+        root / "landscape" / "term_cooccurrence.parquet",
+        index=False,
+    )
+
+    payload = validate_result_root(root).to_dict()
+
+    assert payload["ok"] is False
+    assert payload["result_state"] == "blocked"
+    assert any(w["code"] == "missing_columns" and w["artifact"] == "cooccurrence" for w in payload["warnings"])
 
 
 def test_validate_result_root_blocks_advertised_missing_feature(tmp_path):

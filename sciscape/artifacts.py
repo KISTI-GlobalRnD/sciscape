@@ -22,6 +22,7 @@ RESULT_MANIFEST_SCHEMA_VERSION = "sciscape_result_manifest_v1"
 REPORT_DATA_CONTRACT_SCHEMA_VERSION = "sciscape_report_data_contract_v1"
 ATLAS_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_payload_v1"
 EDGE_EVIDENCE_SCHEMA_VERSION = "sciscape_edge_evidence_samples_v1"
+COOCCURRENCE_ARTIFACT_SCHEMA_VERSION = "sciscape_cooccurrence_artifact_v1"
 FEATURE_KEYS = (
     "overview",
     "cluster_map",
@@ -53,6 +54,16 @@ REQUIRED_ABSTRACT_COLUMNS = {"uid", "title", "abstract", "pubyear"}
 REQUIRED_MEMBERSHIP_COLUMNS = {"uid"}
 REQUIRED_KEYWORD_COLUMNS = {"cluster_id", "term"}
 REQUIRED_EDGE_COLUMNS = {"uid1", "uid2"}
+REQUIRED_COOCCURRENCE_COLUMNS = {
+    "schema_version",
+    "cluster_uid",
+    "cluster_level",
+    "cluster_id",
+    "source",
+    "target",
+    "weight",
+    "relation",
+}
 WEIGHT_COLUMN_CANDIDATES = (
     "rel_sum2",
     "weight",
@@ -1712,6 +1723,246 @@ def _report_term_edge_count(clusters: list[dict[str, Any]]) -> int:
     return total
 
 
+def _cooccurrence_weight(row: Mapping[str, Any]) -> float:
+    for key in ("weight", "cooccurrence_weight", "count", "cooccurrence_count"):
+        value = _coerce_float(row.get(key))
+        if value is not None:
+            return value
+    return 1.0
+
+
+def _cooccurrence_count(row: Mapping[str, Any]) -> int | None:
+    for key in ("count", "cooccurrence_count"):
+        value = _coerce_int(row.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def _cooccurrence_rows_from_report_data(report_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract a stable row-level co-occurrence table from report data."""
+
+    rows: list[dict[str, Any]] = []
+    for cluster_index, cluster in enumerate(_report_clusters(report_data)):
+        table = cluster.get("cooccurrence_table")
+        if not isinstance(table, list):
+            continue
+        cluster_level = _cluster_level(cluster)
+        cluster_id = str(_cluster_id(cluster, cluster_index))
+        cluster_uid = str(cluster.get("cluster_uid") or f"{cluster_level}:{cluster_id}")
+        for row_index, item in enumerate(table, start=1):
+            if not isinstance(item, Mapping):
+                continue
+            source = str(item.get("source") or "").strip()
+            target = str(item.get("target") or "").strip()
+            if not source or not target:
+                continue
+            rows.append(
+                {
+                    "schema_version": COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
+                    "cluster_uid": cluster_uid,
+                    "cluster_level": cluster_level,
+                    "cluster_id": cluster_id,
+                    "row_rank": int(row_index),
+                    "source": source,
+                    "target": target,
+                    "weight": float(_cooccurrence_weight(item)),
+                    "count": _cooccurrence_count(item),
+                    "source_tier": str(item.get("source_tier") or ""),
+                    "target_tier": str(item.get("target_tier") or ""),
+                    "relation": str(item.get("relation") or "cooccurrence"),
+                    "primary_term": str(item.get("primary_term") or ""),
+                    "support_term": str(item.get("support_term") or ""),
+                    "support_tier": str(item.get("support_tier") or ""),
+                }
+            )
+
+    rows.sort(
+        key=lambda row: (
+            str(row["cluster_level"]),
+            str(row["cluster_id"]),
+            -float(row["weight"]),
+            str(row["source"]),
+            str(row["target"]),
+        )
+    )
+    return rows
+
+
+def _keyword_label_column(columns: list[str]) -> str:
+    for column in ("display_label", "label", "term", "keyword"):
+        if column in columns:
+            return column
+    return columns[0]
+
+
+def _keyword_score_column(columns: list[str]) -> str | None:
+    for column in ("representative_score", "quality_score", "score", "tfidf", "frequency"):
+        if column in columns:
+            return column
+    return None
+
+
+def _cooccurrence_rows_from_keywords(
+    keywords_path: Path,
+    *,
+    top_k_per_cluster: int = 10,
+) -> list[dict[str, Any]]:
+    """Build a bounded co-occurrence table from top keywords per cluster."""
+
+    keywords = pd.read_parquet(keywords_path)
+    if keywords.empty:
+        return []
+    columns = list(keywords.columns)
+    cluster_col = next((column for column in columns if "cluster" in column.lower()), columns[0])
+    label_col = _keyword_label_column(columns)
+    score_col = _keyword_score_column(columns)
+    tier_col = "keyword_label_tier" if "keyword_label_tier" in columns else None
+
+    rows: list[dict[str, Any]] = []
+    for cluster_id, group in keywords.groupby(cluster_col, sort=True):
+        work = group.copy()
+        if score_col is not None:
+            work = work.sort_values(score_col, ascending=False, kind="mergesort")
+        terms: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for _, item in work.iterrows():
+            term = str(item[label_col] or "").strip()
+            if not term or term in seen:
+                continue
+            seen.add(term)
+            score = _coerce_float(item.get(score_col)) if score_col is not None else None
+            terms.append(
+                {
+                    "term": term,
+                    "score": score if score is not None else 1.0,
+                    "tier": str(item.get(tier_col) or "") if tier_col is not None else "",
+                }
+            )
+            if len(terms) >= max(1, int(top_k_per_cluster)):
+                break
+        cluster_id_str = str(cluster_id)
+        cluster_uid = f"cluster:{cluster_id_str}"
+        for row_rank, left_index in enumerate(range(len(terms)), start=1):
+            left = terms[left_index]
+            for right in terms[left_index + 1 :]:
+                weight = (float(left["score"]) + float(right["score"])) / 2.0
+                rows.append(
+                    {
+                        "schema_version": COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
+                        "cluster_uid": cluster_uid,
+                        "cluster_level": "cluster",
+                        "cluster_id": cluster_id_str,
+                        "row_rank": int(row_rank),
+                        "source": left["term"],
+                        "target": right["term"],
+                        "weight": float(weight),
+                        "count": 1,
+                        "source_tier": left["tier"],
+                        "target_tier": right["tier"],
+                        "relation": "within_cluster_keyword_pair",
+                        "primary_term": left["term"],
+                        "support_term": right["term"],
+                        "support_tier": right["tier"],
+                    }
+                )
+
+    rows.sort(
+        key=lambda row: (
+            str(row["cluster_level"]),
+            str(row["cluster_id"]),
+            -float(row["weight"]),
+            str(row["source"]),
+            str(row["target"]),
+        )
+    )
+    return rows
+
+
+def _cooccurrence_map_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    term_map: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        source = str(row["source"])
+        target = str(row["target"])
+        for term, other in ((source, target), (target, source)):
+            term_map.setdefault(term, []).append(
+                {
+                    "term": other,
+                    "cluster_uid": row["cluster_uid"],
+                    "cluster_id": row["cluster_id"],
+                    "cluster_level": row["cluster_level"],
+                    "weight": row["weight"],
+                    "count": row.get("count"),
+                    "relation": row["relation"],
+                    "source": source,
+                    "target": target,
+                    "primary_term": row.get("primary_term", ""),
+                    "support_term": row.get("support_term", ""),
+                    "support_tier": row.get("support_tier", ""),
+                }
+            )
+
+    for term, values in term_map.items():
+        term_map[term] = sorted(
+            values,
+            key=lambda item: (
+                -float(item.get("weight") or 0.0),
+                str(item.get("cluster_uid") or ""),
+                str(item.get("term") or ""),
+            ),
+        )
+    return {
+        "schema_version": COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
+        "edge_count": int(len(rows)),
+        "term_count": int(len(term_map)),
+        "cluster_count": int(len({row["cluster_uid"] for row in rows})),
+        "terms": term_map,
+    }
+
+
+def write_cooccurrence_artifacts(
+    path: str | Path,
+    *,
+    output_dir: str | Path | None = None,
+    table_filename: str = "term_cooccurrence.parquet",
+    map_filename: str = "term_cooccurrence_map.json",
+) -> dict[str, Any] | None:
+    """Write stable co-occurrence table/map sidecars from report or keywords.
+
+    Returns ``None`` when neither report data nor keyword rows can produce
+    co-occurrence rows.
+    """
+
+    artifacts = infer_result_artifacts(path)
+    rows: list[dict[str, Any]] = []
+    if artifacts.report_data_path is not None:
+        report_data = json.loads(artifacts.report_data_path.read_text(encoding="utf-8"))
+        if isinstance(report_data, dict):
+            rows = _cooccurrence_rows_from_report_data(report_data)
+    if not rows and artifacts.keywords_path is not None:
+        rows = _cooccurrence_rows_from_keywords(artifacts.keywords_path)
+    if not rows:
+        return None
+
+    target_dir = Path(output_dir) if output_dir is not None else artifacts.landscape_dir or artifacts.result_root
+    target_dir.mkdir(parents=True, exist_ok=True)
+    table_path = target_dir / table_filename
+    map_path = target_dir / map_filename
+    pd.DataFrame(rows).to_parquet(table_path, index=False)
+    map_payload = _cooccurrence_map_from_rows(rows)
+    map_payload["source_report_data"] = _rel(artifacts.report_data_path, artifacts.result_root)
+    map_payload["source_table"] = _rel(table_path, artifacts.result_root)
+    map_path.write_text(json.dumps(map_payload, indent=2, sort_keys=True), encoding="utf-8")
+    return {
+        "schema_version": COOCCURRENCE_ARTIFACT_SCHEMA_VERSION,
+        "table_path": table_path,
+        "map_path": map_path,
+        "rows": int(len(rows)),
+        "terms": int(map_payload["term_count"]),
+        "clusters": int(map_payload["cluster_count"]),
+    }
+
+
 def _non_empty_payload(value: Any) -> bool:
     if value is None:
         return False
@@ -2177,6 +2428,55 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 keyword_review_artifact_rows,
             ) = _scan_keyword_artifacts(artifacts.keywords_path, keyword_info, issues)
 
+    cooccurrence_artifacts = 0
+    cooccurrence_rows = 0
+    cooccurrence_json_rows = 0
+    for matrix_path in artifacts.matrix_paths:
+        rel_path = _rel(matrix_path, root) or str(matrix_path)
+        role = "cooccurrence" if "cooccurrence" in str(matrix_path).lower() else "matrix"
+        table_key = f"{role}_artifact:{rel_path}"
+        if role == "cooccurrence":
+            cooccurrence_artifacts += 1
+        if matrix_path.suffix.lower() == ".parquet":
+            matrix_info = _parquet_info(matrix_path, root, issues, role)
+            artifact_info["tables"][table_key] = asdict(matrix_info)
+            if role == "cooccurrence":
+                if not _missing_columns(
+                    info=matrix_info,
+                    required=REQUIRED_COOCCURRENCE_COLUMNS,
+                    issues=issues,
+                    role=role,
+                ):
+                    cooccurrence_rows += int(matrix_info.rows or 0)
+                    if not matrix_info.rows:
+                        issues.append(
+                            ArtifactIssue(
+                                "empty_cooccurrence_table",
+                                "warning",
+                                "Co-occurrence artifact table has no rows.",
+                                role,
+                            )
+                        )
+        elif role == "cooccurrence" and matrix_path.suffix.lower() == ".json":
+            payload = _json_payload(matrix_path, issues, role)
+            if payload is None:
+                continue
+            if payload.get("schema_version") != COOCCURRENCE_ARTIFACT_SCHEMA_VERSION:
+                issues.append(
+                    ArtifactIssue(
+                        "unsupported_cooccurrence_schema",
+                        "warning",
+                        f"Unsupported co-occurrence artifact schema: {payload.get('schema_version')}",
+                        role,
+                    )
+                )
+            else:
+                cooccurrence_json_rows = max(
+                    cooccurrence_json_rows,
+                    int(_coerce_int(payload.get("edge_count")) or 0),
+                )
+    cooccurrence_rows = max(cooccurrence_rows, cooccurrence_json_rows)
+
     _reconcile_counts(
         artifacts=artifacts,
         membership_info=membership_info,
@@ -2212,6 +2512,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "report_term_edges": int(report_edge_count),
         "derived_keyword_term_edges": int(keyword_edge_count),
         "matrix_artifacts": len(artifacts.matrix_paths),
+        "cooccurrence_artifacts": int(cooccurrence_artifacts),
+        "cooccurrence_rows": int(cooccurrence_rows),
         "edge_evidence_artifacts": len(artifacts.edge_evidence_paths),
         "evolution_artifacts": len(artifacts.evolution_paths),
         "narrative_artifacts": len(artifacts.narrative_paths),
@@ -2226,7 +2528,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     features["overview"] = counts["abstract_rows"] > 0 or counts["report_clusters"] > 0
     features["cluster_map"] = counts["membership_rows"] > 0 or counts["report_clusters"] > 0
     features["keyword"] = counts["keyword_rows"] > 0 or _report_has_terms(report_clusters)
-    features["term_network"] = report_edge_count > 0 or keyword_edge_count > 0
+    features["term_network"] = report_edge_count > 0 or keyword_edge_count > 0 or cooccurrence_rows > 0
     features["matrix"] = bool(artifacts.matrix_paths) or report_edge_count > 0
     features["evidence"] = counts["abstract_rows"] > 0 and counts["membership_rows"] > 0
     features["temporal"] = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
@@ -2499,6 +2801,13 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             role=role,
             path=rel_path,
             required_for=["cooccurrence", "matrix"] if role == "cooccurrence" else ["matrix"],
+            table_info=tables.get(f"{role}_artifact:{rel_path}"),
+            schema_version=COOCCURRENCE_ARTIFACT_SCHEMA_VERSION if role == "cooccurrence" else None,
+            description=(
+                "Term co-occurrence table/map artifact."
+                if role == "cooccurrence"
+                else "Matrix artifact."
+            ),
         )
 
     for i, rel_path in enumerate(artifact_info.get("evolution_artifacts", []), start=1):
@@ -3217,6 +3526,7 @@ def build_report_data_contract(report_data: dict[str, Any], *, mode: str = "stat
 __all__ = [
     "ARTIFACT_CONTRACT_SCHEMA_VERSION",
     "ATLAS_PAYLOAD_SCHEMA_VERSION",
+    "COOCCURRENCE_ARTIFACT_SCHEMA_VERSION",
     "EDGE_EVIDENCE_SCHEMA_VERSION",
     "REPORT_DATA_CONTRACT_SCHEMA_VERSION",
     "RESULT_MANIFEST_SCHEMA_VERSION",
@@ -3239,6 +3549,7 @@ __all__ = [
     "read_result_manifest",
     "validate_result_root",
     "write_edge_evidence_samples",
+    "write_cooccurrence_artifacts",
     "write_artifact_contract",
     "write_result_manifest",
 ]

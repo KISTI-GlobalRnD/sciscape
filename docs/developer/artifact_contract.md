@@ -70,6 +70,8 @@ writers should emit `result_manifest.json`.
 | `landscape/membership.parquet` | `uid`, `cluster` or `cluster_*` | Powers cluster map, evidence joins, and level inference. |
 | `landscape/keywords.parquet` | `cluster_id`, `term` | Powers keyword, term network, and keyword QA checks. |
 | `landscape/edge_evidence_samples.json` | `source_uid`, `target_uid`, bounded `samples` | Powers raw work-pair evidence for Atlas neighbor relations when generated. |
+| `landscape/term_cooccurrence.parquet` | `schema_version`, `cluster_uid`, `cluster_level`, `cluster_id`, `source`, `target`, `weight`, `relation` | Stable P1.5 term co-occurrence table artifact. |
+| `landscape/term_cooccurrence_map.json` | `schema_version`, `edge_count`, `term_count`, `cluster_count`, `terms` | Term lookup map paired with `term_cooccurrence.parquet`. |
 | matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
 | evolution artifacts | `*evolution*` or `*trajectory*` JSON/parquet | Powers the evolution lens only when present or embedded in `data.json`. |
 | narrative artifacts | `*narrative*` JSON/parquet | Powers narrative only when present or embedded in `data.json`. |
@@ -110,7 +112,7 @@ Feature inference rules:
 | `overview` | abstracts exist or report clusters exist |
 | `cluster_map` | membership exists or report clusters exist |
 | `keyword` | keyword table exists or report clusters carry keywords |
-| `term_network` | report co-occurrence/network edges exist or keyword rows can form within-cluster pairs |
+| `term_network` | stable co-occurrence artifact rows, report co-occurrence/network edges, or keyword rows can form within-cluster pairs |
 | `matrix` | matrix/co-occurrence artifact exists or report term edges exist |
 | `evidence` | abstracts and membership both exist |
 | `temporal` | abstracts include `pubyear` |

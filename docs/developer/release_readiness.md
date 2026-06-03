@@ -51,8 +51,9 @@ The gate performs:
   artifact filtering, term co-occurrence, dashboard generation, the web demo
   launcher, local demo opening, Atlas neighbor edge-evidence sidecars, and key
   visualization/download endpoints without external data. The P1 Atlas smoke
-  additionally runs a tiny real landscape pipeline before reopening it through
-  the web local-data API;
+  additionally runs a tiny real landscape pipeline, writes stable
+  co-occurrence table/map sidecars, and reopens the output through the web
+  local-data API;
 - full Python test suite with `pytest -q`;
 - CLI import/help smoke check.
 

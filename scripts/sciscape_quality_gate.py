@@ -515,6 +515,10 @@ def run_p1_atlas_smoke_gate() -> dict[str, Any]:
         report_data_path = landscape_dir / "report" / "data.json"
         _assert(report_data_path.exists(), "pipeline did not write report data")
         _assert(artifact_result.ok, "pipeline result artifact contract is blocked")
+        _assert(
+            artifact_result.counts.get("cooccurrence_rows", 0) > 0,
+            "pipeline result did not write co-occurrence artifact rows",
+        )
 
         from fastapi.testclient import TestClient
         import sciscape.web.app as web_app
@@ -554,6 +558,10 @@ def run_p1_atlas_smoke_gate() -> dict[str, Any]:
                     feature_states.get(feature) in {"stable", "beta"},
                     f"{feature} was not exposed by the pipeline manifest",
                 )
+            _assert(
+                feature_states.get("cooccurrence") == "stable",
+                "co-occurrence was not backed by a stable artifact",
+            )
 
             atlas = result.get("atlas", {})
             _assert(atlas.get("nodes"), "pipeline Atlas payload has no nodes")
@@ -592,6 +600,7 @@ def run_p1_atlas_smoke_gate() -> dict[str, Any]:
                 "network_nodes": int(len(network["nodes"])),
                 "term_network_nodes": int(len(term_network["nodes"])),
                 "term_network_edges": int(len(term_network["edges"])),
+                "cooccurrence_rows": int(artifact_result.counts.get("cooccurrence_rows", 0)),
                 "edge_evidence_samples": int(edge_evidence_samples),
                 "result_state": result["result_state"],
                 "feature_states": feature_states,

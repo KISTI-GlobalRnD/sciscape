@@ -156,8 +156,8 @@ Primary work:
   output.
 - Separate common terms, cluster-specific terms, representative labels, and
   supporting abbreviations.
-- Stabilize co-occurrence table/map artifacts separately from the general Matrix
-  Builder.
+- Keep the stable `term_cooccurrence.parquet` and `term_cooccurrence_map.json`
+  contract separate from the general Matrix Builder.
 - Add contamination fixtures for encoded HTML, publisher metadata, LaTeX
   preamble fragments, and ambiguous short tokens.
 - Add large-run safety for keyword extraction: shard state, checkpoints, partial
@@ -168,7 +168,8 @@ Completion criteria:
 - Cleaning changes are inspectable, replayable, and reversible at artifact
   level.
 - A contaminated input fixture cannot surface blocked artifacts as top labels.
-- Co-occurrence table/map artifacts validate independently of the UI.
+- Co-occurrence table/map artifacts validate independently of the UI and are
+  written by the default landscape pipeline.
 - Large keyword runs produce intermediate artifacts and progress state.
 - The app can show why a term is representative, common, cluster-specific,
   auxiliary, or blocked.
@@ -301,7 +302,7 @@ Do not do yet:
    gate.
 6. Add replayable keyword cleaning rule artifacts and before/after impact
    summaries.
-7. Add the stable co-occurrence table/map artifact contract.
+7. Maintain the stable co-occurrence table/map artifact contract.
 8. Make Atlas evidence inspector consume only validated payload fields and
    exposure states.
 9. Add general matrix writer and validator utilities after co-occurrence

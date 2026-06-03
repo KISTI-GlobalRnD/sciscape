@@ -538,6 +538,19 @@ def run_landscape(
     log.info("Step 4: Generate landscape report")
     log.info("=" * 60)
     _generate_report(keywords_df, viz_data, report_dir, cfg.report_title)
+    cooccurrence_artifacts = None
+    try:
+        from .artifacts import write_cooccurrence_artifacts
+
+        cooccurrence_artifacts = write_cooccurrence_artifacts(output_dir)
+        if cooccurrence_artifacts is not None:
+            log.info(
+                "Co-occurrence artifacts saved: %s, %s",
+                cooccurrence_artifacts["table_path"],
+                cooccurrence_artifacts["map_path"],
+            )
+    except Exception as exc:  # pragma: no cover - defensive sidecar generation
+        log.warning("Co-occurrence artifact sidecars skipped: %s", exc)
     result_manifest_path = None
     try:
         from .artifacts import default_result_manifest_path, validate_result_root, write_result_manifest
@@ -571,6 +584,12 @@ def run_landscape(
         "keywords_path": keywords_path,
         "report_dir": report_dir,
         "edge_evidence_path": edge_evidence_path if edge_evidence_path.exists() else None,
+        "cooccurrence_path": (
+            cooccurrence_artifacts["table_path"] if cooccurrence_artifacts is not None else None
+        ),
+        "cooccurrence_map_path": (
+            cooccurrence_artifacts["map_path"] if cooccurrence_artifacts is not None else None
+        ),
         "result_manifest_path": result_manifest_path,
         "keywords_df": keywords_df,
         "viz_data": viz_data,

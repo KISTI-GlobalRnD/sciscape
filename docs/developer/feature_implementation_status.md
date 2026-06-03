@@ -45,7 +45,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 70% | atlas payload builder, neighbors, representative works, web endpoints | UI rewrite and complete evidence inspector workflow |
-| F10 | Term network and co-occurrence visualization | `[~]` | 70% | term network module, endpoint, co-occurrence evidence tables | map polish, threshold controls, export contract |
+| F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
 | F11 | Temporal and evolution | `[~]` | 30% | temporal keyword utilities, burst/trend helpers, feature detection | cluster evolution artifact contract and map UI |
 | F12 | Evidence-backed narratives | `[ ]` | 15% | narrative feature detection and target definition | narrative generator, evidence references, QA contract |
 | F13 | Validation and QA | `[x]` | 80% | artifact contract, result validation, quality gate, keyword artifact checks | strict checks for matrix/evolution/narrative features |
@@ -221,18 +221,20 @@ UI implementation rather than be treated as a finished Atlas App.
 
 ### F10. Term Network And Co-Occurrence Visualization
 
-Status: `[~]` Partial. Rough completeness: 70%.
+Status: `[~]` Partial. Rough completeness: 78%.
 
 - `[x]` Term network construction exists.
 - `[x]` Co-occurrence collection exists.
 - `[x]` `/api/jobs/{job_id}/term-network` endpoint exists.
 - `[x]` Term/co-occurrence evidence can be surfaced from keyword artifacts.
+- `[x]` `term_cooccurrence.parquet` and `term_cooccurrence_map.json` are written
+  by the landscape pipeline and validated as first-class artifacts.
 - `[~]` Visualization controls for thresholding, layout, clustering, and export
   are not yet complete.
-- `[ ]` A stable co-occurrence map/table artifact contract is not fully defined.
 
 Review: the previously broken co-occurrence path has enough implementation
-surface to stabilize, but needs an explicit artifact contract and UI QA.
+surface to stabilize. The table/map artifact contract now exists; the remaining
+gap is UI QA and richer export/control behavior.
 
 ### F11. Temporal And Evolution
 
@@ -321,7 +323,8 @@ evolution map, and narrative system are stable.
 ## Next Implementation Targets
 
 1. Define `workspace.json` or equivalent project/run manifest.
-2. Define a first-class matrix artifact contract with writer and validator.
+2. Define a general matrix artifact contract with writer and validator, building
+   on the stable term co-occurrence artifact.
 3. Define replayable keyword cleaning rule artifacts and before/after diffs.
 4. Define cluster evolution artifact schema before building the map UI.
 5. Define narrative evidence-reference schema before adding generation.

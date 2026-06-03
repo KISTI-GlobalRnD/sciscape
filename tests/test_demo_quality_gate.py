@@ -70,8 +70,9 @@ def test_quality_gate_p1_atlas_smoke_runs_full_pipeline_without_external_data():
     assert smoke["keywords"] > 0
     assert smoke["term_network_nodes"] > 0
     assert smoke["term_network_edges"] > 0
+    assert smoke["cooccurrence_rows"] > 0
     assert smoke["edge_evidence_samples"] > 0
     assert smoke["feature_states"]["cluster_map"] == "stable"
     assert smoke["feature_states"]["keyword"] == "stable"
     assert smoke["feature_states"]["term_network"] == "stable"
-    assert smoke["feature_states"]["cooccurrence"] in {"stable", "beta"}
+    assert smoke["feature_states"]["cooccurrence"] == "stable"

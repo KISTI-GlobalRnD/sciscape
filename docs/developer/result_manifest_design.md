@@ -215,8 +215,8 @@ Initial stable artifact refs:
 | `report_html` | `landscape/report/report.html` |
 | `viewer_html` | `landscape/report/index.html` |
 | `artifact_contract` | `landscape/qa/artifact_contract.json` |
-| `term_network` | future stable term-network artifact |
-| `cooccurrence` | future stable co-occurrence table/map artifact |
+| `term_network` | term-network payload or future stable term-network artifact |
+| `cooccurrence` | `landscape/term_cooccurrence.parquet` and `landscape/term_cooccurrence_map.json` |
 | `matrix` | future general matrix artifact |
 | `temporal` | future temporal trend artifact |
 | `evolution` | future evolution artifact |
@@ -446,8 +446,8 @@ analysis.
     "overview": {"state": "stable", "reason": "records validated", "artifact_refs": ["records"], "warnings": []},
     "cluster_map": {"state": "stable", "reason": "membership validated", "artifact_refs": ["membership"], "warnings": []},
     "keyword": {"state": "stable", "reason": "keywords validated", "artifact_refs": ["keywords"], "warnings": []},
-    "term_network": {"state": "beta", "reason": "derived from keyword table", "artifact_refs": ["keywords"], "warnings": []},
-    "cooccurrence": {"state": "hidden", "reason": "no stable co-occurrence artifact yet", "artifact_refs": [], "warnings": []},
+    "term_network": {"state": "stable", "reason": "feature validated", "artifact_refs": ["cooccurrence"], "warnings": []},
+    "cooccurrence": {"state": "stable", "reason": "feature validated", "artifact_refs": ["cooccurrence"], "warnings": []},
     "matrix": {"state": "hidden", "reason": "no matrix artifact", "artifact_refs": [], "warnings": []},
     "evidence": {"state": "stable", "reason": "records and membership joinable", "artifact_refs": ["records", "membership"], "warnings": []},
     "temporal": {"state": "beta", "reason": "pubyear exists but no temporal artifact", "artifact_refs": ["records"], "warnings": []},
@@ -511,8 +511,8 @@ all pipelines at once.
 
 ## Open Design Decisions
 
-- Whether `cooccurrence` should become a first-class `FEATURE_KEYS` entry or
-  remain a subtype of `matrix` and `term_network`.
+- Whether `term_network` should receive its own stable sidecar separate from the
+  P1.5 co-occurrence table/map artifacts.
 - Whether checksums should be required for release bundles only or for every
   local result.
 - Whether `result_id` should be generated from a slug, UUID, or content hash.
