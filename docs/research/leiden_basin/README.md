@@ -456,6 +456,29 @@ Current terminal evidence:
   singleton-collapses. This reopens Track C as an objective-mechanism redesign
   problem, but it still does not add wall/pathway, quality/cost,
   real-data-method, or algorithm claims.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_multistart_support_top100_gamma1e5_membership_p1_unique_20260602/`,
+  `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_multistart_support_top100_gamma3e5_membership_p1_unique_20260602/`,
+  and
+  `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_multistart_support_top100_gamma1e4_membership_p1_unique_20260602/`
+  for the membership-level critical-gamma bracket. The runner saves compact
+  object/universe terminal slices and start-pair ARI rows. At `gamma=1e-5`,
+  4/4 objects show terminal multiplicity, same-object-hash pair share is 0.25,
+  object terminal ARI median is 0.8996455967664517, and universe terminal ARI
+  median is 0.9246792162441047. At `gamma=3e-5`, all 4 objects close to one
+  terminal hash with pair ARI 1.0 but do not singleton-collapse. At
+  `gamma=1e-4`, all 4 remain closed and all singleton-collapse. The result is a
+  terminal-structure phase bracket only. It shows local objective-positive
+  critical-gamma candidates are not sufficient for distinct terminal basins.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_terminal_membership_difference_review_gamma1e5_20260603/`
+  plus the `gamma3e5` and `gamma1e4` closed-control sibling directories for the
+  first saved-membership difference review. The `1e-5` review finds 114
+  variable universe node-pairs across the 4 objects, dominated by object-object
+  pairs (80), with 16 object-support and 18 support-support pairs. Median
+  object-level variable co-assignment pair share is 0.007416764891781547 and
+  median universe-level share is 0.0016309539434264811. The `3e-5` and `1e-4`
+  controls have zero variable node-pairs. This keeps the current mechanism read
+  narrow: phase-sensitive partial coarsening around small node-pair sets, not a
+  broad basin-wide rearrangement or wall/pathway claim.
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_assumption_inversion_audit_20260531/`
   for the audit that treats current assumptions as potentially wrong. It marks
   seed-anchor invariance, reference-cluster object choice, and basin-wall

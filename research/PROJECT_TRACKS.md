@@ -1336,6 +1336,56 @@ wall promotion; it is a predeclared critical-gamma or weight-normalized
 mechanism pilot with controls showing that multiplicity is structural rather
 than a trivial low-resolution merge artifact.
 
+The terminal-membership critical-gamma bracket adds that control at membership
+level. `run_leiden_basin_nanoclustering_symmetric_object_multistart_pilot.py`
+now has `--save-terminal-memberships`, which stores compact object/universe
+initial and terminal slices plus
+`nanoclustering_symmetric_object_multistart_terminal_pair_rows.csv` for
+within-object start-pair ARI. The support-top100 P1 unique bracket uses the same
+4 objects and 16 deterministic starts at three fixed gamma values. At
+`gamma=1e-5`
+(`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_multistart_support_top100_gamma1e5_membership_p1_unique_20260602/`),
+all 4 objects show object and universe terminal multiplicity; 24 start pairs
+have same-object-hash share 0.25, object terminal ARI median 0.8996455967664517
+and minimum 0.7999839586132221, and universe terminal ARI median
+0.9246792162441047 and minimum 0.8045539328812277. At `gamma=3e-5`
+(`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_multistart_support_top100_gamma3e5_membership_p1_unique_20260602/`),
+all 4 objects close to one terminal hash and all 24 pair ARIs are 1.0, although
+they are not yet singleton-collapsed. At `gamma=1e-4`
+(`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_multistart_support_top100_gamma1e4_membership_p1_unique_20260602/`),
+all 4 objects remain closed and all 4 singleton-collapse. This bracket is
+terminal-structure evidence only. It also sharpens the mechanism debt:
+top100/doc-weight local critical-gamma maxima are about `3.7e-5` to `4.6e-5`,
+but terminal multiplicity is already absent at `3e-5`. Therefore local
+objective-positive merge candidates are not sufficient evidence for distinct
+terminal basins. The next gate should inspect the saved membership differences
+at `1e-5` and define an object-specific phase-boundary/mechanism diagnostic,
+not expand another broad gamma or support-top-k sweep.
+
+The first saved-membership difference review is materialized at
+`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_terminal_membership_difference_review_gamma1e5_20260603/`,
+with closed controls at
+`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_terminal_membership_difference_review_gamma3e5_20260603/`
+and
+`research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_terminal_membership_difference_review_gamma1e4_20260603/`.
+It decomposes terminal differences by start-policy hash groups, start-pair
+co-assignment changes, variable nodes, and variable node pairs. At `gamma=1e-5`,
+all 4 objects remain terminal-multiplicity cases, but the median
+object-level variable co-assignment pair share is only
+`0.007416764891781547` and the median universe-level share is
+`0.0016309539434264811`. There are 114 variable universe node-pairs total:
+80 object-object, 16 object-support, and 18 support-support. Three objects are
+classified as `start_condition_selects_multiple_partial_coarsening_terminals`;
+one is `component_pattern_initialization_selects_alternate_partial_coarsening`.
+At `3e-5` and `1e-4`, the same review reports zero variable node-pairs and all
+4 objects as `closed_control_no_terminal_multiplicity`. This sharpens the
+current mechanism read: the observed `1e-5` alternatives are narrow,
+phase-sensitive partial-coarsening variants around small co-assignment sets,
+not broad basin-wide rearrangements. The next gate should score the 114
+variable node-pairs with local edge mass and CPM delta, then ask whether any
+object has a named weak-pair/bridge mechanism worth reproducing in the small
+demo surface.
+
 The first prior-versus-current dataset contrast shows that the current
 NanoClustering full/candidate graphs are dense at the nano level: about
 78k-80k nodes, 105M-107M edges, average degree around 2.7k, and undirected

@@ -273,8 +273,13 @@ scripts.
   by top-k boundary-weight support-neighborhood nodes, with starts from the
   seed0 source state, seed0-object seeded state, object singleton,
   component-pattern blocks, and random object blocks. It tests terminal
-  multiplicity and singleton collapse only; it does not promote wall/pathway,
-  quality/cost, real-data method-success, or algorithm claims.
+  multiplicity and singleton collapse only. With
+  `--save-terminal-memberships`, it also writes compact object/universe
+  terminal membership slices under `terminal_memberships/` and
+  `nanoclustering_symmetric_object_multistart_terminal_pair_rows.csv` for
+  within-object start-pair terminal ARI. These pair rows are terminal-structure
+  diagnostics only; they do not promote wall/pathway, quality/cost, real-data
+  method-success, or algorithm claims.
 - `analyze_leiden_basin_nanoclustering_symmetric_object_merge_viability.py`:
   audits whether selected symmetric-object/support-neighborhood universes have
   objective-positive CPM free-free merge candidates or free-to-fixed attachment
@@ -289,3 +294,10 @@ scripts.
   lower critical gamma or local weight normalization before another
   terminal-multiplicity run; it does not promote wall/pathway, basin-quality,
   cost, method-success, or algorithm claims.
+- `analyze_leiden_basin_nanoclustering_symmetric_object_terminal_membership_differences.py`:
+  reads saved compact terminal membership slices from the symmetric-object
+  multistart runner and decomposes terminal multiplicity into start-policy
+  terminal groups, start-pair co-assignment changes, variable nodes, and
+  variable node-pairs. It is read-only over completed multistart artifacts and
+  does not run Leiden, promote wall/pathway, inspect basin quality/cost as a
+  success claim, or claim method success.

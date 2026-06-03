@@ -225,6 +225,34 @@ Integration rule:
 5. Return to NanoClustering only after the mechanism and method are validated
    in controlled form.
 
+### Return-To-NanoClustering Constraint
+
+The 2026-06-02 symmetric-object critical-gamma bracket is useful as a
+constraint on this integration rule, not as a shortcut around it. The
+support-top100 P1 unique membership bracket fixes the same 4 objects and 16
+deterministic starts across `gamma=1e-5`, `3e-5`, and `1e-4`. At `1e-5`, all 4
+objects show terminal multiplicity and start-pair object terminal ARI median is
+0.8996455967664517. At `3e-5`, all 4 objects close to one terminal with
+start-pair ARI 1.0, despite top100/doc-weight local critical-gamma maxima being
+about `3.7e-5` to `4.6e-5`. At `1e-4`, all 4 objects remain closed and
+singleton-collapse.
+
+This means a local objective-positive merge screen is not enough to define a
+basin. The empirical NanoClustering return path needs membership-level terminal
+differences, an object-specific phase-boundary diagnostic, and mechanism labels
+for what changes across terminals. It should not proceed directly to
+quality/cost, wall/pathway, or algorithm claims.
+
+The first membership-difference review narrows the mechanism target. At
+`gamma=1e-5`, the 4 P1 objects have only 114 variable universe node-pairs
+across all saved starts: 80 object-object, 16 object-support, and 18
+support-support. Median object-level variable co-assignment pair share is
+0.007416764891781547, and the `3e-5`/`1e-4` controls have zero variable
+node-pairs. The controlled demo should therefore not try to reproduce a broad
+partition rearrangement first. The closer target is a weak-pair or small-bridge
+partial-coarsening phase transition where a compact node set switches
+co-assignment under ordinary Leiden + CPM.
+
 ## Immediate Next Work
 
 The next work should be split into two parallel threads:
