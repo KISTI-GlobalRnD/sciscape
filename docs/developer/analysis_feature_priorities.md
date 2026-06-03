@@ -303,8 +303,9 @@ Do not do yet:
 6. Add replayable keyword cleaning rule artifacts and before/after impact
    summaries.
 7. Maintain the stable co-occurrence table/map artifact contract.
-8. Make Atlas evidence inspector consume only validated payload fields and
-   exposure states.
+8. Implement the Atlas evidence inspector contract from
+   `atlas_evidence_inspector_design.md`, consuming only validated payload fields
+   and exposure states.
 9. Add general matrix writer and validator utilities after co-occurrence
    artifacts are stable.
 10. Define temporal trend artifact schema.

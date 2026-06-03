@@ -44,7 +44,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F06 | Matrix builder | `[~]` | 25% | sparse matrix internals, co-occurrence helpers, artifact feature detection | explicit matrix-builder mode, schema, writer, validator |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
-| F09 | Atlas map, evidence, cluster reading | `[~]` | 70% | atlas payload builder, neighbors, representative works, web endpoints | UI rewrite and complete evidence inspector workflow |
+| F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
 | F11 | Temporal and evolution | `[~]` | 30% | temporal keyword utilities, burst/trend helpers, feature detection | cluster evolution artifact contract and map UI |
 | F12 | Evidence-backed narratives | `[ ]` | 15% | narrative feature detection and target definition | narrative generator, evidence references, QA contract |
@@ -206,12 +206,14 @@ control surface is still incomplete.
 
 ### F09. Atlas Map, Evidence, And Cluster Reading
 
-Status: `[~]` Partial. Rough completeness: 70%.
+Status: `[~]` Partial. Rough completeness: 72%.
 
 - `[x]` Atlas payload can be built from report and membership artifacts.
 - `[x]` Hierarchy lineage, doc counts, labels, representative works, and neighbor
   evidence can be attached.
 - `[x]` Cluster detail and atlas-related web endpoints exist.
+- `[x]` A validated-payload evidence inspector contract is defined in
+  `atlas_evidence_inspector_design.md`.
 - `[~]` Evidence is available in payloads, but not yet fully organized into a
   consistent inspector workflow.
 - `[ ]` The UI/UX rewrite is still pending and should not be considered complete.

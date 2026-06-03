@@ -6,6 +6,7 @@
 | `branding_positioning.md` | Product identity, competitive positioning, and claim boundaries |
 | `result_manifest_design.md` | Result-root manifest schema for navigation, provenance, feature states, and run status |
 | `artifact_contract.md` | Result-root schema, feature inference, and validation rules |
+| `atlas_evidence_inspector_design.md` | Validated-payload Atlas evidence inspector contract and implementation order |
 | `release_readiness.md` | Local validation and release checklist |
 | `atlas_app_benchmark.md` | Atlas Map feature absorption matrix and result-contract patterns |
 | `feature_definition.md` | Product modes, lenses, capabilities, and validation contract |
