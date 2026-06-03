@@ -218,7 +218,7 @@ Goal: move from static maps to how fields change over time.
 Primary work:
 
 - Stabilize temporal trend artifacts for documents, keywords, clusters, and term
-  families.
+  families using the contract in `temporal_artifact_design.md`.
 - Define cluster evolution artifacts: time slice, lineage, split, merge,
   emergence, decline, stability, and evidence rows.
 - Add growth and burst summaries as analysis artifacts.
@@ -228,6 +228,7 @@ Primary work:
 
 Completion criteria:
 
+- Temporal trend outputs can be validated independently from the UI.
 - The same cluster can be followed across time slices with explicit evidence.
 - Split, merge, emergence, and decline events have reproducible input rows.
 - Evolution UI can be enabled or disabled by feature states.
@@ -309,7 +310,8 @@ Do not do yet:
    and exposure states.
 9. Implement the general matrix artifact writer and validator from
    `matrix_artifact_design.md`.
-10. Define temporal trend artifact schema.
+10. Maintain the temporal trend artifact schema in
+    `temporal_artifact_design.md`.
 11. Define cluster evolution artifact schema and one synthetic smoke example.
 12. Define narrative evidence-reference schema without generation.
 13. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.

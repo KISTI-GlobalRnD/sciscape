@@ -218,7 +218,7 @@ Initial stable artifact refs:
 | `term_network` | term-network payload or future stable term-network artifact |
 | `cooccurrence` | `landscape/term_cooccurrence.parquet` and `landscape/term_cooccurrence_map.json` |
 | `matrix` | `matrices/<matrix_id>/matrix_manifest.json` plus values and entity tables |
-| `temporal` | future temporal trend artifact |
+| `temporal` | `temporal/temporal_manifest.json` plus periods, activity, entity series, events, and QA |
 | `evolution` | future evolution artifact |
 | `narrative` | future narrative artifact |
 | `export_manifest` | future export manifest |

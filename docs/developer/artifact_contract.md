@@ -75,6 +75,12 @@ writers should emit `result_manifest.json`.
 | `matrices/<matrix_id>/matrix_manifest.json` | `schema_version`, `matrix_id`, `matrix_family`, `format`, `shape`, `value`, `weighting`, `outputs` | General matrix artifact contract defined in `matrix_artifact_design.md`. |
 | `matrices/<matrix_id>/matrix_values.parquet` | `schema_version`, `matrix_id`, `row_key`, `column_key`, `row_index`, `column_index`, `value`, `relation` | Sparse triplet matrix values. |
 | `matrices/<matrix_id>/row_entities.parquet` and `column_entities.parquet` | `schema_version`, `matrix_id`, `entity_key`, `entity_index`, `entity_type`, `label` | Axis metadata for matrix rows and columns. |
+| `temporal/temporal_manifest.json` | `schema_version`, `temporal_id`, `periodization`, `entity_types`, `metrics`, `outputs` | Temporal trend artifact contract defined in `temporal_artifact_design.md`. |
+| `temporal/periods.parquet` | `schema_version`, `temporal_id`, `period_id`, `period_index`, `start_year`, `end_year`, `unit` | Period axis for temporal rows. |
+| `temporal/activity.parquet` | `schema_version`, `temporal_id`, `period_id`, `doc_count`, `unknown_year_count` | Result-level activity per period. |
+| `temporal/entity_series.parquet` | `schema_version`, `temporal_id`, `entity_type`, `entity_key`, `period_id`, `metric`, `value` | Long-format temporal series for result, cluster, term, and term-family entities. |
+| `temporal/temporal_events.parquet` | `schema_version`, `temporal_id`, `event_id`, `event_type`, `entity_type`, `entity_key`, `start_period_id`, `end_period_id`, `metric`, `score`, `method` | Optional growth, decline, burst, or peak signal rows. |
+| `temporal/temporal_qa.json` | `schema_version`, `temporal_id`, `status`, `checks`, `counts`, `warnings`, `blocking_issues` | Temporal artifact QA summary. |
 | matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
 | evolution artifacts | `*evolution*` or `*trajectory*` JSON/parquet | Powers the evolution lens only when present or embedded in `data.json`. |
 | narrative artifacts | `*narrative*` JSON/parquet | Powers narrative only when present or embedded in `data.json`. |
@@ -118,7 +124,7 @@ Feature inference rules:
 | `term_network` | stable co-occurrence artifact rows, report co-occurrence/network edges, or keyword rows can form within-cluster pairs |
 | `matrix` | matrix/co-occurrence artifact exists or report term edges exist |
 | `evidence` | abstracts and membership both exist |
-| `temporal` | abstracts include `pubyear` |
+| `temporal` | stable temporal artifacts exist, or abstracts include `pubyear` for beta temporal views |
 | `evolution` | evolution/trajectory artifact exists or report data embeds evolution payloads |
 | `narrative` | narrative artifact exists or report data embeds narrative payloads |
 | `quality` | validation can run |

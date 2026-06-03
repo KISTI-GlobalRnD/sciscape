@@ -46,7 +46,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
-| F11 | Temporal and evolution | `[~]` | 30% | temporal keyword utilities, burst/trend helpers, feature detection | cluster evolution artifact contract and map UI |
+| F11 | Temporal and evolution | `[~]` | 34% | temporal keyword utilities, burst/trend helpers, feature detection, temporal artifact design | writer, validator, cluster evolution artifact contract, and map UI |
 | F12 | Evidence-backed narratives | `[ ]` | 15% | narrative feature detection and target definition | narrative generator, evidence references, QA contract |
 | F13 | Validation and QA | `[x]` | 80% | artifact contract, result validation, quality gate, keyword artifact checks | strict checks for matrix/evolution/narrative features |
 | F14 | Report, export, interoperability | `[~]` | 70% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data | VOSviewer-style exports and export manifest completeness |
@@ -243,12 +243,15 @@ gap is UI QA and richer export/control behavior.
 
 ### F11. Temporal And Evolution
 
-Status: `[~]` Partial. Rough completeness: 30%.
+Status: `[~]` Partial. Rough completeness: 34%.
 
 - `[x]` Temporal keyword utilities and visualization helpers exist.
 - `[x]` Burst and trend helpers exist.
 - `[x]` Temporal tracking endpoints exist in the web app.
+- `[x]` Temporal trend artifact contract is defined in
+  `docs/developer/temporal_artifact_design.md`.
 - `[~]` Artifact feature inference can detect some temporal/evolution payloads.
+- `[ ]` Temporal trend writer and validator are not yet implemented.
 - `[ ]` Cluster evolution map artifacts, lineage transitions, split/merge
   events, and stability scores are not implemented as a stable contract.
 - `[ ]` Evolution map UI is not product-ready.
@@ -330,7 +333,9 @@ evolution map, and narrative system are stable.
 1. Define `workspace.json` or equivalent project/run manifest.
 2. Implement the general matrix artifact writer and validator from
    `matrix_artifact_design.md`.
-3. Define replayable keyword cleaning rule artifacts and before/after diffs.
-4. Define cluster evolution artifact schema before building the map UI.
-5. Define narrative evidence-reference schema before adding generation.
-6. Add export manifests for every generated report, graph, table, and map.
+3. Implement the temporal trend writer and validator from
+   `temporal_artifact_design.md`.
+4. Define replayable keyword cleaning rule artifacts and before/after diffs.
+5. Define cluster evolution artifact schema before building the map UI.
+6. Define narrative evidence-reference schema before adding generation.
+7. Add export manifests for every generated report, graph, table, and map.
