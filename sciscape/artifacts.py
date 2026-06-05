@@ -6882,8 +6882,11 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     features["overview"] = counts["abstract_rows"] > 0 or counts["report_clusters"] > 0
     features["cluster_map"] = counts["membership_rows"] > 0 or counts["report_clusters"] > 0
     features["keyword"] = counts["keyword_rows"] > 0 or _report_has_terms(report_clusters)
+    legacy_matrix_artifacts = max(0, len(artifacts.matrix_paths) - cooccurrence_artifacts)
+    counts["legacy_matrix_artifacts"] = int(legacy_matrix_artifacts)
+
     features["term_network"] = report_edge_count > 0 or keyword_edge_count > 0 or cooccurrence_rows > 0
-    features["matrix"] = bool(general_matrix_artifacts or artifacts.matrix_paths) or report_edge_count > 0
+    features["matrix"] = bool(general_matrix_artifacts or legacy_matrix_artifacts)
     features["evidence"] = counts["abstract_rows"] > 0 and counts["membership_rows"] > 0
     has_pubyear = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
     features["temporal"] = bool(temporal_artifacts or has_pubyear)
@@ -7150,12 +7153,16 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
 
     for i, rel_path in enumerate(artifact_info.get("matrix_artifacts", []), start=1):
         role = "cooccurrence" if "cooccurrence" in str(rel_path).lower() else "matrix"
-        key = role if i == 1 else f"{role}_{i}"
+        key = role
+        suffix = 2
+        while key in records:
+            key = f"{role}_{suffix}"
+            suffix += 1
         records[key] = _artifact_record(
             root=root,
             role=role,
             path=rel_path,
-            required_for=["cooccurrence", "matrix"] if role == "cooccurrence" else ["matrix"],
+            required_for=["cooccurrence"] if role == "cooccurrence" else ["matrix"],
             table_info=tables.get(f"{role}_artifact:{rel_path}"),
             schema_version=COOCCURRENCE_ARTIFACT_SCHEMA_VERSION if role == "cooccurrence" else None,
             description=(
@@ -7228,11 +7235,13 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
 
 
 def _present_artifact_refs(artifacts: Mapping[str, Mapping[str, Any]], candidates: list[str]) -> list[str]:
-    return [
-        key
-        for key in candidates
-        if key in artifacts and artifacts[key].get("status") in {"present", "generated", "partial"}
-    ]
+    refs: list[str] = []
+    for artifact_key, artifact in artifacts.items():
+        if artifact.get("status") not in {"present", "generated", "partial"}:
+            continue
+        if any(artifact_key == candidate or artifact_key.startswith(f"{candidate}_") for candidate in candidates):
+            refs.append(artifact_key)
+    return refs
 
 
 def _feature_artifact_candidates(feature: str) -> list[str]:
@@ -7241,8 +7250,8 @@ def _feature_artifact_candidates(feature: str) -> list[str]:
         "cluster_map": ["membership", "report_data"],
         "keyword": ["keywords", "report_data"],
         "term_network": ["term_network", "keywords", "report_data"],
-        "cooccurrence": ["cooccurrence", "matrix", "keywords", "report_data"],
-        "matrix": ["matrix", "cooccurrence", "report_data"],
+        "cooccurrence": ["cooccurrence", "keywords", "report_data"],
+        "matrix": ["matrix"],
         "evidence": ["records", "membership", "edge_evidence"],
         "temporal": ["records", "temporal"],
         "evolution": ["evolution"],
@@ -7303,7 +7312,7 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
     if feature == "cooccurrence" and not any(record.get("role") == "cooccurrence" for record in artifacts.values()):
         return "derived from keyword/report term edges; stable co-occurrence artifact not written yet"
     if feature == "matrix" and not _has_general_matrix_artifact(artifacts):
-        return "derived from co-occurrence/report term edges; stable general matrix artifact not written yet"
+        return "matrix-like artifact exists but stable general matrix artifact is not written yet"
     if feature == "temporal" and not _has_temporal_artifact(artifacts):
         return "pubyear exists but no temporal artifact has been written yet"
     if feature == "evolution" and not _has_evolution_artifact(artifacts):
@@ -8590,7 +8599,7 @@ def _feature_block_from_report_data(report_data: dict[str, Any]) -> dict[str, bo
     features["cluster_map"] = bool(clusters)
     features["keyword"] = has_terms
     features["term_network"] = term_edges > 0
-    features["matrix"] = term_edges > 0
+    features["matrix"] = False
     features["evidence"] = False
     features["temporal"] = bool(report_data.get("_trend_scores"))
     features["evolution"] = has_evolution

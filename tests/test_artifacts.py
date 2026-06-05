@@ -129,7 +129,7 @@ def test_validate_result_root_infers_features_and_counts(tmp_path):
     assert payload["features"]["cluster_map"] is True
     assert payload["features"]["keyword"] is True
     assert payload["features"]["term_network"] is True
-    assert payload["features"]["matrix"] is True
+    assert payload["features"]["matrix"] is False
     assert payload["features"]["evidence"] is True
     assert payload["features"]["temporal"] is True
     assert payload["features"]["evolution"] is False
@@ -178,12 +178,14 @@ def test_write_cooccurrence_artifacts_promotes_stable_manifest_feature(tmp_path)
     assert contract["counts"]["cooccurrence_artifacts"] == 2
     assert contract["counts"]["cooccurrence_rows"] == 2
     assert contract["features"]["term_network"] is True
-    assert contract["features"]["matrix"] is True
+    assert contract["features"]["matrix"] is False
 
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["cooccurrence"]["state"] == "stable"
     assert manifest["features"]["cooccurrence"]["reason"] == "feature validated"
     assert "cooccurrence" in manifest["features"]["cooccurrence"]["artifact_refs"]
+    assert manifest["features"]["matrix"]["state"] == "hidden"
+    assert manifest["features"]["matrix"]["artifact_refs"] == []
     assert manifest["artifacts"]["cooccurrence"]["schema_version"] == COOCCURRENCE_ARTIFACT_SCHEMA_VERSION
     assert manifest["artifacts"]["cooccurrence"]["rows"] == 2
 

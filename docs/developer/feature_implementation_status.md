@@ -159,21 +159,23 @@ network families are still future work.
 
 ### F06. Matrix Builder
 
-Status: `[~]` Partial. Rough completeness: 32%.
+Status: `[~]` Partial. Rough completeness: 43%.
 
 - `[x]` Sparse matrix internals are used by BC/CC and keyword extraction.
 - `[x]` Co-occurrence table construction exists for keyword terms.
 - `[x]` A general matrix artifact contract is defined in
   `matrix_artifact_design.md`.
-- `[~]` Artifact feature inference can recognize matrix-like outputs.
-- `[ ]` There is no explicit matrix-builder command, app mode, writer, or
-  validator.
-- `[ ]` Matrix rows/columns, normalization, thresholding, and projection metadata
-  are not yet emitted as replayable artifacts.
+- `[x]` General sparse-triplet matrix writer, validator, QA sidecar, and
+  term-co-occurrence wrapper exist.
+- `[x]` Artifact feature inference distinguishes stable general matrix manifests
+  from co-occurrence-only term-network evidence.
+- `[ ]` There is no explicit matrix-builder command, app mode, or export flow.
+- `[ ]` Matrix thresholding, projection choices, and compare-across-cleaning-rule
+  metadata are not yet exposed as replayable user workflows.
 
 Review: implementation primitives and the artifact contract now exist, but the
-Matrix Builder should still be marked as not product-complete until writer,
-validator, and QA artifacts are implemented.
+Matrix Builder should still be marked as not product-complete until a user-facing
+builder mode, export path, and comparison workflow are implemented.
 
 ### F07. Clustering And Hierarchy
 
