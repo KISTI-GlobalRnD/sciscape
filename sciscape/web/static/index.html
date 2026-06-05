@@ -6,6 +6,7 @@
 <title>SciScape</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
 
@@ -428,6 +429,180 @@ body {
     linear-gradient(180deg, rgba(197, 207, 224, 0.16) 1px, transparent 1px),
     var(--white);
   background-size: 32px 32px;
+}
+.atlas-deck-panel {
+  border: 1px solid rgba(197, 207, 224, 0.92);
+  border-radius: 6px;
+  background: #f7f8fb;
+  margin-bottom: 0.85rem;
+  overflow: hidden;
+}
+.atlas-deck-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.58rem 0.65rem;
+  border-bottom: 1px solid rgba(197, 207, 224, 0.78);
+  background: rgba(255, 255, 255, 0.86);
+}
+.atlas-deck-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--graphite);
+}
+.atlas-deck-subtitle,
+.atlas-deck-meta {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  color: var(--silver);
+  line-height: 1.35;
+}
+.atlas-deck-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.48rem 0.65rem;
+  border-bottom: 1px solid rgba(197, 207, 224, 0.68);
+  background: rgba(249, 250, 252, 0.88);
+}
+.atlas-deck-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  min-width: 0;
+}
+.atlas-deck-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.66rem;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid rgba(197, 207, 224, 0.84);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  white-space: nowrap;
+}
+.atlas-deck-toggle input {
+  width: 0.84rem;
+  height: 0.84rem;
+  accent-color: var(--teal);
+  margin: 0;
+}
+.atlas-deck-filter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.36rem;
+}
+.atlas-deck-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  white-space: nowrap;
+}
+.atlas-deck-field input,
+.atlas-deck-field select {
+  height: 1.66rem;
+  border: 1px solid rgba(197, 207, 224, 0.9);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--graphite);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+}
+.atlas-deck-field input {
+  width: 4.7rem;
+  padding: 0 0.34rem;
+}
+.atlas-deck-field select {
+  padding: 0 1.55rem 0 0.38rem;
+}
+.atlas-deck-stage {
+  position: relative;
+  height: 320px;
+  min-height: 260px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(197, 207, 224, 0.18) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(197, 207, 224, 0.18) 1px, transparent 1px),
+    #f9fafc;
+  background-size: 28px 28px;
+}
+.atlas-deck-stage canvas {
+  outline: none;
+}
+.atlas-deck-status {
+  position: absolute;
+  left: 0.65rem;
+  top: 0.65rem;
+  z-index: 3;
+  max-width: min(360px, calc(100% - 1.3rem));
+  padding: 0.35rem 0.46rem;
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  line-height: 1.35;
+  pointer-events: none;
+}
+.atlas-deck-hover {
+  position: absolute;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 3;
+  width: min(260px, calc(100% - 1.3rem));
+  padding: 0.44rem 0.52rem;
+  border: 1px solid rgba(45, 58, 82, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-sm);
+  color: var(--steel);
+  font-size: 0.64rem;
+  line-height: 1.38;
+  pointer-events: none;
+  display: none;
+}
+.atlas-deck-hover.active { display: block; }
+.atlas-deck-hover-title {
+  font-weight: 700;
+  color: var(--graphite);
+  margin-bottom: 0.14rem;
+}
+.atlas-deck-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem 0.65rem 0.6rem;
+  border-top: 1px solid rgba(197, 207, 224, 0.72);
+  background: rgba(255, 255, 255, 0.72);
+}
+.atlas-deck-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  color: var(--steel);
+}
+.atlas-deck-swatch {
+  width: 0.56rem;
+  height: 0.56rem;
+  border-radius: 50%;
+  border: 1px solid rgba(45, 58, 82, 0.12);
+}
+.atlas-deck-fallback {
+  margin-top: 0.72rem;
 }
 .atlas-levels {
   display: flex;
@@ -1082,6 +1257,409 @@ body {
   font-size: 0.7rem;
   color: var(--steel);
 }
+.atlas-inspector-model {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 5px;
+  background: rgba(248, 249, 252, 0.86);
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+}
+.atlas-review-panel {
+  display: grid;
+  gap: 0.42rem;
+  border: 1px solid rgba(45, 58, 82, 0.12);
+  border-left: 3px solid var(--teal);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.82);
+  margin-top: 0.75rem;
+  padding: 0.52rem;
+}
+.atlas-review-panel.review {
+  border-left-color: var(--amber);
+}
+.atlas-review-panel.blocked {
+  border-left-color: var(--coral);
+}
+.atlas-review-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+.atlas-review-title {
+  color: var(--graphite);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.atlas-review-note {
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.35;
+  margin-top: 0.1rem;
+}
+.atlas-review-state {
+  min-width: 4.3rem;
+  border: 1px solid rgba(43, 168, 156, 0.35);
+  border-radius: 4px;
+  background: rgba(43, 168, 156, 0.08);
+  color: var(--teal-dim);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  padding: 0.14rem 0.34rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+.atlas-review-panel.review .atlas-review-state {
+  border-color: rgba(232, 168, 56, 0.38);
+  background: var(--amber-glow);
+  color: var(--amber-dim);
+}
+.atlas-review-panel.blocked .atlas-review-state {
+  border-color: rgba(216, 90, 74, 0.34);
+  background: rgba(216, 90, 74, 0.08);
+  color: var(--coral);
+}
+.atlas-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.32rem;
+}
+.atlas-review-item {
+  min-width: 0;
+  border: 1px solid rgba(197, 207, 224, 0.78);
+  border-radius: 4px;
+  background: rgba(248, 249, 252, 0.76);
+  padding: 0.34rem 0.38rem;
+}
+.atlas-review-label {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atlas-review-value {
+  color: var(--graphite);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  line-height: 1.28;
+  margin-top: 0.1rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atlas-review-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+}
+.atlas-review-packet {
+  display: grid;
+  gap: 0.4rem;
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-left: 3px solid var(--teal);
+  border-radius: 5px;
+  background: rgba(248, 249, 252, 0.82);
+  margin-top: 0.75rem;
+  padding: 0.52rem;
+}
+.atlas-review-packet.review {
+  border-left-color: var(--amber);
+}
+.atlas-review-packet.blocked {
+  border-left-color: var(--coral);
+}
+.atlas-review-packet-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.atlas-review-packet-title {
+  color: var(--graphite);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.atlas-review-packet-subtitle {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.32;
+  margin-top: 0.1rem;
+}
+.atlas-review-packet-grid {
+  display: grid;
+  gap: 0.28rem;
+}
+.atlas-review-packet-row {
+  min-width: 0;
+  border: 1px solid rgba(197, 207, 224, 0.78);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.34rem 0.38rem;
+}
+.atlas-review-packet-label {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+}
+.atlas-review-packet-value {
+  color: var(--graphite);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 0.1rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atlas-review-queue {
+  display: grid;
+  gap: 0.46rem;
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 5px;
+  background: rgba(254, 252, 249, 0.86);
+  padding: 0.52rem;
+}
+.atlas-review-queue-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+.atlas-review-queue-title {
+  color: var(--graphite);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.atlas-review-queue-note {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.35;
+  margin-top: 0.1rem;
+}
+.atlas-review-queue-counts,
+.atlas-review-queue-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+.atlas-review-queue-controls {
+  display: grid;
+  justify-items: end;
+  gap: 0.32rem;
+}
+.atlas-review-queue-count {
+  border: 1px solid rgba(197, 207, 224, 0.8);
+  border-radius: 4px;
+  background: rgba(248, 249, 252, 0.8);
+  color: var(--steel);
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  padding: 0.16rem 0.34rem;
+  white-space: nowrap;
+}
+.atlas-review-queue-count:hover {
+  border-color: var(--amber);
+  background: var(--cream);
+}
+.atlas-review-queue-count.active {
+  box-shadow: inset 0 0 0 1px rgba(10, 15, 26, 0.14);
+}
+.atlas-review-queue-next {
+  border: 1px solid rgba(45, 58, 82, 0.18);
+  border-radius: 4px;
+  background: var(--slate);
+  color: var(--cream);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  padding: 0.22rem 0.46rem;
+  white-space: nowrap;
+}
+.atlas-review-queue-next:hover {
+  background: var(--graphite);
+}
+.atlas-review-queue-next:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.atlas-review-queue-count.ready {
+  border-color: rgba(43, 168, 156, 0.34);
+  background: rgba(43, 168, 156, 0.08);
+  color: var(--teal-dim);
+}
+.atlas-review-queue-count.review {
+  border-color: rgba(232, 168, 56, 0.38);
+  background: var(--amber-glow);
+  color: var(--amber-dim);
+}
+.atlas-review-queue-count.blocked {
+  border-color: rgba(216, 90, 74, 0.34);
+  background: rgba(216, 90, 74, 0.08);
+  color: var(--coral);
+}
+.atlas-review-queue-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.46rem;
+  align-items: center;
+  width: 100%;
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-left: 3px solid var(--amber);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--graphite);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.42rem 0.48rem;
+  text-align: left;
+}
+.atlas-review-queue-row:hover {
+  border-color: var(--amber);
+  background: var(--cream);
+}
+.atlas-review-queue-row.selected {
+  border-color: var(--teal);
+  border-left-color: var(--teal);
+  background: rgba(43, 168, 156, 0.08);
+}
+.atlas-review-queue-row.blocked {
+  border-left-color: var(--coral);
+}
+.atlas-review-queue-label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atlas-review-queue-meta {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  line-height: 1.3;
+  margin-top: 0.08rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atlas-model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.atlas-model-cell,
+.atlas-unavailable-row,
+.atlas-warning-row {
+  min-width: 0;
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.34rem 0.38rem;
+}
+.atlas-model-label,
+.atlas-warning-label {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+}
+.atlas-model-value,
+.atlas-warning-detail {
+  color: var(--graphite);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  margin-top: 0.1rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atlas-section-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.1rem;
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  padding: 0.1rem 0.28rem;
+  text-transform: uppercase;
+}
+.atlas-section-state.stable {
+  border-color: rgba(43, 168, 156, 0.42);
+  background: rgba(43, 168, 156, 0.09);
+  color: #0f766e;
+}
+.atlas-section-state.beta {
+  border-color: rgba(214, 154, 73, 0.38);
+  background: rgba(214, 154, 73, 0.1);
+  color: var(--amber-dim);
+}
+.atlas-section-state.hidden,
+.atlas-section-state.blocked {
+  border-color: rgba(205, 96, 74, 0.34);
+  background: rgba(205, 96, 74, 0.08);
+  color: var(--coral);
+}
+.atlas-meaning-list,
+.atlas-qa-list {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.35rem;
+}
+.atlas-meaning-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.45rem;
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  background: var(--white);
+  padding: 0.4rem 0.46rem;
+}
+.atlas-meaning-term {
+  color: var(--graphite);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.24;
+  overflow-wrap: anywhere;
+}
+.atlas-meaning-meta {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.35;
+  margin-top: 0.12rem;
+}
+.atlas-unavailable-row {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  line-height: 1.35;
+  margin-top: 0.35rem;
+}
+.atlas-hidden-module-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+  margin-top: 0.35rem;
+}
 .atlas-section-title {
   margin-top: 0.75rem;
   font-size: 0.6rem;
@@ -1550,10 +2128,21 @@ body {
   .atlas-focus-panel,
   .atlas-neighbor-evidence-head,
   .atlas-neighbor-evidence-grid,
-  .atlas-neighbor-summary { grid-template-columns: 1fr; }
+  .atlas-neighbor-summary,
+  .atlas-review-head,
+  .atlas-review-grid,
+  .atlas-review-queue-head,
+  .atlas-model-grid,
+  .atlas-meaning-row { grid-template-columns: 1fr; }
   .atlas-view-note,
   .atlas-lens-note,
   .atlas-focus-note { text-align: left; }
+  .atlas-deck-head { grid-template-columns: 1fr; }
+  .atlas-deck-controls { grid-template-columns: 1fr; }
+  .atlas-deck-filter { justify-content: flex-start; }
+  .atlas-deck-stage { height: 260px; }
+  .atlas-deck-hover { left: 0.65rem; right: 0.65rem; width: auto; }
+  .atlas-review-queue-controls { justify-items: start; }
   .atlas-node-grid { grid-template-columns: 1fr; }
 }
 
@@ -2130,11 +2719,17 @@ let currentAtlasSearchQuery = '';
 let currentAtlasLens = 'cluster';
 let currentAtlasViewMode = 'map';
 let currentAtlasFocusMode = 'global';
+let currentAtlasReviewFilter = 'all';
 let currentAtlasNeighborUid = '';
 let currentAtlasResultMeta = {};
 let currentAtlasSessionKey = '';
 let currentAtlasPinnedUids = [];
 let currentAtlasRecentUids = [];
+let currentAtlasRenderPayload = null;
+let currentAtlasRenderJobId = '';
+let atlasDeckInstance = null;
+let atlasDeckRenderToken = 0;
+let currentAtlasDeckSettings = {edges: true, hierarchy: true, labels: true, minWeight: 0, labelLimit: 80};
 let currentEvolutionPayload = null;
 let currentEvolutionEventFilter = 'all';
 const ATLAS_SESSION_LIMIT = 6;
@@ -2274,17 +2869,22 @@ function renderAtlasShell(result) {
     currentAtlasNodeUid = null;
     currentAtlasViewMode = 'map';
     currentAtlasFocusMode = 'global';
+    currentAtlasReviewFilter = 'all';
     currentAtlasNeighborUid = '';
     currentAtlasResultMeta = {};
     currentAtlasSessionKey = '';
     currentAtlasPinnedUids = [];
     currentAtlasRecentUids = [];
+    currentAtlasRenderPayload = null;
+    currentAtlasRenderJobId = '';
+    destroyAtlasDeckInstance();
     el.classList.remove('active');
     el.innerHTML = '';
     return;
   }
 
   currentAtlasPayload = atlas;
+  resetAtlasRenderCacheForJob();
   updateAtlasResultMeta(result || {});
   ensureAtlasSession(atlas);
   applyAtlasUrlState(atlas);
@@ -2315,6 +2915,7 @@ function renderAtlasShell(result) {
   const searchPanel = renderAtlasSearchPanel(atlas, selected.cluster_uid);
   const primaryView = renderAtlasPrimaryView(atlas, selected, focusNodes, visibleNodes, nodeCards);
 
+  destroyAtlasDeckInstance();
   el.innerHTML =
     '<div class="atlas-head">' +
       '<div><div class="atlas-title">Atlas Map</div>' +
@@ -2340,6 +2941,7 @@ function renderAtlasShell(result) {
       '<div class="atlas-inspector">' + renderAtlasInspector(selected) + '</div>' +
     '</div>';
   el.classList.add('active');
+  if (currentAtlasViewMode === 'map') queueAtlasDeckRender(selected, focusNodes);
 }
 
 function atlasLevels(atlas) {
@@ -2417,7 +3019,7 @@ function renderAtlasViewControls() {
 function atlasViewNote() {
   if (currentAtlasViewMode === 'hierarchy') return 'lineage, siblings, and child clusters';
   if (currentAtlasViewMode === 'evidence') return 'cluster evidence readiness in visible level';
-  return 'cluster cards in the selected level';
+  return 'GPU map with card fallback in the selected level';
 }
 
 function selectAtlasViewMode(mode) {
@@ -2433,7 +3035,420 @@ function renderAtlasPrimaryView(atlas, selected, levelNodes, visibleNodes, nodeC
   const more = levelNodes.length > visibleNodes.length
     ? '<div class="atlas-empty">' + formatAtlasCount(levelNodes.length - visibleNodes.length) + ' more nodes in this focus.</div>'
     : '';
-  return '<div class="atlas-node-grid">' + nodeCards + '</div>' + more;
+  return renderAtlasDeckPanel(selected, levelNodes) +
+    '<div class="atlas-deck-fallback"><div class="atlas-node-grid">' + nodeCards + '</div>' + more + '</div>';
+}
+
+function renderAtlasDeckPanel(selected, levelNodes) {
+  const summary = currentAtlasResultMeta.renderSummary || {};
+  const coordinateSource = summary.coordinate_source || 'pending';
+  const nodes = Array.isArray(levelNodes) ? levelNodes : [];
+  return '<div class="atlas-deck-panel">' +
+    '<div class="atlas-deck-head">' +
+      '<div><div class="atlas-deck-title">GPU Atlas Map</div>' +
+      '<div class="atlas-deck-subtitle">deck.gl render payload / ' + esc(String(currentAtlasLevel || 'cluster')) +
+        ' / ' + formatAtlasCount(nodes.length) + ' visible nodes</div></div>' +
+      '<div class="atlas-deck-meta">' +
+        esc(summary.schema_version || 'render payload pending') + '<br>' +
+        'coords ' + esc(coordinateSource) + ' / edges ' + esc(formatAtlasCount(summary.edge_count || 0)) +
+      '</div>' +
+    '</div>' +
+    renderAtlasDeckControls(summary) +
+    '<div class="atlas-deck-stage" id="atlas-deck-stage">' +
+      '<div class="atlas-deck-status" id="atlas-deck-status">Waiting for Atlas render payload...</div>' +
+      '<div class="atlas-deck-hover" id="atlas-deck-hover"></div>' +
+    '</div>' +
+    '<div class="atlas-deck-legend" id="atlas-deck-legend">' +
+      renderAtlasDeckLegend(null, selected, nodes) +
+    '</div>' +
+  '</div>';
+}
+
+function atlasDeckSettings() {
+  const defaults = {edges: true, hierarchy: true, labels: true, minWeight: 0, labelLimit: 80};
+  return Object.assign({}, defaults, currentAtlasDeckSettings || {});
+}
+
+function renderAtlasDeckControls(summary) {
+  const settings = atlasDeckSettings();
+  const edgeCount = Number(summary && summary.edge_count);
+  const hierarchyCount = Number(summary && summary.hierarchy_edge_count);
+  const labelCount = Number(summary && summary.label_count);
+  return '<div class="atlas-deck-controls">' +
+    '<div class="atlas-deck-toggles">' +
+      renderAtlasDeckLayerToggle('edges', 'Relations', Number.isFinite(edgeCount) ? edgeCount : 0, settings.edges) +
+      renderAtlasDeckLayerToggle('hierarchy', 'Hierarchy', Number.isFinite(hierarchyCount) ? hierarchyCount : 0, settings.hierarchy) +
+      renderAtlasDeckLayerToggle('labels', 'Labels', Number.isFinite(labelCount) ? labelCount : 0, settings.labels) +
+    '</div>' +
+    '<div class="atlas-deck-filter">' +
+      '<label class="atlas-deck-field"><span>Min edge</span>' +
+        '<input type="number" min="0" step="0.25" value="' + escAttr(String(Number(settings.minWeight || 0))) +
+        '" onchange="setAtlasDeckMinEdgeWeight(this.value)"></label>' +
+      '<label class="atlas-deck-field"><span>Label cap</span>' +
+        '<select onchange="setAtlasDeckLabelLimit(this.value)">' +
+          renderAtlasDeckLabelLimitOption(24, settings.labelLimit) +
+          renderAtlasDeckLabelLimitOption(80, settings.labelLimit) +
+          renderAtlasDeckLabelLimitOption(160, settings.labelLimit) +
+        '</select></label>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderAtlasDeckLayerToggle(key, label, count, enabled) {
+  return '<label class="atlas-deck-toggle">' +
+    '<input type="checkbox" ' + (enabled ? 'checked ' : '') +
+      'onchange="setAtlasDeckLayer(decodeURIComponent(\'' + encodeURIComponent(key) + '\'), this.checked)">' +
+    '<span>' + esc(label) + ' ' + formatAtlasCount(count) + '</span>' +
+  '</label>';
+}
+
+function renderAtlasDeckLabelLimitOption(value, selectedValue) {
+  const selected = Number(selectedValue) === Number(value) ? ' selected' : '';
+  return '<option value="' + String(value) + '"' + selected + '>' + formatAtlasCount(value) + '</option>';
+}
+
+function setAtlasDeckLayer(key, enabled) {
+  const allowed = ['edges', 'hierarchy', 'labels'];
+  if (!allowed.includes(String(key))) return;
+  currentAtlasDeckSettings = atlasDeckSettings();
+  currentAtlasDeckSettings[String(key)] = Boolean(enabled);
+  syncAtlasUrlState();
+  renderAtlasShell({atlas: currentAtlasPayload});
+}
+
+function setAtlasDeckMinEdgeWeight(value) {
+  const number = Number(value);
+  currentAtlasDeckSettings = atlasDeckSettings();
+  currentAtlasDeckSettings.minWeight = Number.isFinite(number) && number > 0 ? Number(number.toFixed(3)) : 0;
+  syncAtlasUrlState();
+  renderAtlasShell({atlas: currentAtlasPayload});
+}
+
+function setAtlasDeckLabelLimit(value) {
+  const number = Number(value);
+  currentAtlasDeckSettings = atlasDeckSettings();
+  currentAtlasDeckSettings.labelLimit = [24, 80, 160].includes(number) ? number : 80;
+  syncAtlasUrlState();
+  renderAtlasShell({atlas: currentAtlasPayload});
+}
+
+function resetAtlasRenderCacheForJob() {
+  const key = String(currentJobId || '');
+  if (currentAtlasRenderJobId === key) return;
+  currentAtlasRenderJobId = key;
+  currentAtlasRenderPayload = null;
+  destroyAtlasDeckInstance();
+}
+
+function destroyAtlasDeckInstance() {
+  if (atlasDeckInstance && typeof atlasDeckInstance.finalize === 'function') {
+    try { atlasDeckInstance.finalize(); } catch (_) {}
+  }
+  atlasDeckInstance = null;
+}
+
+function queueAtlasDeckRender(selected, levelNodes) {
+  const token = ++atlasDeckRenderToken;
+  window.requestAnimationFrame(() => {
+    if (token !== atlasDeckRenderToken) return;
+    loadAtlasDeckRender(selected, levelNodes);
+  });
+}
+
+async function loadAtlasDeckRender(selected, levelNodes) {
+  const status = document.getElementById('atlas-deck-status');
+  if (!status || currentAtlasViewMode !== 'map') return;
+  if (!window.deck || !window.deck.Deck || !window.deck.ScatterplotLayer) {
+    status.textContent = 'deck.gl standalone bundle is not loaded; showing card fallback below.';
+    return;
+  }
+  if (!currentJobId) {
+    status.textContent = 'No job id is available for /atlas-render; showing card fallback below.';
+    return;
+  }
+  try {
+    status.textContent = 'Loading /api/jobs/' + currentJobId + '/atlas-render...';
+    const payload = await loadAtlasRenderPayload();
+    if (!payload || payload.error) {
+      status.textContent = payload && payload.error ? payload.error : 'Atlas render payload unavailable.';
+      return;
+    }
+    renderAtlasDeckMap(payload, selected, levelNodes);
+  } catch (e) {
+    status.textContent = 'Atlas GPU map failed: ' + e.message;
+  }
+}
+
+async function loadAtlasRenderPayload() {
+  if (currentAtlasRenderPayload && currentAtlasRenderJobId === String(currentJobId || '')) {
+    return currentAtlasRenderPayload;
+  }
+  const response = await fetch('/api/jobs/' + currentJobId + '/atlas-render');
+  const payload = await response.json();
+  if (response.ok && !payload.error) {
+    currentAtlasRenderPayload = payload;
+    currentAtlasRenderJobId = String(currentJobId || '');
+  }
+  return payload;
+}
+
+function renderAtlasDeckMap(payload, selected, levelNodes) {
+  const stage = document.getElementById('atlas-deck-stage');
+  const status = document.getElementById('atlas-deck-status');
+  const legend = document.getElementById('atlas-deck-legend');
+  if (!stage || !status) return;
+  const settings = atlasDeckSettings();
+  const visibleSet = atlasDeckVisibleUidSet(selected, levelNodes);
+  const selectedUid = String(selected && selected.cluster_uid || '');
+  const nodeRows = atlasDeckLayerRows(payload, 'nodes')
+    .filter(row => visibleSet.has(String(row.cluster_uid || row.id || '')));
+  const nodeSet = new Set(nodeRows.map(row => String(row.cluster_uid || row.id || '')));
+  const minWeight = Math.max(0, Number(settings.minWeight || 0));
+  const edgeRows = settings.edges ? atlasDeckLayerRows(payload, 'edges')
+    .filter(row =>
+      nodeSet.has(String(row.source_uid || '')) &&
+      nodeSet.has(String(row.target_uid || '')) &&
+      atlasNumeric(row.weight) >= minWeight
+    ) : [];
+  const hierarchyRows = settings.hierarchy ? atlasDeckLayerRows(payload, 'hierarchy')
+    .filter(row => nodeSet.has(String(row.source_uid || '')) && nodeSet.has(String(row.target_uid || ''))) : [];
+  const labelRows = settings.labels ? atlasDeckLabelRows(payload, nodeSet, selectedUid, settings.labelLimit) : [];
+  const viewState = atlasDeckInitialViewState(nodeRows, payload, selectedUid);
+
+  destroyAtlasDeckInstance();
+  const layers = [
+    new deck.LineLayer({
+      id: 'atlas-hierarchy-lines',
+      data: hierarchyRows,
+      getSourcePosition: d => d.source_position,
+      getTargetPosition: d => d.target_position,
+      getColor: [122, 137, 165, 72],
+      getWidth: 1,
+      widthUnits: 'pixels',
+      pickable: false,
+    }),
+    new deck.LineLayer({
+      id: 'atlas-relation-lines',
+      data: edgeRows,
+      getSourcePosition: d => d.source_position,
+      getTargetPosition: d => d.target_position,
+      getColor: d => d.same_parent ? [43, 168, 156, 118] : [232, 168, 56, 112],
+      getWidth: d => Math.max(1, Math.min(7, Number(d.render_width || 1))),
+      widthUnits: 'pixels',
+      pickable: true,
+      autoHighlight: true,
+      highlightColor: [10, 15, 26, 36],
+    }),
+    new deck.ScatterplotLayer({
+      id: 'atlas-cluster-points',
+      data: nodeRows,
+      getPosition: d => d.position,
+      getRadius: d => Math.max(6, Number(d.render_radius || 7)),
+      radiusUnits: 'pixels',
+      radiusMinPixels: 4,
+      radiusMaxPixels: 40,
+      stroked: true,
+      filled: true,
+      getFillColor: d => atlasDeckNodeFillColor(d, selectedUid),
+      getLineColor: d => String(d.cluster_uid || d.id || '') === selectedUid ? [10, 15, 26, 255] : [255, 255, 255, 230],
+      getLineWidth: d => String(d.cluster_uid || d.id || '') === selectedUid ? 2.5 : 1,
+      lineWidthUnits: 'pixels',
+      pickable: true,
+      autoHighlight: true,
+      highlightColor: [10, 15, 26, 42],
+    }),
+    new deck.TextLayer({
+      id: 'atlas-cluster-labels',
+      data: labelRows,
+      getPosition: d => d.position,
+      getText: d => d.text,
+      getSize: d => String(d.cluster_uid || '') === selectedUid ? 13 : 10,
+      getColor: d => String(d.cluster_uid || '') === selectedUid ? [10, 15, 26, 245] : [45, 58, 82, 210],
+      getTextAnchor: 'middle',
+      getAlignmentBaseline: 'bottom',
+      getPixelOffset: [0, -8],
+      background: false,
+      pickable: false,
+      sizeUnits: 'pixels',
+    }),
+  ];
+
+  atlasDeckInstance = new deck.Deck({
+    id: 'atlas-deck-canvas',
+    parent: stage,
+    views: [new deck.OrthographicView()],
+    initialViewState: viewState,
+    controller: true,
+    layers,
+    getTooltip: info => atlasDeckTooltip(info),
+    onClick: info => atlasDeckClick(info),
+    onHover: info => atlasDeckHover(info),
+    parameters: {clearColor: [0.976, 0.98, 0.988, 1]},
+    useDevicePixels: Math.min(window.devicePixelRatio || 1, 2),
+  });
+  status.textContent = 'deck.gl / ' + formatAtlasCount(nodeRows.length) + ' nodes / ' +
+    formatAtlasCount(edgeRows.length) + ' edges / min ' + formatAtlasWeight(minWeight) + ' / ' +
+    String(payload.view && payload.view.coordinate_source || 'coords');
+  if (legend) legend.innerHTML = renderAtlasDeckLegend(payload, selected, nodeRows);
+}
+
+function atlasDeckLayerRows(payload, key) {
+  const layer = payload && payload.layers && payload.layers[key];
+  return layer && Array.isArray(layer.rows) ? layer.rows : [];
+}
+
+function atlasDeckVisibleUidSet(selected, levelNodes) {
+  const rows = Array.isArray(levelNodes) ? levelNodes : [];
+  const set = new Set(rows.map(node => String(node.cluster_uid || '')).filter(Boolean));
+  if (selected && selected.cluster_uid) set.add(String(selected.cluster_uid));
+  if (selected && selected.parent_uid) set.add(String(selected.parent_uid));
+  (Array.isArray(selected && selected.lineage) ? selected.lineage : []).forEach(item => {
+    if (item && item.cluster_uid) set.add(String(item.cluster_uid));
+  });
+  return set;
+}
+
+function atlasDeckLabelRows(payload, nodeSet, selectedUid, labelLimit) {
+  const labels = atlasDeckLayerRows(payload, 'labels').filter(row => nodeSet.has(String(row.cluster_uid || '')));
+  const limit = Math.max(1, Math.min(500, Number(labelLimit || 80)));
+  return labels
+    .slice()
+    .sort((a, b) =>
+      (String(b.cluster_uid || '') === selectedUid ? 1 : 0) - (String(a.cluster_uid || '') === selectedUid ? 1 : 0) ||
+      Number(b.priority || 0) - Number(a.priority || 0)
+    )
+    .slice(0, limit);
+}
+
+function atlasDeckInitialViewState(nodeRows, payload, selectedUid) {
+  const bounds = payload && payload.view && payload.view.bounds;
+  const xs = nodeRows.map(row => Number(row.x)).filter(Number.isFinite);
+  const ys = nodeRows.map(row => Number(row.y)).filter(Number.isFinite);
+  const minX = xs.length ? Math.min(...xs) : Number(bounds && bounds.min_x);
+  const maxX = xs.length ? Math.max(...xs) : Number(bounds && bounds.max_x);
+  const minY = ys.length ? Math.min(...ys) : Number(bounds && bounds.min_y);
+  const maxY = ys.length ? Math.max(...ys) : Number(bounds && bounds.max_y);
+  const cleanMinX = Number.isFinite(minX) ? minX : -100;
+  const cleanMaxX = Number.isFinite(maxX) ? maxX : 100;
+  const cleanMinY = Number.isFinite(minY) ? minY : -100;
+  const cleanMaxY = Number.isFinite(maxY) ? maxY : 100;
+  const centerX = (cleanMinX + cleanMaxX) / 2;
+  const centerY = (cleanMinY + cleanMaxY) / 2;
+  const span = Math.max(cleanMaxX - cleanMinX, cleanMaxY - cleanMinY, 80);
+  const stage = document.getElementById('atlas-deck-stage');
+  const size = stage ? Math.min(stage.clientWidth || 700, stage.clientHeight || 320) : 320;
+  const zoom = Math.max(-4, Math.min(2, Math.log2(size / (span * 1.18))));
+  const selectedRow = selectedUid
+    ? nodeRows.find(row => String(row.cluster_uid || row.id || '') === String(selectedUid))
+    : null;
+  if (selectedRow && Array.isArray(selectedRow.position)) {
+    const selectedX = Number(selectedRow.position[0]);
+    const selectedY = Number(selectedRow.position[1]);
+    if (Number.isFinite(selectedX) && Number.isFinite(selectedY)) {
+      return {target: [selectedX, selectedY, 0], zoom: Math.max(zoom, -0.2), minZoom: -6, maxZoom: 8};
+    }
+  }
+  return {target: [centerX, centerY, 0], zoom, minZoom: -6, maxZoom: 8};
+}
+
+function atlasDeckNodeFillColor(node, selectedUid) {
+  const uid = String(node.cluster_uid || node.id || '');
+  if (uid === selectedUid) return [10, 15, 26, 240];
+  if (currentAtlasLens === 'scale') {
+    const intensity = Math.max(0, Math.min(1, Number(node.doc_count_log || 0) / 8));
+    return [43, 168, 156, Math.round(120 + intensity * 110)];
+  }
+  if (currentAtlasLens === 'evidence') {
+    const score = Math.max(0, Math.min(6, atlasEvidenceScore(atlasNodeByUid(uid))));
+    return [232, 168, 56, Math.round(92 + (score / 6) * 128)];
+  }
+  const palette = [
+    [43, 168, 156, 205],
+    [232, 168, 56, 205],
+    [74, 89, 118, 205],
+    [205, 96, 74, 198],
+    [92, 132, 179, 198],
+  ];
+  return palette[Math.abs(Number(node.level_index || 0)) % palette.length];
+}
+
+function atlasDeckTooltip(info) {
+  const object = info && info.object;
+  if (!object) return null;
+  if (object.cluster_uid || object.id) {
+    const uid = object.cluster_uid || object.id;
+    const node = atlasNodeByUid(uid) || object;
+    return {
+      text: (node.short_label || node.label || uid) + '\n' +
+        String(node.level || object.level || 'cluster') + ' / ' +
+        formatAtlasCount(node.doc_count || object.doc_count) + ' docs',
+    };
+  }
+  if (object.source_uid && object.target_uid) {
+    return {text: String(object.relation_label || 'relation') + '\n' +
+      object.source_uid + ' -> ' + object.target_uid + '\nweight ' + formatAtlasWeight(object.weight)};
+  }
+  return null;
+}
+
+function atlasDeckClick(info) {
+  const object = info && info.object;
+  if (!object) return;
+  const uid = object.cluster_uid || object.id || object.source_uid;
+  if (uid && atlasNodeByUid(uid)) selectAtlasNode(String(uid));
+}
+
+function atlasDeckHover(info) {
+  const hover = document.getElementById('atlas-deck-hover');
+  if (!hover) return;
+  const object = info && info.object;
+  if (!object) {
+    hover.classList.remove('active');
+    hover.innerHTML = '';
+    return;
+  }
+  if (object.cluster_uid || object.id) {
+    const uid = String(object.cluster_uid || object.id);
+    const node = atlasNodeByUid(uid) || object;
+    hover.classList.add('active');
+    hover.innerHTML =
+      '<div class="atlas-deck-hover-title">' + esc(node.short_label || node.label || uid) + '</div>' +
+      esc(String(node.level || object.level || 'cluster')) + ' / ' +
+      formatAtlasCount(node.doc_count || object.doc_count) + ' docs / ' +
+      formatAtlasCount(node.keyword_count || object.keyword_count) + ' terms';
+    return;
+  }
+  if (object.source_uid && object.target_uid) {
+    hover.classList.add('active');
+    hover.innerHTML =
+      '<div class="atlas-deck-hover-title">' + esc(object.relation_label || 'relation') + '</div>' +
+      esc(object.source_uid + ' -> ' + object.target_uid) + ' / weight ' + formatAtlasWeight(object.weight);
+  }
+}
+
+function renderAtlasDeckLegend(payload, selected, rows) {
+  const nodeRows = Array.isArray(rows) ? rows : [];
+  const levelCounts = {};
+  nodeRows.forEach(row => {
+    const level = String(row.level || 'cluster');
+    levelCounts[level] = (levelCounts[level] || 0) + 1;
+  });
+  const entries = Object.entries(levelCounts).slice(0, 5);
+  if (!entries.length) {
+    return '<span class="atlas-deck-legend-item">render layer waits for selected result</span>';
+  }
+  return entries.map(([level, count], index) => {
+    const color = atlasDeckLegendColor(index);
+    return '<span class="atlas-deck-legend-item"><span class="atlas-deck-swatch" style="background:' +
+      color + ';"></span>' + esc(level) + ' ' + formatAtlasCount(count) + '</span>';
+  }).join('') +
+    '<span class="atlas-deck-legend-item">selected ' +
+    esc(String(selected && (selected.short_label || selected.label || selected.cluster_uid) || 'none')) + '</span>';
+}
+
+function atlasDeckLegendColor(index) {
+  const colors = ['#2ba89c', '#e8a838', '#4a5976', '#cd604a', '#5c84b3'];
+  return colors[Math.abs(index) % colors.length];
 }
 
 function renderAtlasHierarchyView(selected, levelNodes) {
@@ -2484,18 +3499,118 @@ function renderAtlasEvidenceNodeView(levelNodes, selectedUid) {
     String(a.short_label || a.label).localeCompare(String(b.short_label || b.label))
   );
   if (!nodes.length) return '<div class="atlas-empty">No evidence rows for this level.</div>';
-  const rows = nodes.slice(0, 18).map(node => renderAtlasEvidenceNodeRow(node, selectedUid)).join('');
-  const more = nodes.length > 18
-    ? '<div class="atlas-empty" style="padding:0.6rem 0 0;">' + formatAtlasCount(nodes.length - 18) + ' more evidence rows.</div>'
+  const reviewRows = atlasReviewQueueRows(nodes);
+  const filteredRows = atlasFilteredReviewRows(reviewRows);
+  const rows = filteredRows.slice(0, 18).map(row => renderAtlasEvidenceNodeRow(row.node, selectedUid, row.review)).join('');
+  const more = filteredRows.length > 18
+    ? '<div class="atlas-empty" style="padding:0.6rem 0 0;">' + formatAtlasCount(filteredRows.length - 18) + ' more evidence rows.</div>'
     : '';
-  return '<div class="atlas-evidence-panel">' + rows + more + '</div>';
+  const empty = filteredRows.length
+    ? ''
+    : '<div class="atlas-empty">No clusters match the ' + esc(currentAtlasReviewFilter) + ' review filter.</div>';
+  return renderAtlasReviewQueue(reviewRows, selectedUid) +
+    '<div class="atlas-evidence-panel">' + (rows || empty) + more + '</div>';
 }
 
-function renderAtlasEvidenceNodeRow(node, selectedUid) {
+function atlasReviewQueueRows(nodes) {
+  return (nodes || []).map(node => {
+    const model = buildAtlasInspectorEvidenceModel(node);
+    const review = atlasReviewReadiness(node, model);
+    return {
+      node,
+      review,
+      score: atlasEvidenceScore(node),
+    };
+  });
+}
+
+function renderAtlasReviewQueue(nodes, selectedUid) {
+  const rows = Array.isArray(nodes) ? nodes : [];
+  const counts = {ready: 0, review: 0, blocked: 0};
+  rows.forEach(row => {
+    const state = row.review && row.review.state || 'review';
+    counts[state] = (counts[state] || 0) + 1;
+  });
+  const targets = rows
+    .filter(row => row.review.state !== 'ready')
+    .sort((a, b) =>
+      atlasReviewStatePriority(b.review.state) - atlasReviewStatePriority(a.review.state) ||
+      b.score - a.score ||
+      atlasDocCount(b.node) - atlasDocCount(a.node) ||
+      String(a.node.short_label || a.node.label).localeCompare(String(b.node.short_label || b.node.label))
+    );
+  const queueRows = (targets.length ? targets : rows.slice().sort((a, b) => b.score - a.score)).slice(0, 4);
+  const queueHtml = queueRows.map(row => renderAtlasReviewQueueRow(row, selectedUid)).join('');
+  const note = targets.length
+    ? formatAtlasCount(targets.length) + ' clusters need review in this level'
+    : 'all visible clusters are ready; showing strongest evidence rows';
+  const countHtml = ['all', 'ready', 'review', 'blocked'].map(state =>
+    renderAtlasReviewFilterButton(state, state === 'all' ? rows.length : counts[state] || 0)
+  ).join('');
+  const filtered = atlasFilteredReviewRows(rows);
+  const nextDisabled = filtered.length ? '' : ' disabled';
+  return '<div class="atlas-review-queue">' +
+    '<div class="atlas-review-queue-head">' +
+      '<div><div class="atlas-review-queue-title">Review queue</div>' +
+      '<div class="atlas-review-queue-note">' + esc(note) + '</div></div>' +
+      '<div class="atlas-review-queue-controls">' +
+        '<div class="atlas-review-queue-counts">' + countHtml + '</div>' +
+        '<button class="atlas-review-queue-next" onclick="openNextAtlasReviewTarget()" ' + nextDisabled + '>Next target</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="atlas-review-queue-list">' + queueHtml + '</div>' +
+  '</div>';
+}
+
+function atlasFilteredReviewRows(rows) {
+  const filter = atlasReviewFilter();
+  const selected = (rows || []).filter(row => filter === 'all' || row.review.state === filter);
+  return selected.slice().sort((a, b) =>
+    atlasReviewStatePriority(b.review.state) - atlasReviewStatePriority(a.review.state) ||
+    b.score - a.score ||
+    atlasDocCount(b.node) - atlasDocCount(a.node) ||
+    String(a.node.short_label || a.node.label).localeCompare(String(b.node.short_label || b.node.label))
+  );
+}
+
+function atlasReviewFilter() {
+  return ['all', 'ready', 'review', 'blocked'].includes(currentAtlasReviewFilter)
+    ? currentAtlasReviewFilter
+    : 'all';
+}
+
+function renderAtlasReviewFilterButton(state, count) {
+  const active = atlasReviewFilter() === state ? ' active' : '';
+  return '<button class="atlas-review-queue-count ' + esc(state) + active + '" onclick="selectAtlasReviewFilter(decodeURIComponent(\'' +
+    encodeURIComponent(state) + '\'))">' + esc(state) + ' ' + formatAtlasCount(count) + '</button>';
+}
+
+function atlasReviewStatePriority(state) {
+  if (state === 'blocked') return 3;
+  if (state === 'review') return 2;
+  if (state === 'ready') return 1;
+  return 0;
+}
+
+function renderAtlasReviewQueueRow(row, selectedUid) {
+  const node = row.node || {};
+  const review = row.review || {state: 'review', note: 'partial evidence'};
+  const uid = String(node.cluster_uid || '');
+  const selected = uid === String(selectedUid || '') ? ' selected' : '';
+  return '<button class="atlas-review-queue-row ' + esc(review.state) + selected + '" onclick="selectAtlasNode(decodeURIComponent(\'' +
+    encodeURIComponent(uid) + '\'))">' +
+      '<div><div class="atlas-review-queue-label">' + esc(node.short_label || node.label || uid) + '</div>' +
+      '<div class="atlas-review-queue-meta">' + esc(review.note || 'review evidence') + ' / evidence ' + atlasEvidenceScore(node) + '/6</div></div>' +
+      '<div class="atlas-review-state">' + esc(review.state) + '</div>' +
+    '</button>';
+}
+
+function renderAtlasEvidenceNodeRow(node, selectedUid, review) {
   const uid = String(node.cluster_uid || '');
   const selected = uid === String(selectedUid || '') ? ' selected' : '';
   const works = Array.isArray(node.representative_works) ? node.representative_works.length : 0;
   const neighbors = Array.isArray(node.neighbors) ? node.neighbors.length : Number(node.neighbor_count || 0);
+  const state = review && review.state || atlasReviewReadiness(node, buildAtlasInspectorEvidenceModel(node)).state;
   return '<button class="atlas-evidence-node-row' + selected + '" onclick="selectAtlasNode(decodeURIComponent(\'' +
     encodeURIComponent(uid) + '\'))">' +
     '<div><div class="atlas-relation-label">' + esc(node.short_label || node.label || uid) + '</div>' +
@@ -2506,7 +3621,8 @@ function renderAtlasEvidenceNodeRow(node, selectedUid) {
       '<span class="atlas-mini-pill">' + formatAtlasCount(works) + ' works</span>' +
       '<span class="atlas-mini-pill">' + formatAtlasCount(neighbors) + ' links</span>' +
     '</div></div>' +
-    '<div class="atlas-evidence-node-score">evidence ' + atlasEvidenceScore(node) + '/6</div>' +
+    '<div><div class="atlas-evidence-node-score">' + esc(state) + '</div>' +
+    '<div class="atlas-evidence-node-score">evidence ' + atlasEvidenceScore(node) + '/6</div></div>' +
   '</button>';
 }
 
@@ -2609,8 +3725,12 @@ function updateAtlasResultMeta(result) {
     state: result.result_state || contract.result_state || (warnings.length ? 'partial' : 'loaded'),
     warnings,
     features: resultFeatureBlock(result),
+    featureStates: result.feature_states || {},
+    artifactCounts: contract.counts || {},
+    resultArtifacts: result.result_manifest && result.result_manifest.artifacts || {},
     outputDir: result.output_dir || '',
     atlasReportRelPath: result.atlas_report_rel_path || '',
+    renderSummary: result.atlas_render_summary || {},
   };
 }
 
@@ -3050,13 +4170,290 @@ function atlasSearchLower(value) {
   return String(value || '').toLowerCase();
 }
 
+function buildAtlasInspectorEvidenceModel(node) {
+  const resultState = String(currentAtlasResultMeta.state || 'loaded');
+  const warnings = atlasOrientationWarnings(currentAtlasPayload);
+  const hiddenModules = atlasHiddenInspectorModules();
+  return {
+    schema_version: 'sciscape_inspector_evidence_view_v1',
+    node_uid: String(node && node.cluster_uid || ''),
+    result_state: resultState,
+    warnings,
+    hidden_modules: hiddenModules,
+    source_rows: atlasInspectorSourceRows(),
+    sections: {
+      identity: atlasInspectorSection('identity', 'Identity and readiness', atlasFeatureState('cluster_map')),
+      meaning: atlasInspectorSection('meaning', 'Meaning layer', atlasFeatureState('keyword')),
+      relations: atlasInspectorSection('relations', 'Relation evidence', atlasBestFeatureState(['term_network', 'cooccurrence', 'evidence'])),
+      hierarchy: atlasInspectorSection('hierarchy', 'Hierarchy and children', atlasFeatureState('cluster_map')),
+      works: atlasInspectorSection('works', 'Representative works', atlasFeatureState('evidence')),
+      qa: atlasInspectorSection('qa', 'QA and limitations', atlasFeatureState('quality')),
+    },
+  };
+}
+
+function atlasInspectorSection(key, label, state) {
+  return {
+    key,
+    label,
+    state: state || 'hidden',
+    reason: atlasSectionReason(state || 'hidden'),
+  };
+}
+
+function atlasFeatureState(feature) {
+  const states = currentAtlasResultMeta.featureStates || {};
+  if (states[feature]) return String(states[feature]);
+  const features = currentAtlasResultMeta.features || currentResultFeatures || {};
+  if (features[feature]) return 'stable';
+  return 'hidden';
+}
+
+function atlasBestFeatureState(features) {
+  const states = features.map(atlasFeatureState);
+  if (states.includes('stable')) return 'stable';
+  if (states.includes('beta')) return 'beta';
+  if (states.includes('blocked')) return 'blocked';
+  return 'hidden';
+}
+
+function atlasSectionReason(state) {
+  if (state === 'stable') return 'backed by validated result artifacts';
+  if (state === 'beta') return 'available with caveats from the result manifest';
+  if (state === 'blocked') return 'blocked by validation';
+  return 'not backed by available artifacts in this result';
+}
+
+function atlasHiddenInspectorModules() {
+  const labels = {
+    keyword: 'Keywords',
+    term_network: 'Term network',
+    cooccurrence: 'Co-occurrence',
+    evidence: 'Evidence',
+    temporal: 'Temporal',
+    evolution: 'Evolution',
+    narrative: 'Narrative',
+  };
+  return Object.keys(labels)
+    .filter(key => atlasFeatureState(key) === 'hidden')
+    .map(key => labels[key]);
+}
+
+function atlasInspectorSourceRows() {
+  const counts = currentAtlasResultMeta.artifactCounts || {};
+  const artifacts = currentAtlasResultMeta.resultArtifacts || {};
+  const rows = [
+    ['records', counts.abstract_rows],
+    ['membership', counts.membership_rows],
+    ['keywords', counts.keyword_rows || counts.keywords_rows],
+    ['co-occurrence', counts.cooccurrence_rows],
+    ['edge evidence', counts.edge_evidence_artifacts],
+  ];
+  return rows.map(([label, count]) => {
+    const artifact = artifacts[String(label).replace('-', '_')] || {};
+    return {
+      label,
+      value: count === undefined || count === null ? 'n/a' : formatAtlasCount(count),
+      path: artifact.path || '',
+    };
+  });
+}
+
+function atlasSectionStatePill(section) {
+  return '<span class="atlas-section-state ' + esc(section.state || 'hidden') + '">' +
+    esc(section.state || 'hidden') + '</span>';
+}
+
+function renderAtlasInspectorModelSummary(model) {
+  const sections = Object.values(model.sections || {});
+  const sourceRows = (model.source_rows || []).slice(0, 5).map(row =>
+    '<div class="atlas-model-cell"><div class="atlas-model-label">' + esc(row.label) + '</div>' +
+    '<div class="atlas-model-value" title="' + escAttr(row.path || row.value) + '">' + esc(row.value) + '</div></div>'
+  ).join('');
+  const sectionRows = sections.map(section =>
+    '<div class="atlas-model-cell"><div class="atlas-model-label">' + esc(section.label) + '</div>' +
+    '<div class="atlas-model-value">' + atlasSectionStatePill(section) + '</div></div>'
+  ).join('');
+  return '<div class="atlas-section-title">Evidence readiness</div>' +
+    '<div class="atlas-inspector-model">' +
+      '<div class="atlas-model-grid">' + sourceRows + sectionRows + '</div>' +
+    '</div>';
+}
+
+function atlasReviewReadiness(node, model) {
+  const sections = model.sections || {};
+  const keywords = Array.isArray(node && node.keywords) ? node.keywords : [];
+  const keywordCount = atlasNumeric(node && (node.keyword_count || keywords.length));
+  const works = Array.isArray(node && node.representative_works) ? node.representative_works : [];
+  const workCount = atlasNumeric(node && (node.representative_work_count || works.length));
+  const neighbors = Array.isArray(node && node.neighbors) ? node.neighbors : [];
+  const sampleRelations = neighbors.filter(neighbor => atlasNeighborSamples(neighbor).length).length;
+  const aggregateRelations = neighbors.filter(neighbor => !atlasNeighborSamples(neighbor).length).length;
+  const warnings = Array.isArray(model.warnings) ? model.warnings : [];
+  const sectionStates = ['meaning', 'relations', 'works', 'qa'].map(key =>
+    sections[key] && sections[key].state || 'hidden'
+  );
+  const blocked = model.result_state === 'blocked' || sectionStates.includes('blocked');
+  const missing = [];
+  if (!keywordCount && !keywords.length) missing.push('terms');
+  if (!works.length) missing.push('works');
+  if (!neighbors.length) missing.push('relations');
+  const needsReview = missing.length > 0 || warnings.length > 0 || sectionStates.includes('hidden');
+  const state = blocked ? 'blocked' : needsReview ? 'review' : 'ready';
+  const note = blocked
+    ? 'blocking validation issue'
+    : needsReview
+      ? [missing.length ? 'missing ' + missing.join('/') : '', warnings.length ? formatAtlasCount(warnings.length) + ' warnings' : ''].filter(Boolean).join(' / ') || 'partial evidence'
+      : 'terms, works, relations, and QA are backed';
+  const rows = [
+    ['terms', keywords.length ? formatAtlasCount(keywords.length) + ' embedded / ' + formatAtlasCount(keywordCount || keywords.length) + ' counted' : formatAtlasCount(keywordCount) + ' counted'],
+    ['works', works.length ? formatAtlasCount(works.length) + ' shown / ' + formatAtlasCount(workCount || works.length) + ' joined' : 'not joined'],
+    ['relations', formatAtlasCount(neighbors.length) + ' neighbors / ' + formatAtlasCount(sampleRelations) + ' sampled'],
+    ['QA', warnings.length ? formatAtlasCount(warnings.length) + ' warnings' : 'no warnings'],
+  ];
+  const flags = [];
+  if (sampleRelations) flags.push(formatAtlasCount(sampleRelations) + ' sample-backed');
+  if (aggregateRelations) flags.push(formatAtlasCount(aggregateRelations) + ' aggregate-only');
+  if (!flags.length) flags.push('no relation evidence');
+  return {state, note, rows, flags};
+}
+
+function renderAtlasReviewChecklist(node, model) {
+  const review = atlasReviewReadiness(node, model);
+  return '<div class="atlas-section-title">Review checklist</div>' +
+    '<div class="atlas-review-panel ' + esc(review.state) + '">' +
+      '<div class="atlas-review-head">' +
+        '<div><div class="atlas-review-title">Cluster reading ' + esc(review.state) + '</div>' +
+        '<div class="atlas-review-note">' + esc(review.note) + '</div></div>' +
+        '<div class="atlas-review-state">' + esc(review.state) + '</div>' +
+      '</div>' +
+      '<div class="atlas-review-grid">' + review.rows.map(([label, value]) =>
+        '<div class="atlas-review-item"><div class="atlas-review-label">' + esc(label) + '</div>' +
+        '<div class="atlas-review-value" title="' + escAttr(value) + '">' + esc(value) + '</div></div>'
+      ).join('') + '</div>' +
+      '<div class="atlas-review-flags">' + review.flags.map(flag =>
+        '<span class="atlas-mini-pill">' + esc(flag) + '</span>'
+      ).join('') + '</div>' +
+    '</div>';
+}
+
+function atlasReviewPacket(node, model) {
+  const review = atlasReviewReadiness(node, model);
+  const keywords = Array.isArray(node && node.keywords) ? node.keywords : [];
+  const works = Array.isArray(node && node.representative_works) ? node.representative_works : [];
+  const neighbors = Array.isArray(node && node.neighbors) ? node.neighbors : [];
+  const neighbor = atlasSelectedNeighbor(neighbors);
+  const topTerms = keywords.slice(0, 4).map(keyword =>
+    String(typeof keyword === 'string' ? keyword : keyword.term || '').trim()
+  ).filter(Boolean);
+  const topWorks = works.slice(0, 2).map(work =>
+    String(typeof work === 'string' ? work : work.title || work.uid || '').trim()
+  ).filter(Boolean);
+  const sampleCount = neighbor ? atlasNeighborSamples(neighbor).length : 0;
+  const relationLabel = neighbor
+    ? (neighbor.short_label || neighbor.label || neighbor.cluster_uid || 'neighbor') + ' / ' +
+      (neighbor.relation_label || 'neighbor') + ' / ' +
+      (sampleCount ? formatAtlasCount(sampleCount) + ' samples' : 'aggregate only')
+    : 'no neighbor evidence';
+  const meaning = topTerms.length
+    ? topTerms.join(', ')
+    : formatAtlasCount(node && node.keyword_count) + ' counted terms; representative terms not embedded';
+  const worksLabel = topWorks.length
+    ? topWorks.join(' / ')
+    : 'representative works not joined';
+  return {
+    state: review.state,
+    title: 'Review packet',
+    subtitle: String(node && (node.short_label || node.label || node.cluster_uid) || 'selected cluster') +
+      ' / evidence ' + atlasEvidenceScore(node) + '/6',
+    rows: [
+      ['state', review.state + ' / ' + review.note],
+      ['meaning', meaning],
+      ['works', worksLabel],
+      ['relation', relationLabel],
+    ],
+  };
+}
+
+function renderAtlasReviewPacket(node, model) {
+  const packet = atlasReviewPacket(node, model);
+  return '<div class="atlas-section-title">Review packet</div>' +
+    '<div class="atlas-review-packet ' + esc(packet.state) + '">' +
+      '<div class="atlas-review-packet-head">' +
+        '<div><div class="atlas-review-packet-title">' + esc(packet.title) + '</div>' +
+        '<div class="atlas-review-packet-subtitle">' + esc(packet.subtitle) + '</div></div>' +
+        '<div class="atlas-review-state">' + esc(packet.state) + '</div>' +
+      '</div>' +
+      '<div class="atlas-review-packet-grid">' + packet.rows.map(([label, value]) =>
+        '<div class="atlas-review-packet-row"><div class="atlas-review-packet-label">' + esc(label) + '</div>' +
+        '<div class="atlas-review-packet-value" title="' + escAttr(value) + '">' + esc(value) + '</div></div>'
+      ).join('') + '</div>' +
+    '</div>';
+}
+
+function renderAtlasUnavailableSection(title, section) {
+  return '<div class="atlas-section-title">' + esc(title) + ' ' + atlasSectionStatePill(section) + '</div>' +
+    '<div class="atlas-unavailable-row">' + esc(section.reason || 'not available in this result') + '</div>';
+}
+
+function renderAtlasMeaningLayer(node, section) {
+  if (section.state === 'hidden' || section.state === 'blocked') {
+    return renderAtlasUnavailableSection('Meaning layer', section);
+  }
+  const keywords = Array.isArray(node && node.keywords) ? node.keywords : [];
+  if (!keywords.length) {
+    const count = formatAtlasCount(node && node.keyword_count);
+    return '<div class="atlas-section-title">Meaning layer ' + atlasSectionStatePill(section) + '</div>' +
+      '<div class="atlas-unavailable-row">' + count + ' terms counted, but representative term rows are not embedded in this Atlas payload.</div>';
+  }
+  const rows = keywords.slice(0, 8).map((keyword, index) => {
+    const term = String(typeof keyword === 'string' ? keyword : keyword.term || '');
+    if (!term) return '';
+    const meta = atlasKeywordMeta(keyword, index);
+    return '<div class="atlas-meaning-row">' +
+      '<div><div class="atlas-meaning-term">' + esc(term) + '</div>' +
+      '<div class="atlas-meaning-meta">' + esc(meta) + '</div></div>' +
+      '<div class="atlas-mini-pill">' + esc(String(typeof keyword === 'string' ? index + 1 : keyword.rank || index + 1)) + '</div>' +
+    '</div>';
+  }).join('');
+  return '<div class="atlas-section-title">Meaning layer ' + atlasSectionStatePill(section) + '</div>' +
+    '<div class="atlas-meaning-list">' + rows + '</div>';
+}
+
+function atlasKeywordMeta(keyword, index) {
+  if (typeof keyword === 'string') return 'rank ' + formatAtlasCount(index + 1);
+  const parts = ['rank ' + formatAtlasCount(keyword.rank || index + 1)];
+  if (keyword.score !== undefined && keyword.score !== null) parts.push('score ' + formatAtlasWeight(keyword.score));
+  if (keyword.frequency !== undefined && keyword.frequency !== null) parts.push('freq ' + formatAtlasCount(keyword.frequency));
+  if (keyword.tier) parts.push(String(keyword.tier));
+  if (keyword.scope) parts.push(String(keyword.scope));
+  return parts.join(' / ');
+}
+
+function renderAtlasQALimitations(model) {
+  const section = model.sections && model.sections.qa || atlasInspectorSection('qa', 'QA and limitations', 'hidden');
+  const warnings = Array.isArray(model.warnings) ? model.warnings : [];
+  const warningRows = warnings.slice(0, 5).map(warning =>
+    '<div class="atlas-warning-row"><div class="atlas-warning-label">' +
+      esc([warning.severity, warning.artifact || warning.role, warning.code].filter(Boolean).join(' / ') || 'warning') +
+      '</div><div class="atlas-warning-detail" title="' + escAttr(warning.message || warning.code || 'review') + '">' +
+      esc(warning.message || warning.code || 'review') + '</div></div>'
+  ).join('');
+  const hiddenModules = Array.isArray(model.hidden_modules) ? model.hidden_modules : [];
+  const hiddenHtml = hiddenModules.length
+    ? '<div class="atlas-hidden-module-list">' + hiddenModules.map(label =>
+        '<span class="atlas-mini-pill">' + esc(label) + ' unavailable</span>'
+      ).join('') + '</div>'
+    : '<div class="atlas-unavailable-row">All primary inspector modules are backed or beta for this result.</div>';
+  return '<div class="atlas-section-title">QA and limitations ' + atlasSectionStatePill(section) + '</div>' +
+    '<div class="atlas-qa-list">' +
+      (warningRows || '<div class="atlas-unavailable-row">No artifact warnings reported for this Atlas payload.</div>') +
+    '</div>' + hiddenHtml;
+}
+
 function renderAtlasInspector(node) {
   if (!node) return '<div class="atlas-empty">No cluster selected.</div>';
-  const keywords = Array.isArray(node.keywords) ? node.keywords : [];
-  const keywordHtml = keywords.slice(0, 8).map(keyword => {
-    const term = typeof keyword === 'string' ? keyword : keyword.term;
-    return term ? '<span class="stat-pill" style="font-size:0.68rem;">' + esc(term) + '</span>' : '';
-  }).join('');
+  const model = buildAtlasInspectorEvidenceModel(node);
   const badges = Array.isArray(node.badges) ? node.badges : [];
   const badgeHtml = badges.length
     ? '<div class="atlas-badges">' + badges.slice(0, 3).map(badge =>
@@ -3064,33 +4461,47 @@ function renderAtlasInspector(node) {
       ).join(' ') + '</div>'
     : '';
   const neighbors = Array.isArray(node.neighbors) ? node.neighbors : [];
-  const neighborHtml = renderAtlasNeighborList(neighbors);
-  const childrenHtml = renderAtlasChildren(node);
-  const workHtml = renderAtlasRepresentativeWorks(node.representative_works);
+  const neighborHtml = ['hidden', 'blocked'].includes(model.sections.relations.state)
+    ? ''
+    : renderAtlasNeighborList(neighbors);
+  const childrenHtml = renderAtlasChildren(node, model.sections.hierarchy);
+  const workHtml = renderAtlasRepresentativeWorks(node.representative_works, model.sections.works);
   const evidenceHtml = renderAtlasEvidenceProfile(node);
   const neighborSummaryHtml = renderAtlasNeighborSummary(node);
-  const neighborEvidenceHtml = renderAtlasNeighborEvidence(node);
+  const neighborEvidenceHtml = renderAtlasNeighborEvidence(node, model.sections.relations);
   const lineageHtml = renderAtlasLineage(node);
-  return '<div class="atlas-inspector-head"><div>' +
+  const headerHtml = '<div class="atlas-inspector-head"><div>' +
     '<div class="atlas-inspector-title">' + esc(node.label || node.short_label || node.cluster_uid) + '</div>' +
     '<div class="atlas-inspector-id">' + esc(node.cluster_uid || '') + '</div></div>' +
     renderAtlasPinButton(node) +
-    '</div>' +
-    lineageHtml +
+    '</div>';
+  const statsHtml =
     '<div class="atlas-inspector-stats">' +
       atlasStatBox('level', node.level || 'cluster') +
       atlasStatBox('cluster', node.cluster_id) +
       atlasStatBox('docs', formatAtlasCount(node.doc_count)) +
       atlasStatBox('children', formatAtlasCount(node.child_count)) +
       atlasStatBox('neighbors', formatAtlasCount(node.neighbor_count)) +
-    '</div>' +
+    '</div>';
+  const qaHtml = renderAtlasQALimitations(model);
+  if (model.result_state === 'blocked') {
+    return headerHtml + qaHtml +
+      '<div class="atlas-unavailable-row">Cluster-reading sections are hidden until blocking artifact validation issues are resolved.</div>';
+  }
+  return headerHtml +
+    lineageHtml +
+    statsHtml +
+    renderAtlasInspectorModelSummary(model) +
+    renderAtlasReviewChecklist(node, model) +
+    renderAtlasReviewPacket(node, model) +
     evidenceHtml +
+    renderAtlasMeaningLayer(node, model.sections.meaning) +
     childrenHtml +
     workHtml +
     neighborSummaryHtml +
     neighborEvidenceHtml +
     neighborHtml +
-    '<div class="atlas-keywords">' + (keywordHtml || '<span class="atlas-mini-pill">no keywords</span>') + '</div>' +
+    qaHtml +
     '<div class="atlas-inspector-id" style="margin-top:0.65rem;">parent: ' + esc(node.parent_uid || 'none') + '</div>' +
     badgeHtml;
 }
@@ -3154,7 +4565,10 @@ function atlasEvidenceRow(name, available, detail, statusOverride) {
   '</div>';
 }
 
-function renderAtlasChildren(node) {
+function renderAtlasChildren(node, section) {
+  if (section && (section.state === 'hidden' || section.state === 'blocked')) {
+    return renderAtlasUnavailableSection('Hierarchy and children', section);
+  }
   const children = atlasChildrenForNode(node);
   if (!children.length) return '';
   const rows = children.slice(0, 6).map(child => {
@@ -3184,8 +4598,14 @@ function atlasChildrenForNode(node) {
     .sort((a, b) => atlasDocCount(b) - atlasDocCount(a) || String(a.short_label || a.label).localeCompare(String(b.short_label || b.label)));
 }
 
-function renderAtlasRepresentativeWorks(works) {
-  if (!Array.isArray(works) || !works.length) return '';
+function renderAtlasRepresentativeWorks(works, section) {
+  if (section && (section.state === 'hidden' || section.state === 'blocked')) {
+    return renderAtlasUnavailableSection('Representative works', section);
+  }
+  if (!Array.isArray(works) || !works.length) {
+    return '<div class="atlas-section-title">Representative works ' + atlasSectionStatePill(section || atlasInspectorSection('works', 'Representative works', 'hidden')) + '</div>' +
+      '<div class="atlas-unavailable-row">Representative works are not joined in this Atlas payload.</div>';
+  }
   const rows = works.slice(0, 3).map(work => {
     const title = work.title || work.uid || 'Untitled work';
     const meta = [];
@@ -3199,7 +4619,8 @@ function renderAtlasRepresentativeWorks(works) {
       (meta.length ? '<div class="atlas-work-meta">' + meta.slice(0, 3).map(item => '<span>' + esc(item) + '</span>').join('') + '</div>' : '') +
     '</div>';
   }).join('');
-  return '<div class="atlas-section-title">Representative works</div><div class="atlas-work-list">' + rows + '</div>';
+  return '<div class="atlas-section-title">Representative works ' + atlasSectionStatePill(section || atlasInspectorSection('works', 'Representative works', 'stable')) +
+    '</div><div class="atlas-work-list">' + rows + '</div>';
 }
 
 function renderAtlasLineage(node) {
@@ -3244,7 +4665,10 @@ function renderAtlasSharedTerms(sharedTerms) {
   ).join('') + '</div>';
 }
 
-function renderAtlasNeighborEvidence(node) {
+function renderAtlasNeighborEvidence(node, section) {
+  if (section && (section.state === 'hidden' || section.state === 'blocked')) {
+    return renderAtlasUnavailableSection('Neighbor evidence', section);
+  }
   const neighbors = Array.isArray(node && node.neighbors) ? node.neighbors : [];
   if (!neighbors.length) return '';
   const neighbor = atlasSelectedNeighbor(neighbors);
@@ -3357,6 +4781,25 @@ function selectAtlasNeighborEvidence(uid) {
   renderAtlasShell({atlas: currentAtlasPayload});
 }
 
+function selectAtlasReviewFilter(filter) {
+  currentAtlasReviewFilter = ['all', 'ready', 'review', 'blocked'].includes(filter) ? filter : 'all';
+  currentAtlasViewMode = 'evidence';
+  syncAtlasUrlState();
+  renderAtlasShell({atlas: currentAtlasPayload});
+}
+
+function openNextAtlasReviewTarget() {
+  if (!currentAtlasPayload) return;
+  const level = currentAtlasLevel || preferredAtlasLevel(currentAtlasPayload, atlasLevels(currentAtlasPayload));
+  const rows = atlasFilteredReviewRows(atlasReviewQueueRows(atlasNodesForLevel(currentAtlasPayload, level)));
+  if (!rows.length) return;
+  const currentIndex = rows.findIndex(row => String(row.node && row.node.cluster_uid || '') === String(currentAtlasNodeUid || ''));
+  const next = rows[(currentIndex + 1 + rows.length) % rows.length];
+  if (next && next.node && next.node.cluster_uid) {
+    selectAtlasNode(String(next.node.cluster_uid));
+  }
+}
+
 function atlasNodeByUid(uid) {
   if (!currentAtlasPayload || !Array.isArray(currentAtlasPayload.nodes)) return null;
   return currentAtlasPayload.nodes.find(node => String(node.cluster_uid || '') === String(uid)) || null;
@@ -3379,6 +4822,28 @@ function applyAtlasUrlState(atlas) {
   const focusParam = params.get('atlas_focus');
   if (['global', 'family', 'neighbors', 'pinned'].includes(focusParam)) {
     currentAtlasFocusMode = focusParam;
+  }
+  const reviewParam = params.get('atlas_review');
+  if (['all', 'ready', 'review', 'blocked'].includes(reviewParam)) {
+    currentAtlasReviewFilter = reviewParam;
+  }
+  const layerParam = params.get('atlas_layers');
+  if (layerParam !== null) {
+    const layers = new Set(layerParam.split(',').map(item => item.trim()).filter(Boolean));
+    currentAtlasDeckSettings = atlasDeckSettings();
+    currentAtlasDeckSettings.edges = layers.has('edges');
+    currentAtlasDeckSettings.hierarchy = layers.has('hierarchy');
+    currentAtlasDeckSettings.labels = layers.has('labels');
+  }
+  const edgeMinParam = Number(params.get('atlas_edge_min'));
+  if (Number.isFinite(edgeMinParam) && edgeMinParam >= 0) {
+    currentAtlasDeckSettings = atlasDeckSettings();
+    currentAtlasDeckSettings.minWeight = Number(edgeMinParam.toFixed(3));
+  }
+  const labelLimitParam = Number(params.get('atlas_label_limit'));
+  if ([24, 80, 160].includes(labelLimitParam)) {
+    currentAtlasDeckSettings = atlasDeckSettings();
+    currentAtlasDeckSettings.labelLimit = labelLimitParam;
   }
   const nodeParam = params.get('atlas_node');
   if (nodeParam) {
@@ -3412,6 +4877,16 @@ function syncAtlasUrlState() {
     else url.searchParams.delete('atlas_view');
     if (currentAtlasFocusMode && currentAtlasFocusMode !== 'global') url.searchParams.set('atlas_focus', currentAtlasFocusMode);
     else url.searchParams.delete('atlas_focus');
+    if (currentAtlasReviewFilter && currentAtlasReviewFilter !== 'all') url.searchParams.set('atlas_review', currentAtlasReviewFilter);
+    else url.searchParams.delete('atlas_review');
+    const deckSettings = atlasDeckSettings();
+    const activeLayers = ['edges', 'hierarchy', 'labels'].filter(key => deckSettings[key]);
+    if (activeLayers.length < 3) url.searchParams.set('atlas_layers', activeLayers.length ? activeLayers.join(',') : 'none');
+    else url.searchParams.delete('atlas_layers');
+    if (Number(deckSettings.minWeight || 0) > 0) url.searchParams.set('atlas_edge_min', String(deckSettings.minWeight));
+    else url.searchParams.delete('atlas_edge_min');
+    if (Number(deckSettings.labelLimit || 80) !== 80) url.searchParams.set('atlas_label_limit', String(deckSettings.labelLimit));
+    else url.searchParams.delete('atlas_label_limit');
     if (currentAtlasNeighborUid) url.searchParams.set('atlas_neighbor', currentAtlasNeighborUid);
     else url.searchParams.delete('atlas_neighbor');
     window.history.replaceState(null, '', url.toString());

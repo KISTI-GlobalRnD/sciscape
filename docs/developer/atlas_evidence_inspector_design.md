@@ -238,10 +238,54 @@ artifact validation or result state.
 
 ## Implementation Order
 
+Current status:
+
+- `sciscape/web/static/index.html` builds a client-side
+  `sciscape_inspector_evidence_view_v1` model for the selected Atlas node.
+- The inspector now uses feature states to mark identity, meaning, relation,
+  hierarchy, works, and QA sections as stable, beta, hidden, or blocked.
+- Representative works and neighbor rows remain payload-backed only; no
+  inspector state is written back to the result root.
+- Homepage smoke tests assert that the builder and section renderers are exposed.
+- The P1 Atlas smoke gate asserts stable co-occurrence and evidence states, plus
+  payload-backed neighbor rows with aggregate relation fields, shared-term
+  fields, and sampled edge evidence.
+- The browser-level Atlas inspector smoke opens the static web app in headless
+  Chrome, selects a node, checks sample-backed neighbor evidence, switches to an
+  aggregate-only neighbor fallback, and verifies node selection resets neighbor
+  state.
+- The inspector includes a compact review checklist that summarizes whether the
+  selected cluster has enough terms, representative works, relation evidence,
+  and QA signal for interpretation.
+- The inspector also renders a compact review packet that combines selected
+  cluster state, top terms, representative works, and the active neighbor
+  evidence mode before any narrative-generation step.
+- The Evidence view includes a filterable current-level review queue that counts
+  ready/review/blocked clusters, syncs the `atlas_review` URL state, and
+  provides direct and next-target navigation to clusters that need analyst
+  review.
+
+Remaining implementation order:
+
+1. Keep the UI compact: detail belongs in the inspector, drawer, or QA section,
+   not on the primary map.
+2. Expand the checklist into a fuller review workflow once the UI/UX rewrite
+   starts.
+
+Completed implementation order:
+
 1. Add a small client-side evidence model builder in the web app script.
 2. Add tests that assert the homepage exposes the builder and section states.
-3. Extend the P1 Atlas smoke to assert stable co-occurrence and aggregate-only
-   neighbor behavior in the opened result payload.
-4. Add UI rendering only after the model builder is test-covered.
-5. Keep the UI compact: detail belongs in the inspector, drawer, or QA section,
-   not on the primary map.
+3. Add UI rendering only after the model builder is test-covered.
+4. Extend the P1 Atlas smoke to assert stable co-occurrence, stable evidence,
+   and the aggregate/sample/shared-term-field neighbor contract in the opened
+   result payload.
+5. Add `scripts/sciscape_quality_gate.py --atlas-inspector-smoke` for
+   browser-level node selection, sample-backed neighbor evidence, and
+   aggregate-only neighbor fallback checks.
+6. Add the inspector review checklist and include ready/review state checks in
+   the browser inspector smoke.
+7. Add the selected-cluster review packet and smoke-test term, work,
+   sample-backed relation, and aggregate-only relation summaries.
+8. Add a filterable current-level review queue for review-target navigation and
+   smoke-test that it renders actionable review rows and preserves URL state.

@@ -8,6 +8,7 @@
 | `result_manifest_design.md` | Result-root manifest schema for navigation, provenance, feature states, and run status |
 | `artifact_contract.md` | Result-root schema, feature inference, and validation rules |
 | `atlas_evidence_inspector_design.md` | Validated-payload Atlas evidence inspector contract and implementation order |
+| `atlas_render_engine_design.md` | deck.gl-oriented Atlas render payload, layer contract, and engine choice |
 | `matrix_artifact_design.md` | General matrix artifact schema, writer, validator, and QA contract |
 | `temporal_artifact_design.md` | Temporal trend artifact schema, writer, validator, and QA contract |
 | `evolution_artifact_design.md` | Cluster evolution artifact schema, synthetic smoke example, validator, and QA contract |

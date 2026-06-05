@@ -86,10 +86,33 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Local Data" in response.text
     assert "Artifact contract" in response.text
     assert 'id="atlas-shell"' in response.text
+    assert "deck.gl@^9.0.0/dist.min.js" in response.text
     assert "applyResultFeatureAvailability" in response.text
     assert "renderAtlasShell" in response.text
     assert "renderAtlasLineage" in response.text
     assert "renderAtlasEvidenceProfile" in response.text
+    assert "buildAtlasInspectorEvidenceModel" in response.text
+    assert "renderAtlasInspectorModelSummary" in response.text
+    assert "atlasReviewReadiness" in response.text
+    assert "renderAtlasReviewChecklist" in response.text
+    assert "atlasReviewPacket" in response.text
+    assert "renderAtlasReviewPacket" in response.text
+    assert "renderAtlasReviewQueue" in response.text
+    assert "atlasReviewQueueRows" in response.text
+    assert "atlasFilteredReviewRows" in response.text
+    assert "selectAtlasReviewFilter" in response.text
+    assert "openNextAtlasReviewTarget" in response.text
+    assert "Next target" in response.text
+    assert "Review checklist" in response.text
+    assert "Review queue" in response.text
+    assert "atlas_review" in response.text
+    assert "Cluster reading" in response.text
+    assert "renderAtlasMeaningLayer" in response.text
+    assert "renderAtlasQALimitations" in response.text
+    assert "aggregate only" in response.text
+    assert "Raw pair samples unavailable" in response.text
+    assert "atlasFeatureState" in response.text
+    assert "sciscape_inspector_evidence_view_v1" in response.text
     assert "renderAtlasChildren" in response.text
     assert "atlasChildrenForNode" in response.text
     assert "renderAtlasSearchPanel" in response.text
@@ -107,9 +130,23 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlasSessionStorageKey" in response.text
     assert "renderAtlasViewControls" in response.text
     assert "selectAtlasViewMode" in response.text
+    assert "renderAtlasDeckPanel" in response.text
+    assert "renderAtlasDeckControls" in response.text
+    assert "setAtlasDeckLayer" in response.text
+    assert "setAtlasDeckMinEdgeWeight" in response.text
+    assert "setAtlasDeckLabelLimit" in response.text
+    assert "loadAtlasDeckRender" in response.text
+    assert "/atlas-render" in response.text
+    assert "new deck.ScatterplotLayer" in response.text
+    assert "new deck.LineLayer" in response.text
+    assert "new deck.TextLayer" in response.text
+    assert "new deck.OrthographicView" in response.text
     assert "renderAtlasHierarchyView" in response.text
     assert "renderAtlasEvidenceNodeView" in response.text
     assert "atlas_view" in response.text
+    assert "atlas_layers" in response.text
+    assert "atlas_edge_min" in response.text
+    assert "atlas_label_limit" in response.text
     assert "resultFeatureBlock" in response.text
     assert "renderAtlasModulePanel" in response.text
     assert "atlasModuleReadinessNote" in response.text
@@ -561,7 +598,24 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["atlas"]["nodes"][0]["doc_count_source"] == "membership:cluster"
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_work_count"] == 2
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["title"] == "Stable perovskite device"
+    assert job_payload["result"]["atlas_render_summary"]["schema_version"] == "sciscape_atlas_render_payload_v1"
+    assert job_payload["result"]["atlas_render_summary"]["engine_family"] == "deck.gl"
+    assert job_payload["result"]["atlas_render_summary"]["node_count"] == 1
+    assert job_payload["result"]["atlas_render_summary"]["available_layers"] == [
+        "edges",
+        "hierarchy",
+        "labels",
+        "nodes",
+    ]
     assert job_payload["result"]["atlas_report_rel_path"] == "landscape/report/data.json"
+
+    render_response = client.get(f"/api/jobs/{job_id}/atlas-render")
+    assert render_response.status_code == 200
+    render_payload = render_response.json()
+    assert render_payload["schema_version"] == "sciscape_atlas_render_payload_v1"
+    assert render_payload["view"]["type"] == "OrthographicView"
+    assert render_payload["layers"]["nodes"]["recommended_deck_layer"] == "ScatterplotLayer"
+    assert render_payload["layers"]["labels"]["rows"][0]["text"] == "perovskite"
 
     evolution_response = client.get(f"/api/jobs/{job_id}/evolution")
     assert evolution_response.status_code == 200

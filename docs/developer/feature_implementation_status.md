@@ -44,7 +44,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
-| F09 | Atlas map, evidence, cluster reading | `[~]` | 72% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector design | UI implementation and complete evidence inspector workflow |
+| F09 | Atlas map, evidence, cluster reading | `[~]` | 91% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
@@ -210,20 +210,68 @@ control surface is still incomplete.
 
 ### F09. Atlas Map, Evidence, And Cluster Reading
 
-Status: `[~]` Partial. Rough completeness: 72%.
+Status: `[~]` Partial. Rough completeness: 91%.
 
 - `[x]` Atlas payload can be built from report and membership artifacts.
 - `[x]` Hierarchy lineage, doc counts, labels, representative works, and neighbor
   evidence can be attached.
 - `[x]` Cluster detail and atlas-related web endpoints exist.
+- `[x]` `/api/jobs/{job_id}/atlas-render` exposes renderer-oriented layer rows
+  for deck.gl-style Atlas map engines.
 - `[x]` A validated-payload evidence inspector contract is defined in
   `atlas_evidence_inspector_design.md`.
-- `[~]` Evidence is available in payloads, but not yet fully organized into a
-  consistent inspector workflow.
+- `[x]` The web inspector builds a client-side
+  `sciscape_inspector_evidence_view_v1` model and renders section states for
+  identity, meaning, relations, hierarchy, works, and QA.
+- `[x]` The P1 Atlas smoke gate asserts stable co-occurrence/evidence states and
+  payload-backed neighbor rows with aggregate relation fields, shared-term
+  fields, and sampled edge evidence.
+- `[x]` `scripts/sciscape_quality_gate.py --atlas-inspector-smoke` optionally
+  opens the static app in headless Chrome and verifies inspector node selection,
+  sample-backed neighbor evidence, aggregate-only neighbor fallback, and
+  representative-work rendering.
+- `[x]` The inspector now includes a compact review checklist that summarizes
+  term, work, relation, and QA readiness for cluster interpretation.
+- `[x]` The inspector now includes a selected-cluster review packet that
+  combines state, top terms, representative works, and active neighbor evidence
+  before narrative generation.
+- `[x]` The Evidence view now includes a filterable current-level review queue
+  that counts ready/review/blocked clusters, links directly to review targets,
+  offers next-target navigation, and syncs `atlas_review` URL state.
+- `[x]` A deck.gl-oriented render-engine contract is defined in
+  `atlas_render_engine_design.md`.
+- `[x]` The current static web app has a guarded deck.gl Atlas Map prototype
+  using `ScatterplotLayer`, `LineLayer`, `TextLayer`, and `OrthographicView`.
+- `[x]` The deck.gl prototype exposes layer visibility controls, edge-weight
+  thresholding, label-density control, URL-state persistence, and selected-node
+  view centering.
+- `[~]` Evidence is organized into a section-state inspector workflow, but fuller
+  review affordances are still pending.
+- `[x]` The P1 Atlas smoke validates the `/atlas-render` contract.
+- `[x]` `scripts/sciscape_quality_gate.py --atlas-visual-smoke` renders a tiny
+  deck.gl map in headless Chrome and checks for nonblank pixels when Chrome is
+  available.
+- `[x]` `scripts/sciscape_quality_gate.py --atlas-render-perf-smoke` validates
+  a deterministic 100-node/500-edge render payload contract without requiring a
+  browser.
+- `[x]` `scripts/sciscape_quality_gate.py --atlas-render-scale-smoke` validates
+  a deterministic 5k-node/25k-edge render payload contract without requiring a
+  browser.
+- `[x]` `scripts/sciscape_quality_gate.py --atlas-interaction-smoke` optionally
+  validates 5k-node/25k-edge deck.gl browser rendering, selected-node camera
+  update, center hit-test, and nonblank screenshot when Chrome is available.
+- `[~]` Small-demo interaction smoke exists, but analyst-scale browser gates are
+  not implemented yet.
 - `[ ]` The UI/UX rewrite is still pending and should not be considered complete.
 
-Review: the data contract is ahead of the interface. This should guide the next
-UI implementation rather than be treated as a finished Atlas App.
+Review: the data contract is ahead of the interface. The new render payload
+gives the deck.gl prototype a stable entry point, and the static viewer now has
+a first GPU map surface with smoke coverage plus CI-scale and small-demo-scale
+render payload performance gates. Optional browser smokes cover small-demo map
+interaction, the inspector review checklist, the selected-cluster review packet,
+and filterable current-level review queue behavior. Analyst-scale browser gates
+and a fuller evidence review
+workflow are still required before treating it as a finished Atlas App.
 
 ### F10. Term Network And Co-Occurrence Visualization
 
@@ -348,9 +396,10 @@ evolution map, and narrative system are stable.
 ## Next Implementation Targets
 
 1. Define replayable keyword cleaning rule artifacts and before/after diffs.
-2. Implement richer time-slice matching for evolution beyond static membership
+2. Harden inspector-driven review affordances.
+3. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
-3. Implement the narrative evidence-reference writer, validator, and unsupported
+4. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-4. Implement the export manifest writer and validator from
+5. Implement the export manifest writer and validator from
    `export_manifest_design.md`.

@@ -47,15 +47,47 @@ The gate performs:
 - staged diff whitespace/conflict-marker check with `git diff --cached --check`;
 - Rust tests for `rust/` and `rust-text/`;
 - editable rebuild of both PyO3 extensions with `maturin develop`;
-- `scripts/sciscape_quality_gate.py --smoke --web-demo-smoke --p1-atlas-smoke`, covering
+- `scripts/sciscape_quality_gate.py --smoke --web-demo-smoke --p1-atlas-smoke --atlas-render-perf-smoke --atlas-render-scale-smoke`, covering
   artifact filtering, term co-occurrence, dashboard generation, the web demo
   launcher, local demo opening, Atlas neighbor edge-evidence sidecars, and key
   visualization/download endpoints without external data. The P1 Atlas smoke
   additionally runs a tiny real landscape pipeline, writes stable
   co-occurrence table/map sidecars, and reopens the output through the web
-  local-data API;
+  local-data API. The Atlas render perf smoke validates a deterministic
+  100-node/500-edge deck.gl-oriented payload contract, and the render scale
+  smoke validates the same contract at 5k nodes / 25k edges without requiring a
+  browser;
 - full Python test suite with `pytest -q`;
 - CLI import/help smoke check.
+
+## Optional Atlas Browser Smokes
+
+When `google-chrome` or `chromium` is available, the deck.gl Atlas renderer can
+be checked with a headless browser:
+
+```bash
+uv run --extra dev python scripts/sciscape_quality_gate.py \
+  --atlas-visual-smoke --atlas-interaction-smoke --atlas-inspector-smoke
+```
+
+This writes a temporary standalone deck.gl page, captures a headless screenshot,
+and fails if the rendered map appears blank. The interaction smoke additionally
+loads a 5k-node/25k-edge map, updates the camera to a selected node, and checks a
+deck.gl center hit-test. The inspector smoke loads the static SciScape web app
+with a synthetic Atlas result, checks node selection, sample-backed neighbor
+evidence, aggregate-only neighbor fallback, representative-work rendering, and
+the inspector review checklist, selected-cluster review packet, review queue
+ready/review filter states, URL-state sync, and next-target navigation.
+These browser smokes are optional because they depend on a local browser; the
+deck.gl render smokes also depend on the deck.gl CDN.
+
+The browser-free render payload performance gates are part of
+`release_check.sh`. They can also be run directly:
+
+```bash
+uv run --extra dev python scripts/sciscape_quality_gate.py \
+  --atlas-render-perf-smoke --atlas-render-scale-smoke
+```
 
 ## Optional Demo Output Gate
 

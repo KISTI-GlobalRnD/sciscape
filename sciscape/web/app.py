@@ -24,6 +24,7 @@ from starlette.responses import StreamingResponse
 
 from sciscape.artifacts import (
     build_atlas_payload_from_report_data,
+    build_atlas_render_payload,
     infer_result_artifacts,
     load_result_manifest,
     validate_evolution_artifact,
@@ -196,6 +197,19 @@ async def view_file(job_id: str, filename: str):
     """Open an output artifact inline, e.g. generated HTML reports."""
     file_path = _resolve_job_output_file(job_id, filename)
     return FileResponse(file_path)
+
+
+@app.get("/api/jobs/{job_id}/atlas-render")
+async def get_atlas_render(job_id: str):
+    """Get renderer-oriented Atlas layer rows for deck.gl-style map engines."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"error": "job not done"}
+    result = job.get("result", {})
+    payload = _atlas_render_payload_for_result(result)
+    if payload is None:
+        return {"error": "no atlas payload"}
+    return _json_safe(payload)
 
 
 @app.get("/api/jobs/{job_id}/network")
@@ -611,6 +625,17 @@ def _attach_report_atlas(result: dict[str, Any]) -> None:
         return
 
     result["atlas"] = atlas
+    render_payload = build_atlas_render_payload(atlas)
+    result["atlas_render_summary"] = {
+        "schema_version": render_payload["schema_version"],
+        "engine_family": render_payload["engine_family"],
+        "node_count": render_payload["node_count"],
+        "edge_count": render_payload["edge_count"],
+        "label_count": render_payload["label_count"],
+        "hierarchy_edge_count": render_payload["hierarchy_edge_count"],
+        "coordinate_source": render_payload["view"]["coordinate_source"],
+        "available_layers": sorted(render_payload["layers"].keys()),
+    }
     output_dir = result.get("output_dir")
     try:
         result["atlas_report_rel_path"] = (
@@ -620,6 +645,16 @@ def _attach_report_atlas(result: dict[str, Any]) -> None:
         )
     except ValueError:
         result["atlas_report_rel_path"] = str(data_path)
+
+
+def _atlas_render_payload_for_result(result: dict[str, Any]) -> dict[str, Any] | None:
+    atlas = result.get("atlas")
+    if not isinstance(atlas, dict) or not atlas.get("nodes"):
+        _attach_report_atlas(result)
+        atlas = result.get("atlas")
+    if not isinstance(atlas, dict) or not atlas.get("nodes"):
+        return None
+    return build_atlas_render_payload(atlas)
 
 
 def _json_safe(value: Any) -> Any:

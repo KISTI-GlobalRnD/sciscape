@@ -22,6 +22,7 @@ from sciscape.artifacts import (
     WORKSPACE_MANIFEST_SCHEMA_VERSION,
     WORKSPACE_QA_SCHEMA_VERSION,
     build_atlas_payload_from_report_data,
+    build_atlas_render_payload,
     build_result_manifest,
     build_report_data_contract,
     load_result_manifest,
@@ -635,6 +636,74 @@ def test_report_data_contract_embeds_minimal_atlas_nodes():
     assert node["keywords"][0]["rank"] == 1
     assert node["keywords"][0]["term"] == "perovskite solar cells"
     assert contract["atlas"]["nodes"][0]["cluster_uid"] == "cluster:7"
+
+
+def test_atlas_render_payload_builds_deck_layer_rows_from_atlas_payload():
+    atlas = {
+        "schema_version": "sciscape_atlas_payload_v1",
+        "levels": ["macro", "micro"],
+        "nodes": [
+            {
+                "cluster_uid": "macro:10",
+                "level": "macro",
+                "cluster_id": 10,
+                "label": "Energy systems",
+                "short_label": "Energy systems",
+                "doc_count": 12,
+                "child_count": 1,
+                "x": 2.0,
+                "y": -1.0,
+            },
+            {
+                "cluster_uid": "micro:100",
+                "level": "micro",
+                "cluster_id": 100,
+                "parent_uid": "macro:10",
+                "label": "Solar cells",
+                "short_label": "Solar cells",
+                "doc_count": 4,
+                "keyword_count": 2,
+            },
+        ],
+        "edges": [
+            {
+                "source_uid": "macro:10",
+                "target_uid": "micro:100",
+                "level": "micro",
+                "weight": 3.0,
+                "edge_count": 2,
+                "relation_label": "parent evidence",
+                "shared_terms": ["solar cells"],
+            }
+        ],
+        "warnings": [{"code": "source_warning", "severity": "info", "message": "kept"}],
+    }
+
+    payload = build_atlas_render_payload(atlas)
+
+    assert payload["schema_version"] == "sciscape_atlas_render_payload_v1"
+    assert payload["source_schema_version"] == "sciscape_atlas_payload_v1"
+    assert payload["engine_family"] == "deck.gl"
+    assert payload["view"]["type"] == "OrthographicView"
+    assert payload["view"]["coordinate_source"] == "mixed"
+    assert payload["node_count"] == 2
+    assert payload["edge_count"] == 1
+    assert payload["label_count"] == 2
+    assert payload["hierarchy_edge_count"] == 1
+
+    nodes = {row["cluster_uid"]: row for row in payload["layers"]["nodes"]["rows"]}
+    assert nodes["macro:10"]["position"] == [2.0, -1.0]
+    assert nodes["macro:10"]["coordinate_source"] == "node_coordinates"
+    assert nodes["micro:100"]["coordinate_source"] == "generated_parent_radial"
+    assert nodes["micro:100"]["render_radius"] > nodes["macro:10"]["render_radius"] / 2
+
+    edge = payload["layers"]["edges"]["rows"][0]
+    assert edge["source_uid"] == "macro:10"
+    assert edge["target_uid"] == "micro:100"
+    assert edge["source_position"] == [2.0, -1.0]
+    assert payload["layers"]["nodes"]["recommended_deck_layer"] == "ScatterplotLayer"
+    assert payload["layers"]["labels"]["recommended_deck_layer"] == "TextLayer"
+    assert any(w["code"] == "generated_atlas_render_coordinates" for w in payload["warnings"])
 
 
 def test_atlas_payload_enriches_doc_counts_and_cluster_edges_from_artifacts(tmp_path):

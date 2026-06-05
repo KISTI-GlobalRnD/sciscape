@@ -24,6 +24,7 @@ WORKSPACE_MANIFEST_SCHEMA_VERSION = "sciscape_workspace_manifest_v1"
 WORKSPACE_QA_SCHEMA_VERSION = "sciscape_workspace_qa_v1"
 REPORT_DATA_CONTRACT_SCHEMA_VERSION = "sciscape_report_data_contract_v1"
 ATLAS_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_payload_v1"
+ATLAS_RENDER_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_render_payload_v1"
 EDGE_EVIDENCE_SCHEMA_VERSION = "sciscape_edge_evidence_samples_v1"
 COOCCURRENCE_ARTIFACT_SCHEMA_VERSION = "sciscape_cooccurrence_artifact_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
@@ -2003,6 +2004,269 @@ def build_atlas_payload_from_report_data(
         "edges": edges,
         "edge_count": len(edges),
         "warnings": warnings,
+    }
+
+
+def _atlas_render_level_index(level: Any, levels: list[str]) -> int:
+    level_name = str(level or "cluster")
+    if level_name in levels:
+        return levels.index(level_name)
+    return _LEVEL_ORDER.get(level_name.lower(), len(levels))
+
+
+def _atlas_render_node_radius(node: Mapping[str, Any]) -> float:
+    doc_count = _coerce_float(node.get("doc_count"))
+    if doc_count is None or doc_count < 0:
+        return 7.0
+    return round(max(5.0, min(36.0, 5.0 + math.sqrt(doc_count) * 2.2)), 3)
+
+
+def _atlas_render_label_priority(node: Mapping[str, Any]) -> float:
+    doc_count = _coerce_float(node.get("doc_count")) or 0.0
+    child_count = _coerce_float(node.get("child_count")) or 0.0
+    keyword_count = _coerce_float(node.get("keyword_count")) or 0.0
+    return round(math.log1p(max(0.0, doc_count)) * 10.0 + child_count * 2.0 + keyword_count, 3)
+
+
+def _atlas_render_bounds(positions: Mapping[str, list[float]]) -> dict[str, float | None]:
+    if not positions:
+        return {"min_x": None, "max_x": None, "min_y": None, "max_y": None}
+    xs = [pos[0] for pos in positions.values()]
+    ys = [pos[1] for pos in positions.values()]
+    return {
+        "min_x": round(min(xs), 6),
+        "max_x": round(max(xs), 6),
+        "min_y": round(min(ys), 6),
+        "max_y": round(max(ys), 6),
+    }
+
+
+def _atlas_render_positions(
+    nodes: list[Mapping[str, Any]],
+    levels: list[str],
+) -> tuple[dict[str, list[float]], dict[str, str], list[dict[str, Any]]]:
+    positions: dict[str, list[float]] = {}
+    sources: dict[str, str] = {}
+    warnings: list[dict[str, Any]] = []
+    nodes_by_level: dict[str, list[Mapping[str, Any]]] = {}
+    for node in nodes:
+        uid = str(node.get("cluster_uid") or "").strip()
+        if not uid:
+            continue
+        x = _coerce_float(node.get("x"))
+        y = _coerce_float(node.get("y"))
+        if x is not None and y is not None:
+            positions[uid] = [round(x, 6), round(y, 6)]
+            sources[uid] = "node_coordinates"
+            continue
+        nodes_by_level.setdefault(str(node.get("level") or "cluster"), []).append(node)
+
+    generated = 0
+    for level in sorted(nodes_by_level, key=lambda item: _atlas_render_level_index(item, levels)):
+        level_nodes = nodes_by_level[level]
+        level_index = _atlas_render_level_index(level, levels)
+        total = max(1, len(level_nodes))
+        for local_index, node in enumerate(level_nodes):
+            uid = str(node.get("cluster_uid") or "").strip()
+            if not uid or uid in positions:
+                continue
+            parent_uid = str(node.get("parent_uid") or "").strip()
+            parent_position = positions.get(parent_uid)
+            angle = (local_index / total) * math.tau + level_index * 0.41
+            if parent_position:
+                radius = 26.0 + level_index * 8.0 + (local_index % 5) * 2.5
+                x = parent_position[0] + math.cos(angle) * radius
+                y = parent_position[1] + math.sin(angle) * radius
+                source = "generated_parent_radial"
+            else:
+                radius = 90.0 * (level_index + 1) + (local_index % 7) * 4.0
+                x = math.cos(angle) * radius
+                y = math.sin(angle) * radius
+                source = "generated_radial"
+            positions[uid] = [round(x, 6), round(y, 6)]
+            sources[uid] = source
+            generated += 1
+
+    if generated:
+        warnings.append(
+            {
+                "code": "generated_atlas_render_coordinates",
+                "severity": "info",
+                "message": (
+                    f"{generated} atlas nodes lacked x/y coordinates and received deterministic "
+                    "fallback positions for renderer smoke use."
+                ),
+            }
+        )
+    return positions, sources, warnings
+
+
+def build_atlas_render_payload(
+    atlas_payload: Mapping[str, Any],
+    *,
+    engine_family: str = "deck.gl",
+) -> dict[str, Any]:
+    """Build a renderer-oriented Atlas payload from a semantic Atlas payload.
+
+    The semantic Atlas payload keeps cluster evidence and lineage. This render
+    payload is intentionally narrower: stable ids, positions, layer rows, and
+    deck.gl-friendly metadata that can also be adapted by other engines.
+    """
+
+    nodes = [node for node in atlas_payload.get("nodes", []) if isinstance(node, Mapping)]
+    edges = [edge for edge in atlas_payload.get("edges", []) if isinstance(edge, Mapping)]
+    levels = [str(level) for level in atlas_payload.get("levels", []) if str(level).strip()]
+    if not levels:
+        for node in nodes:
+            level = str(node.get("level") or "cluster")
+            if level not in levels:
+                levels.append(level)
+        levels.sort(key=lambda level: _LEVEL_ORDER.get(level.lower(), 100))
+
+    positions, coordinate_sources, render_warnings = _atlas_render_positions(nodes, levels)
+    node_rows: list[dict[str, Any]] = []
+    label_rows: list[dict[str, Any]] = []
+    hierarchy_rows: list[dict[str, Any]] = []
+
+    for node in nodes:
+        uid = str(node.get("cluster_uid") or "").strip()
+        position = positions.get(uid)
+        if not uid or not position:
+            continue
+        level = str(node.get("level") or "cluster")
+        level_index = _atlas_render_level_index(level, levels)
+        doc_count = _coerce_int(node.get("doc_count"))
+        label = str(node.get("label") or node.get("short_label") or uid)
+        short_label = str(node.get("short_label") or _short_label(label))
+        parent_uid = str(node.get("parent_uid") or "").strip() or None
+        row = {
+            "id": uid,
+            "cluster_uid": uid,
+            "cluster_id": node.get("cluster_id"),
+            "level": level,
+            "level_index": level_index,
+            "parent_uid": parent_uid,
+            "label": label,
+            "short_label": short_label,
+            "position": position,
+            "x": position[0],
+            "y": position[1],
+            "coordinate_source": coordinate_sources.get(uid, "unknown"),
+            "doc_count": doc_count,
+            "doc_count_log": round(math.log1p(max(0, doc_count or 0)), 6),
+            "keyword_count": _coerce_int(node.get("keyword_count")) or 0,
+            "child_count": _coerce_int(node.get("child_count")) or 0,
+            "neighbor_count": _coerce_int(node.get("neighbor_count")) or 0,
+            "representative_work_count": _coerce_int(node.get("representative_work_count")) or 0,
+            "badge_count": len(node.get("badges") or []),
+            "render_radius": _atlas_render_node_radius(node),
+            "label_priority": _atlas_render_label_priority(node),
+            "color_key": parent_uid or level,
+            "pickable": True,
+        }
+        node_rows.append(row)
+        label_rows.append(
+            {
+                "id": f"label:{uid}",
+                "cluster_uid": uid,
+                "text": short_label,
+                "position": position,
+                "level": level,
+                "level_index": level_index,
+                "priority": row["label_priority"],
+                "min_zoom": max(-4, level_index - 2),
+            }
+        )
+        if parent_uid and parent_uid in positions:
+            hierarchy_rows.append(
+                {
+                    "id": f"hierarchy:{parent_uid}->{uid}",
+                    "source_uid": parent_uid,
+                    "target_uid": uid,
+                    "source_position": positions[parent_uid],
+                    "target_position": position,
+                    "relation": "parent-child",
+                    "level": level,
+                }
+            )
+
+    edge_rows: list[dict[str, Any]] = []
+    for index, edge in enumerate(edges):
+        source_uid = str(edge.get("source_uid") or edge.get("source") or "").strip()
+        target_uid = str(edge.get("target_uid") or edge.get("target") or "").strip()
+        source_position = positions.get(source_uid)
+        target_position = positions.get(target_uid)
+        if not source_uid or not target_uid or source_position is None or target_position is None:
+            continue
+        weight = _coerce_float(edge.get("weight")) or 0.0
+        edge_rows.append(
+            {
+                "id": str(edge.get("edge_uid") or f"edge:{source_uid}->{target_uid}:{index}"),
+                "source_uid": source_uid,
+                "target_uid": target_uid,
+                "source_position": source_position,
+                "target_position": target_position,
+                "level": str(edge.get("level") or "cluster"),
+                "weight": weight,
+                "edge_count": _coerce_int(edge.get("edge_count")) or 0,
+                "render_width": round(max(1.0, min(10.0, 1.0 + math.log1p(max(0.0, weight)))), 3),
+                "relation_label": str(edge.get("relation_label") or "relation"),
+                "same_parent": bool(edge.get("same_parent")),
+                "shared_terms": list(edge.get("shared_terms") or [])[:8],
+                "sample_count": _coerce_int(edge.get("sample_count")) or 0,
+                "pickable": True,
+            }
+        )
+
+    coordinate_source_values = set(coordinate_sources.values())
+    if not coordinate_source_values:
+        coordinate_source = "none"
+    elif coordinate_source_values == {"node_coordinates"}:
+        coordinate_source = "node_coordinates"
+    elif "node_coordinates" in coordinate_source_values:
+        coordinate_source = "mixed"
+    else:
+        coordinate_source = "generated"
+
+    atlas_warnings = list(atlas_payload.get("warnings") or [])
+    return {
+        "schema_version": ATLAS_RENDER_PAYLOAD_SCHEMA_VERSION,
+        "source_schema_version": atlas_payload.get("schema_version"),
+        "engine_family": engine_family,
+        "view": {
+            "type": "OrthographicView",
+            "coordinate_system": "cartesian_2d",
+            "coordinate_source": coordinate_source,
+            "bounds": _atlas_render_bounds(positions),
+        },
+        "levels": levels,
+        "layers": {
+            "nodes": {
+                "layer_id": "atlas-clusters",
+                "recommended_deck_layer": "ScatterplotLayer",
+                "rows": node_rows,
+            },
+            "edges": {
+                "layer_id": "atlas-relations",
+                "recommended_deck_layer": "LineLayer",
+                "rows": edge_rows,
+            },
+            "labels": {
+                "layer_id": "atlas-labels",
+                "recommended_deck_layer": "TextLayer",
+                "rows": label_rows,
+            },
+            "hierarchy": {
+                "layer_id": "atlas-hierarchy",
+                "recommended_deck_layer": "LineLayer",
+                "rows": hierarchy_rows,
+            },
+        },
+        "node_count": len(node_rows),
+        "edge_count": len(edge_rows),
+        "label_count": len(label_rows),
+        "hierarchy_edge_count": len(hierarchy_rows),
+        "warnings": [*atlas_warnings, *render_warnings],
     }
 
 
@@ -8411,6 +8675,7 @@ __all__ = [
     "TemporalArtifactValidationResult",
     "WorkspaceValidationResult",
     "build_atlas_payload_from_report_data",
+    "build_atlas_render_payload",
     "build_report_data_contract",
     "build_result_manifest",
     "default_artifact_contract_path",
