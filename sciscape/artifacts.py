@@ -3993,6 +3993,14 @@ def write_export_manifest(
         "transforms": "export_transforms.parquet",
         "qa": "export_qa.json",
     }
+    manifest_source_artifacts: list[dict[str, Any]] = []
+    for row in source_artifacts:
+        source_row = dict(row)
+        if "path" in source_row:
+            source_row["path"] = _export_rel_to_root(source_row.get("path") or "", root)
+        if "artifact_path" in source_row:
+            source_row["artifact_path"] = _export_rel_to_root(source_row.get("artifact_path") or "", root)
+        manifest_source_artifacts.append(source_row)
     manifest = {
         "schema_version": EXPORT_MANIFEST_SCHEMA_VERSION,
         "export_id": export_id,
@@ -4003,7 +4011,7 @@ def write_export_manifest(
         "format": primary_format,
         "status": "pending",
         "feature_refs": [str(feature) for feature in feature_refs],
-        "source_artifacts": [dict(item) for item in source_artifacts],
+        "source_artifacts": manifest_source_artifacts,
         "selection": dict(selection or {"scope": "full_result", "filters": []}),
         "transform_summary": {
             "transform_count": len(normalized_transforms),
@@ -8411,15 +8419,20 @@ def _manifest_primary_export_path(files: list[dict[str, Any]], fallback: str | N
 def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
     root = Path(validation.result_root)
     exports: list[dict[str, Any]] = []
+    seen_export_ids: set[str] = set()
+    seen_export_paths: set[str] = set()
 
     for summary in validation.artifacts.get("export_summaries", []):
         export_manifest_ref = summary.get("path")
         files = _manifest_export_file_inventory(root, export_manifest_ref)
         primary_path = _manifest_primary_export_path(files, export_manifest_ref)
+        export_id = str(
+            summary.get("export_id")
+            or _safe_id(Path(str(export_manifest_ref or "export")).parent.name, fallback="export")
+        )
         exports.append(
             {
-                "export_id": summary.get("export_id")
-                or _safe_id(Path(str(export_manifest_ref or "export")).parent.name, fallback="export"),
+                "export_id": export_id,
                 "kind": summary.get("export_kind") or "manifest_export",
                 "path": primary_path,
                 "format": _export_file_format(primary_path or "export_manifest.json", "json"),
@@ -8432,9 +8445,14 @@ def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[s
                 "files": files,
             }
         )
+        seen_export_ids.add(export_id)
+        if primary_path:
+            seen_export_paths.add(str(primary_path))
 
     def add_export(export_id: str, kind: str, path: str | None, fmt: str, features: list[str], source_refs: list[str]) -> None:
         if not path:
+            return
+        if export_id in seen_export_ids or path in seen_export_paths:
             return
         status = "present" if (root / path).exists() else "missing"
         exports.append(
@@ -8448,6 +8466,8 @@ def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[s
                 "status": status,
             }
         )
+        seen_export_ids.add(export_id)
+        seen_export_paths.add(path)
 
     report_data = artifacts.get("report_data", {}).get("path")
     add_export("json_report_data", "json_report_data", report_data, "json", ["overview", "cluster_map"], ["report_data"])

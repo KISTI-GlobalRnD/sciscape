@@ -12,7 +12,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 import sciscape.web.app as web_app
-from sciscape.artifacts import validate_export_manifest, write_evolution_synthetic_smoke_artifact, write_workspace_manifest
+from sciscape.artifacts import (
+    validate_export_manifest,
+    write_evolution_synthetic_smoke_artifact,
+    write_export_manifest,
+    write_workspace_manifest,
+)
 from sciscape.web.jobstore import JobStore
 
 app = web_app.app
@@ -119,6 +124,13 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "graphml_graph"
 
+    job_payload = client.get(f"/api/jobs/{job_id}").json()
+    exports = job_payload["result"]["result_manifest"]["exports"]
+    graphml_exports = [row for row in exports if row["export_id"] == "network_graphml"]
+    assert len(graphml_exports) == 1
+    assert graphml_exports[0]["path"] == "network.graphml"
+    assert graphml_exports[0]["export_manifest_ref"] == "exports/network_graphml/export_manifest.json"
+
 
 def test_web_homepage_exposes_query_analysis_controls():
     client = TestClient(app)
@@ -146,6 +158,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlasFilteredReviewRows" in response.text
     assert "selectAtlasReviewFilter" in response.text
     assert "openNextAtlasReviewTarget" in response.text
+    assert "manifestExportCards" in response.text
+    assert "result_manifest.exports" in response.text
+    assert "Export manifest" in response.text
     assert "Next target" in response.text
     assert "Review checklist" in response.text
     assert "Review queue" in response.text
@@ -610,6 +625,42 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         output_dir / "edges.parquet",
         index=False,
     )
+    vos_dir = output_dir / "vosviewer"
+    vos_dir.mkdir()
+    vos_map = vos_dir / "vosviewer_map.txt"
+    vos_network = vos_dir / "vosviewer_network.txt"
+    vos_map.write_text("id\tlabel\tcluster\nD0\tPerovskite passivation\t0\n", encoding="utf-8")
+    vos_network.write_text("source\ttarget\tweight\nD0\tD1\t1.0\n", encoding="utf-8")
+    write_export_manifest(
+        output_dir,
+        export_id="vosviewer_map_network",
+        export_family="vosviewer",
+        export_kind="vosviewer_map_network",
+        primary_file=vos_map,
+        source_artifacts=[
+            {"artifact_ref": "edges", "artifact_role": "network", "path": output_dir / "edges.parquet"},
+            {
+                "artifact_ref": "membership",
+                "artifact_role": "cluster_membership",
+                "path": landscape_dir / "membership.parquet",
+            },
+        ],
+        feature_refs=["cluster_map", "export"],
+        files=[
+            {
+                "file_id": "map",
+                "path": vos_map,
+                "role": "map",
+                "format": "vosviewer_map",
+            },
+            {
+                "file_id": "network",
+                "path": vos_network,
+                "role": "network",
+                "format": "vosviewer_network",
+            },
+        ],
+    )
     (output_dir / "result_manifest.json").write_text(
         json.dumps(
             {
@@ -648,6 +699,15 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["result_manifest"]["manifest_state"] == "present"
     assert job_payload["result"]["result_manifest"]["title"] == "Curated Web Result"
     assert job_payload["result"]["result_manifest"]["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
+    exports = job_payload["result"]["result_manifest"]["exports"]
+    vos_exports = [row for row in exports if row["export_id"] == "vosviewer_map_network"]
+    assert len(vos_exports) == 1
+    assert vos_exports[0]["path"] == "vosviewer/vosviewer_map.txt"
+    assert vos_exports[0]["export_manifest_ref"] == "exports/vosviewer_map_network/export_manifest.json"
+    assert [row["path"] for row in vos_exports[0]["files"]] == [
+        "vosviewer/vosviewer_map.txt",
+        "vosviewer/vosviewer_network.txt",
+    ]
     assert job_payload["result"]["artifact_contract"]["ok"] is True
     assert job_payload["result"]["features"]["evolution"] is True
     assert job_payload["result"]["feature_states"]["evolution"] == "stable"
@@ -687,6 +747,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert evolution["event_counts"]["merge"] == 1
     assert len(evolution["time_slices"]) == 3
     assert len(evolution["events"]) == 8
+
+    export_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_map.txt")
+    assert export_download.status_code == 200
+    assert "Perovskite passivation" in export_download.text
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

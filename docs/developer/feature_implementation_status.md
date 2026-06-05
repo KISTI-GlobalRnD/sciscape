@@ -20,6 +20,10 @@ how complete that implementation appears to be.
 Completeness is a rough implementation estimate from repo evidence. It is not a
 quality score and should be revised after each milestone.
 
+Use the summary checklist as the canonical current status. Detail sections must
+match the summary percentages after each implementation slice; when a mismatch
+is found, prefer the current code evidence over older review text.
+
 ## Executive Snapshot
 
 The strongest implemented areas are the core analysis pipeline: input adapters,
@@ -71,7 +75,8 @@ until their artifact contracts, UI surfaces, and validation checks are added.
   filtering, combination, diagnostics, and OpenAlex edge conversion exist under
   `sciscape/linkage/` and `sciscape/openalex/`.
 - Visualization/export: dashboard, report, viewer, hierarchy, network map,
-  temporal charts, GEXF, and GraphML surfaces exist.
+  temporal charts, GEXF, GraphML, VOSviewer-style map/network, and
+  manifest-backed export inventory surfaces exist.
 - Tests cover the main implemented surfaces, including artifacts, web app, demo
   gate, landscape, term networks, co-occurrence, temporal logic, adapters,
   OpenAlex edges, and network maps.
@@ -80,7 +85,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 
 ### F01. Workspace And Project Management
 
-Status: `[~]` Partial. Rough completeness: 41%.
+Status: `[~]` Partial. Rough completeness: 53%.
 
 - `[x]` Local result roots can be discovered and opened from the web app.
 - `[x]` Query jobs have persisted status and output directories.
@@ -88,7 +93,7 @@ Status: `[~]` Partial. Rough completeness: 41%.
 - `[x]` Workspace/project/run manifest contract is defined in
   `docs/developer/workspace_manifest_design.md`.
 - `[~]` Result-root validation can infer available features from files.
-- `[ ]` Workspace writer and validator are not yet implemented.
+- `[x]` Workspace writer and validator are implemented.
 - `[ ]` There is no durable workspace browser with rename, archive, compare, or
   provenance editing semantics.
 
@@ -294,7 +299,7 @@ gap is UI QA and richer export/control behavior.
 
 ### F11. Temporal And Evolution
 
-Status: `[~]` Partial. Rough completeness: 38%.
+Status: `[~]` Partial. Rough completeness: 64%.
 
 - `[x]` Temporal keyword utilities and visualization helpers exist.
 - `[x]` Burst and trend helpers exist.
@@ -368,6 +373,8 @@ Status: `[~]` Partial. Rough completeness: 90%.
   keeping legacy report/viewer exports at beta.
 - `[x]` `result_manifest.exports` exposes manifest-backed primary export paths,
   export manifest refs, and compact output file inventories.
+- `[x]` Web Download tab can render manifest-backed export manifests and export
+  files from `result_manifest.exports`.
 - `[x]` Dashboard, report, static viewer, CLI GEXF/GraphML, and web network
   export paths write export manifests automatically.
 - `[~]` Artifact contracts can summarize export availability.

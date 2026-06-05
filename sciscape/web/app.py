@@ -1752,6 +1752,25 @@ async def export_network(job_id: str, fmt: str):
             source_paths=source_paths,
         )
 
+    try:
+        refreshed_manifest = load_result_manifest(out_dir, mode="live_query")
+        result["result_manifest"] = refreshed_manifest
+        result["feature_states"] = {
+            name: feature.get("state", "hidden")
+            for name, feature in refreshed_manifest.get("features", {}).items()
+            if isinstance(feature, dict)
+        }
+        features = dict(result.get("features") or {})
+        for name, state in result["feature_states"].items():
+            features[name] = state != "hidden"
+        result["features"] = features
+        job["result"] = result
+        _jobs.persist(job_id)
+    except Exception:
+        # The file export itself should remain downloadable even if manifest
+        # refresh fails on a partially populated result root.
+        pass
+
     return FileResponse(str(out_path), filename=f"sciscape_network.{fmt}",
                         media_type="application/xml")
 

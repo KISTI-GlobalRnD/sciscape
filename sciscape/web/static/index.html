@@ -5052,14 +5052,6 @@ function showResults(result) {
   }
   row.innerHTML = html;
 
-  // Downloads
-  const grid = document.getElementById('dl-grid');
-  grid.innerHTML = '';
-  if (result.abstracts_path)
-    grid.innerHTML += dlCard('abstracts.parquet', 'Paper metadata', 'ABS', currentJobId);
-  if (result.edges_path)
-    grid.innerHTML += dlCard('edges.parquet', 'Citation edges', 'EDG', currentJobId);
-
   // Load all tabs
   if (featureAvailable('cluster_map')) {
     loadNetwork(currentJobId);
@@ -5097,6 +5089,50 @@ function viewCard(filename, desc, icon, jobId) {
 function artifactUrl(jobId, mode, filename) {
   const safePath = String(filename).split('/').map(encodeURIComponent).join('/');
   return '/api/jobs/' + encodeURIComponent(jobId) + '/' + mode + '/' + safePath;
+}
+
+function manifestExportIcon(format, role) {
+  const fmt = String(format || '').toLowerCase();
+  const fileRole = String(role || '').toLowerCase();
+  if (fmt.includes('vosviewer')) return 'VOS';
+  if (fmt === 'graphml' || fmt === 'gexf') return fmt.toUpperCase().slice(0, 4);
+  if (fmt === 'json') return 'JSON';
+  if (fmt === 'html') return 'HTML';
+  if (fileRole.includes('manifest')) return 'MAN';
+  return 'EXP';
+}
+
+function manifestExportLabel(exportRow, fileRow) {
+  const kind = exportRow.kind || exportRow.export_kind || exportRow.export_id || 'export';
+  const role = fileRow && fileRow.role ? fileRow.role : 'primary';
+  return String(kind).replace(/_/g, ' ') + ' / ' + String(role).replace(/_/g, ' ');
+}
+
+function manifestExportCards(result, jobId, seenPaths) {
+  const manifest = result && result.result_manifest || {};
+  const exportRows = Array.isArray(manifest.exports) ? manifest.exports : []; // result_manifest.exports
+  const cards = [];
+  const seen = seenPaths || new Set();
+  const addCard = (path, desc, icon) => {
+    if (!path || seen.has(path)) return;
+    seen.add(path);
+    cards.push(dlCard(path, desc, icon, jobId));
+  };
+  for (const exportRow of exportRows) {
+    if (!exportRow || exportRow.status === 'missing' || exportRow.status === 'blocked') continue;
+    if (exportRow.export_manifest_ref) {
+      addCard(exportRow.export_manifest_ref, 'Export manifest: ' + (exportRow.kind || exportRow.export_id || 'export'), 'MAN');
+    }
+    const files = Array.isArray(exportRow.files) && exportRow.files.length
+      ? exportRow.files
+      : [{path: exportRow.path, role: 'primary', format: exportRow.format, exists: exportRow.status !== 'missing'}];
+    for (const fileRow of files) {
+      if (!fileRow || fileRow.exists === false) continue;
+      const path = fileRow.path || exportRow.path;
+      addCard(path, manifestExportLabel(exportRow, fileRow), manifestExportIcon(fileRow.format || exportRow.format, fileRow.role));
+    }
+  }
+  return cards.join('');
 }
 
 /* ── LOCAL DATA BROWSER ───────────────────────────────── */
@@ -5329,28 +5365,41 @@ async function loadKeywordTable() {
 function updateDownloads(result) {
   const grid = document.getElementById('dl-grid');
   grid.innerHTML = '';
-  const files = [
-    ['abstracts.parquet', 'Paper metadata', 'ABS'],
-    ['edges.parquet', 'Citation edges', 'EDG'],
-    ['edges_dc.parquet', 'Direct citation', 'DC'],
-    ['edges_bc.parquet', 'Bibliographic coupling', 'BC'],
-    ['edges_cc.parquet', 'Co-citation', 'CC'],
-  ];
-  for (const [fname, desc, icon] of files) {
+  const seenDownloads = new Set();
+  const addDownload = (fname, desc, icon) => {
+    if (!fname || seenDownloads.has(fname)) return;
+    seenDownloads.add(fname);
     grid.innerHTML += dlCard(fname, desc, icon, currentJobId);
+  };
+  const addView = (fname, desc, icon) => {
+    if (!fname) return;
+    grid.innerHTML += viewCard(fname, desc, icon, currentJobId);
+  };
+  if (result && result.result_manifest && result.result_manifest.manifest_state === 'present') {
+    addDownload('result_manifest.json', 'Result manifest', 'MAN');
   }
-  if (result.landscape_dir) {
+  if (result && result.abstracts_path) addDownload('abstracts.parquet', 'Paper metadata', 'ABS');
+  if (result && result.edges_path) addDownload('edges.parquet', 'Citation edges', 'EDG');
+  const edgeCounts = result && result.n_edges || {};
+  if (Number(edgeCounts.dc || 0) > 0) addDownload('edges_dc.parquet', 'Direct citation', 'DC');
+  if (Number(edgeCounts.bc || 0) > 0) addDownload('edges_bc.parquet', 'Bibliographic coupling', 'BC');
+  if (Number(edgeCounts.cc || 0) > 0) addDownload('edges_cc.parquet', 'Co-citation', 'CC');
+  if (result && result.landscape_dir) {
     const landscapePath = result.landscape_rel_path || 'landscape';
-    grid.innerHTML += viewCard(landscapePath + '/report/report.html', 'Open report index', 'REP', currentJobId);
-    grid.innerHTML += viewCard(landscapePath + '/report/index.html', 'Open keyword dashboard', 'DASH', currentJobId);
-    grid.innerHTML += viewCard(landscapePath + '/report/landscape_detailed.html', 'Open detailed landscape map', 'MAP', currentJobId);
-    grid.innerHTML += dlCard(landscapePath + '/membership.parquet', 'Cluster membership', 'MEM', currentJobId);
-    grid.innerHTML += dlCard(landscapePath + '/keywords.parquet', 'Keywords', 'KW', currentJobId);
-    grid.innerHTML += dlCard(landscapePath + '/report/data.json', 'Viewer-ready dashboard data', 'JSON', currentJobId);
+    addView(landscapePath + '/report/report.html', 'Open report index', 'REP');
+    addView(landscapePath + '/report/index.html', 'Open keyword dashboard', 'DASH');
+    addView(landscapePath + '/report/landscape_detailed.html', 'Open detailed landscape map', 'MAP');
+    addDownload(landscapePath + '/membership.parquet', 'Cluster membership', 'MEM');
+    addDownload(landscapePath + '/keywords.parquet', 'Keywords', 'KW');
+    addDownload(landscapePath + '/report/data.json', 'Viewer-ready dashboard data', 'JSON');
   }
   if (featureAvailable('evolution')) {
-    grid.innerHTML += dlCard('evolution/evolution_manifest.json', 'Cluster evolution manifest', 'EVO', currentJobId);
-    grid.innerHTML += dlCard('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT', currentJobId);
+    addDownload('evolution/evolution_manifest.json', 'Cluster evolution manifest', 'EVO');
+    addDownload('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT');
+  }
+  grid.innerHTML += manifestExportCards(result || {}, currentJobId, seenDownloads);
+  if (!grid.innerHTML) {
+    grid.innerHTML = '<div class="empty-state">No downloadable artifacts found for this result.</div>';
   }
 }
 
