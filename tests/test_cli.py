@@ -214,10 +214,28 @@ class TestKeywordsArgs:
         args = parser.parse_args(["keywords", "abs.parquet", "mem.parquet"])
         assert args.cluster_level is None
         assert args.top_n == 100
+        assert args.keyword_engine == "legacy"
+        assert args.cluster_sharded_output_dir is None
+        assert args.keyword_preflight_only is False
+        assert args.uid_col == "uid"
+        assert args.title_col == "title"
+        assert args.abstract_col == "abstract"
+        assert args.year_col == "pubyear"
+        assert args.target_docs_per_shard == 500_000
+        assert args.max_clusters_per_shard == 1024
+        assert args.candidate_pool_floor == 256
+        assert args.candidate_pool_large == 1024
+        assert args.candidate_pool_hard_max == 1536
+        assert args.global_candidate_row_warning == 80_000_000
+        assert args.global_candidate_row_hard_stop == 100_000_000
+        assert args.candidate_mining_progress_interval_docs == 25_000
+        assert args.candidate_mining_prune_interval_docs == 50_000
+        assert args.candidate_mining_prune_multiplier == 8
         assert args.include_title is False
         assert args.min_df == 5
         assert args.ngram_max == 3
         assert args.n_jobs == -1
+        assert args.quality_rerank is False
         assert args.enable_all is False
         assert args.output == Path("keywords.parquet")
         assert args.verbose is False
@@ -231,6 +249,7 @@ class TestKeywordsArgs:
             "--min-df", "10",
             "--ngram-max", "4",
             "--n-jobs", "4",
+            "--quality-rerank",
             "--enable-all",
             "-o", "kw.parquet",
             "-v",
@@ -241,9 +260,55 @@ class TestKeywordsArgs:
         assert args.min_df == 10
         assert args.ngram_max == 4
         assert args.n_jobs == 4
+        assert args.quality_rerank is True
         assert args.enable_all is True
         assert args.output == Path("kw.parquet")
         assert args.verbose is True
+
+    def test_cluster_sharded_preflight_options(self, parser):
+        args = parser.parse_args([
+            "keywords",
+            "abs.parquet",
+            "mem.parquet",
+            "--keyword-engine",
+            "cluster_sharded",
+            "--keyword-preflight-only",
+            "--cluster-sharded-output-dir",
+            "keyword_v2",
+            "--uid-col",
+            "work_id",
+            "--year-col",
+            "publication_year",
+            "--target-docs-per-shard",
+            "250000",
+            "--max-clusters-per-shard",
+            "512",
+            "--candidate-pool-floor",
+            "128",
+            "--candidate-pool-large",
+            "768",
+            "--candidate-pool-hard-max",
+            "1024",
+            "--candidate-mining-progress-interval-docs",
+            "10000",
+            "--candidate-mining-prune-interval-docs",
+            "20000",
+            "--candidate-mining-prune-multiplier",
+            "6",
+        ])
+        assert args.keyword_engine == "cluster_sharded"
+        assert args.keyword_preflight_only is True
+        assert args.cluster_sharded_output_dir == Path("keyword_v2")
+        assert args.uid_col == "work_id"
+        assert args.year_col == "publication_year"
+        assert args.target_docs_per_shard == 250_000
+        assert args.max_clusters_per_shard == 512
+        assert args.candidate_pool_floor == 128
+        assert args.candidate_pool_large == 768
+        assert args.candidate_pool_hard_max == 1024
+        assert args.candidate_mining_progress_interval_docs == 10_000
+        assert args.candidate_mining_prune_interval_docs == 20_000
+        assert args.candidate_mining_prune_multiplier == 6
 
 
 # ---------------------------------------------------------------------------

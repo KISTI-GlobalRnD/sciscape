@@ -62,6 +62,39 @@ def _build_parser() -> argparse.ArgumentParser:
     kw.add_argument("--cluster-level", type=str, default=None,
                      help="Cluster column name in membership (default: auto-detect finest)")
     kw.add_argument("--top-n", type=int, default=100, help="Keywords per cluster (default: 100)")
+    kw.add_argument(
+        "--keyword-engine",
+        choices=["legacy", "cluster_sharded"],
+        default="legacy",
+        help="Keyword engine (default: legacy; cluster_sharded is opt-in V2)",
+    )
+    kw.add_argument(
+        "--cluster-sharded-output-dir",
+        type=Path,
+        default=None,
+        help="Artifact directory for --keyword-engine cluster_sharded",
+    )
+    kw.add_argument(
+        "--keyword-preflight-only",
+        action="store_true",
+        help="For --keyword-engine cluster_sharded, write shard/budget manifests and exit",
+    )
+    kw.add_argument("--uid-col", type=str, default="uid", help="Document id column (default: uid)")
+    kw.add_argument("--title-col", type=str, default="title", help="Title column (default: title)")
+    kw.add_argument("--abstract-col", type=str, default="abstract", help="Abstract column (default: abstract)")
+    kw.add_argument("--year-col", type=str, default="pubyear", help="Publication year column (default: pubyear)")
+    kw.add_argument("--target-docs-per-shard", type=int, default=500_000)
+    kw.add_argument("--max-clusters-per-shard", type=int, default=1024)
+    kw.add_argument("--candidate-pool-floor", type=int, default=256)
+    kw.add_argument("--candidate-pool-large", type=int, default=1024)
+    kw.add_argument("--candidate-pool-hard-max", type=int, default=1536)
+    kw.add_argument("--global-candidate-row-warning", type=int, default=80_000_000)
+    kw.add_argument("--global-candidate-row-hard-stop", type=int, default=100_000_000)
+    kw.add_argument("--global-unique-term-warning", type=int, default=8_000_000)
+    kw.add_argument("--global-unique-term-hard-stop", type=int, default=10_000_000)
+    kw.add_argument("--candidate-mining-progress-interval-docs", type=int, default=25_000)
+    kw.add_argument("--candidate-mining-prune-interval-docs", type=int, default=50_000)
+    kw.add_argument("--candidate-mining-prune-multiplier", type=int, default=8)
     kw.add_argument("--include-title", action="store_true", help="Include title in text")
     kw.add_argument("--min-df", type=int, default=5, help="Min document frequency (default: 5)")
     kw.add_argument("--ngram-max", type=int, default=3, help="Max n-gram size (default: 3)")
@@ -87,6 +120,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Reuse complete matching scoring shards when --scoring-shard-dir is set",
+    )
+    kw.add_argument(
+        "--quality-rerank",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Use representative-label quality for final top-N ranking",
     )
     kw.add_argument("--enable-all", action="store_true",
                      help="Enable all optional stages (vocab merge, cooccurrence, term network, depth)")
@@ -286,7 +325,11 @@ def _run_cluster(args: argparse.Namespace) -> None:
 
 
 def _run_keywords(args: argparse.Namespace) -> None:
-    from sciscape.keyword_extraction import KeywordExtractionConfig, KeywordExtractionPipeline
+    from sciscape.keyword_extraction import (
+        KeywordExtractionConfig,
+        KeywordExtractionPipeline,
+        run_cluster_sharded_preflight,
+    )
     from sciscape.keyword_extraction.config import VocabMergeConfig
     from sciscape.keyword_extraction.depth import DepthConfig
     from sciscape.keyword_extraction.term_network import TermNetworkConfig
@@ -296,6 +339,24 @@ def _run_keywords(args: argparse.Namespace) -> None:
         membership_path=args.membership_path,
         cluster_level=args.cluster_level,
         top_n_keywords=args.top_n,
+        keyword_engine=args.keyword_engine,
+        cluster_sharded_output_dir=args.cluster_sharded_output_dir,
+        uid_col=args.uid_col,
+        title_col=args.title_col,
+        abstract_col=args.abstract_col,
+        year_col=args.year_col,
+        target_docs_per_shard=args.target_docs_per_shard,
+        max_clusters_per_shard=args.max_clusters_per_shard,
+        candidate_pool_floor=args.candidate_pool_floor,
+        candidate_pool_large=args.candidate_pool_large,
+        candidate_pool_hard_max=args.candidate_pool_hard_max,
+        global_candidate_row_warning=args.global_candidate_row_warning,
+        global_candidate_row_hard_stop=args.global_candidate_row_hard_stop,
+        global_unique_term_warning=args.global_unique_term_warning,
+        global_unique_term_hard_stop=args.global_unique_term_hard_stop,
+        candidate_mining_progress_interval_docs=args.candidate_mining_progress_interval_docs,
+        candidate_mining_prune_interval_docs=args.candidate_mining_prune_interval_docs,
+        candidate_mining_prune_multiplier=args.candidate_mining_prune_multiplier,
         include_title=args.include_title,
         min_df_unigram=args.min_df,
         min_df_phrase=args.min_df,
@@ -309,6 +370,7 @@ def _run_keywords(args: argparse.Namespace) -> None:
         scoring_shard_dir=args.scoring_shard_dir,
         scoring_shard_size_clusters=args.scoring_shard_size_clusters,
         scoring_shard_resume=args.scoring_shard_resume,
+        quality_rerank_enabled=args.quality_rerank,
         verbose=args.verbose,
     )
 
@@ -334,6 +396,30 @@ def _run_keywords(args: argparse.Namespace) -> None:
         )
 
     cfg = KeywordExtractionConfig(**kwargs)
+
+    if args.keyword_preflight_only:
+        if cfg.keyword_engine != "cluster_sharded":
+            raise SystemExit("--keyword-preflight-only requires --keyword-engine cluster_sharded")
+        print(f"Running cluster-sharded keyword preflight: {args.membership_path}")
+        summary = run_cluster_sharded_preflight(cfg)
+        print(f"  status={summary['status']}")
+        print(
+            "  clusters={clusters}, docs={docs}, shards={shards}".format(
+                clusters=summary["total_clusters"],
+                docs=summary["total_docs"],
+                shards=summary["shard_count"],
+            )
+        )
+        print(
+            "  candidate_upper_bound={rows} (target={target}, warning={warning}, hard_stop={hard_stop})".format(
+                rows=summary["expected_candidate_rows_upper_bound"],
+                target=summary["candidate_row_budget"].get("target"),
+                warning=summary["candidate_row_budget"].get("warning"),
+                hard_stop=summary["candidate_row_budget"].get("hard_stop"),
+            )
+        )
+        print(f"Preflight summary saved: {summary['preflight_summary_path']}")
+        return
 
     print(f"Running keyword extraction: {args.abstract_path}")
     print(f"  cluster_level={args.cluster_level}, top_n={args.top_n}")

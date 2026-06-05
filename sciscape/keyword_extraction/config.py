@@ -220,6 +220,31 @@ class KeywordExtractionConfig:
     alias_candidate_max: int = 15
     alias_candidate_enforce: bool = True
 
+    # Cluster-sharded keyword engine (opt-in V2).
+    #
+    # The legacy engine remains the default.  The cluster-sharded engine first
+    # builds bounded per-cluster candidate pools, then computes corpus/global
+    # term statistics and performs streaming final scoring without materialising
+    # a full cluster x term matrix.
+    keyword_engine: str = "legacy"  # "legacy" | "cluster_sharded"
+    cluster_sharded_output_dir: Optional[Path] = None
+    candidate_pool_floor: int = 256
+    candidate_pool_target: int = 512
+    candidate_pool_large: int = 1024
+    candidate_pool_hard_max: int = 1536
+    target_docs_per_shard: int = 500_000
+    max_clusters_per_shard: int = 1024
+    large_cluster_single_shard: bool = True
+    global_candidate_row_target: int = 50_000_000
+    global_candidate_row_warning: int = 80_000_000
+    global_candidate_row_hard_stop: int = 100_000_000
+    global_unique_term_target: int = 5_000_000
+    global_unique_term_warning: int = 8_000_000
+    global_unique_term_hard_stop: int = 10_000_000
+    candidate_mining_progress_interval_docs: int = 25_000
+    candidate_mining_prune_interval_docs: int = 50_000
+    candidate_mining_prune_multiplier: int = 8
+
     def build_stopword_set(self) -> set[str]:
         base = set(ENGLISH_STOP_WORDS) if self.use_default_stopwords else set()
         if self.stopwords:
@@ -327,6 +352,43 @@ class KeywordExtractionConfig:
             raise ValueError(
                 f"alias_candidate_max must be >= 1, got {self.alias_candidate_max}"
             )
+        if self.keyword_engine not in ("legacy", "cluster_sharded"):
+            raise ValueError(
+                "keyword_engine must be 'legacy' or 'cluster_sharded', "
+                f"got {self.keyword_engine!r}"
+            )
+        for name in (
+            "candidate_pool_floor",
+            "candidate_pool_target",
+            "candidate_pool_large",
+            "candidate_pool_hard_max",
+            "target_docs_per_shard",
+            "max_clusters_per_shard",
+            "global_candidate_row_target",
+            "global_candidate_row_warning",
+            "global_candidate_row_hard_stop",
+            "global_unique_term_target",
+            "global_unique_term_warning",
+            "global_unique_term_hard_stop",
+            "candidate_mining_progress_interval_docs",
+            "candidate_mining_prune_interval_docs",
+            "candidate_mining_prune_multiplier",
+        ):
+            if int(getattr(self, name)) < 1:
+                raise ValueError(f"{name} must be >= 1, got {getattr(self, name)}")
+        if self.candidate_pool_floor > self.candidate_pool_hard_max:
+            raise ValueError(
+                "candidate_pool_floor must be <= candidate_pool_hard_max "
+                f"({self.candidate_pool_floor} > {self.candidate_pool_hard_max})"
+            )
+        if self.global_candidate_row_target > self.global_candidate_row_hard_stop:
+            raise ValueError(
+                "global_candidate_row_target must be <= global_candidate_row_hard_stop"
+            )
+        if self.global_unique_term_target > self.global_unique_term_hard_stop:
+            raise ValueError(
+                "global_unique_term_target must be <= global_unique_term_hard_stop"
+            )
         if self.parallel_backend not in ("auto", "loky", "threading", "sequential"):
             raise ValueError(
                 "parallel_backend must be 'auto', 'loky', 'threading', or "
@@ -394,6 +456,8 @@ TIER3_COLUMNS = ["depth_score", "depth_level", "cross_cluster_count",
                  "alias_actions", "alias_notes", "alias_reason",
                  "raw_term", "normalized_term", "display_label",
                  "quality_score", "quality_multiplier", "quality_flags",
+                 "quality_risk_family", "quality_flag_basis",
+                 "quality_flag_confidence", "clean_view_action",
                  "quality_decision_trace",
                  "representative_score", "representative_multiplier",
                  "representative_rank", "representative_role", "representative_flags",

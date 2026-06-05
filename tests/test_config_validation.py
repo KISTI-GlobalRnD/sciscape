@@ -83,6 +83,14 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="scoring_shard_size_clusters"):
             KeywordExtractionConfig(**_DUMMY, scoring_shard_size_clusters=-1)
 
+    def test_candidate_mining_progress_interval_zero(self):
+        with pytest.raises(ValueError, match="candidate_mining_progress_interval_docs"):
+            KeywordExtractionConfig(**_DUMMY, candidate_mining_progress_interval_docs=0)
+
+    def test_candidate_mining_prune_multiplier_zero(self):
+        with pytest.raises(ValueError, match="candidate_mining_prune_multiplier"):
+            KeywordExtractionConfig(**_DUMMY, candidate_mining_prune_multiplier=0)
+
     def test_scoring_weights_both_zero(self):
         with pytest.raises(ValueError, match="w_ctfidf.*w_llr"):
             KeywordExtractionConfig(**_DUMMY, w_ctfidf=0.0, w_llr=0.0)

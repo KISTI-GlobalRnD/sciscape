@@ -1684,6 +1684,21 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
     # ----- Public API -----
 
     def run(self) -> pd.DataFrame:
+        if self.config.keyword_engine == "cluster_sharded":
+            from .cluster_sharded import run_cluster_sharded_keyword_pipeline
+
+            self._log("Pipeline run started (cluster_sharded engine)")
+            self._write_progress("pipeline_start", 0, 1, keyword_engine="cluster_sharded")
+
+            def _progress(stage: str, processed: int, total: int) -> None:
+                self._write_progress(stage, processed, total, keyword_engine="cluster_sharded")
+
+            top_df = run_cluster_sharded_keyword_pipeline(self.config, progress_callback=_progress)
+            self.final_keywords = top_df
+            self._log("Pipeline run complete: final rows = %d", len(top_df))
+            self._write_progress("complete", 1, 1, final_rows=int(len(top_df)), keyword_engine="cluster_sharded")
+            return top_df
+
         self._log("Pipeline run started")
         self._write_progress("pipeline_start", 0, 1)
 

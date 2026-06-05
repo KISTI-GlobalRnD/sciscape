@@ -54,7 +54,8 @@ Required for direct visualization:
 - `cluster_id`: cluster ID.
 - `term`: keyword text.
 - optional but recommended: `score`, `frequency`, `doc_coverage`,
-  `display_label`, `quality_score`, `quality_flags`.
+  `display_label`, `quality_score`, `quality_flags`, `quality_risk_family`,
+  `quality_flag_basis`, `quality_flag_confidence`, `clean_view_action`.
 
 ### `report/data.json`
 

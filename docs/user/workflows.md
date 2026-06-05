@@ -263,7 +263,9 @@ keywords.to_parquet("keywords.parquet", index=False)
 
 - `keywords.parquet`.
   - `term` preserves the extracted raw keyword surface used by downstream code.
-  - `display_label`, `quality_score`, and `quality_flags` expose the
+  - `display_label`, `quality_score`, `quality_flags`,
+    `quality_risk_family`, `quality_flag_basis`,
+    `quality_flag_confidence`, and `clean_view_action` expose the
     domain-agnostic refinement layer for human-facing reports.
 - dashboard/report artifacts from `sciscape visualize`.
 - optional blank viewer artifacts from `sciscape viewer`.

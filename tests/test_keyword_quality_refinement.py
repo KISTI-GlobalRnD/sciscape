@@ -10,6 +10,7 @@ from sciscape.keyword_extraction import (
     annotate_keyword_quality,
     build_abbreviation_lookup,
     extract_parenthetical_abbreviations,
+    keyword_quality_residual_report,
     quality_flag_counts,
     run_keyword_pipeline,
 )
@@ -50,18 +51,32 @@ def test_quality_annotation_demotes_global_terms_and_prefers_phrases():
     abstract = result[result["term"] == "abstract"].iloc[0]
     assert "artifact_like" in abstract["quality_flags"]
     assert abstract["quality_score"] < abstract["score"]
+    assert abstract["quality_risk_family"] == "broad_or_generic|metadata_artifact"
+    assert abstract["quality_flag_basis"] == "dictionary_or_stoplist|metadata_pattern"
+    assert abstract["quality_flag_confidence"] == "high"
+    assert abstract["clean_view_action"] == "drop_from_candidates"
 
     assert "network_role" in result.columns
     assert "quality_decision_trace" in result.columns
     assert result[result["term"] == "graph"].iloc[0]["network_role"] == "generic_bridge"
     assert graph_rows["keyword_scope"].eq("common").all()
+    graph = result[result["term"] == "graph"].iloc[0]
+    assert "scope_too_global" in graph["quality_risk_family"]
+    assert "corpus_distribution" in graph["quality_flag_basis"]
+    assert graph["clean_view_action"] == "keep_but_review"
     traffic = result[result["term"] == "traffic flow prediction"].iloc[0]
     assert traffic["keyword_scope"] == "cluster_specific"
+    assert traffic["quality_risk_family"] == "clean"
+    assert traffic["quality_flag_basis"] == "none"
+    assert traffic["quality_flag_confidence"] == "none"
+    assert traffic["clean_view_action"] == "keep"
     trace = json.loads(traffic["quality_decision_trace"])
     assert trace["term"] == "traffic flow prediction"
     assert trace["display_label"] == "traffic flow prediction"
     assert trace["quality_score"] == pytest.approx(traffic["quality_score"])
     assert trace["representative_role"] == traffic["representative_role"]
+    assert trace["quality_risk_family"] == traffic["quality_risk_family"]
+    assert trace["clean_view_action"] == traffic["clean_view_action"]
     assert any(step["name"] == "phrase_specificity" for step in trace["quality_adjustments"])
 
 
@@ -339,6 +354,216 @@ def test_representative_score_prefers_supported_phrases_over_shadowed_unigrams()
     assert ranks["user item recommendation"] < ranks["item"]
     assert roles["session"] in {"linked_unigram", "shadowed_unigram"}
     assert roles["session based recommendation"] == "representative_phrase"
+
+
+def test_quality_annotation_uses_precomputed_global_cluster_scope():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["analysis", "single cell analysis"],
+            "score": [5.0, 4.0],
+            "frequency": [100, 20],
+            "doc_coverage": [80, 15],
+            "cluster_df": [80, 1],
+            "global_cluster_entropy": [1.0, 0.0],
+        }
+    )
+
+    result = annotate_keyword_quality(
+        df,
+        rerank=True,
+        global_n_clusters=100,
+        term_cluster_count_col="cluster_df",
+        term_entropy_col="global_cluster_entropy",
+    )
+    rows = {row.term: row for row in result.itertuples()}
+
+    assert rows["analysis"].keyword_scope == "common"
+    assert rows["analysis"].keyword_cluster_count == 80
+    assert rows["analysis"].keyword_cluster_ratio == pytest.approx(0.8)
+    assert "too_global" in rows["analysis"].quality_flags
+    assert rows["single cell analysis"].keyword_scope == "cluster_specific"
+
+
+def test_representative_score_demotes_phrase_fragments():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0] * 15,
+            "term": [
+                "synthesis new",
+                "sp nov",
+                "sp nov isolated",
+                "based grid",
+                "19 pandemic",
+            "quality life",
+            "things change stay",
+            "change stay",
+            "gen nov sp",
+            "family flavobacteriaceae isolated",
+            "produced streptomyces",
+            "flow constructed",
+            "streptomyces sp",
+            "covid 19 pandemic",
+            "grid computing",
+        ],
+            "score": [9.0, 8.8, 8.7, 8.5, 8.3, 8.1, 7.9, 7.7, 7.5, 7.4, 7.3, 7.2, 7.0, 6.8, 6.5],
+            "frequency": [50, 45, 44, 40, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28],
+            "doc_coverage": [20, 18, 17, 16, 15, 15, 14, 14, 13, 13, 12, 12, 12, 11, 10],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    rows = {row.term: row for row in result.itertuples()}
+
+    for term in [
+        "synthesis new",
+        "sp nov",
+        "sp nov isolated",
+        "based grid",
+        "19 pandemic",
+        "quality life",
+        "things change stay",
+        "change stay",
+        "gen nov sp",
+        "family flavobacteriaceae isolated",
+        "produced streptomyces",
+        "flow constructed",
+    ]:
+        assert rows[term].keyword_label_tier == "review_fragment"
+        assert rows[term].representative_role == "review_fragment"
+
+    assert rows["streptomyces sp"].keyword_label_tier == "primary_phrase"
+    assert rows["covid 19 pandemic"].keyword_label_tier == "primary_phrase"
+    assert rows["grid computing"].keyword_label_tier == "primary_phrase"
+
+
+def test_representative_score_demotes_oxidation_state_gap_fragments_without_blocking_valid_ii_terms():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0] * 13,
+            "term": [
+                "ii aqueous",
+                "ii aqueous solution",
+                "ii ions aqueous",
+                "ii pb ii",
+                "aqueous solution",
+                "ions aqueous solutions",
+                "pb ii",
+                "cu ii adsorption",
+                "removal heavy metals",
+                "type ii superconductors",
+                "ii complexes",
+                "class ii",
+                "ii vi semiconductor",
+            ],
+            "score": [9.5, 9.4, 9.3, 9.2, 8.5, 8.45, 8.4, 8.3, 8.2, 8.1, 7.9, 7.8, 7.7],
+            "frequency": [164, 84, 79, 42, 514, 82, 277, 249, 81, 40, 35, 30, 25],
+            "doc_coverage": [164, 84, 79, 42, 514, 82, 277, 249, 81, 40, 35, 30, 25],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    rows = {row.term: row for row in result.itertuples()}
+
+    for term in [
+        "ii aqueous",
+        "ii aqueous solution",
+        "ii ions aqueous",
+        "ii pb ii",
+    ]:
+        assert rows[term].keyword_label_tier == "review_fragment"
+        assert rows[term].representative_role == "review_fragment"
+        assert "oxidation_state_gap_fragment" in rows[term].quality_flags
+
+    for term in [
+        "aqueous solution",
+        "ions aqueous solutions",
+        "pb ii",
+        "cu ii adsorption",
+        "removal heavy metals",
+        "type ii superconductors",
+        "ii complexes",
+        "class ii",
+        "ii vi semiconductor",
+    ]:
+        assert rows[term].keyword_label_tier != "review_fragment"
+        assert "oxidation_state_gap_fragment" not in rows[term].quality_flags
+
+
+def test_representative_score_demotes_broad_semantic_head_only_with_local_replacements():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 0, 0, 1, 1],
+            "term": [
+                "high performance",
+                "high performance lithium",
+                "high performance computing",
+                "high performance liquid chromatography",
+                "high performance",
+                "performance art",
+            ],
+            "score": [9.0, 8.5, 8.4, 8.3, 7.0, 6.5],
+            "frequency": [100, 80, 70, 60, 20, 18],
+            "doc_coverage": [100, 80, 70, 60, 20, 18],
+        }
+    )
+
+    result = annotate_keyword_quality(df, rerank=True)
+    by_cluster_term = {
+        (row.cluster_id, row.term): row
+        for row in result.itertuples()
+    }
+
+    broad = by_cluster_term[(0, "high performance")]
+    assert broad.keyword_label_tier == "review_fragment"
+    assert broad.representative_role == "review_fragment"
+    assert "broad_semantic_head_fragment" in broad.quality_flags
+
+    for term in [
+        "high performance lithium",
+        "high performance computing",
+        "high performance liquid chromatography",
+    ]:
+        row = by_cluster_term[(0, term)]
+        assert row.keyword_label_tier != "review_fragment"
+        assert "broad_semantic_head_fragment" not in row.quality_flags
+
+    isolated = by_cluster_term[(1, "high performance")]
+    assert isolated.keyword_label_tier != "review_fragment"
+    assert "broad_semantic_head_fragment" not in isolated.quality_flags
+
+
+def test_keyword_quality_residual_report_flags_unresolved_weak_final_labels_without_demoting_them():
+    df = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 1],
+            "rank": [1, 2, 19],
+            "term": ["book reviews", "periodical literature", "tell stories"],
+            "display_label": ["book reviews", "periodical literature", "tell stories"],
+            "keyword_label_tier": ["primary_phrase", "primary_phrase", "primary_phrase"],
+            "quality_flags": ["phrase", "cluster_specific|phrase", "cluster_specific|phrase"],
+            "quality_risk_family": ["clean", "clean", "clean"],
+            "quality_flag_basis": ["none", "none", "none"],
+            "quality_flag_confidence": ["none", "none", "none"],
+            "clean_view_action": ["keep", "keep", "keep"],
+            "doc_coverage": [94, 21, 4],
+            "cluster_df": [5, 1, 1],
+            "candidate_channel_flags": ["phrase_ngram|title_weighted", "phrase_ngram", "phrase_ngram|title_weighted"],
+        }
+    )
+
+    report = keyword_quality_residual_report(df, top_rank=50)
+    reasons = {
+        row["term"]: set(row["reasons"])
+        for row in report["rows"]
+    }
+
+    assert "document_genre_review_phrase" in reasons["book reviews"]
+    assert "title_like_story_phrase" in reasons["tell stories"]
+    assert "periodical literature" not in reasons
+    row_by_term = {row["term"]: row for row in report["rows"]}
+    assert row_by_term["book reviews"]["quality_risk_family"] == "clean"
+    assert row_by_term["book reviews"]["clean_view_action"] == "keep"
 
 
 def test_representative_score_demotes_unresolved_short_forms_for_labels():
@@ -1078,6 +1303,10 @@ def test_pipeline_emits_quality_columns_when_enabled(quality_pipeline_data):
         "display_label",
         "quality_score",
         "quality_flags",
+        "quality_risk_family",
+        "quality_flag_basis",
+        "quality_flag_confidence",
+        "clean_view_action",
         "quality_decision_trace",
         "keyword_scope",
         "keyword_cluster_count",

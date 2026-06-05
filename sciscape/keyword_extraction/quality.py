@@ -11,6 +11,7 @@ from collections import Counter, defaultdict
 import json
 import math
 import re
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
@@ -121,6 +122,98 @@ COMMON_SHORT_WORDS: frozenset[str] = frozenset(
         "wind",
         "work",
         "year",
+    }
+)
+
+FRAGMENT_INITIAL_TOKENS: frozenset[str] = frozenset(
+    {
+        "based",
+        "like",
+        "meets",
+        "produced",
+        "things",
+    }
+)
+FRAGMENT_FINAL_TOKENS: frozenset[str] = frozenset(
+    {
+        "based",
+        "black",
+        "constructed",
+        "isolated",
+        "new",
+        "nov",
+        "novel",
+        "stay",
+    }
+)
+FRAGMENT_GENERIC_HEADS: frozenset[str] = frozenset(
+    {
+        "analysis",
+        "application",
+        "applications",
+        "design",
+        "effect",
+        "effects",
+        "method",
+        "model",
+        "properties",
+        "property",
+        "synthesis",
+        "system",
+    }
+)
+MISSING_STOPWORD_FRAGMENTS: frozenset[tuple[str, ...]] = frozenset(
+    {
+        ("quality", "life"),
+    }
+)
+NUMERIC_EVENT_TERMS: frozenset[str] = frozenset({"covid", "mers", "pandemic", "sars"})
+OXIDATION_STATE_TOKENS: frozenset[str] = frozenset({"ii", "iii", "iv", "vi"})
+ROMAN_MATERIAL_CLASS_TOKENS: frozenset[str] = frozenset({"ii", "iii", "iv", "v", "vi"})
+ROMAN_MATERIAL_CLASS_TERMS: frozenset[str] = frozenset(
+    {
+        "compound",
+        "compounds",
+        "heterostructure",
+        "heterostructures",
+        "material",
+        "materials",
+        "semiconductor",
+        "semiconductors",
+    }
+)
+OXIDATION_GAP_CONTEXT_TOKENS: frozenset[str] = frozenset(
+    {
+        "adsorption",
+        "aqueous",
+        "ion",
+        "ions",
+        "metal",
+        "metals",
+        "removal",
+        "solution",
+        "solutions",
+        "sorption",
+        "uptake",
+        "wastewater",
+        "water",
+    }
+)
+BROAD_SEMANTIC_HEAD_PHRASES: frozenset[tuple[str, ...]] = frozenset(
+    {
+        ("high", "performance"),
+    }
+)
+DOCUMENT_GENRE_REVIEW_PHRASES: frozenset[tuple[str, ...]] = frozenset(
+    {
+        ("book", "review"),
+        ("book", "reviews"),
+    }
+)
+TITLE_LIKE_STORY_PHRASES: frozenset[tuple[str, ...]] = frozenset(
+    {
+        ("tell", "stories"),
+        ("tell", "story"),
     }
 )
 
@@ -294,6 +387,16 @@ def _is_formula_like(term: str) -> bool:
     return short_tokens > 0 and long_dense_tokens > 0
 
 
+def _is_supported_roman_material_class_phrase(tokens: Sequence[str]) -> bool:
+    if len(tokens) < 3:
+        return False
+    has_roman_pair = any(
+        left in ROMAN_MATERIAL_CLASS_TOKENS and right in ROMAN_MATERIAL_CLASS_TOKENS
+        for left, right in zip(tokens, tokens[1:])
+    )
+    return has_roman_pair and bool(set(tokens) & ROMAN_MATERIAL_CLASS_TERMS)
+
+
 def _is_compact_formula_fragment_token(token: str) -> bool:
     compact = _normalise_term(token).replace(" ", "")
     if (
@@ -385,6 +488,145 @@ def _representative_artifact_flags(term: str, *, abbreviation_status: str) -> li
     return flags
 
 
+def _representative_fragment_flags(term: str, longer_terms: Sequence[str]) -> list[str]:
+    tokens = _tokens(term)
+    if len(tokens) < 2:
+        return []
+
+    flags: list[str] = []
+    token_tuple = tuple(tokens)
+    first = tokens[0]
+    last = tokens[-1]
+
+    if token_tuple in MISSING_STOPWORD_FRAGMENTS:
+        flags.append("missing_stopword_phrase_fragment")
+    if first.isdigit() and len(first) <= 2:
+        flags.append("numeric_leading_phrase_fragment")
+    if first in FRAGMENT_INITIAL_TOKENS:
+        flags.append("initial_modifier_phrase_fragment")
+    if last in FRAGMENT_FINAL_TOKENS and (
+        len(tokens) == 2
+        or first in FRAGMENT_GENERIC_HEADS
+        or first in LOW_INFORMATION_TERMS
+        or first in METADATA_TERMS
+        or (last == "isolated" and len(tokens) <= 3)
+    ):
+        flags.append("terminal_modifier_phrase_fragment")
+    if any(left == "sp" and right == "nov" for left, right in zip(tokens, tokens[1:])):
+        flags.append("taxonomic_marker_phrase_fragment")
+    if "nov" in tokens and ("sp" in tokens or "gen" in tokens):
+        flags.append("taxonomic_marker_phrase_fragment")
+    if first == "nov" and len(tokens) <= 3:
+        flags.append("taxonomic_marker_phrase_fragment")
+    if token_tuple == ("things", "change", "stay"):
+        flags.append("title_sentence_phrase_fragment")
+    if _is_oxidation_state_gap_fragment(token_tuple, longer_terms):
+        flags.append("oxidation_state_gap_fragment")
+    if _is_broad_semantic_head_fragment(token_tuple, longer_terms):
+        flags.append("broad_semantic_head_fragment")
+
+    longer_token_sets = [tuple(_tokens(longer)) for longer in longer_terms if len(_tokens(longer)) > len(tokens)]
+    is_prefix = any(longer[: len(tokens)] == token_tuple for longer in longer_token_sets)
+    is_suffix = any(longer[-len(tokens) :] == token_tuple for longer in longer_token_sets)
+    if (is_prefix or is_suffix) and (last in FRAGMENT_FINAL_TOKENS or first in FRAGMENT_INITIAL_TOKENS):
+        flags.append("subphrase_fragment")
+
+    return sorted(set(flags))
+
+
+def _is_broad_semantic_head_fragment(
+    tokens: Sequence[str],
+    cluster_terms: Sequence[str],
+) -> bool:
+    """Detect broad phrase heads only when local derivative labels exist."""
+
+    token_tuple = tuple(tokens)
+    if token_tuple not in BROAD_SEMANTIC_HEAD_PHRASES:
+        return False
+    child_count = 0
+    for term in cluster_terms:
+        term_tokens = tuple(_tokens(term))
+        if len(term_tokens) <= len(token_tuple):
+            continue
+        if term_tokens[: len(token_tuple)] == token_tuple:
+            child_count += 1
+            if child_count >= 2:
+                return True
+    return False
+
+
+def _contains_element_oxidation_pair(tokens: Sequence[str]) -> bool:
+    return any(
+        left in _ELEMENT_SYMBOLS and right in OXIDATION_STATE_TOKENS
+        for left, right in zip(tokens, tokens[1:])
+    )
+
+
+def _has_oxidation_gap_replacement(
+    tokens: Sequence[str],
+    cluster_phrase_tokens: Sequence[Sequence[str]],
+) -> bool:
+    trailing = set(tokens[1:])
+    if not trailing:
+        return False
+    for other in cluster_phrase_tokens:
+        other_tuple = tuple(other)
+        if other_tuple == tuple(tokens) or len(other_tuple) < 2:
+            continue
+        if other_tuple[0] in OXIDATION_STATE_TOKENS:
+            continue
+        other_set = set(other_tuple)
+        if _contains_element_oxidation_pair(other_tuple) and (trailing & other_set):
+            return True
+        if trailing.issubset(other_set) and (other_set & OXIDATION_GAP_CONTEXT_TOKENS):
+            return True
+        if (
+            len(tokens) == 2
+            and tokens[1] in OXIDATION_GAP_CONTEXT_TOKENS
+            and tokens[1] in other_set
+            and len(other_tuple) >= 2
+        ):
+            return True
+    return False
+
+
+def _is_oxidation_state_gap_fragment(
+    tokens: Sequence[str],
+    cluster_terms: Sequence[str],
+) -> bool:
+    """Detect stopword-compressed oxidation-state phrase fragments.
+
+    The target shape is not chemistry notation itself.  It is a phrase that
+    starts with an oxidation-state token because an entity and a preposition
+    were lost before n-gram construction, e.g. "Pb(II) in aqueous solution" ->
+    "ii aqueous".  We only mark the row when the same cluster also contains a
+    cleaner phrase candidate that can carry the label instead.
+    """
+
+    if len(tokens) < 2 or tokens[0] not in OXIDATION_STATE_TOKENS:
+        return False
+    if len(tokens) >= 2 and tokens[1] in OXIDATION_STATE_TOKENS:
+        return False
+    starts_with_generic_context = tokens[1] in OXIDATION_GAP_CONTEXT_TOKENS
+    starts_with_shifted_entity = (
+        tokens[1] in _ELEMENT_SYMBOLS
+        and any(tok in OXIDATION_STATE_TOKENS for tok in tokens[2:])
+    )
+    if not starts_with_generic_context and not starts_with_shifted_entity:
+        return False
+
+    cluster_phrase_tokens = []
+    for term in cluster_terms:
+        term_tokens = tuple(_tokens(term))
+        if len(term_tokens) >= 2:
+            cluster_phrase_tokens.append(term_tokens)
+    return _has_oxidation_gap_replacement(tokens, cluster_phrase_tokens)
+
+
+def _is_supported_numeric_event_phrase(tokens: Sequence[str]) -> bool:
+    return any(tok.isdigit() for tok in tokens) and bool(set(tokens) & NUMERIC_EVENT_TERMS)
+
+
 def _keyword_label_tier(
     *,
     term: str,
@@ -407,6 +649,19 @@ def _keyword_label_tier(
         "unresolved_compact_short_form",
     }:
         return "review_artifact"
+
+    if representative_role == "review_fragment" or flag_set & {
+        "initial_modifier_phrase_fragment",
+        "broad_semantic_head_fragment",
+        "missing_stopword_phrase_fragment",
+        "numeric_leading_phrase_fragment",
+        "oxidation_state_gap_fragment",
+        "subphrase_fragment",
+        "taxonomic_marker_phrase_fragment",
+        "terminal_modifier_phrase_fragment",
+        "title_sentence_phrase_fragment",
+    }:
+        return "review_fragment"
 
     if representative_role == "review_short_form" or abbreviation_status in {
         "ambiguous_expansion",
@@ -437,6 +692,168 @@ def _keyword_label_tier(
     if len(_tokens(term)) <= 1:
         return "support_unigram"
     return "support_phrase"
+
+
+_PHRASE_FRAGMENT_FLAGS: frozenset[str] = frozenset(
+    {
+        "initial_modifier_phrase_fragment",
+        "missing_stopword_phrase_fragment",
+        "numeric_leading_phrase_fragment",
+        "oxidation_state_gap_fragment",
+        "subphrase_fragment",
+        "taxonomic_marker_phrase_fragment",
+        "terminal_modifier_phrase_fragment",
+        "title_sentence_phrase_fragment",
+    }
+)
+_FORMULA_COMPACT_RISK_FLAGS: frozenset[str] = frozenset(
+    {
+        "artifact_formula",
+        "compact_formula_fragment",
+        "dimension_fragment",
+        "mixed_formula_fragment",
+        "unresolved_compact_short_form",
+    }
+)
+_SHORT_FORM_RISK_FLAGS: frozenset[str] = frozenset(
+    {
+        "ambiguous_expansion",
+        "candidate_short_form",
+        "low_support_expansion",
+        "unlinked_short_form",
+    }
+)
+_SHAPE_BASIS_FLAGS: frozenset[str] = frozenset(
+    {
+        "acronym_like",
+        "artifact_formula",
+        "compact_formula_fragment",
+        "dimension_fragment",
+        "formula_like",
+        "initial_modifier_phrase_fragment",
+        "missing_stopword_phrase_fragment",
+        "mixed_formula_fragment",
+        "numeric_leading_phrase_fragment",
+        "taxonomic_marker_phrase_fragment",
+        "terminal_modifier_phrase_fragment",
+        "title_sentence_phrase_fragment",
+        "unresolved_compact_short_form",
+    }
+)
+_CLUSTER_REPLACEMENT_BASIS_FLAGS: frozenset[str] = frozenset(
+    {
+        "broad_semantic_head_fragment",
+        "duplicate_expansion",
+        "duplicate_label",
+        "oxidation_state_gap_fragment",
+        "phrase_preferred",
+        "subphrase_fragment",
+    }
+)
+_NETWORK_BASIS_FLAGS: frozenset[str] = frozenset(
+    {
+        "anchor_unigram",
+        "expansion_phrase",
+        "generic_bridge",
+        "linked_unigram",
+        "representative_phrase",
+        "unlinked_short_form",
+    }
+)
+
+
+def _quality_risk_family(flags: Sequence[str], *, keyword_label_tier: str) -> str:
+    flag_set = set(flags)
+    families: list[str] = []
+    if flag_set & {"artifact_like", "metadata_fragment"}:
+        families.append("metadata_artifact")
+    if flag_set & _PHRASE_FRAGMENT_FLAGS:
+        families.append("phrase_fragment")
+    if flag_set & _SHORT_FORM_RISK_FLAGS or keyword_label_tier == "review_short_form":
+        families.append("short_form_unresolved")
+    if flag_set & _FORMULA_COMPACT_RISK_FLAGS:
+        families.append("formula_or_compact_symbol")
+    if flag_set & {"broad_semantic_head_fragment", "low_information"}:
+        families.append("broad_or_generic")
+    if "too_global" in flag_set:
+        families.append("scope_too_global")
+    if flag_set & {"duplicate_expansion", "duplicate_label", "phrase_preferred"}:
+        families.append("duplicate_or_shadowed")
+    if not families:
+        return "clean"
+    return _flag_string(families)
+
+
+def _quality_flag_basis(
+    flags: Sequence[str],
+    *,
+    abbreviation_status: str,
+    network_role: str,
+) -> str:
+    flag_set = set(flags)
+    basis: list[str] = []
+    if flag_set & {"artifact_like", "metadata_fragment"}:
+        basis.append("metadata_pattern")
+    if flag_set & {"low_information"}:
+        basis.append("dictionary_or_stoplist")
+    if "too_global" in flag_set:
+        basis.append("corpus_distribution")
+    if flag_set & _CLUSTER_REPLACEMENT_BASIS_FLAGS:
+        basis.append("cluster_replacement")
+    if abbreviation_status in {
+        "ambiguous_expansion",
+        "cluster_expanded",
+        "corpus_expanded",
+        "duplicate_expansion",
+        "expanded",
+        "low_support_expansion",
+    }:
+        basis.append("abbreviation_evidence")
+    if flag_set & _NETWORK_BASIS_FLAGS or network_role not in {"", "neutral"}:
+        basis.append("network_structure")
+    if flag_set & _SHAPE_BASIS_FLAGS or abbreviation_status in {"candidate_short_form", "unlinked_short_form"}:
+        basis.append("shape_only")
+    if not basis:
+        return "none"
+    return _flag_string(basis)
+
+
+def _quality_flag_confidence(
+    flags: Sequence[str],
+    *,
+    risk_family: str,
+    flag_basis: str,
+    keyword_label_tier: str,
+) -> str:
+    flag_set = set(flags)
+    if risk_family == "clean":
+        return "none"
+    if flag_set & {"artifact_like", "metadata_fragment"}:
+        return "high"
+    basis_set = set(flag_basis.split("|")) if flag_basis else set()
+    if basis_set & {"abbreviation_evidence", "cluster_replacement"}:
+        return "medium"
+    if keyword_label_tier.startswith("review_") and not (basis_set - {"shape_only", "none"}):
+        return "low"
+    if "too_global" in flag_set:
+        return "medium"
+    return "low"
+
+
+def _clean_view_action(
+    flags: Sequence[str],
+    *,
+    keyword_label_tier: str,
+    risk_family: str,
+) -> str:
+    flag_set = set(flags)
+    if flag_set & {"artifact_like", "metadata_fragment"}:
+        return "drop_from_candidates"
+    if keyword_label_tier.startswith("review_"):
+        return "hide_from_clean"
+    if risk_family != "clean":
+        return "keep_but_review"
+    return "keep"
 
 
 def _is_acronym_like(term: str, *, max_length: int, has_expansion: bool = False) -> bool:
@@ -858,6 +1275,23 @@ def _representative_signal(
         rep_flags.append("representative_artifact")
         role = "review_artifact"
 
+    representative_fragments = flag_set & {
+        "initial_modifier_phrase_fragment",
+        "broad_semantic_head_fragment",
+        "missing_stopword_phrase_fragment",
+        "numeric_leading_phrase_fragment",
+        "oxidation_state_gap_fragment",
+        "subphrase_fragment",
+        "taxonomic_marker_phrase_fragment",
+        "terminal_modifier_phrase_fragment",
+        "title_sentence_phrase_fragment",
+    }
+    if representative_fragments:
+        multiplier *= 0.28
+        rep_flags.extend(sorted(representative_fragments))
+        rep_flags.append("representative_fragment")
+        role = "review_fragment"
+
     if role == "candidate" and n_tokens >= 2:
         role = "representative_phrase"
 
@@ -1100,6 +1534,9 @@ def annotate_keyword_quality(
     frequency_col: str = "frequency",
     doc_coverage_col: str = "doc_coverage",
     rerank: bool = False,
+    global_n_clusters: int | None = None,
+    term_cluster_count_col: str | None = None,
+    term_entropy_col: str | None = None,
     global_term_threshold: float = 0.5,
     global_term_penalty: float = 0.45,
     entropy_penalty: float = 0.35,
@@ -1137,7 +1574,12 @@ def annotate_keyword_quality(
         if cluster_col in out.columns
         else [0]
     )
-    n_clusters = max(1, len(cluster_ids))
+    n_clusters = max(
+        1,
+        int(global_n_clusters)
+        if global_n_clusters is not None and int(global_n_clusters) > 0
+        else len(cluster_ids),
+    )
 
     term_cluster_counts: Counter[str] = Counter()
     term_cluster_weights: dict[str, list[float]] = defaultdict(list)
@@ -1154,6 +1596,17 @@ def annotate_keyword_quality(
             term_cluster_weights[str(term)] = [float(v) for v in weights]
     else:
         term_cluster_counts.update({str(t): 1 for t in out["normalized_term"].tolist()})
+    if term_cluster_count_col and term_cluster_count_col in out.columns:
+        for term, group in out.groupby("normalized_term", sort=False):
+            values = pd.to_numeric(group[term_cluster_count_col], errors="coerce").dropna()
+            if not values.empty:
+                term_cluster_counts[str(term)] = max(1, int(values.max()))
+    term_entropies: dict[str, float] = {}
+    if term_entropy_col and term_entropy_col in out.columns:
+        for term, group in out.groupby("normalized_term", sort=False):
+            values = pd.to_numeric(group[term_entropy_col], errors="coerce").dropna()
+            if not values.empty:
+                term_entropies[str(term)] = max(0.0, min(1.0, float(values.max())))
 
     longer_terms_by_cluster: dict[Any, list[str]] = defaultdict(list)
     if cluster_col in out.columns:
@@ -1223,6 +1676,10 @@ def annotate_keyword_quality(
     representative_roles: list[str] = []
     representative_flag_values: list[str] = []
     keyword_label_tiers: list[str] = []
+    quality_risk_families: list[str] = []
+    quality_flag_bases: list[str] = []
+    quality_flag_confidences: list[str] = []
+    clean_view_actions: list[str] = []
     quality_decision_traces: list[str] = []
     row_cluster_ids: list[Any] = []
     doc_coverage_values: list[float] = []
@@ -1252,7 +1709,7 @@ def annotate_keyword_quality(
 
         cluster_count = int(term_cluster_counts.get(term, 1))
         cluster_ratio = cluster_count / n_clusters
-        term_entropy = _entropy(term_cluster_weights.get(term, [1.0]))
+        term_entropy = term_entropies.get(term, _entropy(term_cluster_weights.get(term, [1.0])))
         keyword_scopes.append(
             _keyword_scope(
                 cluster_count,
@@ -1323,7 +1780,11 @@ def annotate_keyword_quality(
             term=term,
         )
         material_formula_like = _is_material_formula_like(term)
-        formula_like = material_formula_like or _is_formula_like(term)
+        supported_roman_material_class = _is_supported_roman_material_class_phrase(toks)
+        formula_like = material_formula_like or (
+            _is_formula_like(term) and not _is_supported_numeric_event_phrase(toks)
+            and not supported_roman_material_class
+        )
         acronym_like = _is_acronym_like(
             term,
             max_length=acronym_max_length,
@@ -1408,6 +1869,7 @@ def annotate_keyword_quality(
         }:
             flags.append(abbreviation_status)
         flags.extend(_representative_artifact_flags(term, abbreviation_status=abbreviation_status))
+        flags.extend(_representative_fragment_flags(term, longer_terms_by_cluster.get(cluster_id, [])))
 
         if n_tokens == 1:
             for longer in longer_terms_by_cluster.get(cluster_id, []):
@@ -1504,10 +1966,31 @@ def annotate_keyword_quality(
             representative_role=representative_role,
             abbreviation_status=abbreviation_status,
         )
+        quality_risk_family = _quality_risk_family(flags, keyword_label_tier=keyword_label_tier)
+        quality_flag_basis = _quality_flag_basis(
+            flags,
+            abbreviation_status=abbreviation_status,
+            network_role=network_role,
+        )
+        quality_flag_confidence = _quality_flag_confidence(
+            flags,
+            risk_family=quality_risk_family,
+            flag_basis=quality_flag_basis,
+            keyword_label_tier=keyword_label_tier,
+        )
+        clean_view_action = _clean_view_action(
+            flags,
+            keyword_label_tier=keyword_label_tier,
+            risk_family=quality_risk_family,
+        )
         representative_score = quality_score * representative_multiplier
         quality_scores.append(quality_score)
         quality_multipliers.append(multiplier)
         quality_flags.append(_flag_string(flags))
+        quality_risk_families.append(quality_risk_family)
+        quality_flag_bases.append(quality_flag_basis)
+        quality_flag_confidences.append(quality_flag_confidence)
+        clean_view_actions.append(clean_view_action)
         representative_scores.append(representative_score)
         representative_multipliers.append(representative_multiplier)
         representative_roles.append(representative_role)
@@ -1526,6 +2009,10 @@ def annotate_keyword_quality(
                     "quality_score": round(float(quality_score), 6),
                     "quality_multiplier": round(float(multiplier), 6),
                     "quality_flags": sorted(set(flags)),
+                    "quality_risk_family": quality_risk_family,
+                    "quality_flag_basis": quality_flag_basis,
+                    "quality_flag_confidence": quality_flag_confidence,
+                    "clean_view_action": clean_view_action,
                     "quality_adjustments": adjustment_trace,
                     "keyword_scope": keyword_scopes[-1],
                     "keyword_cluster_count": cluster_count,
@@ -1601,6 +2088,10 @@ def annotate_keyword_quality(
     out["quality_score"] = quality_scores
     out["quality_multiplier"] = quality_multipliers
     out["quality_flags"] = quality_flags
+    out["quality_risk_family"] = quality_risk_families
+    out["quality_flag_basis"] = quality_flag_bases
+    out["quality_flag_confidence"] = quality_flag_confidences
+    out["clean_view_action"] = clean_view_actions
     out["quality_decision_trace"] = quality_decision_traces
     out["representative_score"] = representative_scores
     out["representative_multiplier"] = representative_multipliers
@@ -1665,9 +2156,154 @@ def quality_flag_counts(df: pd.DataFrame, *, flag_col: str = "quality_flags") ->
     return dict(counts)
 
 
+def _residual_weak_label_reasons(row: Mapping[str, Any]) -> list[str]:
+    term = _normalise_term(row.get("term", row.get("display_label", "")))
+    tokens = tuple(_tokens(term))
+    flags = {
+        flag.strip()
+        for flag in str(row.get("quality_flags", "")).split("|")
+        if flag.strip()
+    }
+    tier = str(row.get("keyword_label_tier", ""))
+    reasons: list[str] = []
+    if tier.startswith("review_"):
+        reasons.append(tier)
+    if "broad_semantic_head_fragment" in flags or tokens in BROAD_SEMANTIC_HEAD_PHRASES:
+        reasons.append("broad_semantic_head")
+    if tokens in DOCUMENT_GENRE_REVIEW_PHRASES:
+        reasons.append("document_genre_review_phrase")
+    if tokens in TITLE_LIKE_STORY_PHRASES:
+        reasons.append("title_like_story_phrase")
+    return sorted(set(reasons))
+
+
+def keyword_quality_residual_report(
+    df: pd.DataFrame,
+    *,
+    top_rank: int = 50,
+    max_rows: int = 200,
+) -> dict[str, Any]:
+    """Summarise weak final-label candidates without changing keyword rows."""
+
+    if df is None or df.empty:
+        return {
+            "schema_version": "sciscape_keyword_quality_residual_report_v1",
+            "top_rank": int(top_rank),
+            "rows_scanned": 0,
+            "flagged_rows": 0,
+            "reason_counts": {},
+            "rows": [],
+        }
+
+    rows: list[dict[str, Any]] = []
+    rank_col = "rank" if "rank" in df.columns else None
+    scan_df = df
+    if rank_col:
+        ranks = pd.to_numeric(df[rank_col], errors="coerce")
+        scan_df = df[ranks <= int(top_rank)].copy()
+
+    for row in scan_df.to_dict(orient="records"):
+        reasons = _residual_weak_label_reasons(row)
+        if not reasons:
+            continue
+        rows.append(
+            {
+                "cluster_id": row.get("cluster_id"),
+                "rank": int(_safe_float(row.get("rank", 0.0))) if row.get("rank") is not None else None,
+                "term": str(row.get("term", "")),
+                "display_label": str(row.get("display_label", row.get("term", ""))),
+                "reasons": reasons,
+                "keyword_label_tier": str(row.get("keyword_label_tier", "")),
+                "quality_flags": str(row.get("quality_flags", "")),
+                "quality_risk_family": str(row.get("quality_risk_family", "")),
+                "quality_flag_basis": str(row.get("quality_flag_basis", "")),
+                "quality_flag_confidence": str(row.get("quality_flag_confidence", "")),
+                "clean_view_action": str(row.get("clean_view_action", "")),
+                "doc_coverage": int(_safe_float(row.get("doc_coverage", row.get("frequency", 0.0)))),
+                "cluster_df": int(_safe_float(row.get("cluster_df", row.get("keyword_cluster_count", 0.0)))),
+            }
+        )
+
+    rows.sort(key=lambda item: (item.get("rank") or 999_999, str(item.get("cluster_id")), item["term"]))
+    if int(max_rows) > 0:
+        rows = rows[: int(max_rows)]
+
+    reason_counts: Counter[str] = Counter()
+    for row in rows:
+        reason_counts.update(row["reasons"])
+
+    return {
+        "schema_version": "sciscape_keyword_quality_residual_report_v1",
+        "top_rank": int(top_rank),
+        "rows_scanned": int(len(scan_df)),
+        "flagged_rows": int(len(rows)),
+        "reason_counts": dict(sorted(reason_counts.items())),
+        "rows": rows,
+    }
+
+
+def write_keyword_quality_residual_report(
+    df: pd.DataFrame,
+    output_dir: str | Path,
+    *,
+    top_rank: int = 50,
+    max_rows: int = 200,
+) -> dict[str, str]:
+    """Write residual weak-label JSON and Markdown summaries."""
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    report = keyword_quality_residual_report(df, top_rank=top_rank, max_rows=max_rows)
+    json_path = output_path / "keyword_quality_residual_report.json"
+    md_path = output_path / "keyword_quality_residual_report.md"
+    json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    lines = [
+        "# Keyword Quality Residual Report",
+        "",
+        f"- Top-rank window: {report['top_rank']}",
+        f"- Rows scanned: {report['rows_scanned']}",
+        f"- Flagged rows: {report['flagged_rows']}",
+        "",
+        "## Reason Counts",
+        "",
+    ]
+    reason_counts = report.get("reason_counts", {})
+    if reason_counts:
+        for reason, count in reason_counts.items():
+            lines.append(f"- `{reason}`: {count}")
+    else:
+        lines.append("- none")
+    lines.extend(
+        [
+            "",
+            "## Rows",
+            "",
+            "| cluster_id | rank | term | reasons | tier | risk_family | basis | confidence | action | doc_coverage | cluster_df |",
+            "| --- | ---: | --- | --- | --- | --- | --- | --- | --- | ---: | ---: |",
+        ]
+    )
+
+    def _md_cell(value: Any) -> str:
+        return str(value).replace("|", "\\|")
+
+    for row in report.get("rows", []):
+        reasons = ", ".join(f"`{reason}`" for reason in row["reasons"])
+        lines.append(
+            f"| {row['cluster_id']} | {row['rank']} | {_md_cell(row['term'])} | {reasons} | "
+            f"{_md_cell(row['keyword_label_tier'])} | {_md_cell(row.get('quality_risk_family', ''))} | "
+            f"{_md_cell(row.get('quality_flag_basis', ''))} | {_md_cell(row.get('quality_flag_confidence', ''))} | "
+            f"{_md_cell(row.get('clean_view_action', ''))} | {row['doc_coverage']} | {row['cluster_df']} |"
+        )
+    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return {"json": str(json_path), "markdown": str(md_path)}
+
+
 __all__ = [
     "METADATA_TERMS",
     "LOW_INFORMATION_TERMS",
     "annotate_keyword_quality",
+    "keyword_quality_residual_report",
     "quality_flag_counts",
+    "write_keyword_quality_residual_report",
 ]
