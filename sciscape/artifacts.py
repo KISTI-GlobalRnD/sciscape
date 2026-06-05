@@ -8354,22 +8354,82 @@ def _manifest_quality(validation: ArtifactValidationResult) -> dict[str, Any]:
     }
 
 
+def _manifest_optional_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        if pd.isna(value):
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _manifest_export_file_inventory(root: Path, export_manifest_path: str | None) -> list[dict[str, Any]]:
+    if not export_manifest_path:
+        return []
+    manifest_path = root / export_manifest_path
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        export_dir = manifest_path.parent
+        files_path = _export_output_paths(export_dir, manifest)["files"]
+        files = pd.read_parquet(files_path)
+    except Exception:
+        return []
+    if files.empty:
+        return []
+
+    inventory: list[dict[str, Any]] = []
+    for row in files.to_dict("records"):
+        path = str(row.get("path") or "")
+        resolved = root / path if path and not Path(path).is_absolute() else Path(path)
+        exists = bool(path and not Path(path).is_absolute() and resolved.exists())
+        inventory.append(
+            {
+                "file_id": str(row.get("file_id") or ""),
+                "role": str(row.get("role") or "support"),
+                "path": path,
+                "format": str(row.get("format") or _export_file_format(path)),
+                "public_share_state": str(row.get("public_share_state") or "local"),
+                "bytes": _manifest_optional_int(row.get("bytes")),
+                "exists": exists,
+            }
+        )
+    return inventory
+
+
+def _manifest_primary_export_path(files: list[dict[str, Any]], fallback: str | None) -> str | None:
+    if not files:
+        return fallback
+    for preferred_role in ("primary", "map", "viewer", "report", "html", "network"):
+        for row in files:
+            if row.get("role") == preferred_role and row.get("path"):
+                return str(row["path"])
+    return str(files[0]["path"]) if files[0].get("path") else fallback
+
+
 def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
     root = Path(validation.result_root)
     exports: list[dict[str, Any]] = []
 
     for summary in validation.artifacts.get("export_summaries", []):
-        path = summary.get("path")
+        export_manifest_ref = summary.get("path")
+        files = _manifest_export_file_inventory(root, export_manifest_ref)
+        primary_path = _manifest_primary_export_path(files, export_manifest_ref)
         exports.append(
             {
-                "export_id": summary.get("export_id") or _safe_id(Path(str(path or "export")).parent.name, fallback="export"),
+                "export_id": summary.get("export_id")
+                or _safe_id(Path(str(export_manifest_ref or "export")).parent.name, fallback="export"),
                 "kind": summary.get("export_kind") or "manifest_export",
-                "path": path,
-                "format": "json",
+                "path": primary_path,
+                "format": _export_file_format(primary_path or "export_manifest.json", "json"),
+                "export_family": summary.get("export_family"),
+                "export_manifest_ref": export_manifest_ref,
                 "feature_refs": ["export"],
                 "source_artifact_refs": ["export"],
                 "status": summary.get("status") or "present",
                 "counts": summary.get("counts", {}),
+                "files": files,
             }
         )
 

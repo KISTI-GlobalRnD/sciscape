@@ -15,6 +15,7 @@ you already have.
 | Existing membership | `sciscape keywords` then `sciscape visualize` | `abstracts.parquet`, `membership.parquet` | `keywords.parquet`, dashboard/report HTML |
 | Existing keyword table | `sciscape visualize` or `sciscape viewer` | `keywords.parquet`, `.csv`, or `.tsv` | standalone dashboard or report |
 | Existing report data | `sciscape viewer` or GitHub Pages | `report/data.json` | browser-only static viewer |
+| Existing result bundle | `sciscape web`, GitHub Pages, or result validation | `result_manifest.json` at the result root | artifact-backed feature state and export file list |
 | Graph-tool export target | `sciscape export` | edge table and membership table | `.gexf`, `.graphml`, or VOSviewer-style map/network `.txt` |
 
 ## File Checklist
@@ -64,6 +65,17 @@ Required for static web viewing:
 - produced by `sciscape landscape` or `sciscape visualize`.
 - place it next to `viewer.html` as `data.json`, or open
   `viewer.html?data=path/to/data.json`.
+
+### `result_manifest.json`
+
+Recommended when you want the web app or a static bundle to understand the
+whole result folder:
+
+- written at the result root by the quality gate or result-manifest writer.
+- lists artifact paths, feature states, QA status, and generated exports.
+- manifest-backed exports include `export_manifest_ref` and a compact `files`
+  inventory, so VOSviewer-style map/network files can be found from one JSON
+  entrypoint.
 
 ## Curated Demo Outputs
 

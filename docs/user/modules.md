@@ -173,6 +173,8 @@ Static sharing:
   same-directory `data.json` on GitHub Pages or another static host.
 - `viewer.html?data=path/to/data.json` points the shell at an explicit hosted
   JSON/CSV/TSV data file.
+- `result_manifest.json` is the preferred whole-result entrypoint when a bundle
+  includes feature states, QA, and manifest-backed export files.
 
 Python:
 
@@ -187,6 +189,8 @@ Outputs:
 - dashboard data.
 - standalone viewer HTML with hosted `data.json` or drag/drop data loading.
 - GEXF, GraphML, or VOSviewer-style map/network exports.
+- `result_manifest.json` export entries with primary paths and compact file
+  inventories for manifest-backed exports.
 
 ## Evaluation
 

@@ -1544,10 +1544,9 @@ def test_graphml_export_can_write_export_manifest(tmp_path):
 def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
     import polars as pl
 
-    result_root = tmp_path / "result"
-    result_root.mkdir()
+    result_root = _write_valid_result_root(tmp_path / "result")
     edges_path = result_root / "edges.parquet"
-    membership_path = result_root / "membership.parquet"
+    membership_path = result_root / "landscape" / "membership.parquet"
     abstracts_path = result_root / "abstracts.parquet"
     pl.DataFrame(
         {
@@ -1556,15 +1555,7 @@ def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
             "rel_sum2": [1.0, 2.0, 3.0],
         }
     ).write_parquet(edges_path)
-    pl.DataFrame({"uid": ["D0", "D1", "D2"], "cluster": [10, 10, 20]}).write_parquet(membership_path)
-    pl.DataFrame(
-        {
-            "uid": ["D0", "D1", "D2"],
-            "title": ["Paper A", "Paper B", "Paper C"],
-            "abstract": ["A", "B", "C"],
-            "pubyear": [2021, 2022, 2023],
-        }
-    ).write_parquet(abstracts_path)
+    pl.DataFrame({"uid": ["D0", "D1", "D2"], "cluster": [0, 0, 1]}).write_parquet(membership_path)
 
     written = export_vosviewer_network(
         pl.read_parquet(edges_path),
@@ -1598,6 +1589,18 @@ def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
     assert validation["export_family"] == "vosviewer"
     assert validation["export_kind"] == "vosviewer_map_network"
     assert validation["counts"]["files"] == 2
+
+    result_manifest = write_result_manifest(result_root).to_dict()
+    vos_exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_map_network"]
+    assert len(vos_exports) == 1
+    vos_export = vos_exports[0]
+    assert vos_export["path"] == "vosviewer/vosviewer_map.txt"
+    assert vos_export["export_manifest_ref"] == "exports/vosviewer_map_network/export_manifest.json"
+    assert vos_export["export_family"] == "vosviewer"
+    assert {row["role"]: row["path"] for row in vos_export["files"]} == {
+        "map": "vosviewer/vosviewer_map.txt",
+        "network": "vosviewer/vosviewer_network.txt",
+    }
 
 
 def test_cli_export_supports_vosviewer_format(tmp_path):

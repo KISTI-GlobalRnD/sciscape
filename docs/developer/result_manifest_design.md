@@ -314,7 +314,18 @@ Allowed validation states:
     "feature_refs": ["overview", "keyword", "cluster_map"],
     "source_artifact_refs": ["report_data"],
     "export_manifest_ref": "exports/report_html/export_manifest.json",
-    "status": "present"
+    "status": "present",
+    "files": [
+      {
+        "file_id": "report",
+        "role": "primary",
+        "path": "landscape/report/report.html",
+        "format": "html",
+        "public_share_state": "local",
+        "bytes": 84012,
+        "exists": true
+      }
+    ]
   }
 ]
 ```
@@ -329,12 +340,18 @@ Export kinds should start small:
 - `keyword_table`
 - `cooccurrence_table`
 - `matrix_table`
-- `vosviewer_network`
+- `vosviewer_map_network`
 - `package_bundle`
 
 When an export manifest exists, the list entry should include
 `export_manifest_ref`. Legacy entries may omit it and should be treated as beta
 until export QA is available.
+
+For manifest-backed exports, the list entry should expose a compact `files`
+array copied from `export_files.parquet`. This is intentionally a small
+inventory, not a duplicate of the exported files. It lets the web app and static
+viewer resolve bundle outputs from `result_manifest.json` without opening every
+export sidecar first.
 
 ## Source Block
 
@@ -515,6 +532,8 @@ all pipelines at once.
 6. Update demo/static/query outputs to write the manifest.
 7. Add tests for valid, missing, legacy, and contradictory manifests.
 8. Update release readiness docs after the writer exists.
+9. `[x]` Summarize manifest-backed export file inventories in
+   `result_manifest.exports`.
 
 ## Open Design Decisions
 

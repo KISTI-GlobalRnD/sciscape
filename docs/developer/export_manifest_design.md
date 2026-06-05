@@ -490,7 +490,9 @@ commands.
    Dashboard/report/viewer helpers, CLI graph export, and web network export
    now write manifest-backed export artifacts.
 5. `[x]` Extend `validate_result_root` to identify export manifests and expose
-   stable/beta/blocked export states.
+   stable/beta/blocked export states. `result_manifest.exports` now includes
+   the primary export path, `export_manifest_ref`, and a compact file inventory
+   for manifest-backed exports.
 6. `[x]` Add a tiny synthetic export smoke that writes a table export and validates
    file inventory, source refs, and private-path checks.
 7. `[~]` Add matrix and VOSviewer-style export manifests only after their source
@@ -509,6 +511,8 @@ commands.
 - `export=stable` requires manifest-backed QA, not only file existence.
 - The full result contract can tell whether `export` is hidden, beta, stable,
   or blocked from artifacts alone.
+- The full result contract can tell the web/static viewer which concrete export
+  files are available without opening every export sidecar first.
 
 ## Open Questions
 

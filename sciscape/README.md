@@ -149,6 +149,9 @@ sciscape export edges.parquet membership.parquet --format graphml -o network.gra
 sciscape export edges.parquet membership.parquet --format vosviewer -o vosviewer_export/
 ```
 
+Manifest-backed exports are discoverable from `result_manifest.json` when a
+result manifest is written for the result root.
+
 ### `sciscape gui` — GUI 실행
 
 ```bash
@@ -301,6 +304,8 @@ GitHub Pages 같은 정적 호스팅에서도 서버 없이 바로 탐색할 수
 - 분리형 뷰어: `sciscape viewer -o viewer.html`로 만든 `viewer.html`과
   `report/data.json`을 같은 폴더에 `data.json` 이름으로 업로드
 - 명시 경로: `viewer.html?data=path/to/data.json` 또는 `?data=path/to/keywords.csv`
+- 결과 번들: `result_manifest.json`을 기준으로 feature state, QA, export 파일
+  목록을 확인
 - 수동 로드: 브라우저에서 `data.json`, `keywords.csv`, `keywords.tsv`를 drag/drop
 
 **지원 포맷:**
