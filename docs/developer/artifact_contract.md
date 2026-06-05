@@ -102,7 +102,7 @@ writers should emit `result_manifest.json`.
 | `exports/<export_id>/export_inputs.parquet` | `schema_version`, `export_id`, `input_id`, `artifact_ref`, `artifact_role`, `artifact_path`, `feature_state`, `required` | Source artifacts and feature states used by the export. |
 | `exports/<export_id>/export_transforms.parquet` | `schema_version`, `export_id`, `transform_id`, `step_index`, `transform_type`, `description`, `parameters` | Filters, field mappings, layout, packaging, and format conversion steps. |
 | `exports/<export_id>/export_qa.json` | `schema_version`, `export_id`, `status`, `checks`, `counts`, `compatibility`, `warnings`, `blocking_issues` | Export QA summary. |
-| matrix/co-occurrence artifacts | matrix rows plus row/column metadata when available | Any `*matrix*` or `*cooccurrence*` artifact is treated as matrix evidence. |
+| matrix-like legacy artifacts | matrix rows plus row/column metadata when available | Legacy `*matrix*` artifacts may support beta matrix exposure. Stable matrix exposure requires `matrices/<matrix_id>/matrix_manifest.json`. Co-occurrence artifacts support the narrower co-occurrence/term-network lens unless wrapped as a general matrix. |
 
 ## Feature Block
 
@@ -118,7 +118,7 @@ Every validation result and embedded report contract should include:
     "cluster_map": true,
     "keyword": true,
     "term_network": true,
-    "matrix": true,
+    "matrix": false,
     "evidence": true,
     "temporal": true,
     "evolution": false,
@@ -141,13 +141,18 @@ Feature inference rules:
 | `cluster_map` | membership exists or report clusters exist |
 | `keyword` | keyword table exists or report clusters carry keywords |
 | `term_network` | stable co-occurrence artifact rows, report co-occurrence/network edges, or keyword rows can form within-cluster pairs |
-| `matrix` | matrix/co-occurrence artifact exists or report term edges exist |
+| `matrix` | stable general matrix manifest exists, or a legacy matrix-like artifact exists for beta exposure |
 | `evidence` | abstracts and membership both exist |
 | `temporal` | stable temporal artifacts exist, or abstracts include `pubyear` for beta temporal views |
 | `evolution` | stable evolution artifacts exist; embedded legacy evolution payloads may support beta views only |
 | `narrative` | stable narrative artifacts exist; embedded legacy narrative payloads may support beta views only |
 | `quality` | validation can run |
 | `export` | stable export manifests exist, or keyword/cluster map/report data exists for beta legacy exports |
+
+`cooccurrence` is a result-manifest feature state rather than a legacy boolean in
+the lightweight report contract. Stable co-occurrence artifacts can enable term
+co-occurrence and term-network views without implying the generic Matrix Builder
+is ready.
 
 ## Report Data Contract
 

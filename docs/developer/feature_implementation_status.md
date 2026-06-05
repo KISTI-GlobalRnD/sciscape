@@ -49,7 +49,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
-| F14 | Report, export, interoperability | `[~]` | 74% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data, export manifest design | export manifest writer/validator and VOSviewer-style exports |
+| F14 | Report, export, interoperability | `[~]` | 82% | HTML reports/viewer, dashboard export, GEXF, GraphML, static data, export manifest design, writer/validator, QA sidecars | export command adapters and VOSviewer-style exports |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
 ## Code Surface Inventory
@@ -354,22 +354,28 @@ features are exposed in the UI.
 
 ### F14. Report, Export, And Interoperability
 
-Status: `[~]` Partial. Rough completeness: 74%.
+Status: `[~]` Partial. Rough completeness: 82%.
 
 - `[x]` Dashboard, report, and viewer export helpers exist.
 - `[x]` CLI export supports GEXF and GraphML.
 - `[x]` Static report data can be used by the web viewer.
 - `[x]` Export manifest contract is defined in
   `docs/developer/export_manifest_design.md`.
+- `[x]` Export manifest writer, validator, file/input/transform sidecars, and QA
+  sidecar exist.
+- `[x]` Result-root validation can expose manifest-backed `export=stable` while
+  keeping legacy report/viewer exports at beta.
 - `[~]` Artifact contracts can summarize export availability.
-- `[ ]` Export manifest writer and validator are not yet implemented.
+- `[ ]` Existing report, viewer, GEXF, and GraphML export commands do not yet
+  write export manifests automatically.
 - `[ ]` VOSviewer-style map/network exports are not clearly complete.
-- `[ ]` Export manifests do not yet describe every exported view, filter, and
-  data transformation.
+- `[ ]` Export manifests do not yet describe every exported view and filter from
+  each user-facing workflow.
 
-Review: good enough for graph/report exports, and the manifest contract is now
-defined, but this is not complete as an interoperability layer until export
-manifests are written and validated.
+Review: good enough for graph/report exports, and the manifest contract plus
+writer/validator now exist, but interoperability should not be called complete
+until existing export commands emit manifests and VOSviewer-style outputs are
+covered.
 
 ### F15. Institutional Analytics
 
@@ -403,5 +409,5 @@ evolution map, and narrative system are stable.
    projection, then promote the Evolution lens into a true map layout.
 4. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-5. Implement the export manifest writer and validator from
-   `export_manifest_design.md`.
+5. Add export-manifest adapters to existing report, viewer, GEXF, and GraphML
+   export commands.

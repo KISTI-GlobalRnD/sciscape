@@ -12,6 +12,11 @@ from sciscape.artifacts import (
     EVOLUTION_EVENTS_SCHEMA_VERSION,
     EVOLUTION_MANIFEST_SCHEMA_VERSION,
     EVOLUTION_QA_SCHEMA_VERSION,
+    EXPORT_FILES_SCHEMA_VERSION,
+    EXPORT_INPUTS_SCHEMA_VERSION,
+    EXPORT_MANIFEST_SCHEMA_VERSION,
+    EXPORT_QA_SCHEMA_VERSION,
+    EXPORT_TRANSFORMS_SCHEMA_VERSION,
     MATRIX_MANIFEST_SCHEMA_VERSION,
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
@@ -28,6 +33,7 @@ from sciscape.artifacts import (
     load_result_manifest,
     register_result_in_workspace,
     validate_evolution_artifact,
+    validate_export_manifest,
     validate_matrix_artifact,
     validate_result_root,
     validate_temporal_artifact,
@@ -36,6 +42,7 @@ from sciscape.artifacts import (
     write_edge_evidence_samples,
     write_evolution_artifacts,
     write_evolution_synthetic_smoke_artifact,
+    write_export_manifest,
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_temporal_artifacts,
@@ -952,6 +959,127 @@ def test_write_artifact_contract_uses_landscape_qa_dir(tmp_path):
     assert payload["features"]["term_network"] is True
 
 
+def test_write_export_manifest_promotes_stable_export_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_artifact_contract(root)
+    report_data = root / "landscape" / "report" / "data.json"
+
+    written = write_export_manifest(
+        root,
+        export_id="json_report_data",
+        export_family="report",
+        export_kind="json_report_data",
+        primary_file=report_data,
+        source_artifacts=[
+            {
+                "role": "report_data",
+                "artifact_ref": "report_data",
+                "path": "landscape/report/data.json",
+                "feature_ref": "overview",
+            }
+        ],
+        feature_refs=["overview", "cluster_map", "export"],
+        compatibility={"target_tools": ["SciScape"], "limitations": []},
+    )
+
+    assert written["manifest_path"] == root / "exports" / "json_report_data" / "export_manifest.json"
+    assert written["qa"]["schema_version"] == EXPORT_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+
+    files = pd.read_parquet(written["files_path"])
+    assert set(files["schema_version"]) == {EXPORT_FILES_SCHEMA_VERSION}
+    assert files["path"].iloc[0] == "landscape/report/data.json"
+
+    validation = validate_export_manifest(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["files"] == 1
+    assert validation["counts"]["inputs"] == 1
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["counts"]["stable_export_artifacts"] == 1
+    assert contract["counts"]["export_file_rows"] == 1
+    assert contract["features"]["export"] is True
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["export"]["state"] == "stable"
+    assert "export" in manifest["features"]["export"]["artifact_refs"]
+    assert manifest["artifacts"]["export"]["schema_version"] == EXPORT_MANIFEST_SCHEMA_VERSION
+    assert any(export["export_id"] == "json_report_data" and export["status"] == "passed" for export in manifest["exports"])
+
+
+def test_validate_export_manifest_blocks_missing_export_file(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    export_dir = root / "exports" / "bad_export"
+    export_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "schema_version": [EXPORT_FILES_SCHEMA_VERSION],
+            "export_id": ["bad_export"],
+            "file_id": ["primary"],
+            "path": ["missing/report.html"],
+            "role": ["primary"],
+            "format": ["html"],
+            "public_share_state": ["local"],
+        }
+    ).to_parquet(export_dir / "export_files.parquet", index=False)
+    pd.DataFrame(
+        {
+            "schema_version": [EXPORT_INPUTS_SCHEMA_VERSION],
+            "export_id": ["bad_export"],
+            "input_id": ["input_1"],
+            "artifact_ref": ["report_data"],
+            "artifact_role": ["report_data"],
+            "artifact_path": ["landscape/report/data.json"],
+            "feature_state": ["stable"],
+            "required": [True],
+        }
+    ).to_parquet(export_dir / "export_inputs.parquet", index=False)
+    pd.DataFrame(
+        {
+            "schema_version": [EXPORT_TRANSFORMS_SCHEMA_VERSION],
+            "export_id": ["bad_export"],
+            "transform_id": ["transform_1"],
+            "step_index": [0],
+            "transform_type": ["wrap_existing_export"],
+            "description": ["wrap"],
+            "parameters": ["{}"],
+        }
+    ).to_parquet(export_dir / "export_transforms.parquet", index=False)
+    (export_dir / "export_manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": EXPORT_MANIFEST_SCHEMA_VERSION,
+                "export_id": "bad_export",
+                "title": "Bad export",
+                "result_id": None,
+                "export_family": "report",
+                "export_kind": "html_report",
+                "format": "html",
+                "status": "passed",
+                "feature_refs": ["export"],
+                "source_artifacts": [{"role": "report_data", "path": "landscape/report/data.json"}],
+                "selection": {"scope": "full_result"},
+                "transform_summary": {"transform_count": 1},
+                "compatibility": {"target_tools": ["SciScape"], "limitations": []},
+                "outputs": {
+                    "files": "export_files.parquet",
+                    "inputs": "export_inputs.parquet",
+                    "transforms": "export_transforms.parquet",
+                    "qa": "export_qa.json",
+                },
+                "created_at_utc": "2026-06-05T00:00:00+00:00",
+                "warnings": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    validation = validate_export_manifest(export_dir).to_dict()
+
+    assert validation["status"] == "blocked"
+    assert any(issue["code"] == "missing_export_files" for issue in validation["blocking_issues"])
+
+
 def test_build_result_manifest_wraps_artifact_contract(tmp_path):
     root = _write_valid_result_root(tmp_path / "result")
     write_artifact_contract(root)
@@ -970,6 +1098,7 @@ def test_build_result_manifest_wraps_artifact_contract(tmp_path):
     assert manifest["features"]["keyword"]["state"] == "stable"
     assert manifest["features"]["cooccurrence"]["state"] == "beta"
     assert "keywords" in manifest["features"]["cooccurrence"]["artifact_refs"]
+    assert manifest["features"]["export"]["state"] == "beta"
     assert manifest["run_state"]["status"] == "complete"
     assert any(export["kind"] == "json_report_data" for export in manifest["exports"])
 

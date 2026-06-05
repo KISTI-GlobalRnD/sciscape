@@ -305,7 +305,8 @@ Do not do yet:
 1. Define the minimal `result_manifest.json` schema.
 2. Write and validate manifest generation for demo, static, local, and query
    outputs.
-3. Add exposure states and export manifest fields to result-root validation.
+3. Maintain exposure states and manifest-backed feature fields in result-root
+   validation.
 4. Add long-run progress, shard, checkpoint, partial-output, and resume metadata
    contracts for live query and keyword extraction.
 5. Maintain the P1 smoke fixture that exercises query/local load, network,
@@ -317,16 +318,17 @@ Do not do yet:
 8. Implement the Atlas evidence inspector contract from
    `atlas_evidence_inspector_design.md`, consuming only validated payload fields
    and exposure states.
-9. Implement the general matrix artifact writer and validator from
-   `matrix_artifact_design.md`.
+9. Add user-facing matrix-builder commands and exports on top of the general
+   matrix artifact writer/validator from `matrix_artifact_design.md`.
 10. Maintain the temporal trend artifact schema in
     `temporal_artifact_design.md`.
 11. Maintain the cluster evolution artifact schema and synthetic smoke example
     in `evolution_artifact_design.md`.
 12. Maintain the narrative evidence-reference schema without generation in
     `narrative_artifact_design.md`.
-13. Maintain the export manifest schema for reports, graph files, tables, maps,
-    and bundles in `export_manifest_design.md`.
+13. Add export-manifest adapters to existing report, static viewer, GEXF, and
+    GraphML export commands; maintain the schema for future maps and bundles in
+    `export_manifest_design.md`.
 14. Maintain the workspace/project/run manifest schema in
     `workspace_manifest_design.md`.
 15. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.

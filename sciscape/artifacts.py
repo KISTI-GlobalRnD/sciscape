@@ -45,6 +45,11 @@ EVOLUTION_LINEAGES_SCHEMA_VERSION = "sciscape_evolution_lineages_v1"
 EVOLUTION_EVENTS_SCHEMA_VERSION = "sciscape_evolution_events_v1"
 EVOLUTION_QA_SCHEMA_VERSION = "sciscape_evolution_qa_v1"
 EVOLUTION_SYNTHETIC_SMOKE_SCHEMA_VERSION = "sciscape_evolution_synthetic_smoke_v1"
+EXPORT_MANIFEST_SCHEMA_VERSION = "sciscape_export_manifest_v1"
+EXPORT_FILES_SCHEMA_VERSION = "sciscape_export_files_v1"
+EXPORT_INPUTS_SCHEMA_VERSION = "sciscape_export_inputs_v1"
+EXPORT_TRANSFORMS_SCHEMA_VERSION = "sciscape_export_transforms_v1"
+EXPORT_QA_SCHEMA_VERSION = "sciscape_export_qa_v1"
 FEATURE_KEYS = (
     "overview",
     "cluster_map",
@@ -125,6 +130,35 @@ REQUIRED_MATRIX_ENTITY_COLUMNS = {
 SUPPORTED_MATRIX_FAMILIES = frozenset(
     {"occurrence", "cooccurrence", "proximity", "similarity", "projection", "temporal"}
 )
+SUPPORTED_EXPORT_FAMILIES = frozenset({"report", "viewer", "graph", "table", "matrix", "map", "bundle"})
+REQUIRED_EXPORT_FILE_COLUMNS = {
+    "schema_version",
+    "export_id",
+    "file_id",
+    "path",
+    "role",
+    "format",
+    "public_share_state",
+}
+REQUIRED_EXPORT_INPUT_COLUMNS = {
+    "schema_version",
+    "export_id",
+    "input_id",
+    "artifact_ref",
+    "artifact_role",
+    "artifact_path",
+    "feature_state",
+    "required",
+}
+REQUIRED_EXPORT_TRANSFORM_COLUMNS = {
+    "schema_version",
+    "export_id",
+    "transform_id",
+    "step_index",
+    "transform_type",
+    "description",
+    "parameters",
+}
 REQUIRED_TEMPORAL_PERIOD_COLUMNS = {
     "schema_version",
     "temporal_id",
@@ -292,6 +326,7 @@ class ResultArtifacts:
     matrix_manifest_paths: tuple[Path, ...] = ()
     temporal_manifest_paths: tuple[Path, ...] = ()
     evolution_manifest_paths: tuple[Path, ...] = ()
+    export_manifest_paths: tuple[Path, ...] = ()
     edge_evidence_paths: tuple[Path, ...] = ()
     evolution_paths: tuple[Path, ...] = ()
     narrative_paths: tuple[Path, ...] = ()
@@ -426,6 +461,33 @@ class MatrixArtifactValidationResult:
     paths: dict[str, str | None]
     counts: dict[str, int]
     checks: dict[str, dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
+@dataclass(frozen=True)
+class ExportManifestValidationResult:
+    schema_version: str
+    export_id: str | None
+    export_family: str | None
+    export_kind: str | None
+    status: str
+    export_dir: str
+    manifest_path: str
+    paths: dict[str, str | None]
+    counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    compatibility: dict[str, Any]
     warnings: list[dict[str, Any]]
     blocking_issues: list[dict[str, Any]]
     created_at_utc: str
@@ -607,6 +669,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
     matrix_manifest_paths: list[Path] = []
     temporal_manifest_paths: list[Path] = []
     evolution_manifest_paths: list[Path] = []
+    export_manifest_paths: list[Path] = []
     for base in [landscape_dir, result_root]:
         if base is None or not base.exists() or not base.is_dir():
             continue
@@ -614,6 +677,9 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
             matrix_paths.extend(path for path in base.glob(pattern) if path.is_file())
         matrix_manifest_paths.extend(
             path for path in (base / "matrices").glob("*/matrix_manifest.json") if path.is_file()
+        )
+        export_manifest_paths.extend(
+            path for path in (base / "exports").glob("*/export_manifest.json") if path.is_file()
         )
         temporal_manifest = base / "temporal" / "temporal_manifest.json"
         if temporal_manifest.exists() and temporal_manifest.is_file():
@@ -686,6 +752,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         matrix_manifest_paths=tuple(sorted(set(matrix_manifest_paths))),
         temporal_manifest_paths=tuple(sorted(set(temporal_manifest_paths))),
         evolution_manifest_paths=tuple(sorted(set(evolution_manifest_paths))),
+        export_manifest_paths=tuple(sorted(set(export_manifest_paths))),
         edge_evidence_paths=edge_evidence_paths,
         evolution_paths=evolution_paths,
         narrative_paths=narrative_paths,
@@ -3402,6 +3469,579 @@ def write_matrix_from_term_cooccurrence(
         ],
         title="Term co-occurrence matrix",
     )
+
+
+def _export_issue(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    artifact: str | None = None,
+) -> dict[str, Any]:
+    return {"code": code, "severity": severity, "message": message, "artifact": artifact}
+
+
+def _export_dir_and_manifest(path: str | Path) -> tuple[Path, Path]:
+    candidate = Path(path).expanduser().resolve()
+    if candidate.is_file():
+        return candidate.parent, candidate
+    if candidate.name == "export_manifest.json":
+        return candidate.parent, candidate
+    return candidate, candidate / "export_manifest.json"
+
+
+def _export_result_root(export_dir: Path) -> Path:
+    if export_dir.parent.name == "exports":
+        return export_dir.parent.parent
+    return export_dir.parent
+
+
+def _export_output_paths(export_dir: Path, manifest: Mapping[str, Any]) -> dict[str, Path]:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    return {
+        "files": export_dir / str(outputs.get("files") or "export_files.parquet"),
+        "inputs": export_dir / str(outputs.get("inputs") or "export_inputs.parquet"),
+        "transforms": export_dir / str(outputs.get("transforms") or "export_transforms.parquet"),
+        "qa": export_dir / str(outputs.get("qa") or "export_qa.json"),
+    }
+
+
+def _export_required_fields(manifest: Mapping[str, Any]) -> set[str]:
+    required = {
+        "schema_version",
+        "export_id",
+        "title",
+        "export_family",
+        "export_kind",
+        "format",
+        "status",
+        "feature_refs",
+        "source_artifacts",
+        "selection",
+        "transform_summary",
+        "compatibility",
+        "outputs",
+        "created_at_utc",
+        "warnings",
+    }
+    return {field for field in required if field not in manifest}
+
+
+def _export_read_parquet(
+    path: Path,
+    *,
+    artifact: str,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> pd.DataFrame | None:
+    if not path.exists():
+        blocking_issues.append(
+            _export_issue(
+                f"missing_export_{artifact}",
+                "blocking",
+                f"Missing export {artifact} table.",
+                artifact=artifact,
+            )
+        )
+        return None
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:
+        blocking_issues.append(
+            _export_issue(
+                f"invalid_export_{artifact}_parquet",
+                "blocking",
+                f"Could not read export {artifact} parquet: {exc}",
+                artifact=artifact,
+            )
+        )
+        return None
+
+
+def _export_missing_columns(
+    df: pd.DataFrame | None,
+    required: set[str],
+    *,
+    artifact: str,
+    blocking_issues: list[dict[str, Any]],
+) -> bool:
+    if df is None:
+        return True
+    missing = required - set(df.columns)
+    if missing:
+        blocking_issues.append(
+            _export_issue(
+                "missing_export_columns",
+                "blocking",
+                f"Missing required export {artifact} columns: {sorted(missing)}",
+                artifact=artifact,
+            )
+        )
+        return True
+    return False
+
+
+def _export_table_schema_check(
+    df: pd.DataFrame | None,
+    *,
+    artifact: str,
+    expected_schema: str,
+    required: set[str],
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if df is None or _export_missing_columns(df, required, artifact=artifact, blocking_issues=blocking_issues):
+        return {"status": "blocked", "rows": 0}
+    schema_values = set(df["schema_version"].dropna().map(str).unique().tolist())
+    if schema_values and schema_values != {expected_schema}:
+        blocking_issues.append(
+            _export_issue(
+                "unsupported_export_table_schema",
+                "blocking",
+                f"Unsupported export {artifact} schema values: {sorted(schema_values)}",
+                artifact=artifact,
+            )
+        )
+        return {"status": "blocked", "rows": int(len(df)), "schema_values": sorted(schema_values)}
+    if df.empty:
+        warnings.append(
+            _export_issue(
+                "empty_export_table",
+                "warning",
+                f"Export {artifact} table is empty.",
+                artifact=artifact,
+            )
+        )
+        return {"status": "warning", "rows": 0, "schema_values": sorted(schema_values)}
+    return {"status": "passed", "rows": int(len(df)), "schema_values": sorted(schema_values)}
+
+
+def _path_from_relative(root: Path, rel_path: object) -> Path | None:
+    if rel_path is None:
+        return None
+    text = str(rel_path)
+    if not text:
+        return None
+    path = Path(text)
+    if path.is_absolute():
+        return path
+    return root / path
+
+
+def _export_file_checks(
+    files: pd.DataFrame | None,
+    *,
+    result_root: Path,
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if files is None or "path" not in files.columns:
+        return {"status": "blocked", "missing": 0, "absolute_paths": 0}
+    missing = 0
+    absolute_paths = 0
+    for value in files["path"].dropna().map(str).tolist():
+        if Path(value).is_absolute():
+            absolute_paths += 1
+            continue
+        if not (result_root / value).exists():
+            missing += 1
+    if absolute_paths:
+        blocking_issues.append(
+            _export_issue(
+                "absolute_export_file_path",
+                "blocking",
+                f"{absolute_paths} export file paths are absolute; manifests must use result-relative paths.",
+                artifact="files",
+            )
+        )
+    if missing:
+        blocking_issues.append(
+            _export_issue(
+                "missing_export_files",
+                "blocking",
+                f"{missing} exported files are missing from the result root.",
+                artifact="files",
+            )
+        )
+    return {
+        "status": "blocked" if missing or absolute_paths else "passed",
+        "missing": int(missing),
+        "absolute_paths": int(absolute_paths),
+    }
+
+
+def _export_input_checks(
+    inputs: pd.DataFrame | None,
+    *,
+    result_root: Path,
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if inputs is None or "artifact_path" not in inputs.columns:
+        return {"status": "blocked", "missing_required": 0, "absolute_paths": 0}
+    missing_required = 0
+    absolute_paths = 0
+    for row in inputs.to_dict("records"):
+        artifact_path = str(row.get("artifact_path") or "")
+        if not artifact_path:
+            continue
+        if Path(artifact_path).is_absolute():
+            absolute_paths += 1
+            continue
+        required = bool(row.get("required"))
+        if required and not (result_root / artifact_path).exists():
+            missing_required += 1
+    if absolute_paths:
+        blocking_issues.append(
+            _export_issue(
+                "absolute_export_input_path",
+                "blocking",
+                f"{absolute_paths} export input paths are absolute; manifests must use result-relative paths.",
+                artifact="inputs",
+            )
+        )
+    if missing_required:
+        blocking_issues.append(
+            _export_issue(
+                "missing_export_source_artifacts",
+                "blocking",
+                f"{missing_required} required export source artifacts are missing.",
+                artifact="inputs",
+            )
+        )
+    return {
+        "status": "blocked" if missing_required or absolute_paths else "passed",
+        "missing_required": int(missing_required),
+        "absolute_paths": int(absolute_paths),
+    }
+
+
+def validate_export_manifest(path: str | Path) -> ExportManifestValidationResult:
+    """Validate one export manifest and its file/input/transform sidecars."""
+
+    export_dir, manifest_path = _export_dir_and_manifest(path)
+    result_root = _export_result_root(export_dir)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+    manifest: dict[str, Any] = {}
+
+    if not manifest_path.exists():
+        blocking_issues.append(
+            _export_issue("missing_export_manifest", "blocking", "Missing export_manifest.json.", artifact="manifest")
+        )
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            blocking_issues.append(
+                _export_issue(
+                    "invalid_export_manifest_json",
+                    "blocking",
+                    f"Could not read export manifest: {exc}",
+                    artifact="manifest",
+                )
+            )
+        if not isinstance(manifest, dict):
+            blocking_issues.append(
+                _export_issue(
+                    "invalid_export_manifest_shape",
+                    "blocking",
+                    "Export manifest must be a JSON object.",
+                    artifact="manifest",
+                )
+            )
+            manifest = {}
+
+    if manifest:
+        if manifest.get("schema_version") != EXPORT_MANIFEST_SCHEMA_VERSION:
+            blocking_issues.append(
+                _export_issue(
+                    "unsupported_export_manifest_schema",
+                    "blocking",
+                    f"Unsupported export manifest schema: {manifest.get('schema_version')}",
+                    artifact="manifest",
+                )
+            )
+        if manifest.get("export_family") not in SUPPORTED_EXPORT_FAMILIES:
+            blocking_issues.append(
+                _export_issue(
+                    "unsupported_export_family",
+                    "blocking",
+                    f"Unsupported export family: {manifest.get('export_family')}",
+                    artifact="manifest",
+                )
+            )
+        missing_fields = _export_required_fields(manifest)
+        if missing_fields:
+            blocking_issues.append(
+                _export_issue(
+                    "missing_export_manifest_fields",
+                    "blocking",
+                    f"Missing export manifest fields: {sorted(missing_fields)}",
+                    artifact="manifest",
+                )
+            )
+    checks["manifest"] = {
+        "status": "blocked" if blocking_issues else "passed",
+        "schema_version": manifest.get("schema_version"),
+    }
+
+    paths = _export_output_paths(export_dir, manifest)
+    files = _export_read_parquet(paths["files"], artifact="files", warnings=warnings, blocking_issues=blocking_issues)
+    inputs = _export_read_parquet(
+        paths["inputs"],
+        artifact="inputs",
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    transforms = _export_read_parquet(
+        paths["transforms"],
+        artifact="transforms",
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["files"] = _export_table_schema_check(
+        files,
+        artifact="files",
+        expected_schema=EXPORT_FILES_SCHEMA_VERSION,
+        required=REQUIRED_EXPORT_FILE_COLUMNS,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["inputs"] = _export_table_schema_check(
+        inputs,
+        artifact="inputs",
+        expected_schema=EXPORT_INPUTS_SCHEMA_VERSION,
+        required=REQUIRED_EXPORT_INPUT_COLUMNS,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["transforms"] = _export_table_schema_check(
+        transforms,
+        artifact="transforms",
+        expected_schema=EXPORT_TRANSFORMS_SCHEMA_VERSION,
+        required=REQUIRED_EXPORT_TRANSFORM_COLUMNS,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+    checks["file_inventory"] = _export_file_checks(files, result_root=result_root, blocking_issues=blocking_issues)
+    checks["source_artifacts"] = _export_input_checks(inputs, result_root=result_root, blocking_issues=blocking_issues)
+
+    qa_path = paths["qa"]
+    if not qa_path.exists():
+        warnings.append(
+            _export_issue(
+                "missing_export_qa_sidecar",
+                "warning",
+                "export_qa.json is missing; writers should persist the validation result.",
+                artifact="qa",
+            )
+        )
+
+    counts = {
+        "files": int(0 if files is None else len(files)),
+        "inputs": int(0 if inputs is None else len(inputs)),
+        "transforms": int(0 if transforms is None else len(transforms)),
+        "warnings": len(warnings),
+        "blocking_issues": len(blocking_issues),
+    }
+    if blocking_issues:
+        status = "blocked"
+    elif warnings:
+        status = "warning"
+    else:
+        status = "passed"
+
+    return ExportManifestValidationResult(
+        schema_version=EXPORT_QA_SCHEMA_VERSION,
+        export_id=str(manifest.get("export_id")) if manifest.get("export_id") else None,
+        export_family=str(manifest.get("export_family")) if manifest.get("export_family") else None,
+        export_kind=str(manifest.get("export_kind")) if manifest.get("export_kind") else None,
+        status=status,
+        export_dir=str(export_dir),
+        manifest_path=_rel(manifest_path, export_dir) or str(manifest_path),
+        paths={key: _rel(value, export_dir) for key, value in paths.items()},
+        counts=counts,
+        checks=checks,
+        compatibility=dict(manifest.get("compatibility") or {}),
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
+
+
+def _export_existing_result_id(result_root: Path) -> str | None:
+    return _matrix_existing_result_id(result_root)
+
+
+def _export_rel_to_root(path: str | Path, root: Path) -> str:
+    candidate = Path(path).expanduser()
+    if candidate.is_absolute():
+        rel = _rel(candidate.resolve(), root)
+        return rel or str(candidate)
+    return str(candidate)
+
+
+def _export_file_format(path: str | Path, fallback: str = "file") -> str:
+    suffix = Path(path).suffix.lower().lstrip(".")
+    return suffix or fallback
+
+
+def _export_feature_states(root: Path, feature_refs: list[str]) -> dict[str, str]:
+    manifest = build_result_manifest(root).to_dict()
+    features = manifest.get("features", {})
+    states: dict[str, str] = {}
+    for feature in feature_refs:
+        payload = features.get(feature)
+        if isinstance(payload, Mapping):
+            states[feature] = str(payload.get("state") or "hidden")
+        else:
+            states[feature] = "hidden"
+    return states
+
+
+def write_export_manifest(
+    result_root: str | Path,
+    *,
+    export_id: str,
+    export_family: str,
+    export_kind: str,
+    primary_file: str | Path,
+    source_artifacts: list[Mapping[str, Any]],
+    feature_refs: list[str],
+    files: list[Mapping[str, Any]] | None = None,
+    selection: Mapping[str, Any] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    compatibility: Mapping[str, Any] | None = None,
+    title: str | None = None,
+    format: str | None = None,
+    output_dir: str | Path | None = None,
+) -> dict[str, Any]:
+    """Write a manifest-backed export wrapper for existing output files."""
+
+    root = Path(result_root).expanduser().resolve()
+    export_id = _safe_id(export_id, fallback="export")
+    if export_family not in SUPPORTED_EXPORT_FAMILIES:
+        raise ValueError(f"unsupported export family: {export_family}")
+    export_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "exports" / export_id
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    primary_rel = _export_rel_to_root(primary_file, root)
+    primary_format = format or _export_file_format(primary_rel)
+    file_rows = files or [
+        {
+            "file_id": "primary",
+            "path": primary_rel,
+            "role": "primary",
+            "format": primary_format,
+            "public_share_state": "local",
+        }
+    ]
+    normalized_files: list[dict[str, Any]] = []
+    for index, row in enumerate(file_rows, start=1):
+        rel_path = _export_rel_to_root(row.get("path") or primary_rel, root)
+        resolved = _path_from_relative(root, rel_path)
+        normalized_files.append(
+            {
+                "schema_version": EXPORT_FILES_SCHEMA_VERSION,
+                "export_id": export_id,
+                "file_id": str(row.get("file_id") or f"file_{index}"),
+                "path": rel_path,
+                "role": str(row.get("role") or ("primary" if index == 1 else "support")),
+                "format": str(row.get("format") or _export_file_format(rel_path, primary_format)),
+                "bytes": int(resolved.stat().st_size) if resolved is not None and resolved.exists() else None,
+                "exists": bool(resolved is not None and resolved.exists() and not Path(rel_path).is_absolute()),
+                "public_share_state": str(row.get("public_share_state") or "local"),
+            }
+        )
+
+    feature_states = _export_feature_states(root, feature_refs)
+    normalized_inputs: list[dict[str, Any]] = []
+    for index, row in enumerate(source_artifacts, start=1):
+        feature = str(row.get("feature_ref") or (feature_refs[0] if feature_refs else "export"))
+        normalized_inputs.append(
+            {
+                "schema_version": EXPORT_INPUTS_SCHEMA_VERSION,
+                "export_id": export_id,
+                "input_id": str(row.get("input_id") or f"input_{index}"),
+                "artifact_ref": str(row.get("artifact_ref") or row.get("role") or f"source_{index}"),
+                "artifact_role": str(row.get("artifact_role") or row.get("role") or "source"),
+                "artifact_path": _export_rel_to_root(row.get("path") or "", root),
+                "feature_state": str(row.get("feature_state") or feature_states.get(feature, "hidden")),
+                "required": bool(row.get("required", True)),
+            }
+        )
+
+    normalized_transforms: list[dict[str, Any]] = []
+    for index, row in enumerate(transforms or [{"transform_type": "wrap_existing_export", "description": "Wrap existing export files."}], start=1):
+        normalized_transforms.append(
+            {
+                "schema_version": EXPORT_TRANSFORMS_SCHEMA_VERSION,
+                "export_id": export_id,
+                "transform_id": str(row.get("transform_id") or f"transform_{index}"),
+                "step_index": int(row.get("step_index") if row.get("step_index") is not None else index - 1),
+                "transform_type": str(row.get("transform_type") or row.get("step") or "transform"),
+                "description": str(row.get("description") or row.get("transform_type") or row.get("step") or "transform"),
+                "parameters": json.dumps(row.get("parameters") or {}, sort_keys=True),
+            }
+        )
+
+    outputs = {
+        "files": "export_files.parquet",
+        "inputs": "export_inputs.parquet",
+        "transforms": "export_transforms.parquet",
+        "qa": "export_qa.json",
+    }
+    manifest = {
+        "schema_version": EXPORT_MANIFEST_SCHEMA_VERSION,
+        "export_id": export_id,
+        "title": title or export_id.replace("_", " ").title(),
+        "result_id": _export_existing_result_id(root),
+        "export_family": export_family,
+        "export_kind": export_kind,
+        "format": primary_format,
+        "status": "pending",
+        "feature_refs": [str(feature) for feature in feature_refs],
+        "source_artifacts": [dict(item) for item in source_artifacts],
+        "selection": dict(selection or {"scope": "full_result", "filters": []}),
+        "transform_summary": {
+            "transform_count": len(normalized_transforms),
+            "primary_transform": normalized_transforms[0]["transform_type"] if normalized_transforms else None,
+        },
+        "compatibility": dict(compatibility or {"target_tools": ["SciScape"], "limitations": []}),
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+
+    pd.DataFrame(normalized_files).to_parquet(export_dir / outputs["files"], index=False)
+    pd.DataFrame(normalized_inputs).to_parquet(export_dir / outputs["inputs"], index=False)
+    pd.DataFrame(normalized_transforms).to_parquet(export_dir / outputs["transforms"], index=False)
+    manifest_path = export_dir / "export_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    validation = validate_export_manifest(export_dir)
+    qa_payload = validation.to_dict()
+    qa_payload["warnings"] = [
+        warning for warning in qa_payload["warnings"] if warning.get("code") != "missing_export_qa_sidecar"
+    ]
+    qa_payload["counts"]["warnings"] = len(qa_payload["warnings"])
+    if qa_payload["status"] == "warning" and not qa_payload["warnings"]:
+        qa_payload["status"] = "passed"
+    manifest["status"] = qa_payload["status"]
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    (export_dir / outputs["qa"]).write_text(json.dumps(qa_payload, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_export_manifest(export_dir)
+    return {
+        "schema_version": EXPORT_MANIFEST_SCHEMA_VERSION,
+        "export_id": export_id,
+        "export_dir": export_dir,
+        "manifest_path": manifest_path,
+        "files_path": export_dir / outputs["files"],
+        "inputs_path": export_dir / outputs["inputs"],
+        "transforms_path": export_dir / outputs["transforms"],
+        "qa_path": export_dir / outputs["qa"],
+        "qa": validation.to_dict(),
+    }
 
 
 def _temporal_issue(
@@ -6566,6 +7206,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "temporal_summaries": [],
         "evolution_manifest_artifacts": [_rel(path, root) for path in artifacts.evolution_manifest_paths],
         "evolution_summaries": [],
+        "export_manifest_artifacts": [_rel(path, root) for path in artifacts.export_manifest_paths],
+        "export_summaries": [],
         "edge_evidence_artifacts": [_rel(path, root) for path in artifacts.edge_evidence_paths],
         "evolution_artifacts": [_rel(path, root) for path in artifacts.evolution_paths],
         "narrative_artifacts": [_rel(path, root) for path in artifacts.narrative_paths],
@@ -6812,6 +7454,45 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
             )
 
+    export_artifacts = 0
+    stable_export_artifacts = 0
+    export_file_rows = 0
+    for manifest_path in artifacts.export_manifest_paths:
+        export_validation = validate_export_manifest(manifest_path)
+        export_payload = export_validation.to_dict()
+        artifact_info["export_summaries"].append(
+            {
+                "export_id": export_payload.get("export_id"),
+                "export_family": export_payload.get("export_family"),
+                "export_kind": export_payload.get("export_kind"),
+                "status": export_payload.get("status"),
+                "path": _rel(manifest_path, root),
+                "counts": export_payload.get("counts", {}),
+            }
+        )
+        export_artifacts += 1
+        export_file_rows += int(export_validation.counts.get("files", 0))
+        if export_validation.status == "passed":
+            stable_export_artifacts += 1
+        for issue in export_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "export_artifact_blocked"),
+                    "error",
+                    str(issue.get("message") or "Export artifact validation failed."),
+                    "export",
+                )
+            )
+        for warning in export_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "export_artifact_warning"),
+                    "warning",
+                    str(warning.get("message") or "Export artifact has validation warnings."),
+                    "export",
+                )
+            )
+
     _reconcile_counts(
         artifacts=artifacts,
         membership_info=membership_info,
@@ -6829,6 +7510,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
             artifacts.matrix_manifest_paths,
             artifacts.temporal_manifest_paths,
             artifacts.evolution_manifest_paths,
+            artifacts.export_manifest_paths,
         ]
     ):
         issues.append(
@@ -6871,6 +7553,9 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "evolution_event_rows": int(evolution_event_rows),
         "legacy_evolution_artifacts": len(artifacts.evolution_paths),
         "narrative_artifacts": len(artifacts.narrative_paths),
+        "export_artifacts": int(export_artifacts),
+        "stable_export_artifacts": int(stable_export_artifacts),
+        "export_file_rows": int(export_file_rows),
         "keyword_artifact_rows": int(keyword_artifact_rows),
         "keyword_top_artifact_rows": int(keyword_top_artifact_rows),
         "keyword_review_artifact_rows": int(keyword_review_artifact_rows),
@@ -6893,7 +7578,14 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     features["evolution"] = bool(evolution_artifacts or artifacts.evolution_paths) or report_has_evolution
     features["narrative"] = bool(artifacts.narrative_paths) or report_has_narrative
     features["quality"] = True
-    features["export"] = any([features["keyword"], features["cluster_map"], artifacts.report_data_path is not None])
+    features["export"] = any(
+        [
+            stable_export_artifacts > 0,
+            features["keyword"],
+            features["cluster_map"],
+            artifacts.report_data_path is not None,
+        ]
+    )
 
     advertised = _report_metadata(report_data).get("features", {})
     if isinstance(advertised, dict):
@@ -7213,6 +7905,21 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
         key = "evolution" if "evolution" not in records else f"evolution_legacy_{i}"
         records[key] = _artifact_record(root=root, role="evolution", path=rel_path, required_for=["evolution"])
 
+    for i, rel_path in enumerate(artifact_info.get("export_manifest_artifacts", []), start=1):
+        key = "export" if "export" not in records else f"export_{i}"
+        suffix = 2
+        while key in records:
+            key = f"export_{suffix}"
+            suffix += 1
+        records[key] = _artifact_record(
+            root=root,
+            role="export",
+            path=rel_path,
+            required_for=["export"],
+            schema_version=EXPORT_MANIFEST_SCHEMA_VERSION,
+            description="Manifest-backed export artifact.",
+        )
+
     for i, rel_path in enumerate(artifact_info.get("narrative_artifacts", []), start=1):
         key = "narrative" if i == 1 else f"narrative_{i}"
         records[key] = _artifact_record(root=root, role="narrative", path=rel_path, required_for=["narrative"])
@@ -7257,7 +7964,7 @@ def _feature_artifact_candidates(feature: str) -> list[str]:
         "evolution": ["evolution"],
         "narrative": ["narrative"],
         "quality": ["artifact_contract"],
-        "export": ["report_data", "report_html", "viewer_html", "export_manifest"],
+        "export": ["export", "report_data", "report_html", "viewer_html"],
     }
     return mapping.get(feature, [])
 
@@ -7298,6 +8005,15 @@ def _has_evolution_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     )
 
 
+def _has_export_manifest_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
+    return any(
+        record.get("role") == "export"
+        and record.get("status") == "present"
+        and record.get("schema_version") == EXPORT_MANIFEST_SCHEMA_VERSION
+        for record in artifacts.values()
+    )
+
+
 def _manifest_feature_available(feature: str, validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     if feature == "cooccurrence":
         return _has_manifest_cooccurrence(validation, artifacts)
@@ -7317,6 +8033,8 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
         return "pubyear exists but no temporal artifact has been written yet"
     if feature == "evolution" and not _has_evolution_artifact(artifacts):
         return "legacy/report evolution payload exists but stable evolution artifact has not been written yet"
+    if feature == "export" and not _has_export_manifest_artifact(artifacts):
+        return "legacy report/viewer export files are available but no stable export manifest has been written yet"
     if state == "beta":
         return "feature inferred with validation warnings or partial artifact coverage"
     return "feature validated"
@@ -7345,6 +8063,8 @@ def _feature_exposures(
         elif feature == "temporal" and not _has_temporal_artifact(artifacts):
             state = "beta"
         elif feature == "evolution" and not _has_evolution_artifact(artifacts):
+            state = "beta"
+        elif feature == "export" and not _has_export_manifest_artifact(artifacts):
             state = "beta"
         elif warning_count:
             state = "beta"
@@ -7635,6 +8355,21 @@ def _manifest_quality(validation: ArtifactValidationResult) -> dict[str, Any]:
 def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
     root = Path(validation.result_root)
     exports: list[dict[str, Any]] = []
+
+    for summary in validation.artifacts.get("export_summaries", []):
+        path = summary.get("path")
+        exports.append(
+            {
+                "export_id": summary.get("export_id") or _safe_id(Path(str(path or "export")).parent.name, fallback="export"),
+                "kind": summary.get("export_kind") or "manifest_export",
+                "path": path,
+                "format": "json",
+                "feature_refs": ["export"],
+                "source_artifact_refs": ["export"],
+                "status": summary.get("status") or "present",
+                "counts": summary.get("counts", {}),
+            }
+        )
 
     def add_export(export_id: str, kind: str, path: str | None, fmt: str, features: list[str], source_refs: list[str]) -> None:
         if not path:
@@ -8657,6 +9392,11 @@ __all__ = [
     "EVOLUTION_SYNTHETIC_SMOKE_SCHEMA_VERSION",
     "EVOLUTION_TIME_SLICES_SCHEMA_VERSION",
     "EVOLUTION_TRANSITIONS_SCHEMA_VERSION",
+    "EXPORT_FILES_SCHEMA_VERSION",
+    "EXPORT_INPUTS_SCHEMA_VERSION",
+    "EXPORT_MANIFEST_SCHEMA_VERSION",
+    "EXPORT_QA_SCHEMA_VERSION",
+    "EXPORT_TRANSFORMS_SCHEMA_VERSION",
     "MATRIX_ENTITIES_SCHEMA_VERSION",
     "MATRIX_MANIFEST_SCHEMA_VERSION",
     "MATRIX_QA_SCHEMA_VERSION",
@@ -8676,6 +9416,7 @@ __all__ = [
     "ArtifactIssue",
     "ArtifactValidationResult",
     "EvolutionArtifactValidationResult",
+    "ExportManifestValidationResult",
     "FeatureExposure",
     "MatrixArtifactValidationResult",
     "ResultManifest",
@@ -8699,6 +9440,7 @@ __all__ = [
     "register_result_in_workspace",
     "validate_matrix_artifact",
     "validate_evolution_artifact",
+    "validate_export_manifest",
     "validate_result_root",
     "validate_temporal_artifact",
     "validate_workspace",
@@ -8708,6 +9450,7 @@ __all__ = [
     "write_matrix_from_term_cooccurrence",
     "write_evolution_artifacts",
     "write_evolution_synthetic_smoke_artifact",
+    "write_export_manifest",
     "write_temporal_artifacts",
     "write_artifact_contract",
     "write_result_manifest",
