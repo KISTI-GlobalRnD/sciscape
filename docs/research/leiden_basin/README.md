@@ -488,6 +488,623 @@ Current terminal evidence:
   gamma median is 1.2620650978784917e-05 and max is
   3.8690815711357744e-05. This supports weak-pair/small-bridge partial
   coarsening as the next mechanism target, not a wall/pathway or method claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_counterfactual_panel_gamma1e5_20260603/`
+  for the first read-only counterfactual panel design over those 114 graph-scored
+  variable pairs. It classifies candidates into 75 direct phase-boundary pairs,
+  35 negative-direct bridge-mediated pairs, and 4 persistent direct-positive
+  controls, then freezes a 23-pair panel covering all 4 objects. The panel has
+  15 direct phase-boundary pairs, 4 negative-direct bridge controls, and 4
+  persistent controls, with object-object/object-support/support-support scope
+  coverage. This fixes the next ablation/demo target; it is not yet a
+  Leiden rerun, wall/pathway result, quality/cost result, or method claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_local_ablation_gamma1e5_20260603/`
+  for the first plain Leiden+CPM local ablation over the frozen 23-pair panel.
+  It builds pair-plus-recoverable-top-common-neighbor induced graphs and runs 4
+  local graph variants over 5 start conditions and 8 seeds each, for 3680 seed
+  runs. Seventeen of 23 pairs have local diagnostic support: 12 direct-edge
+  sensitive, 2 direct-and-bridge sensitive, and 3 seed/start sensitive. Six do
+  not reproduce original local co-assignment. The important mechanism update is
+  that direct pair contact is the strongest local necessary condition, while
+  pair-to-bridge edges often act as competing context rather than simple merge
+  glue. This remains a local mechanism diagnostic only.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_symmetric_object_variable_pair_synthetic_demo_design_gamma1e5_20260603/`
+  for the design handoff from local ablation into the next controlled synthetic
+  demo. It splits the 23-pair panel into 6 design families: stable
+  direct-contact competition (7), partial direct-contact competition (5),
+  coupled negative-direct bridge contact (2), rare start-sensitive contact (3),
+  overcompeting bridge-context control (4), and nonlocal negative-direct context
+  control (2). The next demo should target direct-contact phase sensitivity
+  under bridge-context competition, with explicit coupled and negative controls.
+  This is a design artifact only, not a new Leiden result or method claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_demo_v1_20260603/`
+  for the first controlled variable-pair synthetic CPM runner. It consumes the
+  frozen 6-family design surface and runs ordinary Leiden+CPM over 4 graph
+  variants, 5 start conditions, and 16 seeds, producing 1920 seed runs. All 6
+  predeclared family signatures reproduce. This is controlled G3
+  mechanism-reproduction evidence for the variable-pair surface only; it is not
+  full-graph replay, wall/pathway evidence, quality/cost evidence, method
+  improvement, or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_endpoint_replay_v1_20260603/`
+  for endpoint replay and G4 route-candidate design on the controlled
+  variable-pair synthetic surface. It replays 21 original-variant endpoint
+  signatures and all 21 replay to themselves across 16 seeds. It then lists 24
+  route-candidate endpoint relations from the 2 stable families where L/R
+  co-assignment differs: partial direct-contact competition and rare
+  start-sensitive direct contact. This is route design only, not route
+  execution, wall promotion, method comparison, quality/cost evidence, or an
+  algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_route_trace_v1_20260603/`
+  for the first compact G4 route trace over the replay-stable synthetic
+  endpoint-relation candidates. It executes 1920 trace runs across 24
+  candidates and 5 initial-membership policies. Twelve candidates have a
+  compact crossing policy, all in the `coassigned_to_separated` direction under
+  `pair_plus_bridge_side`; the reverse `separated_to_coassigned` direction has
+  no robust compact crossing policy. This is trace classification only, not
+  wall promotion, full-graph pathway evidence, method comparison,
+  quality/cost evidence, or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_route_trace_g4_1_audit_v1_20260603/`
+  for the stricter target-reconstruction audit over the variable-pair synthetic
+  trace surface, with an `n_iterations=10` check in the sibling
+  `..._iter10_check_20260603/` directory. It flags target-identical and
+  source-identical initializations, adds reverse bridge-context release
+  policies, records intervention size, and includes 80 same-pair-state
+  controls. After excluding target reconstruction, strict crossing remains in
+  12 of 24 relation-change candidates, all in the
+  `separated_to_coassigned` direction; all 80 same-state controls have no
+  strict crossing. This is synthetic trace evidence only, not wall promotion,
+  full-graph pathway evidence, method comparison, quality/cost evidence, or an
+  algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_route_trace_g4_2_necessity_v1_20260603/`
+  for the strict-crossing necessity audit over the G4.1 synthetic trace
+  surface, with an `n_iterations=10` G4.1-input check in the sibling
+  `..._iter10_check_20260603/` directory. It decomposes the 12 strict G4.1
+  crossings into source/initial/target CPM quality, pair state, bridge
+  transitions, and sibling-policy context. The partial direct-contact family
+  crosses only through explicit pair merge plus left-context release and has
+  lower CPM quality than the separated source. The rare start-sensitive family
+  crosses through bridge-context release without initially merging the pair,
+  with initial quality tied to source and target quality higher by about
+  `0.16`. This is mechanism decomposition only, not wall promotion, full-graph
+  pathway evidence, method comparison, quality/cost evidence, or an algorithm
+  claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_3_handle_generalization_v1_20260603/`
+  for the frozen `bridge_context_release_without_pair_merge` handle probe on a
+  fixed independent synthetic variant/control panel, with an `n_iterations=10`
+  check in the sibling `..._iter10_check_20260603/` directory. It runs 720
+  baseline Leiden+CPM rows and 2688 handle rows over 9 cases. All 4 positive
+  holdouts reproduce robust known-coassigned polishing from every eligible
+  separated source endpoint under the frozen bridge-release handle, while
+  pair-only merge has 0 robust rows. All 5 controls reproduce the expected
+  non-robust behavior; three matched controls retain only partial
+  coassignment at `0.3125`. This is fixed synthetic handle-generalization
+  evidence only, not wall promotion, full-graph pathway evidence, method
+  comparison, quality/cost evidence, or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_4_restart_comparison_v1_20260603/`
+  for the fixed-panel restart comparison over the frozen G4.3 handle, with an
+  `n_iterations=10` G4.3-input check in the sibling
+  `..._iter10_check_20260603/` directory. It compares source-conditioned
+  bridge-release first-hit probability against case-level ordinary Leiden+CPM
+  restart discovery of the known coassigned endpoint. All 4 positive holdouts
+  pass with handle hit probability `1.0` versus restart probability `0.2375`,
+  giving median expected-run ratio `4.210526`. All 5 controls remain
+  non-robust, but 12 matched-control source rows show a partial-above-restart
+  caveat at `0.3125`. This is source-conditioned navigation evidence only,
+  not wall promotion, full-method comparison, quality/cost evidence, or an
+  algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_5_selector_suppression_v1_20260603/`
+  for the target-free source-local selector/suppression gate over the frozen
+  G4.3 handle, with an `n_iterations=10` input check in the sibling
+  `..._iter10_check_20260603/` directory. It freezes
+  `neutral_release_with_direct_support_v1`: handle-eligible bridge release,
+  pair-separating and pair-relation-preserving initialization, source-neutral
+  local CPM delta, and direct pair support at least `1.0`. On the 56 G4.4 source
+  rows it selects all 32 positive wins and suppresses all 24 control rows,
+  including all 12 matched-control partial-above-restart caveats. This is
+  selector/suppression evidence only, not wall promotion, full-method
+  comparison, quality/cost evidence, or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_6_schedule_accounting_v1_20260603/`
+  for the minimal schedule-accounting gate over the frozen G4.3 handle and G4.5
+  selector, with an `n_iterations=10` input check in the sibling
+  `..._iter10_check_20260603/` directory. One cycle runs ordinary Leiden+CPM,
+  accepts an already-known coassigned target, otherwise applies the frozen
+  bridge-release handle once only to a G4.5-selected source endpoint, otherwise
+  no-ops. On the fixed 9-case panel, all 4 positives pass with baseline target
+  probability `0.2375`, selected-source probability `0.7625`, schedule hit
+  probability `1.0`, and restart-plus-handle unit ratio `2.388951` over restart.
+  All 5 controls add no probability over baseline. This is source-availability
+  and handle-overhead accounting evidence only, not wall promotion, full-method
+  comparison, wall-clock quality/cost evidence, or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_7_independent_schedule_stress_v1_20260603/`
+  for the independent stress replay of the frozen G4.3 handle, G4.5 selector,
+  and G4.6 schedule, with an `n_iterations=10` check in the sibling
+  `..._iter10_check_20260603/` directory. The shifted 9-case panel fails as a
+  useful boundary result: all 5 controls remain no-leak, but all 4 stress
+  positives fail the frozen bridge-release schedule. Three positives are already
+  coassigned under all ordinary restarts, leaving no separated source opportunity;
+  one has a mixed endpoint surface but only pair-only, not bridge-release, is
+  robust. This is opportunity-regime boundary evidence only, not a selector
+  retuning target, wall promotion, full-method comparison, quality/cost evidence,
+  or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8_opportunity_regime_design_v1_20260603/`
+  for the read-only opportunity-regime design artifact over G4.3, G4.6, and
+  G4.7 outputs. It freezes endpoint coexistence, bridge-release eligibility,
+  selected/source-neutral release, pair-only ambiguity, target saturation,
+  target absence, and control-leak metrics before any new runs. All 18 existing
+  cases classify into 6 regimes: 4 ready bridge-release opportunities, 6
+  suppressed coexistence controls, 3 target-saturated boundaries, 1 pair-only
+  boundary, and 4 no-target boundaries. This is design evidence for the next
+  predeclared regime-cell panel only, not a new Leiden result, selector retuning
+  target, wall promotion, method comparison, or algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8b_regime_cell_panel_v1_20260603/`
+  for the executed G4.8B predeclared regime-cell panel, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` check. It replays
+  the frozen G4.3 handle, G4.5 selector, and G4.6 schedule on 10 fresh cases
+  across 5 regime cells. The gate fails constructively: 6/10 cells pass, all
+  boundary cells have no added source-handle leak, but the 2 intended ready
+  cells and 2 intended pair-only cells collapse into target-saturated no-source
+  boundaries. This is evidence that the opportunity-construction surface is
+  narrower than the G4.8A range summary suggested, not a reason to retune the
+  selector or promote method claims.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8c_opportunity_cartography_v1_20260603/`
+  for the executed G4.8C opportunity-construction cartography, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` check. It runs 30
+  predeclared anchor and perturbation cases. The direct and host-clique axes
+  preserve ready opportunity across the tested local ranges, while the
+  pair-bridge and bridge-host axes produce the actual construction boundary:
+  low pair-bridge or high bridge-host saturates the target; high pair-bridge or
+  low bridge-host keeps coexistence but makes bridge release nonrobust. This is
+  mechanism cartography only. The next demo gate is a 2D pair-bridge by
+  bridge-host balance map, not source discovery and not selector retuning.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8d_balance_cartography_v1_20260603/`
+  for the executed G4.8D 2D balance cartography, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` check. It runs a
+  predeclared 56-cell pair-bridge by bridge-host grid. The ready opportunity is
+  stable but sparse: 3 ready cells, 25 target-saturated cells, and 28 nonrobust
+  coexistence cells. The ready cells form a diagonal ridge at `(1.32,1.44)`,
+  `(1.35,1.45)`, and `(1.38,1.46)`. This is not enough for source-discovery or
+  method language; the next demo gate should refine the diagonal ridge itself.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8e_diagonal_ridge_refinement_v1_20260603/`
+  for the executed G4.8E diagonal-ridge refinement, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` check. It runs a
+  predeclared 65-cell narrow strip around the G4.8D diagonal. The result is a
+  stable `centerline_resonance_lattice`, not a continuous ridge or finite-width
+  band: 5 ready cells, 30 target-saturated cells, and 30 nonrobust-coexistence
+  cells. Ready appears only at offset `0`, at pair-bridge values
+  `1.320, 1.335, 1.350, 1.365, 1.380`. Negative offsets are all nonrobust
+  coexistence, positive offsets are all target saturation, and the centerline
+  itself repeats `R/T/N`. The next demo gate should compare ready and adjacent
+  non-ready endpoint/source signatures before any source-discovery replacement,
+  construction-rule promotion, or method language.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8f_centerline_signature_audit_v1_20260603/`
+  for the read-only G4.8F centerline signature audit, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` G4.8E-input check.
+  It explains the centerline roles without new Leiden runs. `R` cells have the
+  full 8-source separated signature set, including 4 single-side bridge-source
+  signatures, and all 8 sources are source-neutral, selected, and robust.
+  `N` cells have only the 4 two-side split sources; their release is
+  source-nonneutral at `initial_quality_delta_vs_source=-0.004`, so the frozen
+  selector suppresses them and none is robust. `T` cells are target-saturated
+  and expose no source. This is enough to freeze a construction-read
+  hypothesis for a fresh synthetic context test, but not enough for source
+  discovery, wall/pathway, quality/cost, or method language.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8g_fresh_context_signature_validation_v1_20260603/`
+  for the executed G4.8G fresh-context signature validation, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` check. It freezes
+  the G4.8F construction-read rule and replays it across 4 fresh direct/host
+  contexts x 13 centerline cells. All 52 cases match the expected `R/T/N`
+  role, all 52 pass the role-specific signature expectation, and every context
+  repeats `RTNRTNRTNRTNR`. This validates the construction-read rule on the
+  fresh synthetic surface and opens only the next bounded source-discovery
+  smoke. It still does not add independent source discovery, wall/pathway,
+  quality/cost, NanoClustering replay, or method claims.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8h_source_discovery_smoke_v1_20260603/`
+  for the bounded G4.8H source-discovery smoke, plus
+  `..._v1_iter10_check_20260603/` for the `n_iterations=10` input check. It
+  applies the target-free
+  `pair_separated_bridge_attached_then_neutral_release_v1` rule to materialized
+  G4.8G endpoint and bridge-release initialization rows. Decision columns are
+  endpoint/source-local; role labels, known target hits, robustness, and oracle
+  signatures are evaluation-only. Both runs pass: 52/52 cases pass, 52/52
+  source sets match exactly, and 52/52 ready-source sets match exactly. `R`
+  cases recover 8 release and 8 ready sources, `N` cases recover 4 release and
+  0 ready sources, and `T` cases recover none. This freezes only a bounded
+  source-discovery rule for a fresh schedule panel; it is not independent source
+  discovery on new graphs, wall/pathway, quality/cost, NanoClustering replay,
+  or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8i_discovered_source_schedule_panel_v1_20260604/`
+  for the executed G4.8I discovered-source schedule panel, plus
+  `..._v1_iter10_check_20260604/` for the `n_iterations=10` check. It runs a
+  fresh predeclared edge-mid direct/host panel and drives schedule decisions
+  with the frozen G4.8H target-free source-discovery rule rather than oracle
+  source-signature reads. Both runs pass: 52/52 cases match the expected role
+  and 52/52 pass the discovered-source schedule gate. `R` cases have 8 release
+  sources, 8 ready sources, discovered-source availability `0.7625`, schedule
+  hit rate `1.0`, and restart-plus-handle unit ratio `2.388951`; `N` cases
+  recover 4 release but 0 ready sources and add no handle; `T` cases expose no
+  source and remain saturated. This is a fresh synthetic schedule-accounting
+  result only, not wall/pathway, wall-clock quality/cost, NanoClustering replay,
+  real-data source discovery, or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_8j_off_center_failure_mode_panel_v1_20260604/`
+  for the G4.8J off-center failure-mode panel, plus
+  `..._v1_iter10_check_20260604/` for the `n_iterations=10` check. It keeps the
+  G4.8I edge-mid contexts and shifts bridge-host support by `-0.002` and
+  `+0.002` away from the centerline. Both runs pass: 104/104 cases match the
+  expected role, pass schedule accounting, and pass the off-center
+  failure-mode contract. Negative offsets all become `N`: 4 release sources,
+  0 ready sources, no added handle, baseline hit `0.2375`. Positive offsets all
+  become `T`: 0 source candidates and target-saturated hit `1.0`. This freezes
+  the off-center failure contract only; it is not wall/pathway, wall-clock
+  quality/cost, NanoClustering replay, real-data source discovery, or method
+  evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_source_condition_analog_screen_gamma1e5_20260604/`
+  for the read-only NanoClustering G4.8 source-condition analog screen. It reads
+  frozen symmetric-object variable-pair graph-mechanism, local-ablation, and
+  synthetic-demo-design artifacts, then classifies 23 local pairs by a
+  predeclared local-ablation proxy. The screen finds 6 strict partial
+  release-ready analogs, 3 rare-start release-ready analogs, 6 target-saturated
+  no-handle analogs, 2 coupled direct-bridge context failure controls, and 6
+  `N_like` controls. This is a real-data local analog surface, not exact G4.8F
+  endpoint/source signatures, independent source discovery, wall/pathway,
+  quality/cost, full NanoClustering replay, or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_local_analog_validation_panel_gamma1e5_20260604/`
+  for the frozen NanoClustering G4.8 local analog validation panel. It consumes
+  the source-condition analog screen and keeps all 23 local pairs: 6
+  strict-ready, 3 rare-ready, 6 target-saturated no-handle, 4 latent-release
+  nonready controls, 2 no-release controls, and 2 coupled direct-bridge failure
+  controls. All 10 design gates pass. This is a panel-design artifact only; it
+  is not Leiden execution, source discovery, wall/pathway, quality/cost, full
+  NanoClustering replay, or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_local_validation_readout_gamma1e5_20260604/`
+  for the first read-only local validation readout over the frozen G4.8 analog
+  panel. It reuses existing local-ablation seed runs, splits seeds `0-3` versus
+  held-out seeds `4-7`, and materializes endpoint-derived source-signature
+  proxies. The result is diagnostic rather than stable: 20 of 23 pairs preserve
+  their expected held-out stratum, while 3 are fragile. The fragile rows are
+  one rare-ready row shifting to latent release, one strict-ready row shifting
+  to target saturation, and one target-saturated row shifting onto the
+  strict-ready threshold boundary. This keeps route/pathway, quality/cost, full
+  NanoClustering replay, and method claims closed.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_seed_start_validation_contract_gamma1e5_20260604/`
+  for the seed/start-stratified contract over that readout. It converts the
+  readout into explicit execution lanes: 15 stable-lane rows, 5 conditional
+  rows usable only under listed allowed start conditions, and 3 boundary-lane
+  diagnostic controls. The stable lane includes 2 strict-ready rows plus
+  target-saturated, latent-release, no-release, and coupled-failure controls.
+  The contract has 10 passing gates and keeps exact G4.8F source signatures,
+  route/pathway, quality/cost, full NanoClustering replay, and method claims
+  closed.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_local_validation_execution_contract_gamma1e5_20260604/`
+  for the local validation execution contract over the seed/start contract. It
+  keeps the primary execution surface stable-lane-only: 15 stable pairs across
+  all five starts, for 75 primary validation units. It preserves conditional
+  rows as 16 secondary allowed-start units and boundary rows as 10 diagnostic
+  allowed-start units. All 11 execution-contract gates pass. This is still a
+  design/materialization boundary, not Leiden execution, route/pathway,
+  quality/cost, full NanoClustering replay, or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_primary_stable_limit_readout_gamma1e5_20260604/`
+  for the primary stable limitation readout over that execution contract. It
+  inspects only the 75 stable primary units and finds a scoped ready signal:
+  2 ready pairs and 10 ready partial-release units. The other 65 units are
+  existing-Leiden limitation/control cases: 25 target-saturated no-handle,
+  20 latent release without original coassigned source, 10 hard no-release,
+  and 10 coupled direct/bridge failure units. All 10 readout gates pass. This
+  is limitation cartography, not route/pathway, quality/cost, full
+  NanoClustering replay, or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_pathway_wall_readiness_audit_gamma1e5_20260604/`
+  for the pathway/wall readiness audit over the primary stable limitation
+  readout. It opens only a scoped Stage 2A pathway-probe design gate: 2 ready
+  pairs and 10 ready units pass the local tri-endpoint contrast precheck.
+  The other 65 limitation/control units are blocked as false-positive controls.
+  Wall claims remain closed because route traces, objective debt/recovery,
+  polish reversion, support incompatibility, and post-route endpoint assignment
+  are missing. All 11 readiness gates pass.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_scoped_pathway_probe_contract_gamma1e5_20260604/`
+  for the scoped Stage 2A pathway-probe contract over that readiness audit. It
+  freezes only `local_pair_009` and `local_pair_012` as candidate pairs: 10
+  start-conditioned probe units and 30 predeclared route-plan rows across
+  bridge-release interpolation, direct-dependency collapse guard, and drop-both
+  collapse guard families. The 65 noncandidate units remain false-positive
+  guards, not route-execution rows. All 9 contract gates pass. This is still a
+  design/materialization contract, not route execution, wall promotion,
+  quality/cost, full NanoClustering replay, or method evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_scoped_pathway_probe_trace_gamma1e5_20260604/`
+  for the scoped Stage 2A pathway-probe trace over that contract. It executes
+  only the 30 predeclared route-plan rows on local induced graphs, expanded to
+  130 fraction-step configurations and 1,040 seed-step trace rows. All 10
+  bridge-release contracts and all 10 drop-both guard contracts reach the
+  expected final anchor for every seed; the 10 direct-dependency guard contracts
+  are partial source-to-expected transitions. Bridge-release traces include
+  intermediate unknown endpoints in 10 contracts and 27 seed-route summaries,
+  but final steps reconcile with expected anchors. All 9 trace gates pass. This
+  materializes route/objective/endpoint/support/polish fields, but wall,
+  quality/cost, full NanoClustering replay, and method claims remain closed
+  until a separate wall-evidence audit.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_scoped_pathway_wall_evidence_audit_gamma1e5_20260604/`
+  for the wall-evidence audit over that scoped trace. It promotes no wall
+  claim. All 10 primary bridge-release contracts are all-seed
+  source-to-expected transitions and become pathway-trace wall-audit candidates;
+  the 10 direct-dependency guard contracts are partial, and the 10 drop-both
+  guard contracts collapse as expected. Intermediate unknown/support-
+  incompatibility evidence appears in 27 seed routes, objective recovery is not
+  contract-uniform, and accepted direct-path evidence remains missing. All 9
+  audit gates pass with wall claims closed.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_primary_bridge_release_pathway_shape_gamma1e5_20260604/`
+  for the primary bridge-release pathway-shape audit over the same executed
+  trace. It keeps the audit restricted to the 80 primary seed-routes and 10
+  primary contracts. The direct pair edge is physically retained in all 80
+  seed-routes, and 53 seed-routes are known-anchor direct-path candidates, but
+  0 contracts have all-seed known-anchor direct-path acceptance because every
+  contract contains at least one intermediate unknown seed-route. Objective
+  debt appears in all 80 seed-routes, objective recovery appears in only 8
+  seed-routes, and 0 contracts have all-seed recovery. This splits the current
+  evidence into two regimes: `local_pair_009` is step-3 debt-without-recovery,
+  while `local_pair_012` is mostly step-2 with partial recovery. All 8
+  pathway-shape gates pass with wall, quality/cost, full replay, and method
+  claims closed; the next gate is a predeclared direct-path acceptance
+  contract, not broader pair expansion or wall promotion.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_direct_path_acceptance_contract_gamma1e5_20260604/`
+  for the direct-path acceptance contract over the primary bridge-release
+  pathway-shape audit. It fixes D1-D9 before any new execution: primary scope,
+  direct-edge retention, source-start known anchor, expected target reached, no
+  intermediate unknown endpoint, no support-incompatibility flag, all-seed
+  contract acceptance, objective recovery kept separate, and wall claims
+  closed. Current evidence has 53 seed-level direct-path candidates, but 0 of
+  10 contracts pass strict all-seed D1-D7 acceptance because every contract has
+  at least one intermediate unknown/support-incompatible seed-route. All 9
+  contract gates pass. This is the current direct-path boundary: objective
+  recovery is reported separately and cannot promote direct-path or wall
+  language; no broader pair expansion, quality/cost evaluation, full
+  NanoClustering replay, or wall promotion is open.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_cross_seed_endpoint_atlas_gamma1e5_20260604/`
+  for the cross-seed endpoint-atlas audit over the primary bridge-release
+  trace. It reclassifies same-seed `unknown_new_endpoint` labels against
+  pair-level endpoint signatures. All 27 same-seed unknown rows are signatures
+  known elsewhere in the same local pair, and 0 are true pair-level novel
+  endpoints. `local_pair_009` is especially strong: step 2 collapses to one
+  pair-level source signature for all seeds before all seeds reach the
+  drop-bridge target at step 3. `local_pair_012` remains mixed at step 2, but
+  every same-seed unknown signature is known elsewhere as source or target.
+  All 9 endpoint-atlas gates pass with wall claims closed. This changes the
+  direct-path interpretation: D5 is a same-seed anchor-consistency guard, not a
+  true-novel-endpoint or basin-topology test. The next direct-path work should
+  split same-seed anchor consistency from pair-level endpoint-atlas continuity.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_dual_axis_direct_path_contract_gamma1e5_20260604/`
+  for the v2 dual-axis direct-path contract. Axis A preserves the strict
+  same-seed result from v1: 53 of 80 seed-routes pass, but 0 of 10 contracts
+  pass all-seed same-seed anchor consistency. Axis B separately tests
+  pair-level endpoint-atlas continuity and passes 80 of 80 seed-routes and 10
+  of 10 contracts with 0 true-novel pair-level endpoints. Objective recovery
+  remains separate (8 recovery seed-routes, 0 all-seed recovery contracts), and
+  wall readiness remains 0 of 10. This artifact is a pathway-topology contract
+  clarification only; the next valid gate is a predeclared fresh panel or
+  seed-anchor rotation for Axis B, not method, quality/cost, full replay, or
+  wall promotion.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_axis_b_seed_anchor_rotation_audit_gamma1e5_20260604/`
+  for the Axis B seed-anchor rotation audit over the same scoped primary trace.
+  It rebuilds endpoint roles under full-pair, leave-start-out, leave-seed-out,
+  and leave-seed-and-start-out vocabularies. All 27 same-seed unknown rows
+  remain pair-level known in every rotation, with 0 true-novel unknown
+  endpoints. However, full route continuity is only partially seed-invariant:
+  baseline and leave-start-out pass 80 of 80 routes and 10 of 10 contracts,
+  while leave-seed-out and leave-seed-and-start-out pass 78 of 80 routes and 8
+  of 10 contracts. The two failures are `local_pair_009` seed-0 source-start
+  singleton caveats, not target or unknown-endpoint failures. This keeps wall,
+  quality/cost, full replay, and method claims closed.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_axis_b_source_start_support_contract_gamma1e5_20260604/`
+  for the split Axis B source-start support contract. It records source-start
+  support separately from post-start endpoint continuity. Source-start support
+  passes in full-pair and leave-start-out modes (80 of 80 routes, 10 of 10
+  contracts), while leave-seed-out and leave-seed-and-start-out preserve two
+  `local_pair_009` seed-0 singleton caveats (78 of 80 routes, 8 of 10
+  contracts). Post-start/interior endpoint continuity passes in every mode:
+  80 of 80 routes and 10 of 10 contracts, with 0 post-start true-novel endpoint
+  routes. The next fresh Axis B panel must keep source-start support,
+  post-start endpoint continuity, target-final continuity, and direct-edge
+  retention as separate fields.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_fresh_axis_b_panel_contract_gamma1e5_20260604/`
+  for the fresh Axis B panel contract after the source-start split. It keeps
+  `local_pair_009` and `local_pair_012` only as calibration rows, then
+  predeclares 7 not-yet-routed ready-like pairs and a bounded first-pass fresh
+  slice of 36 route rows: 16 conditional ready-like rows plus 20 control rows
+  covering target saturation, latent release without original coassigned source,
+  hard no-release, and coupled direct/bridge failure. It records that the
+  current surface has 0 fresh stable positive pairs beyond calibration, so fresh
+  evidence must come from conditional/boundary ready-like rows. All 11 gates
+  pass, and wall, quality/cost, full replay, and method claims remain closed.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_fresh_axis_b_first_pass_readout_contract_gamma1e5_20260604/`
+  for the first-pass readout contract over those 36 rows. It fixes the claim
+  ladder, control traps, aggregation rules, readout order, and outcome taxonomy
+  before execution. Controls must be read before ready-like positives, and the
+  maximum allowed first-pass claim is `claim_level=2`: ready/control separation.
+  `local_pair_003` is explicitly flagged as a one-start caveat. The contract
+  closes stable-positive generality, branch generality, direct-dependent
+  generality, basin/pathway generality, wall, quality/cost, full replay, and
+  method claims. All 12 gates pass.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_fresh_axis_b_first_pass_trace_gamma1e5_20260604/`
+  for the executed first-pass trace over the 36 rows. It materializes 1,440
+  trace rows from 180 route-step configs over 8 seeds. The readout requires an
+  exclusive `drop_bridge_target_anchor`, because raw target-final continuity can
+  also match guard anchors. Under this stricter controls-first readout, all four
+  controls close and all 9 gates pass. `local_pair_014` is the clean all-seed
+  ready-like pass, `local_pair_005` is partial, and `local_pair_003`,
+  `local_pair_007`, and `local_pair_016` fail post-start endpoint continuity.
+  Wall, quality/cost, full replay, and method claims remain closed.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_exclusive_target_contrast_audit_gamma1e5_20260604/`
+  for the read-only contrast audit over the executed first-pass traces. It
+  classifies 288 route rows into 56 exclusive bridge-target passes, 8
+  source/target signature collapses, 80 guard-anchor collapses, and 144
+  intermediate unknown endpoints. All 5 audit gates pass. The next object-level
+  audit is bounded to `local_pair_014` as the clean candidate and
+  `local_pair_005` as a partial-collapse boundary case; controls and
+  post-start-failure pairs remain non-positive evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_symmetric_endpoint_objects_audit_gamma1e5_20260604/`
+  for the bounded endpoint-object audit over `local_pair_014` and
+  `local_pair_005`. It materializes 9 endpoint-object rows and 64 object
+  relation rows. `local_pair_014` has one exclusive final target object and
+  32/32 clean source-to-target object relations. `local_pair_005` has 24 clean
+  relations and 8 source/target object collapses, and its final signatures are
+  mixed boundary objects. All 6 object-audit gates pass; only `local_pair_014`
+  remains a positive input for wall/pathway-readiness work.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_wall_pathway_readiness_audit_gamma1e5_20260604/`
+  for the bounded wall/pathway-readiness audit. `local_pair_014` is the only
+  pathway-probe candidate: 32/32 routes retain the direct edge, follow the
+  bridge-release schedule, reach the exclusive target at step 2, and avoid
+  post-start unknown/ambiguous/support-incompatible endpoints. The pathway shape
+  is `clean_known_anchor_step2_with_objective_debt_without_recovery`, so no wall
+  claim is opened. `local_pair_005` stays a boundary control. All 6 readiness
+  gates pass, and wall claims remain closed pending independent direct-path
+  evidence, accepted recovery, and independent wall evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_pathway_probe_contract_gamma1e5_20260604/`
+  for the predeclared `local_pair_014` pathway-probe contract. It freezes 16
+  route-plan rows: 8 positive `014` rows across recovery-loop and direct-only
+  target-availability families, plus 8 matched `005` boundary-control rows. It
+  fixes independent direct-path availability, accepted recovery, boundary
+  no-leak, and wall-claim closure as acceptance rules. All 7 contract gates
+  pass. The contract itself is design-only; its route rows are executed by the
+  first-pass 014 pathway-probe trace below.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_pathway_probe_trace_gamma1e5_20260604/`
+  for the executed first-pass `014` pathway-probe trace. It runs exactly the 16
+  contract rows as 88 route-step configs and 704 trace rows over 8 seeds. At the
+  object level, `local_pair_014` accepts 32/32 direct-only target-availability
+  seed-routes and 32/32 recovery-loop seed-routes; `local_pair_005` has 0/64
+  positive leaks and all 8 boundary guards close. All 9 trace gates pass. The
+  object-level readout treats `original_source_anchor` plus
+  `drop_direct_guard_anchor` coincidence as source-like, not as target/pathway
+  failure. This is accepted pathway-probe evidence, not wall evidence; wall,
+  method, and quality/cost claims remain closed pending a separate wall-evidence
+  audit.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_wall_evidence_audit_gamma1e5_20260604/`
+  for the primitive first-pass `014` wall-evidence audit. It pairs accepted
+  direct-only and recovery-loop routes by the same start condition and seed.
+  `local_pair_014` passes 32/32 wall seed units: source-like to exclusive-target
+  direct-only availability, reversible source-like to target to source-like
+  recovery-loop behavior, and objective debt/recovery all hold at the object
+  level. `local_pair_005` stays closed at 32/32 boundary guard units. All 9
+  gates pass, and the only ready pair is `local_pair_014`. This is local
+  primitive object-level wall evidence only; it does not claim generality, exact
+  wall-location localization, quality/cost value, full replay, or method
+  success.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_9_primitive_wall_demo_v1_20260604/`
+  for the synthetic G4.9 primitive-wall mechanism demo. It runs 5 predeclared
+  small variable-pair Leiden+CPM cases, 4 start conditions, 8 seeds, 1 direct
+  availability schedule, and 1 bridge-recovery schedule, producing 1,760 trace
+  rows and 160 paired wall seed units. The `014`-like positive case passes
+  32/32 primitive wall seed units with source-like to exclusive-target to
+  source-like object behavior; all 4 boundary controls close with 0 wall-ready
+  seed units. All 7 gates pass. This is a synthetic explanation scaffold only:
+  it does not establish NanoClustering generality, exact wall-location
+  localization, quality/cost value, method success, or an algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_variable_pair_synthetic_g4_9a_parameter_localization_v1_20260604/`
+  for the synthetic G4.9A parameter-localization map around that positive
+  point. It runs 75 predeclared cells across three 2D slices:
+  direct/pair-bridge, pair-bridge/bridge-host, and direct/bridge-host. The run
+  materializes 26,400 trace rows and 2,400 paired wall seed units. The center
+  cell reproduces G4.9 in all three plane duplicates at 32/32 units. The map
+  finds 6 full wall-ready cells, 20 partial/fragile wall-ready cells, and 49
+  nonready cells. Closed boundary regimes include 20 target-absent/source-locked
+  cases, 7 target-saturated cases, and 22 nonrobust or mixed boundary cases.
+  All 7 gates pass. This shows a bounded synthetic mechanism regime, not a
+  broad generality, policy, quality/cost, NanoClustering replay, method, or
+  algorithm claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_contract_gamma1e5_20260604/`
+  for the next real-data wall-localization contract. It reads the accepted
+  `014` primitive wall-evidence audit and the G4.9A synthetic boundary
+  vocabulary, then predeclares fine direct-retained bridge-fraction scans for
+  `local_pair_014` with `local_pair_005` retained as the false-positive guard.
+  The design materializes 5 boundary-vocabulary rows, 2 pair rows, 16 route-plan
+  rows, and 192 fraction-step rows. Descent uses bridge fractions
+  `1.00,0.95,0.90,0.85,0.80,0.75,0.625,0.50,0.375,0.25,0.125,0.00`; ascent
+  uses the reverse. All 7 contract gates pass. This is design-only: it does not
+  run Leiden, locate a wall, promote generality, retune thresholds,
+  evaluate quality/cost, replay full NanoClustering, or claim method success.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_trace_gamma1e5_20260605/`
+  for the executed first-pass `014` wall-localization trace. It runs the fixed
+  16-route, 192-step localization contract over 8 seeds, producing 1,536
+  fraction-level rows and 64 seed-start localization rows. The strict G4.9A
+  vocabulary gives `local_pair_014` only 1/32 strict `W` seed-starts and 31/32
+  partial `P` seed-starts; the retained `local_pair_005` boundary has 0
+  positive W-like leaks. All 7 execution gates pass. This is a localization
+  trace only, not a wall-location, generality, quality/cost, method, or full
+  replay claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_transition_band_audit_gamma1e5_20260605/`
+  for the read-only transition-band audit over that executed trace. It shows
+  that the strict no-unknown criterion is too narrow for the real-data readout:
+  1/32 positive seed-starts are strict interpretable wall intervals, 30/32 are
+  monotone intermediate transition bands, and 1/32 is a bounded nonmonotone
+  transition band. All 32/32 positive seed-starts are bounded transition bands;
+  `local_pair_005` has 0 positive-target routes and 0 positive-target steps.
+  All 7 audit gates pass. The current interpretation is a bounded local
+  transition band, not a point wall or a method/generalization claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_signature_identity_audit_gamma1e5_20260605/`
+  for the read-only signature-identity audit over the same trace. It exposes a
+  blind spot in row-local endpoint assignments: for `014`, 152 row-local
+  unresolved rows split into 98 rows whose signature is known elsewhere and 54
+  rows that remain signature-level unresolved intermediate objects across two
+  recurrent signatures. For `005`, all 204 row-local unresolved rows resolve to
+  signatures known elsewhere, with 0 signature-level unresolved boundary rows.
+  All 7 audit gates pass. This keeps the transition-band interpretation, but
+  requires the next readout to classify signature identity and role stability
+  before stronger wall-localization language.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_intermediate_role_stability_audit_gamma1e5_20260605/`
+  for the role-stability audit over `014` transition-band signatures. It maps
+  the 12-node local graph into `L`, `R`, and bridge roles `B1`-`B10`, then types
+  all 6 positive endpoint signatures. The band contains one target anchor, two
+  source-like anchors, one hidden-known source/guard intermediate
+  (`b7761471acbf`), one unresolved pair-coassigned intermediate
+  (`ca947e9fbe61`), and one unresolved pair-separated bridge-reassignment
+  intermediate (`531aa99db869`). Unresolved intermediate signatures appear in
+  44/64 positive seed-route rows and the hidden-known source/guard signature
+  appears in 50/64. All 7 gates pass. This supports a recurrent typed
+  transition-band interpretation, not a method or generalization claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_role_pattern_transfer_screen_gamma1e5_20260605/`
+  for the read-only transfer screen that asks whether the typed `014` role
+  pattern appears elsewhere in the existing first-pass evidence. It screens 9
+  pairs, 38 signature-role rows, and 288 route-role rows. `local_pair_014` is
+  recovered as the only clean first-pass scaffold and there are 0 non-014
+  positive transfer candidates. The useful next diagnostic is `local_pair_016`,
+  a strict-ready role analog that still fails post-start continuity. `005` is a
+  boundary guard, `008`/`022`/`002` are closed-control analogs, and `007`/`003`
+  are secondary rare-ready blocked analogs. All 7 gates pass; this is not a
+  localization escalation or generality claim.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_continuity_block_audit_gamma1e5_20260605/`
+  for the read-only diagnostic of why `local_pair_016` blocks the first-pass
+  continuity readout. It shows 24/24 routes start from source-like support and
+  end at the exclusive target, but all 24 pass through one recurrent step-2
+  bridge-reassignment signature (`aeb59ab537e6`) at bridge fraction 0.75. The
+  signature has `L+B1` separated from `R`; its support distance to original,
+  drop-bridge, and drop-direct anchors is tied at 0.0444. All 7 gates pass.
+  This identifies a typed transient intermediate, not a new positive wall case.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_transition_evidence_synthesis_gamma1e5_20260605/`
+  for the synthesis that gathers the current evidence into 9 pair rows, 8 claim
+  rows, and 5 definition-decision rows. The key ledger is: `014` has 32 bounded
+  transition-band seed starts but only 1 strict wall seed, `014` has 54 true
+  signature-level unresolved rows and unresolved intermediate signatures in
+  44/64 seed-route rows, `016` has 24/24 single-step bridge-reassignment
+  transient blocks, and `005` has 0 signature-level unresolved boundary rows.
+  All 7 gates pass. The next surface is no longer another trace; it is explicit
+  accept/reject predicates for typed transient intermediate pathways tested
+  against `014`, `016`, `005`, and closed controls.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_typed_transient_predicate_screen_gamma1e5_20260605/`
+  for the read-only predicate screen over the first-pass trace, transfer
+  screen, `016` continuity-block audit, and transition synthesis. It materializes
+  9 pair-feature rows, 36 pair-predicate rows, 4 predicate rows, and 6
+  definition-decision rows. All 7 gates pass. The strict baseline accepts only
+  `014`; the guarded single-step separated-transient candidate accepts only
+  `016` with 0 guard leaks; endpoint-only broadening leaks `005`, 4 controls,
+  and both rare-ready analogs; and role-analog-only broadening leaks 2 controls
+  plus both rare-ready analogs. `016` is therefore a definition candidate for
+  typed-transient semantics, not positive wall evidence.
+- `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_transient_semantic_validation_gamma1e5_20260605/`
+  for the read-only semantic audit of the `016` step-2 transient. It
+  materializes 24 route-semantic rows, 5 step-semantic rows, 9 comparison rows,
+  and 7 semantic-decision rows. All 7 gates pass. The step-2 signature
+  `aeb59ab537e6` recurs in 24/24 routes and is a typed separated
+  bridge-reassignment gateway bracketed by source-like starts and stable target
+  endpoints. It is not promoted because it is equidistant to original,
+  drop-bridge, and drop-direct anchors in every route and has objective debt
+  without recovery. Current status: recurrent typed transition-gateway
+  candidate, not endpoint basin, wall evidence, tunneling evidence, or method
+  claim.
 - `../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_assumption_inversion_audit_20260531/`
   for the audit that treats current assumptions as potentially wrong. It marks
   seed-anchor invariance, reference-cluster object choice, and basin-wall

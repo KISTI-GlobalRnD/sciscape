@@ -308,3 +308,313 @@ scripts.
   completed difference-review artifacts and does not run Leiden, promote
   wall/pathway, inspect basin quality/cost as a success claim, or claim method
   success.
+- `design_leiden_basin_nanoclustering_symmetric_object_variable_pair_counterfactual_panel.py`:
+  reads the graph-scored variable node-pairs and freezes a small predeclared
+  counterfactual panel for the next local ablation or controlled demo. It
+  computes direct-edge-removal pair-delta shifts, input-versus-control-gamma
+  margins, bridge-to-direct ratios, and selection reasons. It is read-only over
+  completed graph-mechanism artifacts and does not run Leiden, promote
+  wall/pathway, inspect basin quality/cost as a success claim, or claim method
+  success.
+- `run_leiden_basin_nanoclustering_symmetric_object_variable_pair_local_ablation.py`:
+  consumes the frozen variable-pair counterfactual panel, builds small induced
+  graphs from each pair plus recoverable top common-neighbor bridge nodes, and
+  runs ordinary Leiden+CPM across direct-edge and pair-to-bridge edge-removal
+  variants. It is a local mechanism diagnostic only; it does not run the full
+  NanoClustering graph, execute routes/pathways, promote walls, inspect
+  quality/cost as a success claim, or claim method success.
+- `design_leiden_basin_nanoclustering_symmetric_object_variable_pair_synthetic_demo.py`:
+  reads the frozen counterfactual panel and local ablation gate, then derives
+  the controlled synthetic-demo family surface: direct-contact competition,
+  coupled negative-direct bridge contact, rare start-sensitive contact, and
+  explicit negative controls. It is a design artifact only and does not run
+  Leiden, execute full-graph replay, promote walls/pathways, inspect
+  quality/cost as a success claim, or claim method success. The corresponding
+  ordinary-Leiden+CPM runner lives in `../demo/` because it is a controlled
+  demo, not a NanoClustering materialization step.
+- `analyze_leiden_basin_nanoclustering_g4_8_source_condition_analog_screen.py`:
+  reads the frozen symmetric-object variable-pair graph-mechanism,
+  local-ablation, and synthetic-demo-design artifacts to classify local
+  real-data analogs of the synthetic G4.8 source-condition roles. It is
+  read-only over existing artifacts and does not run Leiden, execute
+  routes/pathways, promote walls, evaluate wall-clock quality/cost value,
+  replay full NanoClustering, or claim method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_local_analog_validation_panel.py`:
+  consumes the G4.8 source-condition analog screen and freezes all 23 local
+  pairs into a stratified local validation panel. It keeps strict-ready,
+  rare-ready, target-saturated no-handle, nonready, and coupled failure-control
+  strata without within-stratum cherry-picking. It is a design/materialization
+  script only and does not run Leiden, execute routes/pathways, promote walls,
+  evaluate wall-clock quality/cost value, replay full NanoClustering, or claim
+  method or algorithm success.
+- `analyze_leiden_basin_nanoclustering_g4_8_local_validation_readout.py`:
+  reads that frozen local analog panel plus the existing local-ablation seed
+  runs, splits seeds `0-3` versus held-out seeds `4-7`, and materializes
+  endpoint-derived source-signature proxies and seed/start-stratified readout
+  rows. It is read-only over existing runs and does not run Leiden, execute
+  routes/pathways, promote walls, evaluate wall-clock quality/cost value,
+  replay full NanoClustering, or claim method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_seed_start_validation_contract.py`:
+  consumes the local validation readout and freezes stable, conditional, and
+  boundary execution lanes. Stable rows can feed the next local validation
+  contract, conditional rows must be restricted to their listed allowed start
+  conditions, and boundary rows remain diagnostic controls. It is a
+  design/materialization script only and does not run Leiden, execute
+  routes/pathways, promote walls, evaluate wall-clock quality/cost value,
+  replay full NanoClustering, or claim method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_local_validation_execution_contract.py`:
+  consumes the seed/start validation contract and freezes validation units for
+  the next local validation step. Primary units are stable-lane-only, while
+  conditional allowed starts and boundary allowed starts are preserved as
+  separate secondary and diagnostic lanes. It is a design/materialization
+  script only and does not run Leiden, execute routes/pathways, promote walls,
+  evaluate wall-clock quality/cost value, replay full NanoClustering, or claim
+  method or algorithm success.
+- `analyze_leiden_basin_nanoclustering_g4_8_primary_stable_limit_readout.py`:
+  consumes the local validation execution contract and inspects only the stable
+  primary units. It materializes existing-Leiden limitation axes for ready
+  partial release, target saturation, latent release without original
+  coassigned source, hard no-release controls, and coupled direct/bridge
+  failures. It is read-only and does not run Leiden, execute routes/pathways,
+  promote walls, evaluate wall-clock quality/cost value, replay full
+  NanoClustering, or claim method or algorithm success.
+- `audit_leiden_basin_nanoclustering_g4_8_pathway_wall_readiness.py`:
+  consumes the primary stable limitation readout and separates scoped
+  pathway-probe candidates from wall-claim evidence. It allows only the two
+  ready pairs to feed a predeclared Stage 2A pathway-probe design and keeps all
+  wall claims closed until route traces and wall-evidence fields exist. It is
+  read-only and does not run Leiden, execute routes/pathways, promote walls,
+  evaluate wall-clock quality/cost value, replay full NanoClustering, or claim
+  method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_scoped_pathway_probe_contract.py`:
+  consumes the pathway/wall readiness audit and freezes only the two ready
+  pairs into a tiny Stage 2A route-plan contract: 10 start-conditioned probe
+  units, 30 predeclared route-plan rows, and 65 retained false-positive control
+  guards. It is a design/materialization script only and does not run Leiden,
+  execute routes/pathways, promote walls, evaluate wall-clock quality/cost
+  value, replay full NanoClustering, or claim method or algorithm success.
+- `run_leiden_basin_nanoclustering_g4_8_scoped_pathway_probe_trace.py`:
+  consumes the scoped pathway-probe contract and executes only the 30
+  predeclared route-plan rows on local induced graphs using fixed
+  edge-weight-fraction schedules. It materializes route trace, objective,
+  endpoint-assignment, support-distance, polish-reversion, and
+  support-incompatibility fields. It does not run full NanoClustering replay,
+  promote walls, evaluate wall-clock quality/cost value, or claim method or
+  algorithm success.
+- `audit_leiden_basin_nanoclustering_g4_8_scoped_pathway_wall_evidence.py`:
+  consumes the executed scoped pathway-probe trace and classifies
+  pathway-trace evidence versus wall readiness. It identifies primary
+  bridge-release contracts as wall-audit candidates, keeps direct-dependency
+  partial guards and drop-both collapse guards separate, and keeps wall claims
+  closed. It does not run Leiden, broaden route execution, promote walls,
+  evaluate wall-clock quality/cost value, replay full NanoClustering, or claim
+  method or algorithm success.
+- `audit_leiden_basin_nanoclustering_g4_8_primary_bridge_release_pathway_shape.py`:
+  consumes only the already executed primary bridge-release trace rows and
+  separates physical direct-edge retention, seed-level known-anchor direct-path
+  candidates, intermediate unknown/support-incompatible routes, and objective
+  debt/recovery shape. It keeps direct-path evidence at candidate level and
+  keeps wall claims closed. It does not run Leiden, broaden route execution,
+  promote walls, evaluate wall-clock quality/cost value, replay full
+  NanoClustering, or claim method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_direct_path_acceptance_contract.py`:
+  consumes the primary bridge-release pathway-shape audit and fixes D1-D9
+  direct-path acceptance rules before any new execution. It preserves
+  seed-level direct-path candidates, evaluates strict all-seed contract
+  acceptance, keeps objective recovery separate, and keeps wall claims closed.
+  It does not run Leiden, broaden route execution, promote walls, evaluate
+  wall-clock quality/cost value, replay full NanoClustering, or claim method or
+  algorithm success.
+- `audit_leiden_basin_nanoclustering_g4_8_cross_seed_endpoint_atlas.py`:
+  consumes the executed primary bridge-release trace rows and reclassifies
+  same-seed `unknown_new_endpoint` labels against pair-level endpoint
+  signatures. It separates same-seed anchor consistency from pair-level
+  endpoint-atlas continuity, and keeps wall claims closed. It does not run
+  Leiden, broaden route execution, promote walls, evaluate wall-clock
+  quality/cost value, replay full NanoClustering, or claim method or algorithm
+  success.
+- `design_leiden_basin_nanoclustering_g4_8_dual_axis_direct_path_contract.py`:
+  consumes the existing v1 direct-path contract, cross-seed endpoint atlas, and
+  scoped route trace to materialize a two-axis contract. Axis A preserves
+  strict same-seed anchor consistency; Axis B tests pair-level endpoint-atlas
+  source-to-target continuity. It keeps same-seed unknown/support flags as
+  diagnostics, keeps objective recovery separate, and keeps wall claims closed.
+  It does not run Leiden, broaden route execution, promote walls, evaluate
+  wall-clock quality/cost value, replay full NanoClustering, or claim method or
+  algorithm success.
+- `audit_leiden_basin_nanoclustering_g4_8_axis_b_seed_anchor_rotation.py`:
+  consumes the scoped route trace and dual-axis direct-path contract, then
+  rebuilds Axis B endpoint roles under full-pair, leave-start-out,
+  leave-seed-out, and leave-seed-and-start-out vocabularies. It tests whether
+  same-seed unknown reinterpretation and route-level endpoint continuity survive
+  seed/start anchor rotation, while keeping source-start support caveats
+  separate from interior endpoint evidence. It does not run Leiden, broaden
+  route execution, promote walls, evaluate wall-clock quality/cost value, replay
+  full NanoClustering, or claim method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_axis_b_source_start_support_contract.py`:
+  consumes the Axis B seed-anchor rotation audit and materializes a split
+  contract that records source-start support separately from post-start endpoint
+  continuity, target-final continuity, and direct-edge retention. It preserves
+  the two source-start singleton caveats and prevents interior endpoint evidence
+  from repairing them. It does not run Leiden, broaden route execution, promote
+  walls, evaluate wall-clock quality/cost value, replay full NanoClustering, or
+  claim method or algorithm success.
+- `design_leiden_basin_nanoclustering_g4_8_fresh_axis_b_panel_contract.py`:
+  consumes the local validation, pathway-readiness, and source-start split
+  artifacts to freeze the next fresh Axis B panel. It keeps `local_pair_009`
+  and `local_pair_012` as calibration-only rows, predeclares not-yet-routed
+  ready-like pairs, and bounds the first-pass fresh slice to conditional
+  ready-like rows plus one control per blocked/control limitation axis. It does
+  not run Leiden, execute route/pathway traces, promote walls, evaluate
+  quality/cost value, replay full NanoClustering, or claim method success.
+- `design_leiden_basin_nanoclustering_g4_8_fresh_axis_b_first_pass_readout_contract.py`:
+  consumes the fresh Axis B panel contract and fixes the readout protocol for
+  the 36 first-pass rows. It materializes claim ladder, required readout fields,
+  four control traps, aggregation rules, outcome taxonomy, readout order, and
+  route/pair readout rows. It makes controls-first interpretation mandatory and
+  closes stable-positive, direct-dependent, branch, basin/pathway, wall,
+  quality/cost, full replay, and method claims for the first pass. It does not
+  run Leiden or execute route/pathway traces.
+- `run_leiden_basin_nanoclustering_g4_8_fresh_axis_b_first_pass_trace.py`:
+  consumes the first-pass readout contract and executes exactly the 36
+  predeclared rows under the bridge-release interpolation schedule. It writes
+  trace rows, seed-route summaries, route/pair/control readout results, and a
+  gate matrix. The readout requires an exclusive `drop_bridge_target_anchor`
+  before any ready-like screen pass, because raw target-final continuity can
+  also match guard anchors. It keeps wall, quality/cost, full replay, and method
+  claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_exclusive_target_contrast.py`:
+  reads the executed first-pass trace and classifies each route into exclusive
+  bridge-target pass, source/target signature collapse, guard-anchor collapse,
+  or intermediate unknown endpoint. It materializes pair, route, signature, and
+  gate rows so the next object-level audit is bounded to the clean candidate and
+  one partial boundary case. It does not rerun Leiden or open wall, quality/cost,
+  full replay, or method claims.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_symmetric_endpoint_objects.py`:
+  reads the first-pass trace and exclusive-target contrast rows for
+  `local_pair_014` and `local_pair_005` only. It materializes endpoint-object
+  rows, source-to-final object relation rows, pair summaries, and gates. It
+  confirms `local_pair_014` as the only positive object-level candidate and
+  keeps `local_pair_005` as a source/target-collapse boundary control. It does
+  not rerun Leiden or open wall, quality/cost, full replay, or method claims.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_wall_pathway_readiness.py`:
+  reads the first-pass trace and symmetric endpoint-object audit rows for
+  `local_pair_014` and `local_pair_005`. It classifies `local_pair_014` as the
+  only pathway-probe candidate and keeps `local_pair_005` as the boundary
+  control. It records direct-edge retention, bridge-fraction schedule, endpoint
+  timing, objective debt/recovery shape, support incompatibility, and missing
+  wall-evidence fields. It does not rerun Leiden or open wall, quality/cost,
+  full replay, or method claims.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_014_pathway_probe_contract.py`:
+  reads the first-pass wall/pathway-readiness audit and predeclares the next
+  `local_pair_014` pathway-probe contract. It creates 16 route-plan rows:
+  positive `014` recovery-loop/direct-only probes and matched `005` boundary
+  controls. It fixes independent direct-path availability, accepted recovery,
+  boundary no-leak, and wall-claim closure rules. It does not run Leiden or open
+  wall, quality/cost, full replay, or method claims.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_014_pathway_probe_trace.py`:
+  executes exactly the 16 first-pass `014` pathway-probe contract rows with new
+  recovery-loop and direct-only schedules. It writes 88 route-step configs and
+  704 trace rows over 8 seeds, accepts `014` direct-only and recovery probes at
+  32/32 seed-routes each under object-level endpoint assignment, and keeps `005`
+  closed with 0/64 positive leaks. It treats source/drop-direct anchor
+  coincidence as source-like object evidence and does not open wall,
+  quality/cost, full replay, or method claims.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_014_wall_evidence.py`:
+  reads the executed first-pass `014` pathway-probe trace and pairs the
+  accepted direct-only and recovery-loop routes by identical start condition and
+  seed. It accepts `local_pair_014` as local primitive object-level wall evidence
+  at 32/32 wall seed units and keeps the matched `local_pair_005` boundary guard
+  closed at 32/32 units. It opens no generalization, exact wall-location,
+  quality/cost, full replay, or method claim.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_contract.py`:
+  reads the accepted `014` primitive wall-evidence audit and the synthetic
+  G4.9A parameter-localization map, then freezes a fine bridge-fraction
+  localization contract. It materializes 16 route-plan rows and 192 fraction
+  steps for `014` descent/ascent scans plus retained `005` boundary guards. It
+  also carries the G4.9A `W/w/T/N/P` boundary vocabulary into the real-data
+  readout. It is design-only and does not run Leiden, retune thresholds,
+  promote wall generality, evaluate quality/cost, replay full NanoClustering,
+  or claim method success.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_trace.py`:
+  executes the fixed `014` wall-localization contract without requiring a
+  single expected final anchor. It materializes 1,536 fraction-level trace rows,
+  128 route-scan rows, and 64 paired seed-start localization rows. The strict
+  G4.9A readout finds 1/32 positive seed-start units as `W` and 31/32 as `P`;
+  the retained `005` boundary has 0 positive W-like leaks. This is a trace-only
+  execution and opens no generality, quality/cost, full replay, or method claim.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_transition_bands.py`:
+  reads the executed wall-localization trace and separates strict wall
+  intervals from transition bands. It classifies `014` as 1 strict interpretable
+  wall-interval seed, 30 monotone intermediate transition-band seeds, and 1
+  bounded nonmonotone transition-band seed; all 32/32 positive seed-starts are
+  bounded source-target transition bands. The `005` boundary has 0
+  positive-target routes and 0 positive-target steps. This is a read-only audit
+  and keeps method, quality/cost, full replay, and wall-generality claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_014_wall_localization_signature_identity.py`:
+  reads the executed localization trace and the transition-band audit, then
+  separates row-local unresolved endpoint assignments from signature-level
+  unresolved intermediate objects. It finds that `014` has 152 row-local
+  unresolved rows: 98 are signatures known elsewhere, while 54 remain true
+  signature-level unresolved intermediate rows across two recurrent signatures.
+  For `005`, all 204 row-local unresolved rows resolve to signatures known
+  elsewhere, leaving 0 signature-level unresolved boundary rows. This is a
+  read-only identity audit and opens no method, quality/cost, full replay, or
+  wall-generality claim.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_014_intermediate_role_stability.py`:
+  reads the executed `014` localization trace, the signature-identity audit, and
+  local graph metadata to type transition-band signatures by `L/R/B1`-`B10`
+  cluster roles. It types all 6 positive endpoint signatures: target anchor,
+  two source-like anchors, hidden-known source/guard intermediate
+  (`b7761471acbf`), unresolved pair-coassigned intermediate (`ca947e9fbe61`),
+  and unresolved pair-separated bridge-reassignment intermediate
+  (`531aa99db869`). It materializes 12 node-role rows, 6 signature-role rows,
+  and 64 seed-route role sequences. It is read-only and keeps method,
+  quality/cost, full replay, and wall-generality claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_014_role_pattern_transfer_screen.py`:
+  reads the existing first-pass trace, exclusive-target contrast, `014`
+  role-stability gates, and local graph metadata to screen all 9 first-pass
+  pairs for the typed `014` role pattern. It materializes 38 signature-role
+  rows and 288 route-role rows. `014` remains the only clean scaffold and there
+  are 0 non-014 positive transfer candidates. It marks `016` as the primary
+  strict-ready continuity-blocked diagnostic, `005` as the boundary guard,
+  `008`/`022`/`002` as closed-control analogs, and `007`/`003` as secondary
+  rare-ready blocked analogs. It is read-only and keeps method, quality/cost,
+  full replay, and wall-generality claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_continuity_block.py`:
+  reads the existing first-pass trace, role-pattern transfer screen, and
+  local-ablation outputs to localize why `016` fails post-start continuity. It
+  materializes 5 pair-comparison rows, 49 step-signature rows, and 24 route
+  diagnostic rows. It shows that all 24 `016` routes start source-like and end
+  at the exclusive target, but all 24 pass through a single step-2
+  bridge-reassignment signature (`aeb59ab537e6`) at bridge fraction 0.75 where
+  `L+B1` is separated from `R`. It is read-only and keeps method, quality/cost,
+  full replay, and wall-generality claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_transition_evidence_synthesis.py`:
+  reads the current first-pass, exclusive-target, `014` localization,
+  transition-band, signature-identity, role-stability, transfer-screen, and
+  `016` continuity-block outputs. It materializes 9 pair-evidence rows, 8
+  claim-evidence rows, and 5 definition-decision rows. It fixes the next design
+  surface as explicit accept/reject predicates for typed transient intermediate
+  pathways, tested against `014`, `016`, `005`, and closed controls before any
+  new trace execution. It is read-only and keeps method, quality/cost, full
+  replay, and wall-generality claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_typed_transient_predicate_screen.py`:
+  reads the first-pass trace, role-pattern transfer screen, `016`
+  continuity-block audit, and transition-evidence synthesis. It materializes 9
+  pair-feature rows, 36 pair-predicate rows, 4 predicate rows, and 6 definition
+  rows. The strict baseline accepts only `014`; the guarded single-step
+  separated-transient candidate accepts only `016` with 0 guard leaks;
+  endpoint-only and role-analog-only broadenings fail by leaking boundary,
+  control, or rare-ready rows. It is read-only and keeps method, quality/cost,
+  full replay, wall-generality, and positive-wall claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_transient_semantic_validation.py`:
+  reads the first-pass trace, role-pattern transfer screen, `016`
+  continuity-block audit, and typed-transient predicate screen to classify the
+  `016` step-2 transient. It materializes 24 route-semantic rows, 5
+  step-semantic rows, 9 comparison rows, and 7 semantic-decision rows. The
+  recurrent signature `aeb59ab537e6` appears in 24/24 routes as a typed
+  separated bridge-reassignment gateway, but it is anchor-equidistant and has
+  objective debt without recovery. It is read-only and keeps method,
+  quality/cost, full replay, wall-generality, endpoint-basin, and positive-wall
+  claims closed.
