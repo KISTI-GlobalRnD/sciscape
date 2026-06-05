@@ -3375,6 +3375,10 @@ function atlasDeckNodeFillColor(node, selectedUid) {
 function atlasDeckTooltip(info) {
   const object = info && info.object;
   if (!object) return null;
+  if (object.source_uid && object.target_uid) {
+    return {text: String(object.relation_label || 'relation') + '\n' +
+      object.source_uid + ' -> ' + object.target_uid + '\nweight ' + formatAtlasWeight(object.weight)};
+  }
   if (object.cluster_uid || object.id) {
     const uid = object.cluster_uid || object.id;
     const node = atlasNodeByUid(uid) || object;
@@ -3384,17 +3388,18 @@ function atlasDeckTooltip(info) {
         formatAtlasCount(node.doc_count || object.doc_count) + ' docs',
     };
   }
-  if (object.source_uid && object.target_uid) {
-    return {text: String(object.relation_label || 'relation') + '\n' +
-      object.source_uid + ' -> ' + object.target_uid + '\nweight ' + formatAtlasWeight(object.weight)};
-  }
   return null;
 }
 
 function atlasDeckClick(info) {
   const object = info && info.object;
   if (!object) return;
-  const uid = object.cluster_uid || object.id || object.source_uid;
+  if (object.source_uid && object.target_uid) {
+    const edgeUid = [object.source_uid, object.target_uid].find(uid => atlasNodeByUid(uid));
+    if (edgeUid) selectAtlasNode(String(edgeUid));
+    return;
+  }
+  const uid = object.cluster_uid || object.id;
   if (uid && atlasNodeByUid(uid)) selectAtlasNode(String(uid));
 }
 
@@ -3407,6 +3412,13 @@ function atlasDeckHover(info) {
     hover.innerHTML = '';
     return;
   }
+  if (object.source_uid && object.target_uid) {
+    hover.classList.add('active');
+    hover.innerHTML =
+      '<div class="atlas-deck-hover-title">' + esc(object.relation_label || 'relation') + '</div>' +
+      esc(object.source_uid + ' -> ' + object.target_uid) + ' / weight ' + formatAtlasWeight(object.weight);
+    return;
+  }
   if (object.cluster_uid || object.id) {
     const uid = String(object.cluster_uid || object.id);
     const node = atlasNodeByUid(uid) || object;
@@ -3416,13 +3428,6 @@ function atlasDeckHover(info) {
       esc(String(node.level || object.level || 'cluster')) + ' / ' +
       formatAtlasCount(node.doc_count || object.doc_count) + ' docs / ' +
       formatAtlasCount(node.keyword_count || object.keyword_count) + ' terms';
-    return;
-  }
-  if (object.source_uid && object.target_uid) {
-    hover.classList.add('active');
-    hover.innerHTML =
-      '<div class="atlas-deck-hover-title">' + esc(object.relation_label || 'relation') + '</div>' +
-      esc(object.source_uid + ' -> ' + object.target_uid) + ' / weight ' + formatAtlasWeight(object.weight);
   }
 }
 

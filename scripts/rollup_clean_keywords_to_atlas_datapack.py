@@ -16,7 +16,7 @@ import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import numpy as np
 import pandas as pd
@@ -49,6 +49,13 @@ LINEAGE_COLUMNS = [
     "macro_id",
     "domain_id",
 ]
+NODE_PARENT_COLUMNS = ("parent_uid", "parent_cluster_uid", "parent")
+LINEAGE_PARENT_EDGES = (
+    ("macro", "macro_id", "domain", "domain_id"),
+    ("meso", "meso_id", "macro", "macro_id"),
+    ("micro", "micro_id", "meso", "meso_id"),
+    ("nano", "nano_id", "micro", "micro_id"),
+)
 
 
 def utc_stamp() -> str:
@@ -106,6 +113,134 @@ def validate_nano_lineage(nano: pd.DataFrame, lineage: pd.DataFrame) -> dict[str
         "hierarchy_version": next(iter(versions)),
         "hierarchy_version_rows": versions,
     }
+
+
+def _cluster_uid(level: str, cluster_id: Any) -> str:
+    return f"{level}:{int(cluster_id)}"
+
+
+def _first_present_column(frame: pd.DataFrame, candidates: tuple[str, ...]) -> str | None:
+    for column in candidates:
+        if column in frame.columns:
+            return column
+    return None
+
+
+def _expected_ids_by_level(lineage: pd.DataFrame) -> dict[str, set[int]]:
+    return {
+        "domain": set(int(value) for value in lineage["domain_id"].dropna().unique()),
+        "macro": set(int(value) for value in lineage["macro_id"].dropna().unique()),
+        "meso": set(int(value) for value in lineage["meso_id"].dropna().unique()),
+        "micro": set(int(value) for value in lineage["micro_id"].dropna().unique()),
+        "nano": set(int(value) for value in lineage["nano_id"].dropna().unique()),
+    }
+
+
+def validate_lineage_against_nodes(lineage: pd.DataFrame, node_path: Path) -> dict[str, Any]:
+    if not node_path.exists():
+        return {
+            "status": "missing_nodes_file",
+            "node_path": str(node_path),
+            "message": "core/atlas_cluster_nodes.parquet is required before --apply",
+        }
+
+    nodes = pd.read_parquet(node_path)
+    required = {"cluster_uid", "level", "cluster_id"}
+    missing_columns = sorted(required - set(nodes.columns))
+    parent_column = _first_present_column(nodes, NODE_PARENT_COLUMNS)
+    if parent_column is None:
+        missing_columns.extend(NODE_PARENT_COLUMNS)
+    if missing_columns:
+        return {
+            "status": "missing_columns",
+            "node_path": str(node_path),
+            "missing_columns": missing_columns,
+        }
+
+    node_frame = nodes[["cluster_uid", "level", "cluster_id", parent_column]].copy()
+    node_frame["level"] = node_frame["level"].astype(str).str.lower()
+    node_frame["cluster_id"] = pd.to_numeric(node_frame["cluster_id"], errors="coerce")
+    node_frame = node_frame.dropna(subset=["cluster_id"])
+    node_frame["cluster_id"] = node_frame["cluster_id"].astype("int64")
+    node_frame["cluster_uid"] = node_frame["cluster_uid"].astype(str)
+    node_frame[parent_column] = node_frame[parent_column].fillna("").astype(str).str.strip()
+
+    expected_ids = _expected_ids_by_level(lineage)
+    actual_ids = {
+        level: set(int(value) for value in node_frame.loc[node_frame["level"].eq(level), "cluster_id"].unique())
+        for level in expected_ids
+    }
+    missing_nodes = {
+        level: sorted(values - actual_ids.get(level, set()))[:20]
+        for level, values in expected_ids.items()
+        if values - actual_ids.get(level, set())
+    }
+    extra_nodes = {
+        level: sorted(actual_ids.get(level, set()) - values)[:20]
+        for level, values in expected_ids.items()
+        if actual_ids.get(level, set()) - values
+    }
+
+    node_by_uid = {
+        str(row.cluster_uid): str(getattr(row, parent_column))
+        for row in node_frame.itertuples(index=False)
+    }
+    parent_mismatches: list[dict[str, Any]] = []
+    ambiguous_parent_rows: list[dict[str, Any]] = []
+    for child_level, child_col, parent_level, parent_col in LINEAGE_PARENT_EDGES:
+        pairs = lineage[[child_col, parent_col]].drop_duplicates()
+        parent_counts = pairs.groupby(child_col)[parent_col].nunique()
+        for child_id, parent_count in parent_counts[parent_counts.gt(1)].items():
+            ambiguous_parent_rows.append(
+                {
+                    "child_uid": _cluster_uid(child_level, child_id),
+                    "parent_count": int(parent_count),
+                }
+            )
+        for row in pairs.itertuples(index=False):
+            child_id = int(getattr(row, child_col))
+            parent_id = int(getattr(row, parent_col))
+            child_uid = _cluster_uid(child_level, child_id)
+            expected_parent_uid = _cluster_uid(parent_level, parent_id)
+            actual_parent_uid = node_by_uid.get(child_uid, "")
+            if actual_parent_uid != expected_parent_uid:
+                parent_mismatches.append(
+                    {
+                        "child_uid": child_uid,
+                        "expected_parent_uid": expected_parent_uid,
+                        "actual_parent_uid": actual_parent_uid,
+                    }
+                )
+                if len(parent_mismatches) >= 20:
+                    break
+        if len(parent_mismatches) >= 20:
+            break
+
+    status = "passed"
+    if missing_nodes or extra_nodes or parent_mismatches or ambiguous_parent_rows:
+        status = "failed"
+    return {
+        "status": status,
+        "node_path": str(node_path),
+        "parent_column": parent_column,
+        "expected_counts": {level: len(values) for level, values in expected_ids.items()},
+        "actual_counts": {level: len(values) for level, values in actual_ids.items()},
+        "missing_nodes": missing_nodes,
+        "extra_nodes": extra_nodes,
+        "parent_mismatch_count": len(parent_mismatches),
+        "parent_mismatch_examples": parent_mismatches,
+        "ambiguous_parent_count": len(ambiguous_parent_rows),
+        "ambiguous_parent_examples": ambiguous_parent_rows[:20],
+    }
+
+
+def assert_node_lineage_validation_passed(validation: Mapping[str, Any]) -> None:
+    if validation.get("status") == "passed":
+        return
+    raise ValueError(
+        "datapack node hierarchy does not match dashboard cluster_lineage; "
+        f"node_lineage_validation={json.dumps(validation, ensure_ascii=False, sort_keys=True)}"
+    )
 
 
 def parent_stats(lineage: pd.DataFrame, parent_col: str) -> pd.DataFrame:
@@ -276,6 +411,7 @@ def write_summary(path: Path, summary: dict[str, Any]) -> None:
         f"- Created UTC: `{summary['created_at_utc']}`",
         f"- Datapack: `{summary['datapack_dir']}`",
         f"- Hierarchy version: `{summary['lineage_validation']['hierarchy_version']}`",
+        f"- Node-lineage validation: `{summary['node_lineage_validation']['status']}`",
         f"- Apply: `{summary['applied']}`",
         f"- Top-N upper: `{summary['top_n_upper']}`",
         "",
@@ -298,6 +434,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     nano_path = (args.nano_terms or datapack_dir / "dashboard" / "tables" / "nano_terms_topk.parquet").resolve()
     lineage_path = datapack_dir / "dashboard" / "tables" / "cluster_lineage.parquet"
     core_terms_path = datapack_dir / "core" / "atlas_cluster_terms.parquet"
+    node_path = datapack_dir / "core" / "atlas_cluster_nodes.parquet"
     qa_dir = datapack_dir / "qa"
     qa_dir.mkdir(parents=True, exist_ok=True)
 
@@ -305,6 +442,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     nano = read_nano_terms(nano_path)
     lineage = read_lineage(lineage_path)
     validation = validate_nano_lineage(nano, lineage)
+    node_lineage_validation = validate_lineage_against_nodes(lineage, node_path)
 
     old_terms = pd.read_parquet(core_terms_path)
     new_terms, level_summaries = build_core_terms(nano, lineage, int(args.top_n_upper))
@@ -314,10 +452,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "datapack_dir": str(datapack_dir),
         "nano_terms_path": str(nano_path),
         "lineage_path": str(lineage_path),
+        "node_path": str(node_path),
         "core_terms_path": str(core_terms_path),
         "top_n_upper": int(args.top_n_upper),
         "applied": bool(args.apply),
         "lineage_validation": validation,
+        "node_lineage_validation": node_lineage_validation,
         "old_rows": int(len(old_terms)),
         "old_prefix_rows": prefix_counts(old_terms),
         "old_evidence_channels": channel_counts(old_terms),
@@ -341,6 +481,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         summary["preview_path"] = str(preview_path)
 
     if args.apply:
+        assert_node_lineage_validation_passed(node_lineage_validation)
         backup_dir = qa_dir / f"sciscape_clean_rollup_backup_{stamp}"
         backup_dir.mkdir(parents=True, exist_ok=False)
         shutil.copy2(core_terms_path, backup_dir / "atlas_cluster_terms.parquet")

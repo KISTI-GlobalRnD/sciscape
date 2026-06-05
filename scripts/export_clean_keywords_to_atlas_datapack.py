@@ -9,6 +9,7 @@ so the Atlas display can prefer more specific cluster terms.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -492,6 +493,93 @@ def backup_files(paths: Iterable[Path], backup_dir: Path) -> None:
             shutil.copy2(path, backup_dir / path.name)
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def update_checksum_file(path: Path, relpath: str, digest: str) -> bool:
+    if not path.exists():
+        return False
+    lines = path.read_text().splitlines()
+    replaced = False
+    out_lines: list[str] = []
+    for line in lines:
+        parts = line.split(maxsplit=1)
+        if len(parts) == 2 and parts[1] == relpath:
+            out_lines.append(f"{digest}  {relpath}")
+            replaced = True
+        else:
+            out_lines.append(line)
+    if not replaced:
+        out_lines.append(f"{digest}  {relpath}")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("\n".join(out_lines) + "\n")
+    tmp.replace(path)
+    return True
+
+
+def backup_checksum_files(datapack_dir: Path, backup_dir: Path) -> None:
+    for relpath in (
+        "CHECKSUMS.sha256",
+        "core/CHECKSUMS.sha256",
+        "dashboard/CHECKSUMS.sha256",
+        "dashboard/tables/CHECKSUMS.sha256",
+    ):
+        source = datapack_dir / relpath
+        if source.exists():
+            shutil.copy2(source, backup_dir / relpath.replace("/", "__"))
+
+
+def update_datapack_checksums(datapack_dir: Path, core_path: Path, dashboard_path: Path) -> dict[str, object]:
+    core_digest = sha256_file(core_path)
+    dashboard_digest = sha256_file(dashboard_path)
+    updates = [
+        (
+            datapack_dir / "CHECKSUMS.sha256",
+            "core/atlas_cluster_terms.parquet",
+            core_digest,
+        ),
+        (
+            datapack_dir / "core" / "CHECKSUMS.sha256",
+            "atlas_cluster_terms.parquet",
+            core_digest,
+        ),
+        (
+            datapack_dir / "CHECKSUMS.sha256",
+            "dashboard/tables/nano_terms_topk.parquet",
+            dashboard_digest,
+        ),
+        (
+            datapack_dir / "dashboard" / "CHECKSUMS.sha256",
+            "tables/nano_terms_topk.parquet",
+            dashboard_digest,
+        ),
+        (
+            datapack_dir / "dashboard" / "tables" / "CHECKSUMS.sha256",
+            "nano_terms_topk.parquet",
+            dashboard_digest,
+        ),
+    ]
+    checksum_updates = []
+    for checksum_path, relpath, digest in updates:
+        checksum_updates.append(
+            {
+                "checksum_path": str(checksum_path),
+                "relpath": relpath,
+                "updated": update_checksum_file(checksum_path, relpath, digest),
+            }
+        )
+    return {
+        "core_sha256": core_digest,
+        "dashboard_sha256": dashboard_digest,
+        "checksum_updates": checksum_updates,
+    }
+
+
 def apply_to_datapack(
     datapack_dir: Path,
     core_nano: pd.DataFrame,
@@ -503,11 +591,13 @@ def apply_to_datapack(
     core_path = datapack_dir / "core" / "atlas_cluster_terms.parquet"
     dashboard_path = datapack_dir / "dashboard" / "tables" / "nano_terms_topk.parquet"
     backup_files([core_path, dashboard_path], backup_dir)
+    backup_checksum_files(datapack_dir, backup_dir)
 
     merged_core = merge_core_terms(datapack_dir, core_nano)
     merged_core.to_parquet(output_dir / "atlas_cluster_terms_sciscape_clean_merged.parquet", index=False)
     merged_core.to_parquet(core_path, index=False)
     dashboard_nano.to_parquet(dashboard_path, index=False)
+    checksum_result = update_datapack_checksums(datapack_dir, core_path, dashboard_path)
 
     marker = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -517,6 +607,7 @@ def apply_to_datapack(
         "merged_core_rows": int(len(merged_core)),
         "dashboard_nano_rows": int(len(dashboard_nano)),
         "export_dir": str(output_dir),
+        **checksum_result,
     }
     marker_path = datapack_dir / "qa" / f"keyword_clean_export_applied_{stamp}.json"
     marker_path.write_text(json.dumps(marker, indent=2, ensure_ascii=False))

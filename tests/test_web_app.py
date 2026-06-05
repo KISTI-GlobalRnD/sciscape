@@ -203,6 +203,23 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert 'id="file-input"' not in response.text
 
 
+def test_atlas_deck_edge_handlers_prioritize_relation_rows():
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+    text = response.text
+
+    tooltip = text[text.index("function atlasDeckTooltip") : text.index("function atlasDeckClick")]
+    assert tooltip.index("object.source_uid && object.target_uid") < tooltip.index("object.cluster_uid || object.id")
+
+    click = text[text.index("function atlasDeckClick") : text.index("function atlasDeckHover")]
+    assert "const edgeUid = [object.source_uid, object.target_uid].find(uid => atlasNodeByUid(uid));" in click
+    assert "object.cluster_uid || object.id || object.source_uid" not in click
+
+    hover = text[text.index("function atlasDeckHover") : text.index("function renderAtlasDeckLegend")]
+    assert hover.index("object.source_uid && object.target_uid") < hover.index("object.cluster_uid || object.id")
+
+
 def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
     def fake_run_job(job_id, req):
         job = web_app._jobs[job_id]
