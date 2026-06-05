@@ -50,7 +50,7 @@ from sciscape.artifacts import (
     write_result_manifest,
     write_workspace_manifest,
 )
-from sciscape.export import export_graphml
+from sciscape.export import export_graphml, export_vosviewer_network
 from sciscape.keyword_extraction.visualization import export_dashboard, export_report, export_viewer
 
 
@@ -1539,3 +1539,96 @@ def test_graphml_export_can_write_export_manifest(tmp_path):
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "graphml_graph"
     assert validation["counts"]["inputs"] == 3
+
+
+def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
+    import polars as pl
+
+    result_root = tmp_path / "result"
+    result_root.mkdir()
+    edges_path = result_root / "edges.parquet"
+    membership_path = result_root / "membership.parquet"
+    abstracts_path = result_root / "abstracts.parquet"
+    pl.DataFrame(
+        {
+            "uid1": ["D0", "D1", "D0"],
+            "uid2": ["D1", "D2", "D1"],
+            "rel_sum2": [1.0, 2.0, 3.0],
+        }
+    ).write_parquet(edges_path)
+    pl.DataFrame({"uid": ["D0", "D1", "D2"], "cluster": [10, 10, 20]}).write_parquet(membership_path)
+    pl.DataFrame(
+        {
+            "uid": ["D0", "D1", "D2"],
+            "title": ["Paper A", "Paper B", "Paper C"],
+            "abstract": ["A", "B", "C"],
+            "pubyear": [2021, 2022, 2023],
+        }
+    ).write_parquet(abstracts_path)
+
+    written = export_vosviewer_network(
+        pl.read_parquet(edges_path),
+        pl.read_parquet(membership_path),
+        result_root / "vosviewer",
+        abstracts=pl.read_parquet(abstracts_path),
+        result_root=result_root,
+        source_paths={
+            "edges": edges_path,
+            "membership": membership_path,
+            "abstracts": abstracts_path,
+        },
+    )
+
+    map_lines = written["map_path"].read_text(encoding="utf-8").splitlines()
+    network_lines = written["network_path"].read_text(encoding="utf-8").splitlines()
+    assert map_lines[0].split("\t")[:4] == ["id", "label", "description", "cluster"]
+    assert len(map_lines) == 4
+    map_rows = [line.split("\t") for line in map_lines[1:]]
+    assert {row[1]: row[4:6] for row in map_rows} == {
+        "D0": ["1", "4.000000"],
+        "D1": ["2", "6.000000"],
+        "D2": ["1", "2.000000"],
+    }
+    assert network_lines == ["1\t2\t4.000000", "2\t3\t2.000000"]
+
+    manifest_path = result_root / "exports" / "vosviewer_map_network" / "export_manifest.json"
+    assert written["manifest_path"] == manifest_path
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "vosviewer"
+    assert validation["export_kind"] == "vosviewer_map_network"
+    assert validation["counts"]["files"] == 2
+
+
+def test_cli_export_supports_vosviewer_format(tmp_path):
+    import polars as pl
+
+    edges_path = tmp_path / "edges.parquet"
+    membership_path = tmp_path / "membership.parquet"
+    output_dir = tmp_path / "vosviewer_cli"
+    pl.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [1.0]}).write_parquet(edges_path)
+    pl.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).write_parquet(membership_path)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sciscape.cli",
+            "export",
+            str(edges_path),
+            str(membership_path),
+            "--format",
+            "vosviewer",
+            "-o",
+            str(output_dir),
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "vosviewer_map.txt" in completed.stdout
+    assert (output_dir / "vosviewer_map.txt").exists()
+    assert (output_dir / "vosviewer_network.txt").exists()
+    manifest_path = output_dir / "exports" / "vosviewer_map_network" / "export_manifest.json"
+    assert validate_export_manifest(manifest_path).ok is True

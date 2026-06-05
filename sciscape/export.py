@@ -5,12 +5,12 @@ Enables interoperability with Gephi, Cytoscape, and other tools.
 
 from __future__ import annotations
 
+import csv
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, Mapping
 
-import numpy as np
 import polars as pl
 
 log = logging.getLogger(__name__)
@@ -94,6 +94,37 @@ def _write_graph_export_manifest(
     )
 
 
+def _membership_mapping(
+    membership: pl.DataFrame | Dict[str, int],
+    *,
+    cluster_col: str | None = None,
+) -> dict[Any, Any]:
+    if isinstance(membership, dict):
+        return membership
+    if cluster_col is None:
+        cluster_col = next((c for c in membership.columns if c.startswith("cluster_")), "cluster")
+    return dict(zip(membership["uid"].to_list(), membership[cluster_col].to_list()))
+
+
+def _edge_weight_column(edges: pl.DataFrame) -> str | None:
+    for candidate in ("rel_sum2", "weight", "score", "similarity", "cosine", "edge_weight"):
+        if candidate in edges.columns:
+            return candidate
+    for column in edges.columns:
+        if column.endswith("_weight"):
+            return column
+    return None
+
+
+def _write_tab_rows(path: Path, rows: list[list[Any]], *, header: list[str] | None = None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        if header:
+            writer.writerow(header)
+        writer.writerows(rows)
+
+
 def export_gexf(
     edges: pl.DataFrame,
     membership: pl.DataFrame | Dict[str, int],
@@ -125,15 +156,7 @@ def export_gexf(
     output_path = Path(output_path)
 
     # Parse membership
-    if isinstance(membership, dict):
-        uid_to_cluster = membership
-    else:
-        if cluster_col is None:
-            cluster_col = next((c for c in membership.columns if c.startswith("cluster_")), "cluster")
-        uid_to_cluster = dict(zip(
-            membership["uid"].to_list(),
-            membership[cluster_col].to_list(),
-        ))
+    uid_to_cluster = _membership_mapping(membership, cluster_col=cluster_col)
 
     # Parse metadata
     uid_to_title = {}
@@ -232,14 +255,7 @@ def export_graphml(
     """
     output_path = Path(output_path)
 
-    if isinstance(membership, dict):
-        uid_to_cluster = membership
-    else:
-        if cluster_col is None:
-            cluster_col = next((c for c in membership.columns if c.startswith("cluster_")), "cluster")
-        uid_to_cluster = dict(zip(
-            membership["uid"].to_list(), membership[cluster_col].to_list(),
-        ))
+    uid_to_cluster = _membership_mapping(membership, cluster_col=cluster_col)
 
     uid_to_title = {}
     uid_to_year = {}
@@ -295,4 +311,178 @@ def export_graphml(
     return output_path
 
 
-__all__ = ["export_gexf", "export_graphml"]
+def export_vosviewer_network(
+    edges: pl.DataFrame,
+    membership: pl.DataFrame | Dict[str, int],
+    output_dir: Path | str,
+    *,
+    abstracts: pl.DataFrame | None = None,
+    cluster_col: str | None = None,
+    map_filename: str = "vosviewer_map.txt",
+    network_filename: str = "vosviewer_network.txt",
+    write_manifest: bool = True,
+    result_root: str | Path | None = None,
+    source_paths: Mapping[str, str | Path | None] | None = None,
+) -> dict[str, Path]:
+    """Export a VOSviewer-style map/network text-file pair.
+
+    The map file uses VOSviewer item attributes. The network file stores
+    source-id, target-id, and link strength rows without a header.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    map_path = output_dir / map_filename
+    network_path = output_dir / network_filename
+
+    uid_to_cluster = _membership_mapping(membership, cluster_col=cluster_col)
+    weight_col = _edge_weight_column(edges)
+    edge_records = edges.to_dicts()
+    all_uids = set(uid_to_cluster.keys())
+    for row in edge_records:
+        all_uids.add(row.get("uid1"))
+        all_uids.add(row.get("uid2"))
+    all_uids = {uid for uid in all_uids if uid is not None}
+    uid_order = sorted(all_uids, key=lambda value: str(value))
+    uid_to_item_id = {uid: index + 1 for index, uid in enumerate(uid_order)}
+
+    raw_clusters = sorted({str(uid_to_cluster.get(uid, "missing")) for uid in uid_order})
+    if len(raw_clusters) > 1000:
+        raise ValueError("VOSviewer cluster IDs support at most 1000 clusters")
+    cluster_to_vos = {cluster: index + 1 for index, cluster in enumerate(raw_clusters)}
+
+    uid_to_title: dict[Any, str] = {}
+    uid_to_year: dict[Any, Any] = {}
+    if abstracts is not None and "uid" in abstracts.columns:
+        if "title" in abstracts.columns:
+            uid_to_title = dict(zip(abstracts["uid"].to_list(), abstracts["title"].to_list()))
+        if "pubyear" in abstracts.columns:
+            uid_to_year = dict(zip(abstracts["uid"].to_list(), abstracts["pubyear"].to_list()))
+
+    pair_strength: dict[tuple[int, int], float] = {}
+    for row in edge_records:
+        uid1 = row.get("uid1")
+        uid2 = row.get("uid2")
+        if uid1 not in uid_to_item_id or uid2 not in uid_to_item_id or uid1 == uid2:
+            continue
+        raw_weight = row.get(weight_col) if weight_col else 1.0
+        try:
+            weight = float(raw_weight)
+        except (TypeError, ValueError):
+            continue
+        if weight <= 0:
+            continue
+        item1 = uid_to_item_id[uid1]
+        item2 = uid_to_item_id[uid2]
+        key = tuple(sorted((item1, item2)))
+        pair_strength[key] = pair_strength.get(key, 0.0) + weight
+
+    item_id_to_uid = {item_id: uid for uid, item_id in uid_to_item_id.items()}
+    link_count: dict[Any, int] = {uid: 0 for uid in uid_order}
+    total_strength: dict[Any, float] = {uid: 0.0 for uid in uid_order}
+    for (item1, item2), strength in pair_strength.items():
+        uid1 = item_id_to_uid[item1]
+        uid2 = item_id_to_uid[item2]
+        link_count[uid1] = link_count.get(uid1, 0) + 1
+        link_count[uid2] = link_count.get(uid2, 0) + 1
+        total_strength[uid1] = total_strength.get(uid1, 0.0) + strength
+        total_strength[uid2] = total_strength.get(uid2, 0.0) + strength
+
+    map_header = [
+        "id",
+        "label",
+        "description",
+        "cluster",
+        "weight<Links>",
+        "weight<Total link strength>",
+        "score<Avg. pub. year>",
+    ]
+    map_rows: list[list[Any]] = []
+    for uid in uid_order:
+        raw_cluster = str(uid_to_cluster.get(uid, "missing"))
+        year = uid_to_year.get(uid)
+        map_rows.append(
+            [
+                uid_to_item_id[uid],
+                str(uid),
+                str(uid_to_title.get(uid, "")),
+                cluster_to_vos[raw_cluster],
+                int(link_count.get(uid, 0)),
+                f"{float(total_strength.get(uid, 0.0)):.6f}",
+                "" if year in (None, "") else str(year),
+            ]
+        )
+
+    network_rows = [
+        [source_id, target_id, f"{strength:.6f}"]
+        for (source_id, target_id), strength in sorted(pair_strength.items())
+    ]
+    _write_tab_rows(map_path, map_rows, header=map_header)
+    _write_tab_rows(network_path, network_rows)
+
+    manifest_path = None
+    if write_manifest:
+        from sciscape.artifacts import write_export_manifest
+
+        root = Path(result_root).expanduser().resolve() if result_root is not None else output_dir.resolve()
+        source_paths = source_paths or {}
+        source_artifacts = [
+            _source_artifact("edges", source_paths.get("edges"), result_root=root, artifact_ref="edges"),
+            _source_artifact("membership", source_paths.get("membership"), result_root=root, artifact_ref="membership"),
+        ]
+        if source_paths.get("abstracts") is not None:
+            source_artifacts.append(
+                _source_artifact(
+                    "records",
+                    source_paths.get("abstracts"),
+                    result_root=root,
+                    artifact_ref="records",
+                    feature_ref="overview",
+                    required=False,
+                )
+            )
+        manifest = write_export_manifest(
+            root,
+            export_id="vosviewer_map_network",
+            export_family="vosviewer",
+            export_kind="vosviewer_map_network",
+            primary_file=map_path,
+            source_artifacts=source_artifacts,
+            feature_refs=["cluster_map", "evidence", "export"],
+            files=[
+                {
+                    "file_id": "map",
+                    "path": map_path,
+                    "role": "map",
+                    "format": "txt",
+                    "public_share_state": "local",
+                },
+                {
+                    "file_id": "network",
+                    "path": network_path,
+                    "role": "network",
+                    "format": "txt",
+                    "public_share_state": "local",
+                },
+            ],
+            transforms=[
+                {"transform_type": "load_edge_table", "description": "Load SciScape edge table."},
+                {"transform_type": "map_source_ids_to_vosviewer_ids", "description": "Assign 1-based VOSviewer item IDs."},
+                {"transform_type": "write_vosviewer_map_network", "description": "Write VOSviewer-style map and network files."},
+            ],
+            compatibility={
+                "target_tools": ["VOSviewer", "VOSviewer Online"],
+                "format_version": "map/network text files",
+                "limitations": ["layout coordinates are not exported", "paper labels use source uids"],
+            },
+            title="VOSviewer map/network export",
+        )
+        manifest_path = Path(manifest["manifest_path"])
+
+    log.info("Exported VOSviewer map/network: %d nodes, %d links → %s", len(uid_order), len(network_rows), output_dir)
+    result = {"map_path": map_path, "network_path": network_path}
+    if manifest_path is not None:
+        result["manifest_path"] = manifest_path
+    return result
+
+
+__all__ = ["export_gexf", "export_graphml", "export_vosviewer_network"]

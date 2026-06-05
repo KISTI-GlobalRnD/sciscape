@@ -130,7 +130,7 @@ REQUIRED_MATRIX_ENTITY_COLUMNS = {
 SUPPORTED_MATRIX_FAMILIES = frozenset(
     {"occurrence", "cooccurrence", "proximity", "similarity", "projection", "temporal"}
 )
-SUPPORTED_EXPORT_FAMILIES = frozenset({"report", "viewer", "graph", "table", "matrix", "map", "bundle"})
+SUPPORTED_EXPORT_FAMILIES = frozenset({"report", "viewer", "graph", "table", "matrix", "map", "vosviewer", "bundle"})
 REQUIRED_EXPORT_FILE_COLUMNS = {
     "schema_version",
     "export_id",

@@ -326,9 +326,9 @@ Do not do yet:
     in `evolution_artifact_design.md`.
 12. Maintain the narrative evidence-reference schema without generation in
     `narrative_artifact_design.md`.
-13. Add VOSviewer-style and matrix/map export adapters on top of the manifest
-    schema; maintain report, static viewer, GEXF, and GraphML export adapters in
-    `export_manifest_design.md`.
+13. Add matrix/map export adapters and VOSviewer thesaurus/rule-set exports on
+    top of the manifest schema; maintain report, static viewer, GEXF, GraphML,
+    and VOSviewer map/network adapters in `export_manifest_design.md`.
 14. Maintain the workspace/project/run manifest schema in
     `workspace_manifest_design.md`.
 15. Revisit UI/UX redesign only after P0, P1, and P1.5 contracts are stable.

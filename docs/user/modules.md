@@ -16,7 +16,7 @@ one-to-one with package directories.
 | Landscape | Build the hierarchy over the fused paper network. | `landscape` | `sciscape.landscape`, `sciscape.clustering` | `membership.parquet`, level caches, hierarchy metadata |
 | Clustering Engine | Run CPM/Leiden and postprocess lower-level partitions. | `cluster` | `sciscape.clustering`, `sciscape_leiden` | membership and description tables |
 | Keywords | Extract, normalize, and score cluster-level terms. | `keywords`, `landscape` | `sciscape.keyword_extraction` | `keywords.parquet` |
-| Visualization | Produce network, hierarchy, temporal, and viewer artifacts. | `web`, `viewer`, `export` | `sciscape.visualization`, `sciscape.keyword_extraction.visualization`, `sciscape.web`, `sciscape.export` | `report/`, HTML views, GEXF/GraphML |
+| Visualization | Produce network, hierarchy, temporal, and viewer artifacts. | `web`, `viewer`, `export` | `sciscape.visualization`, `sciscape.keyword_extraction.visualization`, `sciscape.web`, `sciscape.export` | `report/`, HTML views, GEXF/GraphML/VOSviewer-style exports |
 | Evaluation | Check stability, quality, and review evidence. | `landscape --evaluate` | `sciscape.evaluation`, `sciscape.visualization.consensus` | stability summaries, quality reports, review outputs |
 
 ## Ingest
@@ -163,6 +163,7 @@ sciscape web
 sciscape visualize keywords.parquet -o report/
 sciscape viewer -o viewer.html
 sciscape export edges.parquet membership.parquet --format gexf -o network.gexf
+sciscape export edges.parquet membership.parquet --format vosviewer -o vosviewer_export/
 ```
 
 Static sharing:
@@ -185,7 +186,7 @@ Outputs:
 - report HTML files.
 - dashboard data.
 - standalone viewer HTML with hosted `data.json` or drag/drop data loading.
-- GEXF or GraphML exports.
+- GEXF, GraphML, or VOSviewer-style map/network exports.
 
 ## Evaluation
 

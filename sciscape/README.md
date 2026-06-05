@@ -145,6 +145,8 @@ Download 탭에서 생성된 HTML report/dashboard를 열 수 있습니다.
 
 ```bash
 sciscape export edges.parquet membership.parquet --format gexf -o network.gexf
+sciscape export edges.parquet membership.parquet --format graphml -o network.graphml
+sciscape export edges.parquet membership.parquet --format vosviewer -o vosviewer_export/
 ```
 
 ### `sciscape gui` — GUI 실행

@@ -15,7 +15,7 @@ you already have.
 | Existing membership | `sciscape keywords` then `sciscape visualize` | `abstracts.parquet`, `membership.parquet` | `keywords.parquet`, dashboard/report HTML |
 | Existing keyword table | `sciscape visualize` or `sciscape viewer` | `keywords.parquet`, `.csv`, or `.tsv` | standalone dashboard or report |
 | Existing report data | `sciscape viewer` or GitHub Pages | `report/data.json` | browser-only static viewer |
-| Graph-tool export target | `sciscape export` | edge table and membership table | `.gexf` or `.graphml` |
+| Graph-tool export target | `sciscape export` | edge table and membership table | `.gexf`, `.graphml`, or VOSviewer-style map/network `.txt` |
 
 ## File Checklist
 

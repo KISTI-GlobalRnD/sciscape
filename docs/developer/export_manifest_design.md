@@ -397,8 +397,11 @@ Required refs:
 
 Rules:
 
-- Do not mark VOSviewer-style exports as stable until the required file formats
-  and field mappings are validated against the declared target workflow.
+- VOSviewer-style map/network exports must write item rows, link rows, field
+  mappings, and compatibility limitations into a manifest-backed export.
+- Do not mark thesaurus, matrix, or co-occurrence VOSviewer-style exports as
+  stable until their required file formats and field mappings are validated
+  against the declared target workflow.
 - VOSviewer compatibility limitations should be explicit, not implied by file
   names.
 
@@ -451,9 +454,10 @@ The writer should:
 8. update the result manifest export list when requested;
 9. return paths, counts, warnings, and QA status.
 
-The first adapters should wrap existing report, static viewer, GEXF, and
-GraphML exports. Matrix and VOSviewer-style adapters can follow after matrix
-artifacts are implemented.
+The first adapters wrap existing report, static viewer, GEXF, GraphML, and
+paper-network VOSviewer-style map/network exports. Matrix, co-occurrence, and
+thesaurus-oriented adapters can follow after their source artifact contracts are
+stable.
 
 ## Validator Utility Design
 
@@ -489,8 +493,9 @@ commands.
    stable/beta/blocked export states.
 6. `[x]` Add a tiny synthetic export smoke that writes a table export and validates
    file inventory, source refs, and private-path checks.
-7. `[ ]` Add matrix and VOSviewer-style export manifests only after their source
-   artifact contracts are stable.
+7. `[~]` Add matrix and VOSviewer-style export manifests only after their source
+   artifact contracts are stable. VOSviewer-style paper-network map/network
+   export exists; matrix/co-occurrence VOSviewer exports remain future work.
 
 ## Acceptance Criteria
 
@@ -499,8 +504,8 @@ commands.
   files, and QA.
 - Exported files use stable IDs or explicitly declare field mappings.
 - Public export manifests do not contain private absolute paths.
-- Report, static viewer, GEXF, and GraphML outputs can be wrapped by the export
-  manifest contract.
+- Report, static viewer, GEXF, GraphML, and VOSviewer-style map/network outputs
+  can be wrapped by the export manifest contract.
 - `export=stable` requires manifest-backed QA, not only file existence.
 - The full result contract can tell whether `export` is hidden, beta, stable,
   or blocked from artifacts alone.

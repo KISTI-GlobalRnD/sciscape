@@ -212,12 +212,12 @@ def _build_parser() -> argparse.ArgumentParser:
     vz.add_argument("--open", action="store_true", help="Open the generated output in a browser")
 
     # ---- export ----
-    ex = sub.add_parser("export", help="Export network to GEXF (Gephi) or GraphML (Cytoscape)")
+    ex = sub.add_parser("export", help="Export network to GEXF, GraphML, or VOSviewer-style files")
     ex.add_argument("edge_path", type=Path, help="Edge parquet file")
     ex.add_argument("membership_path", type=Path, help="Membership parquet file")
     ex.add_argument("-o", "--output", type=Path, default=Path("network.gexf"),
-                     help="Output file (default: network.gexf)")
-    ex.add_argument("--format", choices=["gexf", "graphml"], default="gexf",
+                     help="Output file for GEXF/GraphML or directory for VOSviewer-style export")
+    ex.add_argument("--format", choices=["gexf", "graphml", "vosviewer"], default="gexf",
                      help="Export format (default: gexf)")
     ex.add_argument("--abstracts", type=Path, default=None,
                      help="Abstracts parquet for title/year attributes")
@@ -665,7 +665,7 @@ def _run_visualize(args: argparse.Namespace) -> None:
 
 def _run_export(args: argparse.Namespace) -> None:
     import polars as pl
-    from sciscape.export import export_gexf, export_graphml
+    from sciscape.export import export_gexf, export_graphml, export_vosviewer_network
 
     edges = pl.read_parquet(args.edge_path)
     membership = pl.read_parquet(args.membership_path)
@@ -677,7 +677,23 @@ def _run_export(args: argparse.Namespace) -> None:
     }
     result_root = Path(args.output).expanduser().resolve().parent
 
-    if args.format == "graphml":
+    if args.format == "vosviewer":
+        output_dir = args.output if not args.output.suffix else args.output.with_suffix("")
+        paths = export_vosviewer_network(
+            edges,
+            membership,
+            output_dir,
+            abstracts=abstracts,
+            write_manifest=True,
+            result_root=Path(output_dir).expanduser().resolve(),
+            source_paths=source_paths,
+        )
+        print(f"Exported → {paths['map_path']}")
+        print(f"Network → {paths['network_path']}")
+        if paths.get("manifest_path"):
+            print(f"Manifest → {paths['manifest_path']}")
+        return
+    elif args.format == "graphml":
         path = export_graphml(
             edges,
             membership,
