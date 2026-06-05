@@ -326,8 +326,8 @@ Do not do yet:
     in `evolution_artifact_design.md`.
 12. Maintain the narrative evidence-reference schema without generation in
     `narrative_artifact_design.md`.
-13. Add export-manifest adapters to existing report, static viewer, GEXF, and
-    GraphML export commands; maintain the schema for future maps and bundles in
+13. Add VOSviewer-style and matrix/map export adapters on top of the manifest
+    schema; maintain report, static viewer, GEXF, and GraphML export adapters in
     `export_manifest_design.md`.
 14. Maintain the workspace/project/run manifest schema in
     `workspace_manifest_design.md`.

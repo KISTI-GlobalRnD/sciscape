@@ -13,12 +13,28 @@ from ._data_prep import prepare_cluster_data
 from ._dashboard_template import _DASHBOARD_HTML_TEMPLATE
 
 
+def _file_export_row(path: str | Path, *, root: Path, file_id: str, role: str, fmt: str = "html") -> dict:
+    candidate = Path(path).resolve()
+    try:
+        rel_path = candidate.relative_to(root).as_posix()
+    except ValueError:
+        rel_path = candidate.as_posix()
+    return {
+        "file_id": file_id,
+        "path": rel_path,
+        "role": role,
+        "format": fmt,
+        "public_share_state": "local",
+    }
+
+
 def export_dashboard(
     df: pd.DataFrame,
     output_path: str = "keyword_dashboard.html",
     title: str = "SciScape Keyword Explorer",
     open_browser: bool = False,
     viz_data: Optional[Dict] = None,
+    write_manifest: bool = True,
 ) -> str:
     """Generate a self-contained interactive HTML dashboard.
 
@@ -35,6 +51,9 @@ def export_dashboard(
     viz_data : dict, optional
         Supplementary visualization data from
         ``KeywordExtractionPipeline.get_visualization_data()``.
+    write_manifest : bool
+        Whether to write a manifest-backed export artifact next to the dashboard
+        result root.
 
     Returns
     -------
@@ -60,6 +79,29 @@ def export_dashboard(
         f.write(html)
 
     abs_path = os.path.abspath(output_path)
+    if write_manifest:
+        from sciscape.artifacts import write_export_manifest
+
+        root = Path(abs_path).parent
+        write_export_manifest(
+            root,
+            export_id="keyword_dashboard",
+            export_family="viewer",
+            export_kind="keyword_dashboard_html",
+            primary_file=abs_path,
+            source_artifacts=[
+                {
+                    "role": "embedded_report_data",
+                    "artifact_ref": "embedded_report_data",
+                    "path": "",
+                    "feature_ref": "keyword",
+                    "required": False,
+                }
+            ],
+            feature_refs=["overview", "keyword", "cluster_map", "export"],
+            compatibility={"target_tools": ["Browser", "SciScape"], "limitations": ["self-contained HTML"]},
+            title=title,
+        )
 
     if open_browser:
         import webbrowser
@@ -74,6 +116,7 @@ def export_report(
     title: str = "SciScape Keyword Report",
     viz_data: Optional[Dict] = None,
     open_browser: bool = False,
+    write_manifest: bool = True,
 ) -> List[str]:
     """Generate a full report with dashboard + Plotly visualization pages.
 
@@ -95,6 +138,8 @@ def export_report(
         Supplementary visualization data.
     open_browser : bool
         Whether to open the index page in a browser.
+    write_manifest : bool
+        Whether to write a manifest-backed report export artifact.
 
     Returns
     -------
@@ -125,7 +170,7 @@ def export_report(
     # 1. Main dashboard
     dash_path = export_dashboard(
         df, output_path=str(out / "index.html"),
-        title=title, viz_data=viz_data,
+        title=title, viz_data=viz_data, write_manifest=False,
     )
     generated.append(dash_path)
 
@@ -185,6 +230,40 @@ li{{margin:.5rem 0;font-size:1.1rem;}}</style></head>
         f.write(nav_html)
     generated.append(os.path.abspath(nav_path))
 
+    if write_manifest:
+        from sciscape.artifacts import write_export_manifest
+
+        root = out.parent.resolve()
+        files = [
+            _file_export_row(path, root=root, file_id=Path(path).stem or f"file_{idx}", role="primary" if Path(path).name == "report.html" else "support", fmt=Path(path).suffix.lstrip(".") or "file")
+            for idx, path in enumerate(generated, start=1)
+        ]
+        report_data_rel = _file_export_row(data_json_path, root=root, file_id="report_data", role="report_data", fmt="json")["path"]
+        write_export_manifest(
+            root,
+            export_id="html_report",
+            export_family="report",
+            export_kind="html_report",
+            primary_file=nav_path,
+            source_artifacts=[
+                {
+                    "role": "report_data",
+                    "artifact_ref": "report_data",
+                    "path": report_data_rel,
+                    "feature_ref": "overview",
+                    "required": True,
+                }
+            ],
+            feature_refs=["overview", "keyword", "cluster_map", "term_network", "export"],
+            files=files,
+            transforms=[
+                {"transform_type": "prepare_cluster_data", "description": "Prepare report data.json from keyword table."},
+                {"transform_type": "render_html_report", "description": "Render dashboard, charts, and report index."},
+            ],
+            compatibility={"target_tools": ["Browser", "SciScape"], "limitations": ["Plotly pages may require CDN access"]},
+            title=title,
+        )
+
     if open_browser:
         import webbrowser
         webbrowser.open(f"file://{os.path.abspath(nav_path)}")
@@ -195,6 +274,7 @@ li{{margin:.5rem 0;font-size:1.1rem;}}</style></head>
 def export_viewer(
     output_path: str = "viewer.html",
     title: str = "SciScape Viewer",
+    write_manifest: bool = True,
 ) -> str:
     """Generate a standalone viewer HTML that loads hosted or uploaded data.
 
@@ -209,6 +289,8 @@ def export_viewer(
         Path for the HTML file.
     title : str
         Viewer title.
+    write_manifest : bool
+        Whether to write a manifest-backed static viewer export artifact.
 
     Returns
     -------
@@ -230,4 +312,29 @@ def export_viewer(
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
 
-    return os.path.abspath(output_path)
+    abs_path = os.path.abspath(output_path)
+    if write_manifest:
+        from sciscape.artifacts import write_export_manifest
+
+        root = Path(abs_path).parent
+        write_export_manifest(
+            root,
+            export_id="static_viewer",
+            export_family="viewer",
+            export_kind="static_viewer_html",
+            primary_file=abs_path,
+            source_artifacts=[
+                {
+                    "role": "viewer_template",
+                    "artifact_ref": "viewer_template",
+                    "path": "",
+                    "feature_ref": "export",
+                    "required": False,
+                }
+            ],
+            feature_refs=["overview", "keyword", "cluster_map", "export"],
+            compatibility={"target_tools": ["Browser", "SciScape"], "limitations": ["loads data.json or uploaded data"]},
+            title=title,
+        )
+
+    return abs_path

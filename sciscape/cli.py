@@ -670,11 +670,33 @@ def _run_export(args: argparse.Namespace) -> None:
     edges = pl.read_parquet(args.edge_path)
     membership = pl.read_parquet(args.membership_path)
     abstracts = pl.read_parquet(args.abstracts) if args.abstracts else None
+    source_paths = {
+        "edges": args.edge_path,
+        "membership": args.membership_path,
+        "abstracts": args.abstracts,
+    }
+    result_root = Path(args.output).expanduser().resolve().parent
 
     if args.format == "graphml":
-        path = export_graphml(edges, membership, args.output, abstracts=abstracts)
+        path = export_graphml(
+            edges,
+            membership,
+            args.output,
+            abstracts=abstracts,
+            write_manifest=True,
+            result_root=result_root,
+            source_paths=source_paths,
+        )
     else:
-        path = export_gexf(edges, membership, args.output, abstracts=abstracts)
+        path = export_gexf(
+            edges,
+            membership,
+            args.output,
+            abstracts=abstracts,
+            write_manifest=True,
+            result_root=result_root,
+            source_paths=source_paths,
+        )
     print(f"Exported → {path}")
 
 

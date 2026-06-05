@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import sciscape.web.app as web_app
-from sciscape.artifacts import write_evolution_synthetic_smoke_artifact, write_workspace_manifest
+from sciscape.artifacts import validate_export_manifest, write_evolution_synthetic_smoke_artifact, write_workspace_manifest
 from sciscape.web.jobstore import JobStore
 
 app = web_app.app
@@ -74,6 +74,50 @@ def test_output_artifact_route_rejects_path_traversal(tmp_path):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "invalid artifact path"
+
+
+def test_network_export_endpoint_writes_export_manifest(tmp_path):
+    import polars as pl
+
+    job_id = f"testexport{uuid.uuid4().hex[:8]}"
+    output_dir = tmp_path / "result"
+    landscape_dir = output_dir / "landscape"
+    landscape_dir.mkdir(parents=True)
+    edges_path = output_dir / "edges.parquet"
+    abstracts_path = output_dir / "abstracts.parquet"
+    pl.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [1.0]}).write_parquet(edges_path)
+    pl.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).write_parquet(landscape_dir / "membership.parquet")
+    pl.DataFrame(
+        {
+            "uid": ["D0", "D1"],
+            "title": ["Paper A", "Paper B"],
+            "abstract": ["A", "B"],
+            "pubyear": [2021, 2022],
+        }
+    ).write_parquet(abstracts_path)
+
+    web_app._jobs.create(job_id, {"query": "export test"})
+    job = web_app._jobs.get(job_id)
+    assert job is not None
+    job["status"] = "done"
+    job["progress"] = []
+    job["result"] = {
+        "output_dir": str(output_dir),
+        "landscape_dir": str(landscape_dir),
+        "edges_path": str(edges_path),
+        "abstracts_path": str(abstracts_path),
+    }
+    web_app._jobs.persist(job_id)
+
+    client = TestClient(app)
+    response = client.get(f"/api/jobs/{job_id}/export/graphml")
+
+    assert response.status_code == 200
+    manifest_path = output_dir / "exports" / "network_graphml" / "export_manifest.json"
+    assert manifest_path.exists()
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_kind"] == "graphml_graph"
 
 
 def test_web_homepage_exposes_query_analysis_controls():

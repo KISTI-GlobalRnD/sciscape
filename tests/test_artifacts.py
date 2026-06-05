@@ -50,7 +50,8 @@ from sciscape.artifacts import (
     write_result_manifest,
     write_workspace_manifest,
 )
-from sciscape.keyword_extraction.visualization import export_dashboard, export_report
+from sciscape.export import export_graphml
+from sciscape.keyword_extraction.visualization import export_dashboard, export_report, export_viewer
 
 
 def _write_valid_result_root(root: Path) -> Path:
@@ -1427,6 +1428,38 @@ def test_dashboard_export_embeds_report_data_contract(tmp_path):
     assert "TAB_FEATURES" in html
 
 
+def test_dashboard_export_writes_export_manifest(tmp_path):
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["perovskite solar cells", "interface passivation"],
+            "score": [0.9, 0.8],
+            "frequency": [2, 1],
+        }
+    )
+    dashboard = tmp_path / "dashboard.html"
+
+    export_dashboard(keywords, output_path=str(dashboard))
+
+    manifest_path = tmp_path / "exports" / "keyword_dashboard" / "export_manifest.json"
+    assert manifest_path.exists()
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_kind"] == "keyword_dashboard_html"
+
+
+def test_viewer_export_writes_export_manifest(tmp_path):
+    viewer = tmp_path / "viewer.html"
+
+    export_viewer(output_path=str(viewer), title="SciScape Static Viewer")
+
+    manifest_path = tmp_path / "exports" / "static_viewer" / "export_manifest.json"
+    assert manifest_path.exists()
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_kind"] == "static_viewer_html"
+
+
 def test_report_export_writes_atlas_payload_to_data_json(tmp_path):
     keywords = pd.DataFrame(
         {
@@ -1445,3 +1478,64 @@ def test_report_export_writes_atlas_payload_to_data_json(tmp_path):
     assert contract["atlas"]["node_count"] == 2
     assert [node["cluster_uid"] for node in contract["atlas"]["nodes"]] == ["cluster:0", "cluster:1"]
     assert contract["atlas"]["nodes"][0]["keyword_count"] == 2
+
+
+def test_report_export_writes_bundle_export_manifest(tmp_path):
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 1],
+            "term": ["perovskite solar cells", "interface passivation", "graph neural networks"],
+            "score": [0.9, 0.8, 0.95],
+            "frequency": [2, 1, 2],
+        }
+    )
+
+    export_report(keywords, output_dir=str(tmp_path / "report"))
+
+    manifest_path = tmp_path / "exports" / "html_report" / "export_manifest.json"
+    assert manifest_path.exists()
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_kind"] == "html_report"
+    assert validation["counts"]["files"] >= 5
+
+
+def test_graphml_export_can_write_export_manifest(tmp_path):
+    import polars as pl
+
+    result_root = tmp_path / "result"
+    result_root.mkdir()
+    edges_path = result_root / "edges.parquet"
+    membership_path = result_root / "membership.parquet"
+    abstracts_path = result_root / "abstracts.parquet"
+    pl.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [1.0]}).write_parquet(edges_path)
+    pl.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).write_parquet(membership_path)
+    pl.DataFrame(
+        {
+            "uid": ["D0", "D1"],
+            "title": ["Paper A", "Paper B"],
+            "abstract": ["A", "B"],
+            "pubyear": [2021, 2022],
+        }
+    ).write_parquet(abstracts_path)
+
+    export_graphml(
+        pl.read_parquet(edges_path),
+        pl.read_parquet(membership_path),
+        result_root / "network.graphml",
+        abstracts=pl.read_parquet(abstracts_path),
+        write_manifest=True,
+        result_root=result_root,
+        source_paths={
+            "edges": edges_path,
+            "membership": membership_path,
+            "abstracts": abstracts_path,
+        },
+    )
+
+    manifest_path = result_root / "exports" / "network_graphml" / "export_manifest.json"
+    assert manifest_path.exists()
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_kind"] == "graphml_graph"
+    assert validation["counts"]["inputs"] == 3

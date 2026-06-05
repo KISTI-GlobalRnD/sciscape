@@ -8,12 +8,90 @@ from __future__ import annotations
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, Mapping
 
 import numpy as np
 import polars as pl
 
 log = logging.getLogger(__name__)
+
+
+def _source_artifact(
+    role: str,
+    path: str | Path | None,
+    *,
+    result_root: Path,
+    artifact_ref: str | None = None,
+    feature_ref: str = "cluster_map",
+    required: bool = True,
+) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "role": role,
+        "artifact_ref": artifact_ref or role,
+        "feature_ref": feature_ref,
+        "required": required,
+    }
+    if path is None:
+        row["path"] = ""
+        row["required"] = False
+        return row
+    candidate = Path(path).expanduser()
+    if not candidate.is_absolute():
+        candidate = candidate.resolve()
+    try:
+        row["path"] = candidate.relative_to(result_root).as_posix()
+    except ValueError:
+        # Do not leak private absolute paths into public export manifests.
+        row["path"] = ""
+        row["required"] = False
+    return row
+
+
+def _write_graph_export_manifest(
+    output_path: Path,
+    *,
+    fmt: str,
+    result_root: str | Path | None,
+    source_paths: Mapping[str, str | Path | None] | None,
+) -> None:
+    from sciscape.artifacts import write_export_manifest
+
+    root = Path(result_root).expanduser().resolve() if result_root is not None else output_path.parent.resolve()
+    source_paths = source_paths or {}
+    source_artifacts = [
+        _source_artifact("edges", source_paths.get("edges"), result_root=root, artifact_ref="edges"),
+        _source_artifact("membership", source_paths.get("membership"), result_root=root, artifact_ref="membership"),
+    ]
+    if source_paths.get("abstracts") is not None:
+        source_artifacts.append(
+            _source_artifact(
+                "records",
+                source_paths.get("abstracts"),
+                result_root=root,
+                artifact_ref="records",
+                feature_ref="overview",
+                required=False,
+            )
+        )
+    write_export_manifest(
+        root,
+        export_id=f"network_{fmt}",
+        export_family="graph",
+        export_kind=f"{fmt}_graph",
+        primary_file=output_path,
+        source_artifacts=source_artifacts,
+        feature_refs=["cluster_map", "evidence", "export"],
+        compatibility={
+            "target_tools": ["Gephi"] if fmt == "gexf" else ["Cytoscape", "NetworkX"],
+            "format_version": "GEXF 1.3" if fmt == "gexf" else "GraphML",
+            "limitations": [],
+        },
+        transforms=[
+            {"transform_type": "load_edge_table", "description": "Load SciScape edge table."},
+            {"transform_type": f"write_{fmt}", "description": f"Write network as {fmt.upper()}."},
+        ],
+        title=f"SciScape {fmt.upper()} network export",
+    )
 
 
 def export_gexf(
@@ -25,6 +103,9 @@ def export_gexf(
     abstracts: pl.DataFrame | None = None,
     keyword_col: str = "keyword",
     cluster_col: str | None = None,
+    write_manifest: bool = False,
+    result_root: str | Path | None = None,
+    source_paths: Mapping[str, str | Path | None] | None = None,
 ) -> Path:
     """Export cluster network as GEXF (Gephi format).
 
@@ -116,6 +197,13 @@ def export_gexf(
     ET.indent(tree, space="  ")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tree.write(str(output_path), encoding="utf-8", xml_declaration=True)
+    if write_manifest:
+        _write_graph_export_manifest(
+            output_path,
+            fmt="gexf",
+            result_root=result_root,
+            source_paths=source_paths,
+        )
     log.info("Exported GEXF: %d nodes, %d edges → %s", len(all_uids), edges.height, output_path)
     return output_path
 
@@ -127,6 +215,9 @@ def export_graphml(
     *,
     abstracts: pl.DataFrame | None = None,
     cluster_col: str | None = None,
+    write_manifest: bool = False,
+    result_root: str | Path | None = None,
+    source_paths: Mapping[str, str | Path | None] | None = None,
 ) -> Path:
     """Export cluster network as GraphML (Cytoscape format).
 
@@ -193,6 +284,13 @@ def export_graphml(
     ET.indent(tree, space="  ")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tree.write(str(output_path), encoding="utf-8", xml_declaration=True)
+    if write_manifest:
+        _write_graph_export_manifest(
+            output_path,
+            fmt="graphml",
+            result_root=result_root,
+            source_paths=source_paths,
+        )
     log.info("Exported GraphML: %d nodes, %d edges → %s", len(all_uids), edges.height, output_path)
     return output_path
 

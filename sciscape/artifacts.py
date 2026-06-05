@@ -3874,6 +3874,8 @@ def _export_existing_result_id(result_root: Path) -> str | None:
 
 
 def _export_rel_to_root(path: str | Path, root: Path) -> str:
+    if path in (None, ""):
+        return ""
     candidate = Path(path).expanduser()
     if candidate.is_absolute():
         rel = _rel(candidate.resolve(), root)

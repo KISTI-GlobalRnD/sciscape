@@ -482,9 +482,9 @@ commands.
    transforms, and QA.
 2. `[x]` Add `validate_export_manifest`.
 3. `[x]` Add `write_export_manifest`.
-4. `[~]` Wrap existing report, static viewer, GEXF, and GraphML export paths.
-   The writer can wrap existing files, but the existing export commands do not
-   yet call it automatically.
+4. `[x]` Wrap existing report, static viewer, GEXF, and GraphML export paths.
+   Dashboard/report/viewer helpers, CLI graph export, and web network export
+   now write manifest-backed export artifacts.
 5. `[x]` Extend `validate_result_root` to identify export manifests and expose
    stable/beta/blocked export states.
 6. `[x]` Add a tiny synthetic export smoke that writes a table export and validates

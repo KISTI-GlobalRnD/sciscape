@@ -1725,11 +1725,32 @@ async def export_network(job_id: str, fmt: str):
 
     abs_path = result.get("abstracts_path")
     abstracts = pl.read_parquet(abs_path) if abs_path and Path(abs_path).exists() else None
+    source_paths = {
+        "edges": edges_path,
+        "membership": mem_path,
+        "abstracts": abs_path,
+    }
 
     if fmt == "graphml":
-        export_graphml(edges, membership, out_path, abstracts=abstracts)
+        export_graphml(
+            edges,
+            membership,
+            out_path,
+            abstracts=abstracts,
+            write_manifest=True,
+            result_root=out_dir,
+            source_paths=source_paths,
+        )
     else:
-        export_gexf(edges, membership, out_path, abstracts=abstracts)
+        export_gexf(
+            edges,
+            membership,
+            out_path,
+            abstracts=abstracts,
+            write_manifest=True,
+            result_root=out_dir,
+            source_paths=source_paths,
+        )
 
     return FileResponse(str(out_path), filename=f"sciscape_network.{fmt}",
                         media_type="application/xml")
