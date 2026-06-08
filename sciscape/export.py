@@ -56,6 +56,7 @@ def _write_graph_export_manifest(
     result_root: str | Path | None,
     source_paths: Mapping[str, str | Path | None] | None,
     selection: Mapping[str, Any] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
 ) -> None:
     from sciscape.artifacts import write_export_manifest
 
@@ -99,6 +100,7 @@ def _write_graph_export_manifest(
         },
         transforms=[
             {"transform_type": "load_edge_table", "description": "Load SciScape edge table."},
+            *[dict(item) for item in (transforms or [])],
             {"transform_type": f"write_{fmt}", "description": f"Write network as {fmt.upper()}."},
         ],
         title=f"SciScape {fmt.upper()} network export",
@@ -575,6 +577,7 @@ def export_gexf(
     result_root: str | Path | None = None,
     source_paths: Mapping[str, str | Path | None] | None = None,
     selection: Mapping[str, Any] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
 ) -> Path:
     """Export cluster network as GEXF (Gephi format).
 
@@ -668,6 +671,7 @@ def export_gexf(
             result_root=result_root,
             source_paths=source_paths,
             selection=selection,
+            transforms=transforms,
         )
     log.info("Exported GEXF: %d nodes, %d edges → %s", len(all_uids), edges.height, output_path)
     return output_path
@@ -684,6 +688,7 @@ def export_graphml(
     result_root: str | Path | None = None,
     source_paths: Mapping[str, str | Path | None] | None = None,
     selection: Mapping[str, Any] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
 ) -> Path:
     """Export cluster network as GraphML (Cytoscape format).
 
@@ -750,6 +755,7 @@ def export_graphml(
             result_root=result_root,
             source_paths=source_paths,
             selection=selection,
+            transforms=transforms,
         )
     log.info("Exported GraphML: %d nodes, %d edges → %s", len(all_uids), edges.height, output_path)
     return output_path

@@ -91,14 +91,16 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     landscape_dir.mkdir(parents=True)
     edges_path = output_dir / "edges.parquet"
     abstracts_path = output_dir / "abstracts.parquet"
-    pl.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [1.0]}).write_parquet(edges_path)
-    pl.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).write_parquet(landscape_dir / "membership.parquet")
+    pl.DataFrame({"uid1": ["D0", "D1"], "uid2": ["D1", "D2"], "rel_sum2": [1.0, 0.5]}).write_parquet(edges_path)
+    pl.DataFrame({"uid": ["D0", "D1", "D2"], "cluster": [0, 1, 2]}).write_parquet(
+        landscape_dir / "membership.parquet"
+    )
     pl.DataFrame(
         {
-            "uid": ["D0", "D1"],
-            "title": ["Paper A", "Paper B"],
-            "abstract": ["A", "B"],
-            "pubyear": [2021, 2022],
+            "uid": ["D0", "D1", "D2"],
+            "title": ["Paper A", "Paper B", "Paper C"],
+            "abstract": ["A", "B", "C"],
+            "pubyear": [2021, 2022, 2023],
         }
     ).write_parquet(abstracts_path)
 
@@ -131,10 +133,10 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
             "atlas_label_limit": "24",
             "atlas_neighbor": "cluster:1",
             "atlas_subset_mode": "neighbors",
-            "atlas_subset_count": "3",
-            "atlas_subset_uids": "cluster:0,cluster:1,cluster:2",
+            "atlas_subset_count": "2",
+            "atlas_subset_uids": "cluster:0,cluster:1",
             "atlas_subset_truncated": "false",
-            "atlas_pinned": "cluster:2",
+            "atlas_pinned": "cluster:1",
         },
     )
 
@@ -157,7 +159,12 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
         "atlas_view": "map",
         "atlas_layers": ["edges", "labels"],
         "atlas_label_limit": 24,
+        "subset_applied": True,
+        "subset_membership_column": "cluster",
+        "subset_output_node_count": 2,
+        "subset_output_edge_count": 1,
     }
+    assert export_manifest["selection"]["scope"] == "selected_subset"
     assert export_manifest["selection"]["cluster_level"] == "cluster"
     assert export_manifest["selection"]["filters"] == [
         {"field": "atlas_query", "op": "contains", "value": "passivation"},
@@ -171,11 +178,30 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     }
     assert export_manifest["selection"]["subset"] == {
         "mode": "neighbors",
-        "count": 3,
-        "uids": ["cluster:0", "cluster:1", "cluster:2"],
+        "count": 2,
+        "uids": ["cluster:0", "cluster:1"],
         "truncated": False,
-        "pinned_uids": ["cluster:2"],
+        "pinned_uids": ["cluster:1"],
+        "applied": True,
+        "membership_column": "cluster",
+        "cluster_level": "cluster",
+        "source_node_count": 3,
+        "source_edge_count": 2,
+        "output_node_count": 2,
+        "output_edge_count": 1,
     }
+    graphml = (output_dir / "network.graphml").read_text(encoding="utf-8")
+    assert 'node id="D0"' in graphml
+    assert 'node id="D1"' in graphml
+    assert 'node id="D2"' not in graphml
+    assert 'source="D0" target="D1"' in graphml
+    assert 'source="D1" target="D2"' not in graphml
+    transform_table = pd.read_parquet(output_dir / "exports" / "network_graphml" / "export_transforms.parquet")
+    assert transform_table["transform_type"].tolist() == [
+        "load_edge_table",
+        "apply_selected_subset",
+        "write_graphml",
+    ]
 
     job_payload = client.get(f"/api/jobs/{job_id}").json()
     exports = job_payload["result"]["result_manifest"]["exports"]
@@ -184,6 +210,7 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     assert graphml_exports[0]["path"] == "network.graphml"
     assert graphml_exports[0]["export_manifest_ref"] == "exports/network_graphml/export_manifest.json"
     assert graphml_exports[0]["selection_summary"]["view_mode"] == "web_network_export"
+    assert graphml_exports[0]["selection_summary"]["scope"] == "selected_subset"
     assert graphml_exports[0]["selection_summary"]["cluster_level"] == "cluster"
     assert graphml_exports[0]["selection_summary"]["filter_count"] == 2
     assert graphml_exports[0]["selection_summary"]["threshold_keys"] == ["atlas_edge_min"]
@@ -193,11 +220,18 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
         "neighbor_uid",
     ]
     assert graphml_exports[0]["selection_summary"]["subset_mode"] == "neighbors"
-    assert graphml_exports[0]["selection_summary"]["subset_count"] == 3
+    assert graphml_exports[0]["selection_summary"]["subset_count"] == 2
     assert graphml_exports[0]["selection_summary"]["subset_keys"] == [
+        "applied",
+        "cluster_level",
         "count",
+        "membership_column",
         "mode",
+        "output_edge_count",
+        "output_node_count",
         "pinned_uids",
+        "source_edge_count",
+        "source_node_count",
         "truncated",
         "uids",
     ]
@@ -208,6 +242,10 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
         "atlas_view",
         "membership_source",
         "network_format",
+        "subset_applied",
+        "subset_membership_column",
+        "subset_output_edge_count",
+        "subset_output_node_count",
     ]
 
 

@@ -650,6 +650,120 @@ def _split_export_id_list(value: Any, *, limit: int = 100) -> list[str]:
     return [part.strip() for part in text.split(",") if part.strip()][:limit]
 
 
+def _atlas_cluster_uid_parts(uid: str, default_level: str | None) -> tuple[str, str] | None:
+    text = _clean_export_query_value(uid)
+    if not text:
+        return None
+    if ":" in text:
+        level, key = text.split(":", 1)
+    else:
+        level, key = default_level or "cluster", text
+    level = _clean_export_query_value(level) or "cluster"
+    key = _clean_export_query_value(key)
+    if not key:
+        return None
+    return level, key
+
+
+def _membership_cluster_column(membership: Any, level: str | None) -> str | None:
+    columns = list(getattr(membership, "columns", []) or [])
+    if not columns:
+        return None
+    level = _clean_export_query_value(level) or "cluster"
+    candidates: list[str] = []
+    if level == "cluster":
+        candidates.extend(["cluster", "cluster_cluster"])
+    else:
+        candidates.extend([f"cluster_{level}", level])
+    candidates.extend([column for column in columns if str(column).startswith("cluster_")])
+    if "cluster" in columns:
+        candidates.append("cluster")
+    for column in candidates:
+        if column in columns:
+            return column
+    return None
+
+
+def _filter_network_export_to_selection(
+    *,
+    edges: Any,
+    membership: Any,
+    abstracts: Any | None,
+    selection: dict[str, Any],
+) -> tuple[Any, Any, Any | None, dict[str, Any] | None]:
+    subset = selection.get("subset") if isinstance(selection.get("subset"), dict) else {}
+    subset_uids = _split_export_id_list(",".join(subset.get("uids", [])) if isinstance(subset.get("uids"), list) else subset.get("uids"))
+    if not subset_uids or not hasattr(membership, "columns") or "uid" not in getattr(membership, "columns", []):
+        return edges, membership, abstracts, None
+
+    default_level = selection.get("cluster_level")
+    cluster_keys_by_level: dict[str, set[str]] = {}
+    for uid in subset_uids:
+        parts = _atlas_cluster_uid_parts(uid, str(default_level) if default_level else None)
+        if parts is None:
+            continue
+        level, key = parts
+        cluster_keys_by_level.setdefault(level, set()).add(key)
+    if not cluster_keys_by_level:
+        return edges, membership, abstracts, None
+
+    selected_level = str(default_level) if default_level in cluster_keys_by_level else next(iter(cluster_keys_by_level))
+    cluster_column = _membership_cluster_column(membership, selected_level)
+    if cluster_column is None:
+        return edges, membership, abstracts, None
+
+    import polars as pl
+
+    selected_cluster_keys = sorted(cluster_keys_by_level[selected_level])
+    source_edge_count = int(edges.height)
+    source_node_count = int(membership.height)
+    membership_with_key = membership.with_columns(pl.col(cluster_column).cast(pl.Utf8).alias("_sciscape_export_cluster_key"))
+    filtered_membership = (
+        membership_with_key
+        .filter(pl.col("_sciscape_export_cluster_key").is_in(selected_cluster_keys))
+        .drop("_sciscape_export_cluster_key")
+    )
+    selected_paper_uids = filtered_membership["uid"].cast(pl.Utf8).to_list()
+    filtered_edges = edges.filter(
+        pl.col("uid1").cast(pl.Utf8).is_in(selected_paper_uids)
+        & pl.col("uid2").cast(pl.Utf8).is_in(selected_paper_uids)
+    )
+    filtered_abstracts = abstracts
+    if abstracts is not None and hasattr(abstracts, "columns") and "uid" in abstracts.columns:
+        filtered_abstracts = abstracts.filter(pl.col("uid").cast(pl.Utf8).is_in(selected_paper_uids))
+
+    subset["applied"] = True
+    subset["membership_column"] = cluster_column
+    subset["cluster_level"] = selected_level
+    subset["source_node_count"] = source_node_count
+    subset["source_edge_count"] = source_edge_count
+    subset["output_node_count"] = int(filtered_membership.height)
+    subset["output_edge_count"] = int(filtered_edges.height)
+    selection["subset"] = subset
+    selection["scope"] = "selected_subset"
+    layer_state = selection.get("layer_state") if isinstance(selection.get("layer_state"), dict) else {}
+    layer_state["subset_applied"] = True
+    layer_state["subset_membership_column"] = cluster_column
+    layer_state["subset_output_node_count"] = int(filtered_membership.height)
+    layer_state["subset_output_edge_count"] = int(filtered_edges.height)
+    selection["layer_state"] = layer_state
+    transform = {
+        "transform_type": "apply_selected_subset",
+        "description": "Filter exported network to the selected Atlas cluster subset.",
+        "parameters": {
+            "cluster_level": selected_level,
+            "membership_column": cluster_column,
+            "selected_cluster_count": len(selected_cluster_keys),
+            "source_node_count": source_node_count,
+            "source_edge_count": source_edge_count,
+            "output_node_count": int(filtered_membership.height),
+            "output_edge_count": int(filtered_edges.height),
+            "truncated": bool(subset.get("truncated", False)),
+        },
+    }
+    return filtered_edges, filtered_membership, filtered_abstracts, transform
+
+
 def _web_network_export_selection(
     *,
     fmt: str,
@@ -1917,6 +2031,13 @@ async def export_network(
         atlas_subset_truncated=atlas_subset_truncated,
         atlas_pinned=atlas_pinned,
     )
+    edges, membership, abstracts, subset_transform = _filter_network_export_to_selection(
+        edges=edges,
+        membership=membership,
+        abstracts=abstracts,
+        selection=export_selection,
+    )
+    export_transforms = [subset_transform] if subset_transform is not None else None
 
     if fmt == "graphml":
         export_graphml(
@@ -1928,6 +2049,7 @@ async def export_network(
             result_root=out_dir,
             source_paths=source_paths,
             selection=export_selection,
+            transforms=export_transforms,
         )
     else:
         export_gexf(
@@ -1939,6 +2061,7 @@ async def export_network(
             result_root=out_dir,
             source_paths=source_paths,
             selection=export_selection,
+            transforms=export_transforms,
         )
 
     try:

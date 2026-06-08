@@ -1194,7 +1194,8 @@ Success:
 - exported files identify the source result
 - stable IDs are preserved
 - node/edge/matrix labels remain interpretable outside SciScape
-- selected/visible subset exports record the selection
+- selected/visible subset exports record the selection and apply it where the
+  target export format supports subset output
 - export manifests record source artifacts, transforms, file inventory, and QA
 
 Partial:

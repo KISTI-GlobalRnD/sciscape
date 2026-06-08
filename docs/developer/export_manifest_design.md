@@ -545,6 +545,8 @@ commands.
 9. `[x]` Preserve dashboard, report, static viewer, CLI visualize/viewer,
    `run_landscape` report, GUI viewer, and quality-gate smoke export surfaces
    through normalized selection metadata.
+10. `[x]` Apply recorded web Atlas cluster subsets to GraphML/GEXF exports and
+    record the `apply_selected_subset` transform in export manifests.
 
 ## Acceptance Criteria
 
