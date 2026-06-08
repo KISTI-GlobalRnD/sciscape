@@ -130,6 +130,11 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
             "atlas_edge_min": "0.25",
             "atlas_label_limit": "24",
             "atlas_neighbor": "cluster:1",
+            "atlas_subset_mode": "neighbors",
+            "atlas_subset_count": "3",
+            "atlas_subset_uids": "cluster:0,cluster:1,cluster:2",
+            "atlas_subset_truncated": "false",
+            "atlas_pinned": "cluster:2",
         },
     )
 
@@ -164,6 +169,13 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
         "focus_mode": "neighbors",
         "neighbor_uid": "cluster:1",
     }
+    assert export_manifest["selection"]["subset"] == {
+        "mode": "neighbors",
+        "count": 3,
+        "uids": ["cluster:0", "cluster:1", "cluster:2"],
+        "truncated": False,
+        "pinned_uids": ["cluster:2"],
+    }
 
     job_payload = client.get(f"/api/jobs/{job_id}").json()
     exports = job_payload["result"]["result_manifest"]["exports"]
@@ -179,6 +191,15 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
         "cluster_uid",
         "focus_mode",
         "neighbor_uid",
+    ]
+    assert graphml_exports[0]["selection_summary"]["subset_mode"] == "neighbors"
+    assert graphml_exports[0]["selection_summary"]["subset_count"] == 3
+    assert graphml_exports[0]["selection_summary"]["subset_keys"] == [
+        "count",
+        "mode",
+        "pinned_uids",
+        "truncated",
+        "uids",
     ]
     assert graphml_exports[0]["selection_summary"]["layer_state_keys"] == [
         "atlas_label_limit",

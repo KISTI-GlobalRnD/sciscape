@@ -1187,6 +1187,9 @@ def test_write_export_manifest_promotes_stable_export_feature(tmp_path):
         "threshold_keys": [],
         "layer_state_keys": [],
         "focus_keys": [],
+        "subset_mode": None,
+        "subset_count": None,
+        "subset_keys": [],
     }
 
 

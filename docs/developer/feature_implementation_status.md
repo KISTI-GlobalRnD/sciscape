@@ -53,7 +53,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
-| F14 | Report, export, interoperability | `[~]` | 96% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer web bundle download, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection summaries, first command adapters | complete UI-supplied subset metadata |
+| F14 | Report, export, interoperability | `[~]` | 97% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer web bundle download, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, first command adapters | true subset-filtered exports |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
 ## Code Surface Inventory
@@ -366,7 +366,7 @@ features are exposed in the UI.
 
 ### F14. Report, Export, And Interoperability
 
-Status: `[~]` Partial. Rough completeness: 96%.
+Status: `[~]` Partial. Rough completeness: 97%.
 
 - `[x]` Dashboard, report, and viewer export helpers exist.
 - `[x]` CLI export supports GEXF, GraphML, and VOSviewer-style map/network
@@ -399,12 +399,14 @@ Status: `[~]` Partial. Rough completeness: 96%.
   `run_landscape` report, GUI viewer, quality-gate smoke, rule-export, and web
   bundle export manifests preserve normalized `sciscape_export_selection_v1`
   view/filter/focus/layer metadata, and `result_manifest.exports` exposes
-  compact `selection_summary` rows including focus keys.
+  compact `selection_summary` rows including focus and subset keys.
 - `[x]` Web network export captures Atlas level, selected cluster, query,
   lens/view/focus mode, review filter, deck layers, edge threshold, label limit,
   and neighbor focus from the browser request into the export selection.
-- `[ ]` Export manifests do not yet capture every user-selected subset from each
-  user-facing workflow.
+- `[x]` Web network export captures visible/focused subset mode, count, bounded
+  cluster UID sample, truncation state, and pinned cluster IDs.
+- `[ ]` Export commands do not yet generate true subset-filtered output files
+  from the recorded selection.
 
 Review: good enough for graph/report exports, and the manifest contract plus
 writer/validator plus first command adapters now exist, but interoperability
@@ -438,7 +440,7 @@ evolution map, and narrative system are stable.
 ## Next Implementation Targets
 
 1. Harden inspector-driven review affordances and Cleaning-mode rule review.
-2. Complete user-selected subset export metadata across every workflow.
+2. Implement true subset-filtered export files from recorded selections.
 3. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
 4. Implement the narrative evidence-reference writer, validator, and unsupported

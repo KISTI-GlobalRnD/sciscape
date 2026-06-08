@@ -215,13 +215,14 @@ Required normalized keys:
 | `thresholds` | object | numeric or categorical thresholds used by the view |
 | `layer_state` | object | export-layer settings such as format, source table, visible files, or bundle inventory |
 | `focus` | object | selected cluster, term, node, or document focus state |
+| `subset` | object | selected or visible subset mode, count, bounded UID sample, and truncation state |
 | `feature_refs` | array | features represented by the selected export |
 
 Result manifests expose both the full normalized `selection` and a compact
 `selection_summary` with `scope`, `view_mode`, `view_family`, `cluster_level`,
-filter count, threshold keys, layer-state keys, and focus keys. The summary is
-intended for download lists and workspace browsing; the full selection remains
-the auditable source of truth.
+filter count, threshold keys, layer-state keys, focus keys, and subset
+mode/count/keys. The summary is intended for download lists and workspace
+browsing; the full selection remains the auditable source of truth.
 
 ## Export Files Table
 

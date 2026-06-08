@@ -643,6 +643,13 @@ def _clean_export_query_value(value: Any) -> str:
     return str(value).strip()
 
 
+def _split_export_id_list(value: Any, *, limit: int = 100) -> list[str]:
+    text = _clean_export_query_value(value)
+    if not text:
+        return []
+    return [part.strip() for part in text.split(",") if part.strip()][:limit]
+
+
 def _web_network_export_selection(
     *,
     fmt: str,
@@ -658,6 +665,11 @@ def _web_network_export_selection(
     atlas_edge_min: float | None = None,
     atlas_label_limit: int | None = None,
     atlas_neighbor: str | None = None,
+    atlas_subset_mode: str | None = None,
+    atlas_subset_count: int | None = None,
+    atlas_subset_uids: str | None = None,
+    atlas_subset_truncated: bool | None = None,
+    atlas_pinned: str | None = None,
 ) -> dict[str, Any]:
     filters: list[dict[str, Any]] = []
     query = _clean_export_query_value(atlas_query)
@@ -703,6 +715,21 @@ def _web_network_export_selection(
     if neighbor:
         focus["neighbor_uid"] = neighbor
 
+    subset_mode = _clean_export_query_value(atlas_subset_mode) or focus_mode
+    subset_uids = _split_export_id_list(atlas_subset_uids)
+    pinned_uids = _split_export_id_list(atlas_pinned, limit=20)
+    subset: dict[str, Any] = {}
+    if subset_mode or subset_uids or atlas_subset_count is not None or pinned_uids:
+        subset["mode"] = subset_mode or "global"
+        if atlas_subset_count is not None:
+            subset["count"] = int(atlas_subset_count)
+        if subset_uids:
+            subset["uids"] = subset_uids
+        if atlas_subset_truncated is not None:
+            subset["truncated"] = bool(atlas_subset_truncated)
+        if pinned_uids:
+            subset["pinned_uids"] = pinned_uids
+
     return {
         "scope": "full_result",
         "view": {"mode": "web_network_export", "surface": "web_export_endpoint"},
@@ -711,6 +738,7 @@ def _web_network_export_selection(
         "thresholds": thresholds,
         "layer_state": layer_state,
         "focus": focus,
+        "subset": subset,
     }
 
 
@@ -1830,6 +1858,11 @@ async def export_network(
     atlas_edge_min: float | None = None,
     atlas_label_limit: int | None = None,
     atlas_neighbor: str | None = None,
+    atlas_subset_mode: str | None = None,
+    atlas_subset_count: int | None = None,
+    atlas_subset_uids: str | None = None,
+    atlas_subset_truncated: bool | None = None,
+    atlas_pinned: str | None = None,
 ):
     """Export network as GEXF or GraphML."""
     if fmt not in ("gexf", "graphml"):
@@ -1878,6 +1911,11 @@ async def export_network(
         atlas_edge_min=atlas_edge_min,
         atlas_label_limit=atlas_label_limit,
         atlas_neighbor=atlas_neighbor,
+        atlas_subset_mode=atlas_subset_mode,
+        atlas_subset_count=atlas_subset_count,
+        atlas_subset_uids=atlas_subset_uids,
+        atlas_subset_truncated=atlas_subset_truncated,
+        atlas_pinned=atlas_pinned,
     )
 
     if fmt == "graphml":

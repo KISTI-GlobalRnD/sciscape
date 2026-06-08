@@ -4910,6 +4910,7 @@ def _normalize_export_selection(
         "thresholds": _export_jsonable(_export_mapping(raw.pop("thresholds", {}))),
         "layer_state": _export_jsonable(_export_mapping(raw.pop("layer_state", {}))),
         "focus": _export_jsonable(_export_mapping(raw.pop("focus", {}))),
+        "subset": _export_jsonable(_export_mapping(raw.pop("subset", {}))),
         "feature_refs": [str(feature) for feature in feature_refs],
     }
     for key, value in raw.items():
@@ -4934,6 +4935,7 @@ def _manifest_selection_summary(selection: Mapping[str, Any]) -> dict[str, Any]:
     thresholds = selection.get("thresholds") if isinstance(selection.get("thresholds"), Mapping) else {}
     layer_state = selection.get("layer_state") if isinstance(selection.get("layer_state"), Mapping) else {}
     focus = selection.get("focus") if isinstance(selection.get("focus"), Mapping) else {}
+    subset = selection.get("subset") if isinstance(selection.get("subset"), Mapping) else {}
     return {
         "scope": selection.get("scope"),
         "view_mode": view.get("mode"),
@@ -4943,6 +4945,9 @@ def _manifest_selection_summary(selection: Mapping[str, Any]) -> dict[str, Any]:
         "threshold_keys": sorted(str(key) for key in thresholds),
         "layer_state_keys": sorted(str(key) for key in layer_state),
         "focus_keys": sorted(str(key) for key in focus),
+        "subset_mode": subset.get("mode"),
+        "subset_count": subset.get("count"),
+        "subset_keys": sorted(str(key) for key in subset),
     }
 
 
