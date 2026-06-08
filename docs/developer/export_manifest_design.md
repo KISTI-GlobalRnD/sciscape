@@ -495,9 +495,10 @@ The writer should:
 9. return paths, counts, warnings, and QA status.
 
 The first adapters wrap existing dashboard, report, static viewer, GEXF,
-GraphML, paper-network VOSviewer-style map/network exports, and keyword-rule
-VOSviewer-style thesaurus/rule-set exports. Matrix and co-occurrence adapters
-can follow after their source artifact contracts are stable.
+GraphML, paper-network VOSviewer-style map/network exports, keyword-rule
+VOSviewer-style thesaurus/rule-set exports, and the stable term co-occurrence
+table/map export. Matrix-builder exports and VOSviewer-style co-occurrence
+adapters can follow after their source artifact contracts are stable.
 
 ## Validator Utility Design
 
@@ -538,8 +539,10 @@ commands.
 7. `[~]` Add matrix and VOSviewer-style export manifests only after their source
    artifact contracts are stable. VOSviewer-style paper-network map/network and
    keyword-rule thesaurus/rule-set exports exist, and the web app can package
-   manifest-backed VOSviewer exports into a bundle. Matrix/co-occurrence
-   VOSviewer exports remain future work.
+   manifest-backed VOSviewer exports into a bundle. Stable term co-occurrence
+   artifacts can be exported as a manifest-backed TSV table plus paired map
+   JSON. Matrix-builder exports and VOSviewer-style co-occurrence exports remain
+   future work.
 8. `[x]` Normalize export selection/view/filter metadata and surface compact
    selection summaries through `result_manifest.exports`.
 9. `[x]` Preserve dashboard, report, static viewer, CLI visualize/viewer,

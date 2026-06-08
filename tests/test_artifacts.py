@@ -56,6 +56,7 @@ from sciscape.artifacts import (
     write_workspace_manifest,
 )
 from sciscape.export import (
+    export_cooccurrence_table,
     export_graphml,
     export_vosviewer_bundle,
     export_vosviewer_network,
@@ -238,6 +239,59 @@ def test_write_cooccurrence_artifacts_promotes_stable_manifest_feature(tmp_path)
     assert manifest["features"]["matrix"]["artifact_refs"] == []
     assert manifest["artifacts"]["cooccurrence"]["schema_version"] == COOCCURRENCE_ARTIFACT_SCHEMA_VERSION
     assert manifest["artifacts"]["cooccurrence"]["rows"] == 2
+
+
+def test_export_cooccurrence_table_writes_manifest_backed_table(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+
+    written = export_cooccurrence_table(root)
+
+    table_path = root / "exports" / "term_cooccurrence_table" / "term_cooccurrence.tsv"
+    map_path = root / "exports" / "term_cooccurrence_table" / "term_cooccurrence_map.json"
+    assert written["table_path"] == table_path
+    assert written["map_path"] == map_path
+    assert written["manifest_path"] == root / "exports" / "term_cooccurrence_table" / "export_manifest.json"
+    assert table_path.exists()
+    assert map_path.exists()
+    table = pd.read_csv(table_path, sep="\t")
+    assert len(table) == 2
+    assert {"source", "target", "weight", "relation"}.issubset(table.columns)
+    assert set(table["schema_version"]) == {COOCCURRENCE_ARTIFACT_SCHEMA_VERSION}
+
+    cooc_map = json.loads(map_path.read_text(encoding="utf-8"))
+    assert cooc_map["schema_version"] == COOCCURRENCE_ARTIFACT_SCHEMA_VERSION
+    assert cooc_map["edge_count"] == 2
+
+    validation = validate_export_manifest(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "table"
+    assert validation["export_kind"] == "term_cooccurrence_table"
+    assert validation["counts"]["files"] == 2
+    assert validation["counts"]["inputs"] == 2
+
+    manifest = build_result_manifest(root).to_dict()
+    exports = [export for export in manifest["exports"] if export["export_id"] == "term_cooccurrence_table"]
+    assert len(exports) == 1
+    assert exports[0]["path"] == "exports/term_cooccurrence_table/term_cooccurrence.tsv"
+    assert exports[0]["export_manifest_ref"] == "exports/term_cooccurrence_table/export_manifest.json"
+    assert exports[0]["selection_summary"] == {
+        "scope": "cooccurrence_artifact",
+        "view_mode": "term_cooccurrence_table",
+        "view_family": "table",
+        "cluster_level": None,
+        "filter_count": 0,
+        "threshold_keys": [],
+        "layer_state_keys": ["map_file", "row_count", "source_table", "table_format"],
+        "focus_keys": [],
+        "subset_mode": None,
+        "subset_count": None,
+        "subset_keys": [],
+    }
+    assert [row["path"] for row in exports[0]["files"]] == [
+        "exports/term_cooccurrence_table/term_cooccurrence.tsv",
+        "exports/term_cooccurrence_table/term_cooccurrence_map.json",
+    ]
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):

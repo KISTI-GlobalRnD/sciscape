@@ -8,6 +8,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import shutil
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -564,6 +565,125 @@ def export_vosviewer_thesaurus(
     return result
 
 
+def export_cooccurrence_table(
+    result_root: str | Path,
+    output_dir: str | Path | None = None,
+    *,
+    table_filename: str = "term_cooccurrence.tsv",
+    map_filename: str = "term_cooccurrence_map.json",
+    table_format: str = "tsv",
+) -> dict[str, Path]:
+    """Export stable term co-occurrence artifacts as table/map files."""
+
+    from sciscape.artifacts import infer_result_artifacts, write_export_manifest
+
+    root = Path(result_root).expanduser().resolve()
+    artifacts = infer_result_artifacts(root)
+    source_table = artifacts.landscape_dir / "term_cooccurrence.parquet" if artifacts.landscape_dir else None
+    source_map = artifacts.landscape_dir / "term_cooccurrence_map.json" if artifacts.landscape_dir else None
+    if source_table is None or not source_table.exists():
+        raise ValueError("term_cooccurrence.parquet not found")
+    if source_map is None or not source_map.exists():
+        raise ValueError("term_cooccurrence_map.json not found")
+
+    table_format = table_format.lower().strip()
+    if table_format not in {"tsv", "csv"}:
+        raise ValueError(f"unsupported co-occurrence table format: {table_format}")
+    export_dir = (
+        Path(output_dir).expanduser().resolve()
+        if output_dir is not None
+        else root / "exports" / "term_cooccurrence_table"
+    )
+    export_dir.mkdir(parents=True, exist_ok=True)
+    table_path = export_dir / table_filename
+    map_path = export_dir / map_filename
+
+    cooc = pl.read_parquet(source_table)
+    separator = "\t" if table_format == "tsv" else ","
+    cooc.write_csv(table_path, separator=separator)
+    if source_map.resolve() != map_path.resolve():
+        shutil.copyfile(source_map, map_path)
+
+    write_export_manifest(
+        root,
+        export_id="term_cooccurrence_table",
+        export_family="table",
+        export_kind="term_cooccurrence_table",
+        primary_file=table_path,
+        source_artifacts=[
+            _source_artifact(
+                "cooccurrence",
+                source_table,
+                result_root=root,
+                artifact_ref="cooccurrence",
+                feature_ref="cooccurrence",
+            ),
+            _source_artifact(
+                "cooccurrence_map",
+                source_map,
+                result_root=root,
+                artifact_ref="cooccurrence_map",
+                feature_ref="cooccurrence",
+                required=False,
+            ),
+        ],
+        feature_refs=["cooccurrence", "term_network", "export"],
+        selection={
+            "scope": "cooccurrence_artifact",
+            "view": {"mode": "term_cooccurrence_table", "surface": "export"},
+            "filters": [],
+            "thresholds": {},
+            "layer_state": {
+                "table_format": table_format,
+                "source_table": "term_cooccurrence.parquet",
+                "row_count": int(cooc.height),
+                "map_file": map_filename,
+            },
+        },
+        files=[
+            {
+                "file_id": "table",
+                "path": table_path,
+                "role": "primary",
+                "format": table_format,
+                "public_share_state": "local",
+            },
+            {
+                "file_id": "map",
+                "path": map_path,
+                "role": "map",
+                "format": "json",
+                "public_share_state": "local",
+            },
+        ],
+        transforms=[
+            {
+                "transform_type": "load_term_cooccurrence_artifact",
+                "description": "Load stable term co-occurrence artifact.",
+            },
+            {
+                "transform_type": "write_cooccurrence_table_export",
+                "description": f"Write co-occurrence table as {table_format.upper()}.",
+            },
+            {
+                "transform_type": "copy_cooccurrence_map",
+                "description": "Copy paired co-occurrence lookup map.",
+            },
+        ],
+        compatibility={
+            "target_tools": ["spreadsheet", "SciScape", "scripts"],
+            "format_version": table_format.upper(),
+            "limitations": ["term co-occurrence table export is not a VOSviewer map/network file"],
+        },
+        title="Term co-occurrence table export",
+    )
+    return {
+        "table_path": table_path,
+        "map_path": map_path,
+        "manifest_path": root / "exports" / "term_cooccurrence_table" / "export_manifest.json",
+    }
+
+
 def export_gexf(
     edges: pl.DataFrame,
     membership: pl.DataFrame | Dict[str, int],
@@ -953,6 +1073,7 @@ def export_vosviewer_network(
 
 
 __all__ = [
+    "export_cooccurrence_table",
     "export_gexf",
     "export_graphml",
     "export_vosviewer_bundle",

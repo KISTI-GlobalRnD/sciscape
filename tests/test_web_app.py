@@ -830,6 +830,22 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         "vosviewer/vosviewer_map.txt",
         "vosviewer/vosviewer_network.txt",
     ]
+    cooc_exports = [row for row in exports if row["export_id"] == "term_cooccurrence_table"]
+    assert len(cooc_exports) == 1
+    assert cooc_exports[0]["path"] == "exports/term_cooccurrence_table/term_cooccurrence.tsv"
+    assert cooc_exports[0]["export_manifest_ref"] == "exports/term_cooccurrence_table/export_manifest.json"
+    assert cooc_exports[0]["selection_summary"]["scope"] == "cooccurrence_artifact"
+    assert cooc_exports[0]["selection_summary"]["view_mode"] == "term_cooccurrence_table"
+    assert cooc_exports[0]["selection_summary"]["layer_state_keys"] == [
+        "map_file",
+        "row_count",
+        "source_table",
+        "table_format",
+    ]
+    assert [row["path"] for row in cooc_exports[0]["files"]] == [
+        "exports/term_cooccurrence_table/term_cooccurrence.tsv",
+        "exports/term_cooccurrence_table/term_cooccurrence_map.json",
+    ]
     assert job_payload["result"]["artifact_contract"]["ok"] is True
     assert job_payload["result"]["features"]["evolution"] is True
     assert job_payload["result"]["feature_states"]["evolution"] == "stable"
@@ -873,6 +889,13 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     export_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_map.txt")
     assert export_download.status_code == 200
     assert "Perovskite passivation" in export_download.text
+
+    cooc_download = client.get(
+        f"/api/jobs/{job_id}/download/exports/term_cooccurrence_table/term_cooccurrence.tsv"
+    )
+    assert cooc_download.status_code == 200
+    assert "perovskite" in cooc_download.text
+    assert "passivation" in cooc_download.text
 
     bundle_download = client.get(f"/api/jobs/{job_id}/download/vosviewer-bundle.zip")
     assert bundle_download.status_code == 200

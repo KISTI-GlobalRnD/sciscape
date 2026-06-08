@@ -572,6 +572,22 @@ def _infer_output_dir(path: Path) -> Path | None:
     return None
 
 
+def _ensure_local_result_table_exports(output_dir: Path) -> None:
+    """Create small manifest-backed table exports for local result browsing."""
+
+    try:
+        from sciscape.artifacts import write_cooccurrence_artifacts
+        from sciscape.export import export_cooccurrence_table
+
+        written = write_cooccurrence_artifacts(output_dir)
+        if written is not None:
+            export_cooccurrence_table(output_dir)
+    except Exception:
+        # Local result opening should not fail just because an optional export
+        # sidecar cannot be generated from a partial result root.
+        return
+
+
 def _infer_local_result(path: Path) -> dict[str, Any]:
     """Build a completed-job result dict from an existing local output path."""
     output_dir = _infer_output_dir(path)
@@ -595,6 +611,7 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     edges = output_dir / "edges.parquet"
     if edges.exists():
         result["edges_path"] = str(edges)
+    _ensure_local_result_table_exports(output_dir)
     contract = validate_result_root(path).to_dict()
     manifest = load_result_manifest(path)
     result["artifact_contract"] = contract
