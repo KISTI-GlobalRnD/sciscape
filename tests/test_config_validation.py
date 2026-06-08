@@ -67,6 +67,10 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="alias_candidate_max"):
             KeywordExtractionConfig(**_DUMMY, alias_candidate_max=0)
 
+    def test_keyword_rule_set_id_empty(self):
+        with pytest.raises(ValueError, match="keyword_rule_set_id"):
+            KeywordExtractionConfig(**_DUMMY, keyword_rule_set_id="")
+
     def test_parallel_backend_invalid(self):
         with pytest.raises(ValueError, match="parallel_backend"):
             KeywordExtractionConfig(**_DUMMY, parallel_backend="forkserver")

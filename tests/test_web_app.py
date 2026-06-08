@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -123,6 +124,16 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     validation = validate_export_manifest(manifest_path).to_dict()
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "graphml_graph"
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["view"] == {
+        "mode": "web_network_export",
+        "surface": "web_export_endpoint",
+        "family": "graph",
+    }
+    assert export_manifest["selection"]["layer_state"] == {
+        "network_format": "graphml",
+        "membership_source": str(landscape_dir / "membership.parquet"),
+    }
 
     job_payload = client.get(f"/api/jobs/{job_id}").json()
     exports = job_payload["result"]["result_manifest"]["exports"]
@@ -130,6 +141,11 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     assert len(graphml_exports) == 1
     assert graphml_exports[0]["path"] == "network.graphml"
     assert graphml_exports[0]["export_manifest_ref"] == "exports/network_graphml/export_manifest.json"
+    assert graphml_exports[0]["selection_summary"]["view_mode"] == "web_network_export"
+    assert graphml_exports[0]["selection_summary"]["layer_state_keys"] == [
+        "membership_source",
+        "network_format",
+    ]
 
 
 def test_web_homepage_exposes_query_analysis_controls():
@@ -159,7 +175,11 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "selectAtlasReviewFilter" in response.text
     assert "openNextAtlasReviewTarget" in response.text
     assert "manifestExportCards" in response.text
+    assert "manifestExportRow" in response.text
+    assert "manifestExportSelectionMeta" in response.text
     assert "result_manifest.exports" in response.text
+    assert "selection_summary" in response.text
+    assert "dl-meta" in response.text
     assert "Export manifest" in response.text
     assert "Next target" in response.text
     assert "Review checklist" in response.text
@@ -704,6 +724,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert len(vos_exports) == 1
     assert vos_exports[0]["path"] == "vosviewer/vosviewer_map.txt"
     assert vos_exports[0]["export_manifest_ref"] == "exports/vosviewer_map_network/export_manifest.json"
+    assert vos_exports[0]["selection_summary"]["view_mode"] == "vosviewer_map_network"
     assert [row["path"] for row in vos_exports[0]["files"]] == [
         "vosviewer/vosviewer_map.txt",
         "vosviewer/vosviewer_network.txt",
@@ -751,6 +772,28 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     export_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_map.txt")
     assert export_download.status_code == 200
     assert "Perovskite passivation" in export_download.text
+
+    bundle_download = client.get(f"/api/jobs/{job_id}/download/vosviewer-bundle.zip")
+    assert bundle_download.status_code == 200
+    bundle_path = output_dir / "exports" / "vosviewer_bundle" / "vosviewer_bundle.zip"
+    assert bundle_path.exists()
+    with zipfile.ZipFile(bundle_path) as archive:
+        names = set(archive.namelist())
+        assert {
+            "vosviewer/vosviewer_map.txt",
+            "vosviewer/vosviewer_network.txt",
+            "exports/vosviewer_map_network/export_manifest.json",
+            "exports/vosviewer_map_network/export_qa.json",
+            "vosviewer_bundle_inventory.json",
+        }.issubset(names)
+
+    refreshed = client.get(f"/api/jobs/{job_id}").json()
+    refreshed_exports = refreshed["result"]["result_manifest"]["exports"]
+    bundle_exports = [row for row in refreshed_exports if row["export_id"] == "vosviewer_bundle"]
+    assert len(bundle_exports) == 1
+    assert bundle_exports[0]["path"] == "exports/vosviewer_bundle/vosviewer_bundle.zip"
+    assert bundle_exports[0]["selection_summary"]["view_mode"] == "download_bundle"
+    assert bundle_exports[0]["selection_summary"]["filter_count"] == 1
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

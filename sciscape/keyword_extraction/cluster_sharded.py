@@ -1646,6 +1646,16 @@ def run_final_scoring(
     return result
 
 
+def _keyword_rule_source_artifact(role: str, path: Path, root: Path) -> dict[str, str]:
+    resolved_path = path.resolve()
+    resolved_root = root.resolve()
+    try:
+        artifact_path = resolved_path.relative_to(resolved_root).as_posix()
+    except ValueError:
+        artifact_path = str(resolved_path)
+    return {"role": role, "path": artifact_path}
+
+
 def run_cluster_sharded_keyword_pipeline(
     config: KeywordExtractionConfig,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
@@ -1677,6 +1687,26 @@ def run_cluster_sharded_keyword_pipeline(
     result = run_final_scoring(config, candidate_paths, global_stats, manifest, output_dir)
     if progress_callback:
         progress_callback("final_scoring", len(candidate_paths), len(candidate_paths))
+    keyword_rule_artifact: dict[str, Any] | None = None
+    if config.keyword_rule_artifact_enabled:
+        from .rule_artifact import write_keyword_cleaning_rule_artifacts
+
+        if progress_callback:
+            progress_callback("keyword_rule_artifact", 0, 1)
+        rule_root = Path(config.keyword_rule_result_root) if config.keyword_rule_result_root is not None else output_dir
+        keyword_rule_artifact = write_keyword_cleaning_rule_artifacts(
+            rule_root,
+            keywords=result,
+            rule_set_id=config.keyword_rule_set_id,
+            output_dir=rule_root / "rules" / config.keyword_rule_set_id,
+            source_artifacts=[
+                _keyword_rule_source_artifact("keywords", output_dir / "keywords.parquet", rule_root),
+                _keyword_rule_source_artifact("keywords_flagged", output_dir / "keywords_flagged.parquet", rule_root),
+                _keyword_rule_source_artifact("cluster_sharded_manifest", manifest_path, rule_root),
+            ],
+        )
+        if progress_callback:
+            progress_callback("keyword_rule_artifact", 1, 1)
     write_json_atomic(
         output_dir / "run_summary.json",
         {
@@ -1688,6 +1718,9 @@ def run_cluster_sharded_keyword_pipeline(
             "candidate_shards": len(candidate_paths),
             "global_terms": int(len(global_stats)),
             "final_rows": int(len(result)),
+            "keyword_rule_manifest_path": (
+                str(keyword_rule_artifact["manifest_path"]) if keyword_rule_artifact is not None else None
+            ),
         },
     )
     return result

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 import pandas as pd
 
@@ -35,6 +35,7 @@ def export_dashboard(
     open_browser: bool = False,
     viz_data: Optional[Dict] = None,
     write_manifest: bool = True,
+    selection: Mapping[str, Any] | None = None,
 ) -> str:
     """Generate a self-contained interactive HTML dashboard.
 
@@ -54,6 +55,9 @@ def export_dashboard(
     write_manifest : bool
         Whether to write a manifest-backed export artifact next to the dashboard
         result root.
+    selection : mapping, optional
+        View, filter, threshold, layer, and focus metadata to preserve in the
+        export manifest.
 
     Returns
     -------
@@ -99,6 +103,20 @@ def export_dashboard(
                 }
             ],
             feature_refs=["overview", "keyword", "cluster_map", "export"],
+            selection=selection
+            or {
+                "scope": "keyword_table",
+                "view": {"mode": "keyword_dashboard", "surface": "dashboard_export"},
+                "filters": [],
+                "thresholds": {},
+                "layer_state": {
+                    "data_mode": "embedded_report_data",
+                    "keyword_count": int(len(df)),
+                    "cluster_count": int(df["cluster_id"].nunique()),
+                    "open_browser": bool(open_browser),
+                },
+                "focus": {},
+            },
             compatibility={"target_tools": ["Browser", "SciScape"], "limitations": ["self-contained HTML"]},
             title=title,
         )
@@ -117,6 +135,7 @@ def export_report(
     viz_data: Optional[Dict] = None,
     open_browser: bool = False,
     write_manifest: bool = True,
+    selection: Mapping[str, Any] | None = None,
 ) -> List[str]:
     """Generate a full report with dashboard + Plotly visualization pages.
 
@@ -140,6 +159,9 @@ def export_report(
         Whether to open the index page in a browser.
     write_manifest : bool
         Whether to write a manifest-backed report export artifact.
+    selection : mapping, optional
+        View, filter, threshold, layer, and focus metadata to preserve in the
+        export manifest.
 
     Returns
     -------
@@ -256,6 +278,21 @@ li{{margin:.5rem 0;font-size:1.1rem;}}</style></head>
             ],
             feature_refs=["overview", "keyword", "cluster_map", "term_network", "export"],
             files=files,
+            selection=selection
+            or {
+                "scope": "keyword_table",
+                "view": {"mode": "html_report", "surface": "report_export"},
+                "filters": [],
+                "thresholds": {},
+                "layer_state": {
+                    "data_mode": "report_data_json",
+                    "keyword_count": int(len(df)),
+                    "cluster_count": int(df["cluster_id"].nunique()),
+                    "generated_file_count": int(len(generated)),
+                    "open_browser": bool(open_browser),
+                },
+                "focus": {},
+            },
             transforms=[
                 {"transform_type": "prepare_cluster_data", "description": "Prepare report data.json from keyword table."},
                 {"transform_type": "render_html_report", "description": "Render dashboard, charts, and report index."},
@@ -275,6 +312,7 @@ def export_viewer(
     output_path: str = "viewer.html",
     title: str = "SciScape Viewer",
     write_manifest: bool = True,
+    selection: Mapping[str, Any] | None = None,
 ) -> str:
     """Generate a standalone viewer HTML that loads hosted or uploaded data.
 
@@ -291,6 +329,9 @@ def export_viewer(
         Viewer title.
     write_manifest : bool
         Whether to write a manifest-backed static viewer export artifact.
+    selection : mapping, optional
+        View, filter, threshold, layer, and focus metadata to preserve in the
+        export manifest.
 
     Returns
     -------
@@ -333,6 +374,19 @@ def export_viewer(
                 }
             ],
             feature_refs=["overview", "keyword", "cluster_map", "export"],
+            selection=selection
+            or {
+                "scope": "hosted_or_uploaded_data",
+                "view": {"mode": "static_viewer", "surface": "viewer_export"},
+                "filters": [],
+                "thresholds": {},
+                "layer_state": {
+                    "data_mode": "hosted_data_json_or_upload",
+                    "default_data_url": "data.json",
+                    "supports_query_data_url": True,
+                },
+                "focus": {},
+            },
             compatibility={"target_tools": ["Browser", "SciScape"], "limitations": ["loads data.json or uploaded data"]},
             title=title,
         )

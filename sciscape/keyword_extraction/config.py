@@ -183,6 +183,9 @@ class KeywordExtractionConfig:
     abbreviation_min_cluster_support_docs: int = 2
     abbreviation_min_top_support_ratio: float = 0.75
     abbreviation_max_long_form_words: int = 12
+    keyword_rule_artifact_enabled: bool = True
+    keyword_rule_set_id: str = "keyword_cleaning_default_v1"
+    keyword_rule_result_root: Optional[Path] = None
 
     # Fragment suppression — suppress truncated n-grams like "supermassive black"
     # when a longer form "supermassive black hole" exists with comparable frequency.
@@ -340,6 +343,8 @@ class KeywordExtractionConfig:
             raise ValueError(
                 f"quality_acronym_max_length must be >= 2, got {self.quality_acronym_max_length}"
             )
+        if not str(self.keyword_rule_set_id).strip():
+            raise ValueError("keyword_rule_set_id must be non-empty")
         if self.short_term_expansion_mode not in ("annotate", "replace", "both"):
             raise ValueError(
                 f"short_term_expansion_mode must be 'annotate', 'replace', or 'both', got {self.short_term_expansion_mode!r}"

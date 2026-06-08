@@ -17,7 +17,7 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Tuple
 
 if TYPE_CHECKING:
     import polars as pl
@@ -281,6 +281,7 @@ def _generate_report(
     viz_data: Optional[Dict],
     out_dir: Path,
     title: str,
+    selection: Mapping[str, Any] | None = None,
 ) -> List[str]:
     """Generate landscape visualization report."""
     from .keyword_extraction.visualization import (
@@ -296,6 +297,7 @@ def _generate_report(
         output_dir=str(out_dir),
         title=title,
         viz_data=viz_data,
+        selection=selection,
     )
     for p in paths:
         log.info("  → %s", Path(p).name)
@@ -312,6 +314,34 @@ def _generate_report(
     log.info("  → landscape_detailed.html")
 
     return paths
+
+
+def _landscape_report_selection(cfg: LandscapeConfig) -> dict[str, Any]:
+    """Return public-safe export selection metadata for run_landscape reports."""
+
+    gamma_low, gamma_high = cfg.gamma_range
+    return {
+        "scope": "full_landscape_result",
+        "view": {"mode": "html_report", "surface": "landscape_pipeline"},
+        "filters": [],
+        "thresholds": {
+            "min_docs_per_cluster": int(cfg.min_docs_per_cluster),
+            "gamma_low": float(gamma_low),
+            "gamma_high": float(gamma_high),
+        },
+        "layer_state": {
+            "pipeline": "run_landscape",
+            "n_target_nodes": int(cfg.n_target_nodes),
+            "n_hierarchy_levels": int(cfg.n_hierarchy_levels),
+            "leiden_objective": str(cfg.leiden_objective),
+            "auto_gamma": bool(cfg.auto_gamma),
+            "layer_count": int(len(cfg.layer_paths or {})),
+            "cooccurrence_enabled": bool(cfg.cooccurrence_enabled),
+            "term_network_enabled": bool(cfg.term_network_enabled),
+            "edge_evidence_enabled": bool(cfg.edge_evidence_enabled),
+        },
+        "focus": {},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -537,7 +567,13 @@ def run_landscape(
     log.info("=" * 60)
     log.info("Step 4: Generate landscape report")
     log.info("=" * 60)
-    _generate_report(keywords_df, viz_data, report_dir, cfg.report_title)
+    _generate_report(
+        keywords_df,
+        viz_data,
+        report_dir,
+        cfg.report_title,
+        selection=_landscape_report_selection(cfg),
+    )
     cooccurrence_artifacts = None
     try:
         from .artifacts import write_cooccurrence_artifacts

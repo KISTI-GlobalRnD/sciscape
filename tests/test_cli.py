@@ -1,5 +1,6 @@
 """Tests for sciscape CLI parser construction and argument parsing."""
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -369,6 +370,12 @@ class TestVisualizeArgs:
         html = output_path.read_text(encoding="utf-8")
         assert "Sample Dashboard" in html
         assert "perovskite solar cell" in html
+        manifest_path = tmp_path / "exports" / "keyword_dashboard" / "export_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["selection"]["view"]["surface"] == "cli_visualize"
+        assert manifest["selection"]["layer_state"]["command"] == "visualize"
+        assert manifest["selection"]["layer_state"]["dashboard_only"] is True
+        assert manifest["selection"]["layer_state"]["keyword_table"] == str(keyword_path)
 
 
 # ---------------------------------------------------------------------------

@@ -365,7 +365,14 @@ def test_run_landscape_writes_edge_evidence_sidecar_when_cached(monkeypatch, tmp
             "frequency": [2, 2],
         }
     ).to_parquet(output_dir / "keywords.parquet", index=False)
-    monkeypatch.setattr("sciscape.landscape._generate_report", lambda *args, **kwargs: [])
+    captured_report: dict[str, object] = {}
+
+    def _capture_report(*args, **kwargs):
+        captured_report["args"] = args
+        captured_report["kwargs"] = kwargs
+        return []
+
+    monkeypatch.setattr("sciscape.landscape._generate_report", _capture_report)
 
     result = run_landscape(
         edge_path,
@@ -378,6 +385,17 @@ def test_run_landscape_writes_edge_evidence_sidecar_when_cached(monkeypatch, tmp
     manifest_path = tmp_path / "result_manifest.json"
     assert result["edge_evidence_path"] == evidence_path
     assert result["result_manifest_path"] == manifest_path
+    selection = captured_report["kwargs"]["selection"]
+    assert selection["scope"] == "full_landscape_result"
+    assert selection["view"] == {"mode": "html_report", "surface": "landscape_pipeline"}
+    assert selection["thresholds"] == {
+        "min_docs_per_cluster": 1000,
+        "gamma_low": 1e-06,
+        "gamma_high": 0.001,
+    }
+    assert selection["layer_state"]["pipeline"] == "run_landscape"
+    assert selection["layer_state"]["n_hierarchy_levels"] == 1
+    assert selection["layer_state"]["edge_evidence_enabled"] is True
     assert manifest_path.exists()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["schema_version"] == "sciscape_result_manifest_v1"

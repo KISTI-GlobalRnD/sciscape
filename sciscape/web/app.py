@@ -185,6 +185,49 @@ def _resolve_job_output_file(job_id: str, filename: str) -> Path:
     return file_path
 
 
+def _refresh_job_result_manifest(job_id: str, result: dict[str, Any], output_dir: Path, *, mode: str = "live_query") -> None:
+    refreshed_manifest = load_result_manifest(output_dir, mode=mode)
+    result["result_manifest"] = refreshed_manifest
+    result["feature_states"] = {
+        name: feature.get("state", "hidden")
+        for name, feature in refreshed_manifest.get("features", {}).items()
+        if isinstance(feature, dict)
+    }
+    features = dict(result.get("features") or {})
+    for name, state in result["feature_states"].items():
+        features[name] = state != "hidden"
+    result["features"] = features
+    job = _jobs.get(job_id)
+    if job is not None:
+        job["result"] = result
+        _jobs.persist(job_id)
+
+
+@app.get("/api/jobs/{job_id}/download/vosviewer-bundle.zip")
+async def download_vosviewer_bundle(job_id: str):
+    """Build and download a zip bundle from manifest-backed VOSviewer exports."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        raise HTTPException(status_code=400, detail="job not done")
+    result = job.get("result", {})
+    output_dir = result.get("output_dir")
+    if not output_dir:
+        raise HTTPException(status_code=404, detail="no output directory")
+
+    from sciscape.export import export_vosviewer_bundle
+
+    root = Path(output_dir).resolve()
+    try:
+        written = export_vosviewer_bundle(root)
+        _refresh_job_result_manifest(job_id, result, root)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"could not build VOSviewer bundle: {exc}")
+    bundle_path = Path(written["bundle_path"])
+    return FileResponse(bundle_path, filename="vosviewer_bundle.zip", media_type="application/zip")
+
+
 @app.get("/api/jobs/{job_id}/download/{filename:path}")
 async def download_file(job_id: str, filename: str):
     """Download output files from a completed job."""
@@ -1730,6 +1773,16 @@ async def export_network(job_id: str, fmt: str):
         "membership": mem_path,
         "abstracts": abs_path,
     }
+    export_selection = {
+        "scope": "full_result",
+        "view": {"mode": "web_network_export", "surface": "web_export_endpoint"},
+        "filters": [],
+        "thresholds": {},
+        "layer_state": {
+            "network_format": fmt,
+            "membership_source": str(mem_path) if mem_path else "",
+        },
+    }
 
     if fmt == "graphml":
         export_graphml(
@@ -1740,6 +1793,7 @@ async def export_network(job_id: str, fmt: str):
             write_manifest=True,
             result_root=out_dir,
             source_paths=source_paths,
+            selection=export_selection,
         )
     else:
         export_gexf(
@@ -1750,22 +1804,11 @@ async def export_network(job_id: str, fmt: str):
             write_manifest=True,
             result_root=out_dir,
             source_paths=source_paths,
+            selection=export_selection,
         )
 
     try:
-        refreshed_manifest = load_result_manifest(out_dir, mode="live_query")
-        result["result_manifest"] = refreshed_manifest
-        result["feature_states"] = {
-            name: feature.get("state", "hidden")
-            for name, feature in refreshed_manifest.get("features", {}).items()
-            if isinstance(feature, dict)
-        }
-        features = dict(result.get("features") or {})
-        for name, state in result["feature_states"].items():
-            features[name] = state != "hidden"
-        result["features"] = features
-        job["result"] = result
-        _jobs.persist(job_id)
+        _refresh_job_result_manifest(job_id, result, out_dir)
     except Exception:
         # The file export itself should remain downloadable even if manifest
         # refresh fails on a partially populated result root.

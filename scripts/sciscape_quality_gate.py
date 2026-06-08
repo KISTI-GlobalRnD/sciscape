@@ -151,7 +151,22 @@ def run_smoke_gate() -> dict[str, Any]:
         _assert(term_network["edges"], "term co-occurrence gate has no edges")
 
         dashboard_path = root / "dashboard.html"
-        export_dashboard(keywords, output_path=str(dashboard_path), title="SciScape Quality Gate")
+        export_dashboard(
+            keywords,
+            output_path=str(dashboard_path),
+            title="SciScape Quality Gate",
+            selection={
+                "scope": "quality_gate_smoke",
+                "view": {"mode": "keyword_dashboard", "surface": "quality_gate_smoke"},
+                "filters": [],
+                "thresholds": {},
+                "layer_state": {
+                    "script": "sciscape_quality_gate.py",
+                    "smoke": "keyword_quality",
+                },
+                "focus": {},
+            },
+        )
         html = dashboard_path.read_text(encoding="utf-8")
         _assert("SciScape Quality Gate" in html, "dashboard title missing")
         _assert("keywords-tier-summary" in html, "dashboard tier summary missing")

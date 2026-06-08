@@ -50,6 +50,12 @@ EXPORT_FILES_SCHEMA_VERSION = "sciscape_export_files_v1"
 EXPORT_INPUTS_SCHEMA_VERSION = "sciscape_export_inputs_v1"
 EXPORT_TRANSFORMS_SCHEMA_VERSION = "sciscape_export_transforms_v1"
 EXPORT_QA_SCHEMA_VERSION = "sciscape_export_qa_v1"
+KEYWORD_RULE_MANIFEST_SCHEMA_VERSION = "sciscape_keyword_rule_set_manifest_v1"
+KEYWORD_RULES_SCHEMA_VERSION = "sciscape_keyword_rules_v1"
+KEYWORD_RULE_APPLICATIONS_SCHEMA_VERSION = "sciscape_keyword_rule_applications_v1"
+KEYWORD_TERM_BEFORE_AFTER_SCHEMA_VERSION = "sciscape_keyword_term_before_after_v1"
+KEYWORD_RULE_IMPACT_SUMMARY_SCHEMA_VERSION = "sciscape_keyword_rule_impact_summary_v1"
+KEYWORD_RULE_QA_SCHEMA_VERSION = "sciscape_keyword_rule_qa_v1"
 FEATURE_KEYS = (
     "overview",
     "cluster_map",
@@ -270,6 +276,90 @@ REQUIRED_EVOLUTION_EVENT_COLUMNS = {
     "method",
 }
 EVOLUTION_EVENT_TYPES = frozenset({"continuation", "split", "merge", "emergence", "decline", "ambiguous"})
+REQUIRED_KEYWORD_RULE_COLUMNS = {
+    "schema_version",
+    "rule_set_id",
+    "rule_id",
+    "rule_family",
+    "match_type",
+    "pattern",
+    "replacement",
+    "action",
+    "confidence_policy",
+    "destructive",
+    "enabled",
+    "created_by",
+    "reason",
+}
+REQUIRED_KEYWORD_RULE_APPLICATION_COLUMNS = {
+    "schema_version",
+    "rule_set_id",
+    "application_id",
+    "rule_id",
+    "cluster_id",
+    "raw_term",
+    "normalized_term_before",
+    "display_label_before",
+    "normalized_term_after",
+    "display_label_after",
+    "action",
+    "decision",
+    "evidence_type",
+    "evidence_value",
+    "score_before",
+    "score_after",
+    "frequency",
+    "rank_before",
+    "rank_after",
+}
+REQUIRED_KEYWORD_TERM_BEFORE_AFTER_COLUMNS = {
+    "schema_version",
+    "rule_set_id",
+    "cluster_id",
+    "raw_term",
+    "term_before",
+    "term_after",
+    "display_label",
+    "family_id",
+    "parent_term",
+    "variant_count",
+    "rule_ids",
+    "quality_flags",
+    "review_status",
+    "tier_before",
+    "tier_after",
+    "blocked",
+    "block_reason",
+}
+KEYWORD_RULE_FAMILIES = frozenset(
+    {
+        "artifact_block",
+        "metadata_block",
+        "latex_fragment",
+        "html_fragment",
+        "stop_term",
+        "alias",
+        "acronym_expand",
+        "subphrase_group",
+        "spelling_normalize",
+        "plural_singular",
+        "tier_adjust",
+        "review_flag",
+    }
+)
+KEYWORD_RULE_ACTIONS = frozenset(
+    {
+        "block",
+        "flag",
+        "normalize",
+        "alias_to",
+        "expand_to",
+        "group_under",
+        "tier_down",
+        "keep_with_flag",
+    }
+)
+KEYWORD_RULE_BLOCK_FAMILIES = frozenset({"artifact_block", "metadata_block", "latex_fragment", "html_fragment"})
 WEIGHT_COLUMN_CANDIDATES = (
     "rel_sum2",
     "weight",
@@ -324,6 +414,7 @@ class ResultArtifacts:
     keywords_path: Path | None = None
     matrix_paths: tuple[Path, ...] = ()
     matrix_manifest_paths: tuple[Path, ...] = ()
+    keyword_rule_manifest_paths: tuple[Path, ...] = ()
     temporal_manifest_paths: tuple[Path, ...] = ()
     evolution_manifest_paths: tuple[Path, ...] = ()
     export_manifest_paths: tuple[Path, ...] = ()
@@ -503,6 +594,33 @@ class ExportManifestValidationResult:
 
 
 @dataclass(frozen=True)
+class KeywordRuleValidationResult:
+    schema_version: str
+    rule_set_id: str | None
+    status: str
+    rule_dir: str
+    manifest_path: str
+    paths: dict[str, str | None]
+    counts: dict[str, int]
+    rule_family_counts: dict[str, int]
+    action_counts: dict[str, int]
+    contamination_counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
+@dataclass(frozen=True)
 class TemporalArtifactValidationResult:
     schema_version: str
     temporal_id: str | None
@@ -667,6 +785,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
 
     matrix_paths: list[Path] = []
     matrix_manifest_paths: list[Path] = []
+    keyword_rule_manifest_paths: list[Path] = []
     temporal_manifest_paths: list[Path] = []
     evolution_manifest_paths: list[Path] = []
     export_manifest_paths: list[Path] = []
@@ -677,6 +796,9 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
             matrix_paths.extend(path for path in base.glob(pattern) if path.is_file())
         matrix_manifest_paths.extend(
             path for path in (base / "matrices").glob("*/matrix_manifest.json") if path.is_file()
+        )
+        keyword_rule_manifest_paths.extend(
+            path for path in (base / "rules").glob("*/rule_set_manifest.json") if path.is_file()
         )
         export_manifest_paths.extend(
             path for path in (base / "exports").glob("*/export_manifest.json") if path.is_file()
@@ -750,6 +872,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         keywords_path=keywords,
         matrix_paths=tuple(sorted(set(matrix_paths))),
         matrix_manifest_paths=tuple(sorted(set(matrix_manifest_paths))),
+        keyword_rule_manifest_paths=tuple(sorted(set(keyword_rule_manifest_paths))),
         temporal_manifest_paths=tuple(sorted(set(temporal_manifest_paths))),
         evolution_manifest_paths=tuple(sorted(set(evolution_manifest_paths))),
         export_manifest_paths=tuple(sorted(set(export_manifest_paths))),
@@ -3471,6 +3594,845 @@ def write_matrix_from_term_cooccurrence(
     )
 
 
+def _keyword_rule_issue(
+    code: str,
+    severity: str,
+    message: str,
+    artifact: str = "keyword_rules",
+) -> dict[str, Any]:
+    return {"code": code, "severity": severity, "message": message, "artifact": artifact}
+
+
+def _keyword_rule_dir_and_manifest(path: str | Path) -> tuple[Path, Path]:
+    raw_path = Path(path).expanduser().resolve()
+    if raw_path.is_dir():
+        return raw_path, raw_path / "rule_set_manifest.json"
+    return raw_path.parent, raw_path
+
+
+def _keyword_rule_output_paths(manifest: Mapping[str, Any], rule_dir: Path) -> dict[str, Path | None]:
+    outputs = manifest.get("outputs")
+    outputs = outputs if isinstance(outputs, Mapping) else {}
+    defaults = {
+        "rules": "rules.parquet",
+        "applications": "rule_applications.parquet",
+        "before_after": "term_before_after.parquet",
+        "impact_summary": "rule_impact_summary.json",
+        "qa": "rule_set_qa.json",
+    }
+    paths: dict[str, Path | None] = {}
+    for key, default in defaults.items():
+        name = outputs.get(key, default)
+        paths[key] = rule_dir / str(name) if name else None
+    return paths
+
+
+def _keyword_rule_read_parquet(
+    path: Path | None,
+    table_name: str,
+    blocking_issues: list[dict[str, Any]],
+) -> pd.DataFrame:
+    if path is None or not path.exists():
+        blocking_issues.append(
+            _keyword_rule_issue(
+                f"missing_keyword_rule_{table_name}",
+                "blocking",
+                f"Keyword rule artifact is missing `{table_name}` table.",
+            )
+        )
+        return pd.DataFrame()
+    try:
+        return pd.read_parquet(path)
+    except Exception as exc:
+        blocking_issues.append(
+            _keyword_rule_issue(
+                f"unreadable_keyword_rule_{table_name}",
+                "blocking",
+                f"Could not read keyword rule `{table_name}` table: {exc}",
+            )
+        )
+        return pd.DataFrame()
+
+
+def _keyword_rule_missing_columns(df: pd.DataFrame, required: set[str]) -> list[str]:
+    return sorted(required - set(df.columns))
+
+
+def _keyword_rule_table_check(
+    *,
+    df: pd.DataFrame,
+    table_name: str,
+    required: set[str],
+    expected_schema: str,
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    missing = _keyword_rule_missing_columns(df, required)
+    if missing:
+        blocking_issues.append(
+            _keyword_rule_issue(
+                f"missing_keyword_rule_{table_name}_columns",
+                "blocking",
+                f"Keyword rule `{table_name}` table is missing columns: {', '.join(missing)}.",
+            )
+        )
+    invalid_schema_rows = 0
+    if "schema_version" in df.columns:
+        invalid_schema_rows = int((df["schema_version"].dropna().map(str) != expected_schema).sum())
+        if invalid_schema_rows:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    f"unsupported_keyword_rule_{table_name}_schema",
+                    "blocking",
+                    f"{invalid_schema_rows} `{table_name}` rows use an unsupported schema version.",
+                )
+            )
+    return {
+        "rows": int(len(df)),
+        "required_columns": sorted(required),
+        "missing_columns": missing,
+        "invalid_schema_rows": invalid_schema_rows,
+    }
+
+
+def _keyword_rule_truthy(value: Any) -> bool:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return False
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    return text in {"1", "true", "t", "yes", "y", "block", "blocked"}
+
+
+def _keyword_rule_split_ids(value: Any) -> set[str]:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return set()
+    if isinstance(value, (list, tuple, set)):
+        return {str(item).strip() for item in value if str(item).strip()}
+    text = str(value).strip()
+    if not text:
+        return set()
+    return {part.strip() for part in re.split(r"[|,;]", text) if part.strip()}
+
+
+def _keyword_rule_term_values(row: pd.Series) -> list[str]:
+    values: list[str] = []
+    for column in ("display_label", "term_after", "normalized_term_after", "term_before", "raw_term"):
+        if column not in row.index:
+            continue
+        value = row.get(column)
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            continue
+        text = str(value).strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _keyword_rule_policy_checks(
+    *,
+    rules: pd.DataFrame,
+    applications: pd.DataFrame,
+    before_after: pd.DataFrame,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    checks: dict[str, Any] = {}
+    known_rule_ids: set[str] = set()
+
+    if "rule_id" in rules.columns:
+        rule_ids = rules["rule_id"].dropna().map(str).map(str.strip)
+        blank_rule_rows = int((rule_ids == "").sum())
+        if blank_rule_rows:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "blank_keyword_rule_id",
+                    "blocking",
+                    f"{blank_rule_rows} keyword rule rows have blank rule IDs.",
+                )
+            )
+        rule_ids = rule_ids[rule_ids != ""]
+        known_rule_ids = set(rule_ids)
+        duplicate_rule_ids = sorted(rule_ids[rule_ids.duplicated()].unique().tolist())
+        if duplicate_rule_ids:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "duplicate_keyword_rule_ids",
+                    "blocking",
+                    f"Duplicate keyword rule IDs found: {', '.join(duplicate_rule_ids[:10])}.",
+                )
+            )
+        checks["duplicate_rule_ids"] = duplicate_rule_ids
+        checks["blank_rule_id_rows"] = blank_rule_rows
+
+    if "rule_family" in rules.columns:
+        invalid_families = sorted(set(rules["rule_family"].dropna().map(str)) - KEYWORD_RULE_FAMILIES)
+        if invalid_families:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "unsupported_keyword_rule_family",
+                    "blocking",
+                    f"Unsupported keyword rule families: {', '.join(invalid_families)}.",
+                )
+            )
+        checks["invalid_rule_families"] = invalid_families
+
+    if "action" in rules.columns:
+        invalid_actions = sorted(set(rules["action"].dropna().map(str)) - KEYWORD_RULE_ACTIONS)
+        if invalid_actions:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "unsupported_keyword_rule_action",
+                    "blocking",
+                    f"Unsupported keyword rule actions: {', '.join(invalid_actions)}.",
+                )
+            )
+        checks["invalid_actions"] = invalid_actions
+
+    unsafe_ids: list[str] = []
+    if len(rules) and {"rule_id", "rule_family", "action", "destructive"} <= set(rules.columns):
+        unsafe = rules[
+            rules.apply(
+                lambda row: (
+                    (str(row.get("action")) == "block" or _keyword_rule_truthy(row.get("destructive")))
+                    and str(row.get("rule_family")) not in KEYWORD_RULE_BLOCK_FAMILIES
+                ),
+                axis=1,
+            )
+        ]
+        unsafe_ids = unsafe["rule_id"].dropna().map(str).head(20).tolist()
+        if unsafe_ids:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "unsafe_keyword_rule_block_action",
+                    "blocking",
+                    (
+                        "Destructive keyword block rules are limited to artifact, metadata, "
+                        f"HTML, and LaTeX families. Unsafe rule IDs: {', '.join(unsafe_ids)}."
+                    ),
+                )
+            )
+    checks["unsafe_block_rule_ids"] = unsafe_ids
+
+    if known_rule_ids and "rule_id" in applications.columns:
+        application_rule_ids = {
+            rule_id
+            for rule_id in applications["rule_id"].dropna().map(str).map(str.strip).tolist()
+            if rule_id
+        }
+        unknown_application_rules = sorted(application_rule_ids - known_rule_ids)
+        if unknown_application_rules:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "unknown_keyword_rule_application_rule",
+                    "blocking",
+                    f"Rule applications reference unknown rule IDs: {', '.join(unknown_application_rules[:20])}.",
+                )
+            )
+        checks["unknown_application_rule_ids"] = unknown_application_rules
+
+    unknown_before_after_rules: set[str] = set()
+    if known_rule_ids and "rule_ids" in before_after.columns:
+        for value in before_after["rule_ids"].tolist():
+            unknown_before_after_rules.update(_keyword_rule_split_ids(value) - known_rule_ids)
+        if unknown_before_after_rules:
+            warnings.append(
+                _keyword_rule_issue(
+                    "unknown_keyword_rule_before_after_rule",
+                    "warning",
+                    (
+                        "Before/after rows reference rule IDs not present in the rule table: "
+                        f"{', '.join(sorted(unknown_before_after_rules)[:20])}."
+                    ),
+                )
+            )
+    checks["unknown_before_after_rule_ids"] = sorted(unknown_before_after_rules)
+
+    if not len(rules) and not len(before_after):
+        warnings.append(
+            _keyword_rule_issue(
+                "empty_keyword_rule_table",
+                "warning",
+                "Keyword rule artifact has no rule rows.",
+            )
+        )
+
+    return checks
+
+
+def _keyword_rule_contamination_counts(before_after: pd.DataFrame) -> dict[str, int]:
+    if before_after.empty:
+        return {
+            "artifact_rows_after": 0,
+            "top_artifact_rows_after": 0,
+            "review_artifact_rows_after": 0,
+        }
+    working = before_after.copy()
+    if "blocked" in working.columns:
+        blocked = working["blocked"].map(_keyword_rule_truthy)
+        working = working.loc[~blocked].copy()
+    if working.empty:
+        return {
+            "artifact_rows_after": 0,
+            "top_artifact_rows_after": 0,
+            "review_artifact_rows_after": 0,
+        }
+    if "rank_after" in working.columns:
+        working["_rank_after"] = pd.to_numeric(working["rank_after"], errors="coerce").fillna(float("inf"))
+        working = working.sort_values(["cluster_id", "_rank_after"], kind="stable")
+
+    artifact_rows = 0
+    top_artifact_rows = 0
+    review_artifact_rows = 0
+    for _, group in working.groupby("cluster_id", dropna=False, sort=False):
+        for rank, (_, row) in enumerate(group.iterrows(), start=1):
+            terms = _keyword_rule_term_values(row)
+            has_blocking = any(_looks_like_metadata_artifact_term_lazy(term) for term in terms)
+            flags = _flag_set(row.get("quality_flags") if "quality_flags" in row.index else None)
+            if has_blocking or (flags & BLOCKING_ARTIFACT_FLAGS):
+                artifact_rows += 1
+                if rank <= KEYWORD_ARTIFACT_TOP_K:
+                    top_artifact_rows += 1
+            elif flags & REVIEW_ARTIFACT_FLAGS:
+                review_artifact_rows += 1
+    return {
+        "artifact_rows_after": int(artifact_rows),
+        "top_artifact_rows_after": int(top_artifact_rows),
+        "review_artifact_rows_after": int(review_artifact_rows),
+    }
+
+
+def validate_keyword_rule_artifact(path: str | Path) -> KeywordRuleValidationResult:
+    """Validate keyword-cleaning rule artifacts and their before/after QA surface."""
+
+    rule_dir, manifest_path = _keyword_rule_dir_and_manifest(path)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    manifest: dict[str, Any] = {}
+    if not manifest_path.exists():
+        blocking_issues.append(
+            _keyword_rule_issue(
+                "missing_keyword_rule_manifest",
+                "blocking",
+                "Keyword rule artifact manifest is missing.",
+            )
+        )
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            blocking_issues.append(
+                _keyword_rule_issue(
+                    "unreadable_keyword_rule_manifest",
+                    "blocking",
+                    f"Could not read keyword rule artifact manifest: {exc}",
+                )
+            )
+
+    if manifest and manifest.get("schema_version") != KEYWORD_RULE_MANIFEST_SCHEMA_VERSION:
+        blocking_issues.append(
+            _keyword_rule_issue(
+                "unsupported_keyword_rule_manifest_schema",
+                "blocking",
+                f"Unsupported keyword rule manifest schema: {manifest.get('schema_version')}.",
+            )
+        )
+
+    paths = _keyword_rule_output_paths(manifest, rule_dir)
+    rules = _keyword_rule_read_parquet(paths["rules"], "rules", blocking_issues)
+    applications = _keyword_rule_read_parquet(paths["applications"], "applications", blocking_issues)
+    before_after = _keyword_rule_read_parquet(paths["before_after"], "before_after", blocking_issues)
+
+    checks = {
+        "rules": _keyword_rule_table_check(
+            df=rules,
+            table_name="rules",
+            required=REQUIRED_KEYWORD_RULE_COLUMNS,
+            expected_schema=KEYWORD_RULES_SCHEMA_VERSION,
+            blocking_issues=blocking_issues,
+        ),
+        "applications": _keyword_rule_table_check(
+            df=applications,
+            table_name="applications",
+            required=REQUIRED_KEYWORD_RULE_APPLICATION_COLUMNS,
+            expected_schema=KEYWORD_RULE_APPLICATIONS_SCHEMA_VERSION,
+            blocking_issues=blocking_issues,
+        ),
+        "before_after": _keyword_rule_table_check(
+            df=before_after,
+            table_name="before_after",
+            required=REQUIRED_KEYWORD_TERM_BEFORE_AFTER_COLUMNS,
+            expected_schema=KEYWORD_TERM_BEFORE_AFTER_SCHEMA_VERSION,
+            blocking_issues=blocking_issues,
+        ),
+    }
+    checks["policy"] = _keyword_rule_policy_checks(
+        rules=rules,
+        applications=applications,
+        before_after=before_after,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+    )
+
+    contamination_counts = _keyword_rule_contamination_counts(before_after)
+    if contamination_counts["top_artifact_rows_after"]:
+        blocking_issues.append(
+            _keyword_rule_issue(
+                "top_keyword_artifact_after_cleaning",
+                "blocking",
+                (
+                    f"{contamination_counts['top_artifact_rows_after']} artifact-like keyword rows remain "
+                    f"in the top {KEYWORD_ARTIFACT_TOP_K} after cleaning."
+                ),
+            )
+        )
+    elif contamination_counts["artifact_rows_after"]:
+        warnings.append(
+            _keyword_rule_issue(
+                "keyword_artifact_rows_after_cleaning",
+                "warning",
+                f"{contamination_counts['artifact_rows_after']} artifact-like keyword rows remain after cleaning.",
+            )
+        )
+
+    if paths.get("qa") and not paths["qa"].exists():
+        warnings.append(
+            _keyword_rule_issue(
+                "missing_keyword_rule_qa_sidecar",
+                "warning",
+                "Keyword rule QA sidecar is missing.",
+            )
+        )
+
+    rule_family_counts = (
+        {str(key): int(value) for key, value in rules["rule_family"].value_counts(dropna=False).items()}
+        if "rule_family" in rules.columns
+        else {}
+    )
+    action_counts = (
+        {str(key): int(value) for key, value in rules["action"].value_counts(dropna=False).items()}
+        if "action" in rules.columns
+        else {}
+    )
+    blocked_rows = int(before_after["blocked"].map(_keyword_rule_truthy).sum()) if "blocked" in before_after.columns else 0
+    changed_rows = 0
+    if {"term_before", "term_after"} <= set(before_after.columns):
+        changed_rows = int((before_after["term_before"].map(str) != before_after["term_after"].map(str)).sum())
+
+    counts = {
+        "rules": int(len(rules)),
+        "enabled_rules": int(rules["enabled"].map(_keyword_rule_truthy).sum()) if "enabled" in rules.columns else 0,
+        "applications": int(len(applications)),
+        "before_after_rows": int(len(before_after)),
+        "blocked_rows": blocked_rows,
+        "changed_rows": changed_rows,
+        "warnings": int(len(warnings)),
+        "blocking_issues": int(len(blocking_issues)),
+    }
+
+    if blocking_issues:
+        status = "blocked"
+    elif warnings:
+        status = "warning"
+    else:
+        status = "passed"
+
+    return KeywordRuleValidationResult(
+        schema_version=KEYWORD_RULE_QA_SCHEMA_VERSION,
+        rule_set_id=manifest.get("rule_set_id") if isinstance(manifest, Mapping) else None,
+        status=status,
+        rule_dir=str(rule_dir),
+        manifest_path=str(manifest_path),
+        paths={key: str(value) if value is not None else None for key, value in paths.items()},
+        counts=counts,
+        rule_family_counts=rule_family_counts,
+        action_counts=action_counts,
+        contamination_counts=contamination_counts,
+        checks=checks,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
+
+
+def _keyword_rule_normalize_text(value: Any) -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()
+
+
+def _keyword_rule_prepare_rules(rules: pd.DataFrame | None, *, rule_set_id: str) -> pd.DataFrame:
+    df = rules.copy() if rules is not None else pd.DataFrame()
+    row_count = len(df)
+    defaults: dict[str, Any] = {
+        "schema_version": KEYWORD_RULES_SCHEMA_VERSION,
+        "rule_set_id": rule_set_id,
+        "rule_family": "review_flag",
+        "match_type": "literal",
+        "pattern": "",
+        "replacement": "",
+        "action": "flag",
+        "confidence_policy": "review",
+        "destructive": False,
+        "enabled": True,
+        "created_by": "sciscape",
+        "reason": "",
+    }
+    if "rule_id" not in df.columns:
+        df["rule_id"] = [f"rule_{index + 1:06d}" for index in range(row_count)]
+    for column, default in defaults.items():
+        if column not in df.columns:
+            df[column] = default
+    for column in REQUIRED_KEYWORD_RULE_COLUMNS:
+        if column not in df.columns:
+            df[column] = ""
+    df["schema_version"] = KEYWORD_RULES_SCHEMA_VERSION
+    df["rule_set_id"] = rule_set_id
+    for column in (
+        "rule_id",
+        "rule_family",
+        "match_type",
+        "pattern",
+        "replacement",
+        "action",
+        "confidence_policy",
+        "created_by",
+        "reason",
+    ):
+        df[column] = df[column].map(_keyword_rule_normalize_text)
+    df["destructive"] = df["destructive"].map(_keyword_rule_truthy)
+    df["enabled"] = df["enabled"].map(lambda value: True if value is None else _keyword_rule_truthy(value))
+    return df[sorted(set(df.columns))]
+
+
+def _keyword_rule_source_artifacts(root: Path, artifacts: ResultArtifacts) -> list[dict[str, Any]]:
+    source_artifacts: list[dict[str, Any]] = []
+    for role, source_path in (
+        ("keywords", artifacts.keywords_path),
+        ("report_data", artifacts.report_data_path),
+        ("membership", artifacts.membership_path),
+    ):
+        rel_path = _rel(source_path, root)
+        if rel_path:
+            source_artifacts.append({"role": role, "path": rel_path})
+    return source_artifacts
+
+
+def _keyword_rule_default_before_after(
+    keywords: pd.DataFrame | None,
+    *,
+    rule_set_id: str,
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if keywords is not None and not keywords.empty and {"cluster_id", "term"} <= set(keywords.columns):
+        for item in keywords.itertuples(index=False):
+            cluster_id = getattr(item, "cluster_id")
+            term = _keyword_rule_normalize_text(getattr(item, "term"))
+            flags: list[str] = []
+            if _looks_like_metadata_artifact_term_lazy(term):
+                flags.append("metadata_fragment")
+            rows.append(
+                {
+                    "schema_version": KEYWORD_TERM_BEFORE_AFTER_SCHEMA_VERSION,
+                    "rule_set_id": rule_set_id,
+                    "cluster_id": cluster_id,
+                    "raw_term": term,
+                    "term_before": term,
+                    "term_after": term,
+                    "display_label": term,
+                    "family_id": term.lower(),
+                    "parent_term": "",
+                    "variant_count": 1,
+                    "rule_ids": "",
+                    "quality_flags": "|".join(flags),
+                    "review_status": "needs_review" if flags else "accepted",
+                    "tier_before": "",
+                    "tier_after": "",
+                    "blocked": False,
+                    "block_reason": "",
+                }
+            )
+    return pd.DataFrame(rows, columns=sorted(REQUIRED_KEYWORD_TERM_BEFORE_AFTER_COLUMNS | {"quality_flags"}))
+
+
+def _keyword_rule_prepare_before_after(
+    before_after: pd.DataFrame | None,
+    *,
+    rule_set_id: str,
+    keywords: pd.DataFrame | None,
+) -> pd.DataFrame:
+    df = before_after.copy() if before_after is not None else _keyword_rule_default_before_after(keywords, rule_set_id=rule_set_id)
+    defaults: dict[str, Any] = {
+        "schema_version": KEYWORD_TERM_BEFORE_AFTER_SCHEMA_VERSION,
+        "rule_set_id": rule_set_id,
+        "cluster_id": "",
+        "raw_term": "",
+        "term_before": "",
+        "term_after": "",
+        "display_label": "",
+        "family_id": "",
+        "parent_term": "",
+        "variant_count": 1,
+        "rule_ids": "",
+        "quality_flags": "",
+        "review_status": "accepted",
+        "tier_before": "",
+        "tier_after": "",
+        "blocked": False,
+        "block_reason": "",
+    }
+    for column, default in defaults.items():
+        if column not in df.columns:
+            df[column] = default
+    df["schema_version"] = KEYWORD_TERM_BEFORE_AFTER_SCHEMA_VERSION
+    df["rule_set_id"] = rule_set_id
+    df["blocked"] = df["blocked"].map(_keyword_rule_truthy)
+    for column in (
+        "raw_term",
+        "term_before",
+        "term_after",
+        "display_label",
+        "family_id",
+        "parent_term",
+        "rule_ids",
+        "quality_flags",
+        "review_status",
+        "tier_before",
+        "tier_after",
+        "block_reason",
+    ):
+        df[column] = df[column].map(_keyword_rule_normalize_text)
+    return df[sorted(set(df.columns))]
+
+
+def _keyword_rule_default_applications(
+    before_after: pd.DataFrame,
+    *,
+    rule_set_id: str,
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for index, row in before_after.iterrows():
+        rule_ids = sorted(_keyword_rule_split_ids(row.get("rule_ids")))
+        changed = str(row.get("term_before", "")) != str(row.get("term_after", ""))
+        blocked = _keyword_rule_truthy(row.get("blocked"))
+        if not rule_ids and not changed and not blocked:
+            continue
+        for rule_id in rule_ids or [""]:
+            rows.append(
+                {
+                    "schema_version": KEYWORD_RULE_APPLICATIONS_SCHEMA_VERSION,
+                    "rule_set_id": rule_set_id,
+                    "application_id": f"app_{index + 1:08d}_{len(rows) + 1:04d}",
+                    "rule_id": rule_id,
+                    "cluster_id": row.get("cluster_id", ""),
+                    "raw_term": row.get("raw_term", ""),
+                    "normalized_term_before": row.get("term_before", ""),
+                    "display_label_before": row.get("term_before", ""),
+                    "normalized_term_after": row.get("term_after", ""),
+                    "display_label_after": row.get("display_label", row.get("term_after", "")),
+                    "action": "block" if blocked else "normalize",
+                    "decision": "blocked" if blocked else "applied",
+                    "evidence_type": "before_after",
+                    "evidence_value": row.get("block_reason", ""),
+                    "score_before": None,
+                    "score_after": None,
+                    "frequency": None,
+                    "rank_before": None,
+                    "rank_after": None,
+                }
+            )
+    return pd.DataFrame(rows, columns=sorted(REQUIRED_KEYWORD_RULE_APPLICATION_COLUMNS))
+
+
+def _keyword_rule_prepare_applications(
+    applications: pd.DataFrame | None,
+    *,
+    rule_set_id: str,
+    before_after: pd.DataFrame,
+) -> pd.DataFrame:
+    df = applications.copy() if applications is not None else _keyword_rule_default_applications(before_after, rule_set_id=rule_set_id)
+    defaults: dict[str, Any] = {
+        "schema_version": KEYWORD_RULE_APPLICATIONS_SCHEMA_VERSION,
+        "rule_set_id": rule_set_id,
+        "application_id": "",
+        "rule_id": "",
+        "cluster_id": "",
+        "raw_term": "",
+        "normalized_term_before": "",
+        "display_label_before": "",
+        "normalized_term_after": "",
+        "display_label_after": "",
+        "action": "",
+        "decision": "applied",
+        "evidence_type": "",
+        "evidence_value": "",
+        "score_before": None,
+        "score_after": None,
+        "frequency": None,
+        "rank_before": None,
+        "rank_after": None,
+    }
+    for column, default in defaults.items():
+        if column not in df.columns:
+            df[column] = default
+    if len(df) and not df["application_id"].map(_keyword_rule_normalize_text).any():
+        df["application_id"] = [f"app_{index + 1:08d}" for index in range(len(df))]
+    df["schema_version"] = KEYWORD_RULE_APPLICATIONS_SCHEMA_VERSION
+    df["rule_set_id"] = rule_set_id
+    for column in (
+        "application_id",
+        "rule_id",
+        "raw_term",
+        "normalized_term_before",
+        "display_label_before",
+        "normalized_term_after",
+        "display_label_after",
+        "action",
+        "decision",
+        "evidence_type",
+        "evidence_value",
+    ):
+        df[column] = df[column].map(_keyword_rule_normalize_text)
+    return df[sorted(set(df.columns))]
+
+
+def _keyword_rule_impact_summary(
+    *,
+    rule_set_id: str,
+    rules: pd.DataFrame,
+    applications: pd.DataFrame,
+    before_after: pd.DataFrame,
+    validation: KeywordRuleValidationResult | None = None,
+) -> dict[str, Any]:
+    blocked_rows = int(before_after["blocked"].map(_keyword_rule_truthy).sum()) if "blocked" in before_after.columns else 0
+    changed_rows = 0
+    if {"term_before", "term_after"} <= set(before_after.columns):
+        changed_rows = int((before_after["term_before"].map(str) != before_after["term_after"].map(str)).sum())
+    return {
+        "schema_version": KEYWORD_RULE_IMPACT_SUMMARY_SCHEMA_VERSION,
+        "rule_set_id": rule_set_id,
+        "counts": {
+            "rules": int(len(rules)),
+            "enabled_rules": int(rules["enabled"].map(_keyword_rule_truthy).sum()) if "enabled" in rules.columns else 0,
+            "applications": int(len(applications)),
+            "before_after_rows": int(len(before_after)),
+            "blocked_rows": blocked_rows,
+            "changed_rows": changed_rows,
+        },
+        "rule_family_counts": (
+            {str(key): int(value) for key, value in rules["rule_family"].value_counts(dropna=False).items()}
+            if "rule_family" in rules.columns
+            else {}
+        ),
+        "action_counts": (
+            {str(key): int(value) for key, value in rules["action"].value_counts(dropna=False).items()}
+            if "action" in rules.columns
+            else {}
+        ),
+        "contamination_counts": validation.contamination_counts if validation else {},
+        "created_at_utc": _utc_now(),
+    }
+
+
+def write_keyword_rule_artifacts(
+    path: str | Path,
+    *,
+    rule_set_id: str = "keyword_cleaning_default_v1",
+    title: str | None = None,
+    rules: pd.DataFrame | None = None,
+    applications: pd.DataFrame | None = None,
+    before_after: pd.DataFrame | None = None,
+    keywords: pd.DataFrame | None = None,
+    output_dir: str | Path | None = None,
+    source_artifacts: list[dict[str, Any]] | None = None,
+    transforms: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Write a manifest-backed keyword-cleaning rule artifact."""
+
+    artifacts = infer_result_artifacts(path)
+    root = artifacts.result_root
+    rule_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "rules" / rule_set_id
+    rule_dir.mkdir(parents=True, exist_ok=True)
+
+    if keywords is None and artifacts.keywords_path and artifacts.keywords_path.exists():
+        keywords = pd.read_parquet(artifacts.keywords_path)
+
+    rules_df = _keyword_rule_prepare_rules(rules, rule_set_id=rule_set_id)
+    before_after_df = _keyword_rule_prepare_before_after(before_after, rule_set_id=rule_set_id, keywords=keywords)
+    applications_df = _keyword_rule_prepare_applications(
+        applications,
+        rule_set_id=rule_set_id,
+        before_after=before_after_df,
+    )
+
+    outputs = {
+        "rules": "rules.parquet",
+        "applications": "rule_applications.parquet",
+        "before_after": "term_before_after.parquet",
+        "impact_summary": "rule_impact_summary.json",
+        "qa": "rule_set_qa.json",
+    }
+    manifest = {
+        "schema_version": KEYWORD_RULE_MANIFEST_SCHEMA_VERSION,
+        "rule_set_id": rule_set_id,
+        "title": title or rule_set_id.replace("_", " ").title(),
+        "result_id": _matrix_existing_result_id(root),
+        "rule_scope": "keyword_cleaning",
+        "policy": {
+            "destructive_block_families": sorted(KEYWORD_RULE_BLOCK_FAMILIES),
+            "allowed_actions": sorted(KEYWORD_RULE_ACTIONS),
+            "allowed_rule_families": sorted(KEYWORD_RULE_FAMILIES),
+            "top_artifact_rows_after_cleaning": "blocking",
+        },
+        "source_artifacts": source_artifacts if source_artifacts is not None else _keyword_rule_source_artifacts(root, artifacts),
+        "transforms": [dict(item) for item in (transforms or [])],
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+
+    rules_df.to_parquet(rule_dir / outputs["rules"], index=False)
+    applications_df.to_parquet(rule_dir / outputs["applications"], index=False)
+    before_after_df.to_parquet(rule_dir / outputs["before_after"], index=False)
+    (rule_dir / "rule_set_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    validation = validate_keyword_rule_artifact(rule_dir)
+    qa_payload = validation.to_dict()
+    qa_payload["warnings"] = [
+        warning for warning in qa_payload["warnings"] if warning.get("code") != "missing_keyword_rule_qa_sidecar"
+    ]
+    qa_payload["counts"]["warnings"] = len(qa_payload["warnings"])
+    if qa_payload["status"] == "warning" and not qa_payload["warnings"]:
+        qa_payload["status"] = "passed"
+    (rule_dir / outputs["impact_summary"]).write_text(
+        json.dumps(
+            _keyword_rule_impact_summary(
+                rule_set_id=rule_set_id,
+                rules=rules_df,
+                applications=applications_df,
+                before_after=before_after_df,
+                validation=validation,
+            ),
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    (rule_dir / outputs["qa"]).write_text(json.dumps(qa_payload, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_keyword_rule_artifact(rule_dir)
+    return {
+        "schema_version": KEYWORD_RULE_MANIFEST_SCHEMA_VERSION,
+        "rule_set_id": rule_set_id,
+        "rule_dir": rule_dir,
+        "manifest_path": rule_dir / "rule_set_manifest.json",
+        "rules_path": rule_dir / outputs["rules"],
+        "applications_path": rule_dir / outputs["applications"],
+        "before_after_path": rule_dir / outputs["before_after"],
+        "impact_summary_path": rule_dir / outputs["impact_summary"],
+        "qa_path": rule_dir / outputs["qa"],
+        "qa": validation.to_dict(),
+    }
+
+
 def _export_issue(
     code: str,
     severity: str,
@@ -3901,6 +4863,87 @@ def _export_feature_states(root: Path, feature_refs: list[str]) -> dict[str, str
     return states
 
 
+def _export_jsonable(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, Mapping):
+        return {str(key): _export_jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_export_jsonable(item) for item in value]
+    return value
+
+
+def _export_mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _normalize_export_selection(
+    selection: Mapping[str, Any] | None,
+    *,
+    export_family: str,
+    export_kind: str,
+    feature_refs: list[str],
+) -> dict[str, Any]:
+    raw = _export_mapping(_export_jsonable(selection or {}))
+    view_raw = raw.pop("view", {})
+    if isinstance(view_raw, Mapping):
+        view = dict(view_raw)
+    elif view_raw:
+        view = {"mode": str(view_raw)}
+    else:
+        view = {}
+    view.setdefault("mode", export_kind)
+    view.setdefault("family", export_family)
+
+    filters = raw.pop("filters", [])
+    if filters in (None, ""):
+        filters = []
+    elif not isinstance(filters, list):
+        filters = [filters]
+
+    payload = {
+        "schema_version": "sciscape_export_selection_v1",
+        "scope": str(raw.pop("scope", "full_result") or "full_result"),
+        "view": _export_jsonable(view),
+        "cluster_level": raw.pop("cluster_level", None),
+        "filters": _export_jsonable(filters),
+        "thresholds": _export_jsonable(_export_mapping(raw.pop("thresholds", {}))),
+        "layer_state": _export_jsonable(_export_mapping(raw.pop("layer_state", {}))),
+        "focus": _export_jsonable(_export_mapping(raw.pop("focus", {}))),
+        "feature_refs": [str(feature) for feature in feature_refs],
+    }
+    for key, value in raw.items():
+        payload[str(key)] = _export_jsonable(value)
+    return payload
+
+
+def _manifest_export_selection(root: Path, export_manifest_path: str | None) -> dict[str, Any]:
+    if not export_manifest_path:
+        return {}
+    try:
+        manifest = json.loads((root / export_manifest_path).read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    selection = manifest.get("selection")
+    return dict(selection) if isinstance(selection, Mapping) else {}
+
+
+def _manifest_selection_summary(selection: Mapping[str, Any]) -> dict[str, Any]:
+    view = selection.get("view") if isinstance(selection.get("view"), Mapping) else {}
+    filters = selection.get("filters") if isinstance(selection.get("filters"), list) else []
+    thresholds = selection.get("thresholds") if isinstance(selection.get("thresholds"), Mapping) else {}
+    layer_state = selection.get("layer_state") if isinstance(selection.get("layer_state"), Mapping) else {}
+    return {
+        "scope": selection.get("scope"),
+        "view_mode": view.get("mode"),
+        "view_family": view.get("family"),
+        "cluster_level": selection.get("cluster_level"),
+        "filter_count": len(filters),
+        "threshold_keys": sorted(str(key) for key in thresholds),
+        "layer_state_keys": sorted(str(key) for key in layer_state),
+    }
+
+
 def write_export_manifest(
     result_root: str | Path,
     *,
@@ -4012,7 +5055,12 @@ def write_export_manifest(
         "status": "pending",
         "feature_refs": [str(feature) for feature in feature_refs],
         "source_artifacts": manifest_source_artifacts,
-        "selection": dict(selection or {"scope": "full_result", "filters": []}),
+        "selection": _normalize_export_selection(
+            selection,
+            export_family=export_family,
+            export_kind=export_kind,
+            feature_refs=feature_refs,
+        ),
         "transform_summary": {
             "transform_count": len(normalized_transforms),
             "primary_transform": normalized_transforms[0]["transform_type"] if normalized_transforms else None,
@@ -7212,6 +8260,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "matrix_artifacts": [_rel(path, root) for path in artifacts.matrix_paths],
         "matrix_manifest_artifacts": [_rel(path, root) for path in artifacts.matrix_manifest_paths],
         "matrix_summaries": [],
+        "keyword_rule_manifest_artifacts": [_rel(path, root) for path in artifacts.keyword_rule_manifest_paths],
+        "keyword_rule_summaries": [],
         "temporal_manifest_artifacts": [_rel(path, root) for path in artifacts.temporal_manifest_paths],
         "temporal_summaries": [],
         "evolution_manifest_artifacts": [_rel(path, root) for path in artifacts.evolution_manifest_paths],
@@ -7374,6 +8424,56 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
             )
 
+    keyword_rule_artifacts = 0
+    stable_keyword_rule_artifacts = 0
+    keyword_rule_application_rows = 0
+    keyword_rule_before_after_rows = 0
+    keyword_rule_blocked_rows = 0
+    keyword_rule_artifact_rows_after = 0
+    keyword_rule_top_artifact_rows_after = 0
+    for manifest_path in artifacts.keyword_rule_manifest_paths:
+        keyword_rule_validation = validate_keyword_rule_artifact(manifest_path)
+        keyword_rule_payload = keyword_rule_validation.to_dict()
+        artifact_info["keyword_rule_summaries"].append(
+            {
+                "rule_set_id": keyword_rule_payload.get("rule_set_id"),
+                "status": keyword_rule_payload.get("status"),
+                "path": _rel(manifest_path, root),
+                "counts": keyword_rule_payload.get("counts", {}),
+                "contamination_counts": keyword_rule_payload.get("contamination_counts", {}),
+            }
+        )
+        keyword_rule_artifacts += 1
+        keyword_rule_application_rows += int(keyword_rule_validation.counts.get("applications", 0))
+        keyword_rule_before_after_rows += int(keyword_rule_validation.counts.get("before_after_rows", 0))
+        keyword_rule_blocked_rows += int(keyword_rule_validation.counts.get("blocked_rows", 0))
+        keyword_rule_artifact_rows_after += int(
+            keyword_rule_validation.contamination_counts.get("artifact_rows_after", 0)
+        )
+        keyword_rule_top_artifact_rows_after += int(
+            keyword_rule_validation.contamination_counts.get("top_artifact_rows_after", 0)
+        )
+        if keyword_rule_validation.status == "passed":
+            stable_keyword_rule_artifacts += 1
+        for issue in keyword_rule_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "keyword_rule_artifact_blocked"),
+                    "error",
+                    str(issue.get("message") or "Keyword rule artifact validation failed."),
+                    "keyword_rules",
+                )
+            )
+        for warning in keyword_rule_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "keyword_rule_artifact_warning"),
+                    "warning",
+                    str(warning.get("message") or "Keyword rule artifact has validation warnings."),
+                    "keyword_rules",
+                )
+            )
+
     temporal_artifacts = 0
     stable_temporal_artifacts = 0
     temporal_periods = 0
@@ -7518,6 +8618,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
             artifacts.keywords_path,
             artifacts.edges_path,
             artifacts.matrix_manifest_paths,
+            artifacts.keyword_rule_manifest_paths,
             artifacts.temporal_manifest_paths,
             artifacts.evolution_manifest_paths,
             artifacts.export_manifest_paths,
@@ -7545,6 +8646,13 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "general_matrix_artifacts": int(general_matrix_artifacts),
         "stable_matrix_artifacts": int(stable_matrix_artifacts),
         "matrix_nnz": int(matrix_nnz),
+        "keyword_rule_artifacts": int(keyword_rule_artifacts),
+        "stable_keyword_rule_artifacts": int(stable_keyword_rule_artifacts),
+        "keyword_rule_application_rows": int(keyword_rule_application_rows),
+        "keyword_rule_before_after_rows": int(keyword_rule_before_after_rows),
+        "keyword_rule_blocked_rows": int(keyword_rule_blocked_rows),
+        "keyword_rule_artifact_rows_after": int(keyword_rule_artifact_rows_after),
+        "keyword_rule_top_artifact_rows_after": int(keyword_rule_top_artifact_rows_after),
         "cooccurrence_artifacts": int(cooccurrence_artifacts),
         "cooccurrence_rows": int(cooccurrence_rows),
         "edge_evidence_artifacts": len(artifacts.edge_evidence_paths),
@@ -7889,6 +8997,36 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             description="General sparse-triplet matrix artifact manifest.",
         )
 
+    for i, rel_path in enumerate(artifact_info.get("keyword_rule_manifest_artifacts", []), start=1):
+        key = "keyword_rules" if i == 1 else f"keyword_rules_{i}"
+        suffix = 2
+        while key in records:
+            key = f"keyword_rules_{suffix}"
+            suffix += 1
+        records[key] = _artifact_record(
+            root=root,
+            role="keyword_rules",
+            path=rel_path,
+            required_for=["keyword", "quality"],
+            schema_version=KEYWORD_RULE_MANIFEST_SCHEMA_VERSION,
+            description="Keyword cleaning rule-set manifest.",
+        )
+        qa_path = Path(str(rel_path)).parent / "rule_set_qa.json"
+        if (root / qa_path).exists():
+            qa_key = "keyword_rule_qa" if "keyword_rule_qa" not in records else f"keyword_rule_qa_{i}"
+            qa_suffix = 2
+            while qa_key in records:
+                qa_key = f"keyword_rule_qa_{qa_suffix}"
+                qa_suffix += 1
+            records[qa_key] = _artifact_record(
+                root=root,
+                role="qa",
+                path=qa_path.as_posix(),
+                required_for=["quality"],
+                schema_version=KEYWORD_RULE_QA_SCHEMA_VERSION,
+                description="Keyword cleaning rule-set QA report.",
+            )
+
     for i, rel_path in enumerate(artifact_info.get("temporal_manifest_artifacts", []), start=1):
         key = "temporal" if i == 1 else f"temporal_{i}"
         records[key] = _artifact_record(
@@ -7965,7 +9103,7 @@ def _feature_artifact_candidates(feature: str) -> list[str]:
     mapping = {
         "overview": ["records", "report_data"],
         "cluster_map": ["membership", "report_data"],
-        "keyword": ["keywords", "report_data"],
+        "keyword": ["keywords", "keyword_rules", "report_data"],
         "term_network": ["term_network", "keywords", "report_data"],
         "cooccurrence": ["cooccurrence", "keywords", "report_data"],
         "matrix": ["matrix"],
@@ -7973,8 +9111,8 @@ def _feature_artifact_candidates(feature: str) -> list[str]:
         "temporal": ["records", "temporal"],
         "evolution": ["evolution"],
         "narrative": ["narrative"],
-        "quality": ["artifact_contract"],
-        "export": ["export", "report_data", "report_html", "viewer_html"],
+        "quality": ["artifact_contract", "keyword_rule_qa"],
+        "export": ["export", "keyword_rules", "report_data", "report_html", "viewer_html"],
     }
     return mapping.get(feature, [])
 
@@ -8345,6 +9483,11 @@ def _manifest_run_state(
 def _manifest_quality(validation: ArtifactValidationResult) -> dict[str, Any]:
     root = Path(validation.result_root)
     contract_path = _rel(default_artifact_contract_path(validation), root)
+    gate_paths = [contract_path] if contract_path else []
+    for rel_path in validation.artifacts.get("keyword_rule_manifest_artifacts", []):
+        qa_path = Path(str(rel_path)).parent / "rule_set_qa.json"
+        if (root / qa_path).exists():
+            gate_paths.append(qa_path.as_posix())
     blocking_count = sum(1 for warning in validation.warnings if warning.get("severity") in {"error", "blocking"})
     if blocking_count:
         state = "blocked"
@@ -8357,7 +9500,7 @@ def _manifest_quality(validation: ArtifactValidationResult) -> dict[str, Any]:
         "artifact_contract_path": contract_path,
         "warning_count": len(validation.warnings),
         "blocking_count": blocking_count,
-        "gate_paths": [contract_path] if contract_path else [],
+        "gate_paths": gate_paths,
         "last_validated_at_utc": validation.created_at_utc,
     }
 
@@ -8426,6 +9569,7 @@ def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[s
         export_manifest_ref = summary.get("path")
         files = _manifest_export_file_inventory(root, export_manifest_ref)
         primary_path = _manifest_primary_export_path(files, export_manifest_ref)
+        selection = _manifest_export_selection(root, export_manifest_ref)
         export_id = str(
             summary.get("export_id")
             or _safe_id(Path(str(export_manifest_ref or "export")).parent.name, fallback="export")
@@ -8443,6 +9587,8 @@ def _manifest_exports(validation: ArtifactValidationResult, artifacts: Mapping[s
                 "status": summary.get("status") or "present",
                 "counts": summary.get("counts", {}),
                 "files": files,
+                "selection": selection,
+                "selection_summary": _manifest_selection_summary(selection),
             }
         )
         seen_export_ids.add(export_id)
@@ -9479,6 +10625,12 @@ __all__ = [
     "EXPORT_MANIFEST_SCHEMA_VERSION",
     "EXPORT_QA_SCHEMA_VERSION",
     "EXPORT_TRANSFORMS_SCHEMA_VERSION",
+    "KEYWORD_RULE_APPLICATIONS_SCHEMA_VERSION",
+    "KEYWORD_RULE_IMPACT_SUMMARY_SCHEMA_VERSION",
+    "KEYWORD_RULE_MANIFEST_SCHEMA_VERSION",
+    "KEYWORD_RULE_QA_SCHEMA_VERSION",
+    "KEYWORD_RULES_SCHEMA_VERSION",
+    "KEYWORD_TERM_BEFORE_AFTER_SCHEMA_VERSION",
     "MATRIX_ENTITIES_SCHEMA_VERSION",
     "MATRIX_MANIFEST_SCHEMA_VERSION",
     "MATRIX_QA_SCHEMA_VERSION",
@@ -9500,6 +10652,7 @@ __all__ = [
     "EvolutionArtifactValidationResult",
     "ExportManifestValidationResult",
     "FeatureExposure",
+    "KeywordRuleValidationResult",
     "MatrixArtifactValidationResult",
     "ResultManifest",
     "ResultArtifacts",
@@ -9520,6 +10673,7 @@ __all__ = [
     "read_result_manifest",
     "read_workspace_manifest",
     "register_result_in_workspace",
+    "validate_keyword_rule_artifact",
     "validate_matrix_artifact",
     "validate_evolution_artifact",
     "validate_export_manifest",
@@ -9528,6 +10682,7 @@ __all__ = [
     "validate_workspace",
     "write_edge_evidence_samples",
     "write_cooccurrence_artifacts",
+    "write_keyword_rule_artifacts",
     "write_matrix_artifact",
     "write_matrix_from_term_cooccurrence",
     "write_evolution_artifacts",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +18,8 @@ from sciscape.artifacts import (
     EXPORT_MANIFEST_SCHEMA_VERSION,
     EXPORT_QA_SCHEMA_VERSION,
     EXPORT_TRANSFORMS_SCHEMA_VERSION,
+    KEYWORD_RULE_MANIFEST_SCHEMA_VERSION,
+    KEYWORD_RULE_QA_SCHEMA_VERSION,
     MATRIX_MANIFEST_SCHEMA_VERSION,
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
@@ -34,6 +37,7 @@ from sciscape.artifacts import (
     register_result_in_workspace,
     validate_evolution_artifact,
     validate_export_manifest,
+    validate_keyword_rule_artifact,
     validate_matrix_artifact,
     validate_result_root,
     validate_temporal_artifact,
@@ -43,6 +47,7 @@ from sciscape.artifacts import (
     write_evolution_artifacts,
     write_evolution_synthetic_smoke_artifact,
     write_export_manifest,
+    write_keyword_rule_artifacts,
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_temporal_artifacts,
@@ -50,7 +55,13 @@ from sciscape.artifacts import (
     write_result_manifest,
     write_workspace_manifest,
 )
-from sciscape.export import export_graphml, export_vosviewer_network
+from sciscape.export import (
+    export_graphml,
+    export_vosviewer_bundle,
+    export_vosviewer_network,
+    export_vosviewer_thesaurus,
+)
+from sciscape.keyword_extraction.rule_artifact import write_keyword_cleaning_rule_artifacts
 from sciscape.keyword_extraction.visualization import export_dashboard, export_report, export_viewer
 
 
@@ -125,6 +136,37 @@ def _write_valid_result_root(root: Path) -> Path:
     return root
 
 
+def _keyword_before_after_row(
+    *,
+    cluster_id: int,
+    raw_term: str,
+    rule_ids: str = "",
+    term_after: str | None = None,
+    display_label: str | None = None,
+    quality_flags: str = "",
+    blocked: bool = False,
+    block_reason: str = "",
+) -> dict[str, object]:
+    final_term = raw_term if term_after is None else term_after
+    return {
+        "cluster_id": cluster_id,
+        "raw_term": raw_term,
+        "term_before": raw_term,
+        "term_after": final_term,
+        "display_label": final_term if display_label is None else display_label,
+        "family_id": final_term.lower(),
+        "parent_term": "",
+        "variant_count": 1,
+        "rule_ids": rule_ids,
+        "quality_flags": quality_flags,
+        "review_status": "blocked" if blocked else "accepted",
+        "tier_before": "candidate",
+        "tier_after": "drop" if blocked else "primary",
+        "blocked": blocked,
+        "block_reason": block_reason,
+    }
+
+
 def test_validate_result_root_infers_features_and_counts(tmp_path):
     root = _write_valid_result_root(tmp_path / "result")
 
@@ -196,6 +238,125 @@ def test_write_cooccurrence_artifacts_promotes_stable_manifest_feature(tmp_path)
     assert manifest["features"]["matrix"]["artifact_refs"] == []
     assert manifest["artifacts"]["cooccurrence"]["schema_version"] == COOCCURRENCE_ARTIFACT_SCHEMA_VERSION
     assert manifest["artifacts"]["cooccurrence"]["rows"] == 2
+
+
+def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    rules = pd.DataFrame(
+        [
+            {
+                "rule_id": "html_fragment_block",
+                "rule_family": "html_fragment",
+                "match_type": "regex",
+                "pattern": r"class\\s+htmlview",
+                "replacement": "",
+                "action": "block",
+                "confidence_policy": "high_precision_artifact",
+                "destructive": True,
+                "enabled": True,
+                "created_by": "test",
+                "reason": "encoded publisher HTML fragment",
+            }
+        ]
+    )
+    before_after = pd.DataFrame(
+        [
+            _keyword_before_after_row(
+                cluster_id=0,
+                raw_term="class htmlview paragraph",
+                rule_ids="html_fragment_block",
+                term_after="",
+                display_label="",
+                quality_flags="metadata_fragment",
+                blocked=True,
+                block_reason="encoded HTML metadata fragment",
+            ),
+            _keyword_before_after_row(
+                cluster_id=0,
+                raw_term="perovskite solar cells",
+            ),
+        ]
+    )
+
+    written = write_keyword_rule_artifacts(
+        root,
+        rule_set_id="keyword_cleaning_test_v1",
+        rules=rules,
+        before_after=before_after,
+    )
+
+    assert written["manifest_path"] == root / "rules" / "keyword_cleaning_test_v1" / "rule_set_manifest.json"
+    assert written["qa"]["schema_version"] == KEYWORD_RULE_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+    assert written["qa"]["counts"]["blocked_rows"] == 1
+    assert written["qa"]["contamination_counts"]["top_artifact_rows_after"] == 0
+
+    validation = validate_keyword_rule_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["rule_family_counts"]["html_fragment"] == 1
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["ok"] is True
+    assert contract["counts"]["keyword_rule_artifacts"] == 1
+    assert contract["counts"]["stable_keyword_rule_artifacts"] == 1
+    assert contract["counts"]["keyword_rule_blocked_rows"] == 1
+    assert contract["counts"]["keyword_rule_top_artifact_rows_after"] == 0
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["artifacts"]["keyword_rules"]["schema_version"] == KEYWORD_RULE_MANIFEST_SCHEMA_VERSION
+    assert manifest["artifacts"]["keyword_rule_qa"]["schema_version"] == KEYWORD_RULE_QA_SCHEMA_VERSION
+    assert "keyword_rules" in manifest["features"]["keyword"]["artifact_refs"]
+    assert "keyword_rule_qa" in manifest["features"]["quality"]["artifact_refs"]
+    assert "rules/keyword_cleaning_test_v1/rule_set_qa.json" in manifest["quality"]["gate_paths"]
+
+
+def test_validate_keyword_rule_artifact_blocks_unsafe_destructive_stop_rule(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    rules = pd.DataFrame(
+        [
+            {
+                "rule_id": "date_stop_block",
+                "rule_family": "stop_term",
+                "match_type": "literal",
+                "pattern": "date",
+                "replacement": "",
+                "action": "block",
+                "confidence_policy": "unsafe_global_stop",
+                "destructive": True,
+                "enabled": True,
+                "created_by": "test",
+                "reason": "stop terms must not be destructive blocks by default",
+            }
+        ]
+    )
+    before_after = pd.DataFrame(
+        [
+            _keyword_before_after_row(
+                cluster_id=0,
+                raw_term="date",
+                rule_ids="date_stop_block",
+                term_after="",
+                display_label="",
+                blocked=True,
+                block_reason="unsafe stop-term block fixture",
+            )
+        ]
+    )
+
+    written = write_keyword_rule_artifacts(
+        root,
+        rule_set_id="keyword_cleaning_unsafe_v1",
+        rules=rules,
+        before_after=before_after,
+    )
+
+    assert written["qa"]["status"] == "blocked"
+    assert any(issue["code"] == "unsafe_keyword_rule_block_action" for issue in written["qa"]["blocking_issues"])
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["ok"] is False
+    assert contract["result_state"] == "blocked"
+    assert any(w["code"] == "unsafe_keyword_rule_block_action" for w in contract["warnings"])
 
 
 def test_validate_result_root_blocks_malformed_cooccurrence_table(tmp_path):
@@ -995,6 +1156,14 @@ def test_write_export_manifest_promotes_stable_export_feature(tmp_path):
     assert validation["status"] == "passed"
     assert validation["counts"]["files"] == 1
     assert validation["counts"]["inputs"] == 1
+    export_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["schema_version"] == "sciscape_export_selection_v1"
+    assert export_manifest["selection"]["scope"] == "full_result"
+    assert export_manifest["selection"]["view"] == {
+        "mode": "json_report_data",
+        "family": "report",
+    }
+    assert export_manifest["selection"]["filters"] == []
 
     contract = validate_result_root(root).to_dict()
     assert contract["counts"]["stable_export_artifacts"] == 1
@@ -1005,7 +1174,19 @@ def test_write_export_manifest_promotes_stable_export_feature(tmp_path):
     assert manifest["features"]["export"]["state"] == "stable"
     assert "export" in manifest["features"]["export"]["artifact_refs"]
     assert manifest["artifacts"]["export"]["schema_version"] == EXPORT_MANIFEST_SCHEMA_VERSION
-    assert any(export["export_id"] == "json_report_data" and export["status"] == "passed" for export in manifest["exports"])
+    report_exports = [export for export in manifest["exports"] if export["export_id"] == "json_report_data"]
+    assert len(report_exports) == 1
+    assert report_exports[0]["status"] == "passed"
+    assert report_exports[0]["selection"]["view"]["mode"] == "json_report_data"
+    assert report_exports[0]["selection_summary"] == {
+        "scope": "full_result",
+        "view_mode": "json_report_data",
+        "view_family": "report",
+        "cluster_level": None,
+        "filter_count": 0,
+        "threshold_keys": [],
+        "layer_state_keys": [],
+    }
 
 
 def test_validate_export_manifest_blocks_missing_export_file(tmp_path):
@@ -1446,6 +1627,20 @@ def test_dashboard_export_writes_export_manifest(tmp_path):
     validation = validate_export_manifest(manifest_path).to_dict()
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "keyword_dashboard_html"
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "keyword_table"
+    assert export_manifest["selection"]["view"] == {
+        "mode": "keyword_dashboard",
+        "surface": "dashboard_export",
+        "family": "viewer",
+    }
+    assert export_manifest["selection"]["layer_state"]["keyword_count"] == 2
+    assert export_manifest["selection"]["layer_state"]["cluster_count"] == 1
+    result_manifest = build_result_manifest(tmp_path).to_dict()
+    dashboard_exports = [row for row in result_manifest["exports"] if row["export_id"] == "keyword_dashboard"]
+    assert len(dashboard_exports) == 1
+    assert dashboard_exports[0]["selection_summary"]["view_mode"] == "keyword_dashboard"
+    assert dashboard_exports[0]["selection_summary"]["view_family"] == "viewer"
 
 
 def test_viewer_export_writes_export_manifest(tmp_path):
@@ -1458,6 +1653,14 @@ def test_viewer_export_writes_export_manifest(tmp_path):
     validation = validate_export_manifest(manifest_path).to_dict()
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "static_viewer_html"
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "hosted_or_uploaded_data"
+    assert export_manifest["selection"]["view"]["mode"] == "static_viewer"
+    assert export_manifest["selection"]["layer_state"] == {
+        "data_mode": "hosted_data_json_or_upload",
+        "default_data_url": "data.json",
+        "supports_query_data_url": True,
+    }
 
 
 def test_report_export_writes_atlas_payload_to_data_json(tmp_path):
@@ -1498,6 +1701,27 @@ def test_report_export_writes_bundle_export_manifest(tmp_path):
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "html_report"
     assert validation["counts"]["files"] >= 5
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "keyword_table"
+    assert export_manifest["selection"]["view"] == {
+        "mode": "html_report",
+        "surface": "report_export",
+        "family": "report",
+    }
+    assert export_manifest["selection"]["layer_state"]["keyword_count"] == 3
+    assert export_manifest["selection"]["layer_state"]["cluster_count"] == 2
+    assert export_manifest["selection"]["layer_state"]["generated_file_count"] >= 5
+    result_manifest = build_result_manifest(tmp_path).to_dict()
+    report_exports = [row for row in result_manifest["exports"] if row["export_id"] == "html_report"]
+    assert len(report_exports) == 1
+    assert report_exports[0]["selection_summary"]["view_mode"] == "html_report"
+    assert report_exports[0]["selection_summary"]["layer_state_keys"] == [
+        "cluster_count",
+        "data_mode",
+        "generated_file_count",
+        "keyword_count",
+        "open_browser",
+    ]
 
 
 def test_graphml_export_can_write_export_manifest(tmp_path):
@@ -1539,6 +1763,16 @@ def test_graphml_export_can_write_export_manifest(tmp_path):
     assert validation["status"] == "passed"
     assert validation["export_kind"] == "graphml_graph"
     assert validation["counts"]["inputs"] == 3
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["view"] == {
+        "mode": "cluster_network_export",
+        "surface": "graph_export",
+        "family": "graph",
+    }
+    assert export_manifest["selection"]["layer_state"] == {
+        "network_format": "graphml",
+        "edge_table": "edges",
+    }
 
 
 def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
@@ -1589,6 +1823,16 @@ def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
     assert validation["export_family"] == "vosviewer"
     assert validation["export_kind"] == "vosviewer_map_network"
     assert validation["counts"]["files"] == 2
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "full_result"
+    assert export_manifest["selection"]["view"]["mode"] == "vosviewer_map_network"
+    assert export_manifest["selection"]["cluster_level"] == "cluster"
+    assert export_manifest["selection"]["thresholds"] == {"min_link_strength": 0}
+    assert export_manifest["selection"]["layer_state"] == {
+        "map_file": "vosviewer_map.txt",
+        "network_file": "vosviewer_network.txt",
+        "edge_weight_column": "rel_sum2",
+    }
 
     result_manifest = write_result_manifest(result_root).to_dict()
     vos_exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_map_network"]
@@ -1601,6 +1845,199 @@ def test_vosviewer_export_writes_map_network_and_manifest(tmp_path):
         "map": "vosviewer/vosviewer_map.txt",
         "network": "vosviewer/vosviewer_network.txt",
     }
+    assert vos_export["selection_summary"]["view_mode"] == "vosviewer_map_network"
+    assert vos_export["selection_summary"]["cluster_level"] == "cluster"
+    assert vos_export["selection_summary"]["threshold_keys"] == ["min_link_strength"]
+
+
+def test_vosviewer_thesaurus_export_writes_rule_set_and_manifest(tmp_path):
+    result_root = _write_valid_result_root(tmp_path / "result")
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 1, 1],
+            "term": [
+                "class htmlview paragraph",
+                "graph neural networks",
+                "gnn",
+                "color behavior",
+            ],
+            "raw_term": [
+                "class htmlview paragraph",
+                "graph neural networks",
+                "gnn",
+                "colour behaviour",
+            ],
+            "quality_flags": ["metadata_fragment", "", "", ""],
+            "keyword_label_tier": ["review_artifact", "primary_phrase", "supporting", "primary_phrase"],
+            "norm_merged_from": ["", '["graph neural network"]', "", ""],
+            "abbreviation_target": ["", "", "graph neural networks", ""],
+            "abbreviation_status": ["", "", "confirmed", ""],
+            "score": [0.9, 1.2, 0.7, 0.8],
+            "frequency": [10, 12, 8, 7],
+            "representative_rank": [1, 1, 2, 3],
+        }
+    )
+    rule_artifact = write_keyword_cleaning_rule_artifacts(result_root, keywords=keywords)
+
+    written = export_vosviewer_thesaurus(
+        rule_artifact["manifest_path"],
+        result_root / "vosviewer",
+        result_root=result_root,
+    )
+
+    thesaurus_lines = written["thesaurus_path"].read_text(encoding="utf-8").splitlines()
+    assert thesaurus_lines[0] == "label\treplace by"
+    assert set(thesaurus_lines[1:]) == {
+        "class htmlview paragraph\t",
+        "colour behaviour\tcolor behavior",
+        "gnn\tgraph neural networks",
+        "graph neural network\tgraph neural networks",
+    }
+    rule_set_lines = written["rule_set_path"].read_text(encoding="utf-8").splitlines()
+    assert rule_set_lines[0].split("\t")[:3] == ["rule_id", "rule_family", "match_type"]
+    assert any("html_fragment_block" in line for line in rule_set_lines)
+    assert any("abbreviation_evidence_expand" in line for line in rule_set_lines)
+
+    manifest_path = result_root / "exports" / "vosviewer_thesaurus" / "export_manifest.json"
+    assert written["manifest_path"] == manifest_path
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "vosviewer"
+    assert validation["export_kind"] == "vosviewer_thesaurus"
+    assert validation["counts"]["files"] == 2
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "keyword_rule_artifact"
+    assert export_manifest["selection"]["view"]["mode"] == "cleaning_rules"
+    assert export_manifest["selection"]["filters"] == [
+        {"field": "action", "op": "exclude", "value": "keep_with_flag"}
+    ]
+    assert export_manifest["selection"]["layer_state"]["thesaurus_columns"] == ["label", "replace by"]
+
+    result_manifest = write_result_manifest(result_root).to_dict()
+    vos_exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_thesaurus"]
+    assert len(vos_exports) == 1
+    assert vos_exports[0]["path"] == "vosviewer/vosviewer_thesaurus.txt"
+    assert {row["role"]: row["path"] for row in vos_exports[0]["files"]} == {
+        "thesaurus": "vosviewer/vosviewer_thesaurus.txt",
+        "rule_set": "vosviewer/sciscape_keyword_rules.tsv",
+    }
+    assert vos_exports[0]["selection_summary"]["scope"] == "keyword_rule_artifact"
+    assert vos_exports[0]["selection_summary"]["view_mode"] == "cleaning_rules"
+
+
+def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
+    import polars as pl
+
+    result_root = _write_valid_result_root(tmp_path / "result")
+    edges_path = result_root / "edges.parquet"
+    membership_path = result_root / "landscape" / "membership.parquet"
+    abstracts_path = result_root / "abstracts.parquet"
+    pl.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [1.0]}).write_parquet(edges_path)
+    pl.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).write_parquet(membership_path)
+    export_vosviewer_network(
+        pl.read_parquet(edges_path),
+        pl.read_parquet(membership_path),
+        result_root / "vosviewer",
+        abstracts=pl.read_parquet(abstracts_path),
+        result_root=result_root,
+        source_paths={"edges": edges_path, "membership": membership_path, "abstracts": abstracts_path},
+    )
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["class htmlview paragraph", "gnn"],
+            "raw_term": ["class htmlview paragraph", "gnn"],
+            "quality_flags": ["metadata_fragment", ""],
+            "keyword_label_tier": ["review_artifact", "supporting"],
+            "abbreviation_target": ["", "graph neural networks"],
+            "abbreviation_status": ["", "confirmed"],
+        }
+    )
+    rule_artifact = write_keyword_cleaning_rule_artifacts(result_root, keywords=keywords)
+    export_vosviewer_thesaurus(rule_artifact["manifest_path"], result_root / "vosviewer", result_root=result_root)
+
+    written = export_vosviewer_bundle(result_root)
+
+    assert written["bundle_path"] == result_root / "exports" / "vosviewer_bundle" / "vosviewer_bundle.zip"
+    validation = validate_export_manifest(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "bundle"
+    assert validation["export_kind"] == "vosviewer_bundle"
+    export_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "manifest_backed_exports"
+    assert export_manifest["selection"]["view"]["mode"] == "download_bundle"
+    assert export_manifest["selection"]["filters"] == [
+        {"field": "export_family", "op": "eq", "value": "vosviewer"}
+    ]
+    assert export_manifest["selection"]["layer_state"] == {
+        "source_inventory": "result_manifest.exports",
+        "bundle_file_count": 8,
+    }
+
+    with zipfile.ZipFile(written["bundle_path"]) as archive:
+        names = set(archive.namelist())
+        assert {
+            "vosviewer/vosviewer_map.txt",
+            "vosviewer/vosviewer_network.txt",
+            "vosviewer/vosviewer_thesaurus.txt",
+            "vosviewer/sciscape_keyword_rules.tsv",
+            "exports/vosviewer_map_network/export_manifest.json",
+            "exports/vosviewer_map_network/export_qa.json",
+            "exports/vosviewer_thesaurus/export_manifest.json",
+            "exports/vosviewer_thesaurus/export_qa.json",
+            "vosviewer_bundle_inventory.json",
+        }.issubset(names)
+        inventory = json.loads(archive.read("vosviewer_bundle_inventory.json").decode("utf-8"))
+    assert inventory["source"] == "result_manifest.exports"
+    assert inventory["file_count"] == 8
+
+    result_manifest = write_result_manifest(result_root).to_dict()
+    bundle_exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_bundle"]
+    assert len(bundle_exports) == 1
+    assert bundle_exports[0]["path"] == "exports/vosviewer_bundle/vosviewer_bundle.zip"
+    assert bundle_exports[0]["selection_summary"]["view_mode"] == "download_bundle"
+    assert bundle_exports[0]["selection_summary"]["filter_count"] == 1
+
+
+def test_cli_rule_export_supports_vosviewer_thesaurus(tmp_path):
+    result_root = _write_valid_result_root(tmp_path / "result")
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["class htmlview paragraph", "gnn"],
+            "raw_term": ["class htmlview paragraph", "gnn"],
+            "quality_flags": ["metadata_fragment", ""],
+            "keyword_label_tier": ["review_artifact", "supporting"],
+            "abbreviation_target": ["", "graph neural networks"],
+            "abbreviation_status": ["", "confirmed"],
+        }
+    )
+    rule_artifact = write_keyword_cleaning_rule_artifacts(result_root, keywords=keywords)
+    output_dir = result_root / "vosviewer_cli"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sciscape.cli",
+            "rule-export",
+            str(rule_artifact["manifest_path"]),
+            "--format",
+            "vosviewer-thesaurus",
+            "-o",
+            str(output_dir),
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "vosviewer_thesaurus.txt" in completed.stdout
+    assert "sciscape_keyword_rules.tsv" in completed.stdout
+    assert (output_dir / "vosviewer_thesaurus.txt").exists()
+    assert (output_dir / "sciscape_keyword_rules.tsv").exists()
+    manifest_path = result_root / "exports" / "vosviewer_thesaurus" / "export_manifest.json"
+    assert validate_export_manifest(manifest_path).ok is True
 
 
 def test_cli_export_supports_vosviewer_format(tmp_path):

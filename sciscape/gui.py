@@ -336,7 +336,17 @@ class SciScapeApp:
         if not path:
             return
         from .keyword_extraction.visualization import export_viewer
-        abs_path = export_viewer(output_path=path)
+        abs_path = export_viewer(
+            output_path=path,
+            selection={
+                "scope": "hosted_or_uploaded_data",
+                "view": {"mode": "static_viewer", "surface": "gui_export_viewer"},
+                "filters": [],
+                "thresholds": {},
+                "layer_state": {"command": "gui", "action": "export_viewer"},
+                "focus": {},
+            },
+        )
         messagebox.showinfo("Viewer Exported", f"Saved: {abs_path}\n\nDeploy to GitHub Pages or open locally.")
 
 

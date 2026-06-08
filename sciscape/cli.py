@@ -9,6 +9,7 @@ Usage:
     sciscape visualize <keyword_table> [options]
     sciscape viewer    [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
+    sciscape rule-export <rule_manifest> [options]
     sciscape web       [options]
     sciscape gui
 
@@ -19,6 +20,7 @@ Examples:
     sciscape convert wos savedrecs.txt -o abstracts.parquet
     sciscape landscape edges.parquet abstracts.parquet -o workspace/output/landscape
     sciscape visualize keywords.parquet -o workspace/reports/keywords
+    sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
 """
 
 from __future__ import annotations
@@ -127,6 +129,24 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Use representative-label quality for final top-N ranking",
     )
+    kw.add_argument(
+        "--keyword-rule-artifact",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Write replayable keyword cleaning rule artifacts when a result root is available",
+    )
+    kw.add_argument(
+        "--keyword-rule-set-id",
+        type=str,
+        default="keyword_cleaning_default_v1",
+        help="Rule-set ID for keyword cleaning artifacts",
+    )
+    kw.add_argument(
+        "--keyword-rule-result-root",
+        type=Path,
+        default=None,
+        help="Result root for keyword cleaning artifacts; inferred for <root>/landscape/keywords.parquet outputs",
+    )
     kw.add_argument("--enable-all", action="store_true",
                      help="Enable all optional stages (vocab merge, cooccurrence, term network, depth)")
     kw.add_argument("-o", "--output", type=Path, default=Path("keywords.parquet"),
@@ -221,6 +241,47 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Export format (default: gexf)")
     ex.add_argument("--abstracts", type=Path, default=None,
                      help="Abstracts parquet for title/year attributes")
+
+    # ---- rule-export ----
+    rex = sub.add_parser("rule-export", help="Export keyword cleaning rules to external tool formats")
+    rex.add_argument("rule_manifest", type=Path, help="Keyword rule_set_manifest.json path or rule directory")
+    rex.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("vosviewer"),
+        help="Output directory for rule export files",
+    )
+    rex.add_argument(
+        "--format",
+        choices=["vosviewer-thesaurus"],
+        default="vosviewer-thesaurus",
+        help="Rule export format (default: vosviewer-thesaurus)",
+    )
+    rex.add_argument(
+        "--result-root",
+        type=Path,
+        default=None,
+        help="Result root for manifest-backed exports; inferred from rules/<rule_set_id>/ when possible",
+    )
+    rex.add_argument(
+        "--write-manifest",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Write a manifest-backed export artifact",
+    )
+    rex.add_argument(
+        "--thesaurus-filename",
+        type=str,
+        default="vosviewer_thesaurus.txt",
+        help="Output filename for the VOSviewer thesaurus table",
+    )
+    rex.add_argument(
+        "--rule-set-filename",
+        type=str,
+        default="sciscape_keyword_rules.tsv",
+        help="Output filename for the companion SciScape rule-set table",
+    )
 
     # ---- query (OpenAlex) ----
     qa = sub.add_parser("query", help="Query OpenAlex → fetch → edges → landscape (all-in-one)")
@@ -324,6 +385,14 @@ def _run_cluster(args: argparse.Namespace) -> None:
             print(f"  {level}: gamma={gamma:.4f}, quality={quality:.4f}")
 
 
+def _infer_keyword_rule_result_root(output: Path, explicit_root: Path | None) -> Path | None:
+    if explicit_root is not None:
+        return explicit_root
+    if output.name == "keywords.parquet" and output.parent.name == "landscape":
+        return output.parent.parent
+    return None
+
+
 def _run_keywords(args: argparse.Namespace) -> None:
     from sciscape.keyword_extraction import (
         KeywordExtractionConfig,
@@ -333,6 +402,18 @@ def _run_keywords(args: argparse.Namespace) -> None:
     from sciscape.keyword_extraction.config import VocabMergeConfig
     from sciscape.keyword_extraction.depth import DepthConfig
     from sciscape.keyword_extraction.term_network import TermNetworkConfig
+
+    keyword_rule_result_root = _infer_keyword_rule_result_root(args.output, args.keyword_rule_result_root)
+    if (
+        args.keyword_rule_artifact
+        and keyword_rule_result_root is None
+        and args.keyword_engine != "cluster_sharded"
+    ):
+        print(
+            "Keyword rule artifact skipped: provide --keyword-rule-result-root or write to "
+            "<result_root>/landscape/keywords.parquet.",
+            file=sys.stderr,
+        )
 
     kwargs = dict(
         abstract_path=args.abstract_path,
@@ -371,6 +452,9 @@ def _run_keywords(args: argparse.Namespace) -> None:
         scoring_shard_size_clusters=args.scoring_shard_size_clusters,
         scoring_shard_resume=args.scoring_shard_resume,
         quality_rerank_enabled=args.quality_rerank,
+        keyword_rule_artifact_enabled=args.keyword_rule_artifact,
+        keyword_rule_set_id=args.keyword_rule_set_id,
+        keyword_rule_result_root=keyword_rule_result_root,
         verbose=args.verbose,
     )
 
@@ -574,6 +658,18 @@ def _run_viewer(args: argparse.Namespace) -> None:
     path = export_viewer(
         output_path=str(args.output),
         title=args.title,
+        selection={
+            "scope": "hosted_or_uploaded_data",
+            "view": {"mode": "static_viewer", "surface": "cli_viewer"},
+            "filters": [],
+            "thresholds": {},
+            "layer_state": {
+                "command": "viewer",
+                "open_browser": bool(args.open),
+                "output": str(args.output),
+            },
+            "focus": {},
+        },
     )
     print(f"Viewer generated: {path}")
     print("Deploy to Vercel:  vercel deploy --prod .")
@@ -649,6 +745,19 @@ def _run_visualize(args: argparse.Namespace) -> None:
             output_path=str(output),
             title=args.title,
             open_browser=args.open,
+            selection={
+                "scope": "keyword_table",
+                "view": {"mode": "keyword_dashboard", "surface": "cli_visualize"},
+                "filters": [],
+                "thresholds": {},
+                "layer_state": {
+                    "command": "visualize",
+                    "dashboard_only": True,
+                    "open_browser": bool(args.open),
+                    "keyword_table": str(args.keyword_table),
+                },
+                "focus": {},
+            },
         )
         print(f"Dashboard generated: {path}")
         return
@@ -658,6 +767,19 @@ def _run_visualize(args: argparse.Namespace) -> None:
         output_dir=str(args.output),
         title=args.title,
         open_browser=args.open,
+        selection={
+            "scope": "keyword_table",
+            "view": {"mode": "html_report", "surface": "cli_visualize"},
+            "filters": [],
+            "thresholds": {},
+            "layer_state": {
+                "command": "visualize",
+                "dashboard_only": False,
+                "open_browser": bool(args.open),
+                "keyword_table": str(args.keyword_table),
+            },
+            "focus": {},
+        },
     )
     print(f"Report generated: {Path(args.output) / 'report.html'}")
     print(f"Files written: {len(paths)}")
@@ -716,6 +838,26 @@ def _run_export(args: argparse.Namespace) -> None:
     print(f"Exported → {path}")
 
 
+def _run_rule_export(args: argparse.Namespace) -> None:
+    from sciscape.export import export_vosviewer_thesaurus
+
+    if args.format != "vosviewer-thesaurus":
+        raise SystemExit(f"Unsupported rule export format: {args.format}")
+
+    paths = export_vosviewer_thesaurus(
+        args.rule_manifest,
+        args.output,
+        thesaurus_filename=args.thesaurus_filename,
+        rule_set_filename=args.rule_set_filename,
+        write_manifest=args.write_manifest,
+        result_root=args.result_root,
+    )
+    print(f"Thesaurus → {paths['thesaurus_path']}")
+    print(f"Rule set → {paths['rule_set_path']}")
+    if paths.get("manifest_path"):
+        print(f"Manifest → {paths['manifest_path']}")
+
+
 def _run_query(args: argparse.Namespace) -> None:
     from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
 
@@ -765,6 +907,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_visualize(args)
     elif args.command == "export":
         _run_export(args)
+    elif args.command == "rule-export":
+        _run_rule_export(args)
     elif args.command == "query":
         _run_query(args)
     elif args.command == "web":

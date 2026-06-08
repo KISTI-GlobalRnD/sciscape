@@ -2249,6 +2249,21 @@ body {
 }
 .dl-info .dl-name { font-weight: 600; font-size: 0.85rem; }
 .dl-info .dl-desc { font-size: 0.72rem; color: var(--steel); }
+.dl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+  margin-top: 0.28rem;
+}
+.dl-chip {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 4px;
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.15;
+  padding: 0.16rem 0.28rem;
+}
 
 /* ── OVERVIEW IFRAME ───────────────────────────────────── */
 .viz-frame {
@@ -5072,11 +5087,18 @@ function pill(text, accent) {
   return '<span class="stat-pill' + (accent ? ' accent' : '') + '">' + esc(text) + '</span>';
 }
 
-function dlCard(filename, desc, icon, jobId) {
+function dlMeta(metaLines) {
+  const lines = Array.isArray(metaLines) ? metaLines.filter(Boolean) : [];
+  if (!lines.length) return '';
+  return '<div class="dl-meta">' + lines.map(line => '<span class="dl-chip">' + esc(line) + '</span>').join('') + '</div>';
+}
+
+function dlCard(filename, desc, icon, jobId, metaLines) {
   return '<a class="dl-card" href="' + artifactUrl(jobId, 'download', filename) + '">' +
     '<div class="dl-icon">' + icon + '</div>' +
     '<div class="dl-info"><div class="dl-name">' + esc(filename) + '</div>' +
-    '<div class="dl-desc">' + esc(desc) + '</div></div></a>';
+    '<div class="dl-desc">' + esc(desc) + '</div>' +
+    dlMeta(metaLines) + '</div></a>';
 }
 
 function viewCard(filename, desc, icon, jobId) {
@@ -5108,20 +5130,52 @@ function manifestExportLabel(exportRow, fileRow) {
   return String(kind).replace(/_/g, ' ') + ' / ' + String(role).replace(/_/g, ' ');
 }
 
+function compactList(values, limit) {
+  const rows = Array.isArray(values) ? values.filter(Boolean).map(String) : [];
+  if (!rows.length) return '';
+  const shown = rows.slice(0, limit || 3).join(', ');
+  return rows.length > (limit || 3) ? shown + ' +' + String(rows.length - (limit || 3)) : shown;
+}
+
+function manifestExportSelectionMeta(exportRow) {
+  const summary = exportRow && exportRow.selection_summary || {};
+  const meta = [];
+  if (summary.view_mode) meta.push('view: ' + String(summary.view_mode).replace(/_/g, ' '));
+  if (summary.scope) meta.push('scope: ' + String(summary.scope).replace(/_/g, ' '));
+  if (summary.cluster_level) meta.push('level: ' + String(summary.cluster_level));
+  if (Number(summary.filter_count || 0) > 0) meta.push('filters: ' + String(summary.filter_count));
+  const thresholdText = compactList(summary.threshold_keys, 3);
+  if (thresholdText) meta.push('thresholds: ' + thresholdText.replace(/_/g, ' '));
+  return meta;
+}
+
+function manifestExportRow(exportRows, exportId) {
+  return (Array.isArray(exportRows) ? exportRows : []).find(row =>
+    row && row.export_id === exportId && row.status !== 'missing' && row.status !== 'blocked'
+  ) || null;
+}
+
 function manifestExportCards(result, jobId, seenPaths) {
   const manifest = result && result.result_manifest || {};
   const exportRows = Array.isArray(manifest.exports) ? manifest.exports : []; // result_manifest.exports
   const cards = [];
   const seen = seenPaths || new Set();
-  const addCard = (path, desc, icon) => {
+  const addCard = (path, desc, icon, metaLines) => {
     if (!path || seen.has(path)) return;
     seen.add(path);
-    cards.push(dlCard(path, desc, icon, jobId));
+    cards.push(dlCard(path, desc, icon, jobId, metaLines));
   };
   for (const exportRow of exportRows) {
     if (!exportRow || exportRow.status === 'missing' || exportRow.status === 'blocked') continue;
+    if (exportRow.export_id === 'vosviewer_bundle') continue;
+    const exportMeta = manifestExportSelectionMeta(exportRow);
     if (exportRow.export_manifest_ref) {
-      addCard(exportRow.export_manifest_ref, 'Export manifest: ' + (exportRow.kind || exportRow.export_id || 'export'), 'MAN');
+      addCard(
+        exportRow.export_manifest_ref,
+        'Export manifest: ' + (exportRow.kind || exportRow.export_id || 'export'),
+        'MAN',
+        exportMeta
+      );
     }
     const files = Array.isArray(exportRow.files) && exportRow.files.length
       ? exportRow.files
@@ -5129,7 +5183,12 @@ function manifestExportCards(result, jobId, seenPaths) {
     for (const fileRow of files) {
       if (!fileRow || fileRow.exists === false) continue;
       const path = fileRow.path || exportRow.path;
-      addCard(path, manifestExportLabel(exportRow, fileRow), manifestExportIcon(fileRow.format || exportRow.format, fileRow.role));
+      addCard(
+        path,
+        manifestExportLabel(exportRow, fileRow),
+        manifestExportIcon(fileRow.format || exportRow.format, fileRow.role),
+        exportMeta
+      );
     }
   }
   return cards.join('');
@@ -5366,10 +5425,10 @@ function updateDownloads(result) {
   const grid = document.getElementById('dl-grid');
   grid.innerHTML = '';
   const seenDownloads = new Set();
-  const addDownload = (fname, desc, icon) => {
+  const addDownload = (fname, desc, icon, metaLines) => {
     if (!fname || seenDownloads.has(fname)) return;
     seenDownloads.add(fname);
-    grid.innerHTML += dlCard(fname, desc, icon, currentJobId);
+    grid.innerHTML += dlCard(fname, desc, icon, currentJobId, metaLines);
   };
   const addView = (fname, desc, icon) => {
     if (!fname) return;
@@ -5396,6 +5455,20 @@ function updateDownloads(result) {
   if (featureAvailable('evolution')) {
     addDownload('evolution/evolution_manifest.json', 'Cluster evolution manifest', 'EVO');
     addDownload('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT');
+  }
+  const manifest = result && result.result_manifest || {};
+  const exportRows = Array.isArray(manifest.exports) ? manifest.exports : [];
+  const bundleExport = manifestExportRow(exportRows, 'vosviewer_bundle');
+  const hasVosviewerExport = exportRows.some(row =>
+    row && row.export_family === 'vosviewer' && row.status !== 'missing' && row.status !== 'blocked'
+  );
+  if (hasVosviewerExport) {
+    addDownload(
+      'vosviewer-bundle.zip',
+      'VOSviewer map/network/thesaurus bundle',
+      'ZIP',
+      manifestExportSelectionMeta(bundleExport)
+    );
   }
   grid.innerHTML += manifestExportCards(result || {}, currentJobId, seenDownloads);
   if (!grid.innerHTML) {

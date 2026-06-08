@@ -11,6 +11,7 @@ from .diagnostics import KeywordDiagnostics, keyword_diagnostics, score_before_a
 from .keyword_extraction import KeywordExtractionPipeline, run_keyword_pipeline
 from .normalization import normalize_keywords
 from .quality import annotate_keyword_quality, keyword_quality_residual_report, quality_flag_counts, write_keyword_quality_residual_report
+from .rule_artifact import build_keyword_rule_artifact_inputs, write_keyword_cleaning_rule_artifacts
 from .term_network import TermNetwork, TermNetworkConfig
 from .vocab_cleansing import VocabSimGraph
 from .visualization import (
@@ -39,6 +40,7 @@ __all__ = [
     "adaptive_candidate_cap",
     "build_abbreviation_lookup",
     "build_cluster_shard_manifest",
+    "build_keyword_rule_artifact_inputs",
     "collect_cooccurrence",
     "estimate_depth",
     "extract_parenthetical_abbreviations",
@@ -56,4 +58,5 @@ __all__ = [
     "run_keyword_pipeline",
     "score_before_after",
     "write_keyword_quality_residual_report",
+    "write_keyword_cleaning_rule_artifacts",
 ]

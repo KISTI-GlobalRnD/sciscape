@@ -3,8 +3,11 @@ from pathlib import Path
 
 import pandas as pd
 
+from sciscape.artifacts import validate_keyword_rule_artifact
+from sciscape.cli import _infer_keyword_rule_result_root
 from sciscape.keyword_extraction import KeywordExtractionConfig, run_keyword_pipeline
 from sciscape.keyword_extraction.cluster_sharded import (
+    _keyword_rule_source_artifact,
     adaptive_candidate_cap,
     build_cluster_shard_manifest,
     run_cluster_sharded_preflight,
@@ -12,6 +15,7 @@ from sciscape.keyword_extraction.cluster_sharded import (
 )
 from sciscape.keyword_extraction.extraction import _DataSource
 from sciscape.keyword_extraction.pipeline import KeywordExtractionPipeline
+from sciscape.keyword_extraction.rule_artifact import build_keyword_rule_artifact_inputs
 
 
 def test_keyword_pipeline_smoke(tmp_path):
@@ -42,6 +46,7 @@ def test_keyword_pipeline_smoke(tmp_path):
 
     abstract_path = Path(tmp_path) / "abstracts.parquet"
     membership_path = Path(tmp_path) / "membership.parquet"
+    result_root = Path(tmp_path) / "result"
     abstracts.to_parquet(abstract_path, index=False)
     membership.to_parquet(membership_path, index=False)
 
@@ -66,12 +71,74 @@ def test_keyword_pipeline_smoke(tmp_path):
         mmr_pool_factor=3.0,
         w_llr=0.5,
         n_jobs=1,
+        keyword_rule_result_root=result_root,
     )
 
     keywords = run_keyword_pipeline(cfg)
     assert not keywords.empty
     required = {"cluster_id", "term", "score", "frequency", "pub_year_series"}
     assert required.issubset(set(keywords.columns))
+    rule_manifest = result_root / "rules" / "keyword_cleaning_default_v1" / "rule_set_manifest.json"
+    assert rule_manifest.exists()
+    rule_validation = validate_keyword_rule_artifact(rule_manifest).to_dict()
+    assert rule_validation["status"] == "passed"
+    assert rule_validation["counts"]["before_after_rows"] == len(keywords)
+
+
+def test_keyword_rule_artifact_inputs_block_only_structural_artifacts():
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 0, 1],
+            "term": ["class htmlview paragraph", "date", "graph neural networks"],
+            "raw_term": ["class htmlview paragraph", "date", "graph neural networks"],
+            "score": [0.9, 0.5, 1.2],
+            "frequency": [10, 4, 12],
+            "representative_rank": [1, 2, 1],
+            "quality_flags": ["metadata_fragment", "short_form", ""],
+            "keyword_label_tier": ["review_artifact", "review_short_form", "primary_phrase"],
+        }
+    )
+
+    rules, applications, before_after = build_keyword_rule_artifact_inputs(keywords)
+
+    rule_by_id = {row["rule_id"]: row for row in rules.to_dict("records")}
+    assert rule_by_id["html_fragment_block"]["action"] == "block"
+    assert rule_by_id["html_fragment_block"]["destructive"] is True
+    assert rule_by_id["quality_review_short_form"]["action"] == "keep_with_flag"
+    assert rule_by_id["quality_review_review_short_form"]["pattern"] == "review_short_form"
+    blocked = before_after[before_after["raw_term"] == "class htmlview paragraph"].iloc[0]
+    assert bool(blocked["blocked"]) is True
+    reviewed = before_after[before_after["raw_term"] == "date"].iloc[0]
+    assert bool(reviewed["blocked"]) is False
+    assert reviewed["review_status"] == "needs_review"
+    review_apps = applications[applications["rule_id"] == "quality_review_short_form"]
+    assert set(review_apps["evidence_value"]) == {"short_form"}
+    assert set(applications["decision"]) == {"applied", "blocked"}
+
+
+def test_keyword_rule_source_artifact_uses_absolute_path_when_outside_root(tmp_path):
+    result_root = Path(tmp_path) / "result"
+    output_dir = Path(tmp_path) / "keyword_v2"
+    result_root.mkdir()
+    output_dir.mkdir()
+
+    inside = _keyword_rule_source_artifact("keywords", result_root / "keywords.parquet", result_root)
+    outside = _keyword_rule_source_artifact("keywords", output_dir / "keywords.parquet", result_root)
+
+    assert inside == {"role": "keywords", "path": "keywords.parquet"}
+    assert outside == {"role": "keywords", "path": str((output_dir / "keywords.parquet").resolve())}
+
+
+def test_cli_infers_keyword_rule_result_root_from_landscape_output(tmp_path):
+    result_root = Path(tmp_path) / "result"
+
+    inferred = _infer_keyword_rule_result_root(result_root / "landscape" / "keywords.parquet", None)
+    explicit = _infer_keyword_rule_result_root(Path("keywords.parquet"), result_root)
+    missing = _infer_keyword_rule_result_root(Path("keywords.parquet"), None)
+
+    assert inferred == result_root
+    assert explicit == result_root
+    assert missing is None
 
 
 def test_cluster_task_progress_file(tmp_path):
@@ -280,6 +347,13 @@ def test_cluster_sharded_keyword_engine_writes_resume_artifacts(tmp_path):
     assert (output_dir / "keywords_flagged.parquet").exists()
     assert (output_dir / "qa" / "keyword_quality_residual_report.json").exists()
     assert (output_dir / "qa" / "keyword_quality_residual_report.md").exists()
+    rule_manifest = output_dir / "rules" / "keyword_cleaning_default_v1" / "rule_set_manifest.json"
+    assert rule_manifest.exists()
+    rule_validation = validate_keyword_rule_artifact(rule_manifest).to_dict()
+    assert rule_validation["status"] == "passed"
+    assert rule_validation["counts"]["before_after_rows"] == len(keywords)
+    run_summary = json.loads((output_dir / "run_summary.json").read_text())
+    assert run_summary["keyword_rule_manifest_path"] == str(rule_manifest)
     candidate_done = list((output_dir / "candidates").glob("*.done.json"))
     final_done = list((output_dir / "final").glob("*.done.json"))
     assert candidate_done

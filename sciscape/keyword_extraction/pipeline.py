@@ -1253,6 +1253,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         top_df = self._stage_quality_refinement(top_df, rerank=False)
 
         self.final_keywords = top_df
+        self._maybe_write_keyword_rule_artifact(top_df)
         self._log("Pipeline resumed from '%s': final rows = %d", stage, len(top_df))
         return top_df
 
@@ -1683,6 +1684,22 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
 
     # ----- Public API -----
 
+    def _maybe_write_keyword_rule_artifact(self, top_df: pd.DataFrame) -> None:
+        if not self.config.keyword_rule_artifact_enabled:
+            return
+        if self.config.keyword_rule_result_root is None:
+            return
+        from .rule_artifact import write_keyword_cleaning_rule_artifacts
+
+        self._write_progress("keyword_rule_artifact", 0, 1)
+        write_keyword_cleaning_rule_artifacts(
+            self.config.keyword_rule_result_root,
+            keywords=top_df,
+            rule_set_id=self.config.keyword_rule_set_id,
+            output_dir=Path(self.config.keyword_rule_result_root) / "rules" / self.config.keyword_rule_set_id,
+        )
+        self._write_progress("keyword_rule_artifact", 1, 1)
+
     def run(self) -> pd.DataFrame:
         if self.config.keyword_engine == "cluster_sharded":
             from .cluster_sharded import run_cluster_sharded_keyword_pipeline
@@ -1784,6 +1801,7 @@ class KeywordExtractionPipeline(LLMCanonicalizeMixin, TemporalMixin):
         self._write_progress("quality_final", 1, 1)
 
         self.final_keywords = top_df
+        self._maybe_write_keyword_rule_artifact(top_df)
         self._log("Pipeline run complete: final rows = %d", len(top_df))
         self._write_progress("complete", self.K, self.K, final_rows=int(len(top_df)))
         return top_df
