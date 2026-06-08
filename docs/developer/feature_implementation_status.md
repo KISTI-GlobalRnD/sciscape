@@ -47,13 +47,13 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
-| F08 | Keyword extraction, labels, cleaning | `[~]` | 75% | pipeline, quality filters, abbreviation handling, term network, scaling docs | editable/replayable cleaning rules and full large-run benchmark |
+| F08 | Keyword extraction, labels, cleaning | `[~]` | 80% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 91% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 78% | term network module, endpoint, stable co-occurrence table/map artifacts | map polish, threshold controls, external export formats |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
-| F14 | Report, export, interoperability | `[~]` | 90% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, first command adapters | web export bundles, thesaurus/rule-set exports, and richer view/filter metadata |
+| F14 | Report, export, interoperability | `[~]` | 95% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer web bundle download, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection summaries, first command adapters | complete UI-supplied view/filter metadata |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
 ## Code Surface Inventory
@@ -200,17 +200,24 @@ operator controls and large-run safety.
 
 ### F08. Keyword Extraction, Labels, And Cleaning
 
-Status: `[~]` Partial. Rough completeness: 75%.
+Status: `[~]` Partial. Rough completeness: 80%.
 
 - `[x]` Keyword extraction pipeline exists.
 - `[x]` Quality annotation, artifact filtering, representative scoring,
   abbreviation extraction, and vocabulary cleansing exist.
 - `[x]` Term network and co-occurrence helpers exist.
 - `[x]` Scaling and sharding design has been documented.
+- `[x]` Replayable keyword rule artifact contract is defined in
+  `docs/developer/keyword_rule_artifact_design.md`.
+- `[x]` Keyword rule writer, validator, before/after impact summaries,
+  result-manifest exposure, and keyword-pipeline auto-emission exist.
+- `[x]` Rule applications preserve flag-level review evidence, cluster-sharded
+  provenance remains unambiguous across split roots, and CLI root inference is
+  explicit.
 - `[~]` Label merge and LLM labeling endpoints exist, but the full review loop is
   not yet a polished app workflow.
-- `[ ]` Editable cleaning rule sets, replayable rule history, and rule-impact
-  diffs are not complete.
+- `[ ]` Editable cleaning workflow, workspace-level reusable rule registry,
+  imported thesaurus adapters, and visual rule-impact diffs are not complete.
 
 Review: the algorithmic base is strong enough to keep improving, but the analyst
 control surface is still incomplete.
@@ -359,7 +366,7 @@ features are exposed in the UI.
 
 ### F14. Report, Export, And Interoperability
 
-Status: `[~]` Partial. Rough completeness: 90%.
+Status: `[~]` Partial. Rough completeness: 95%.
 
 - `[x]` Dashboard, report, and viewer export helpers exist.
 - `[x]` CLI export supports GEXF, GraphML, and VOSviewer-style map/network
@@ -374,21 +381,32 @@ Status: `[~]` Partial. Rough completeness: 90%.
 - `[x]` `result_manifest.exports` exposes manifest-backed primary export paths,
   export manifest refs, and compact output file inventories.
 - `[x]` Web Download tab can render manifest-backed export manifests and export
-  files from `result_manifest.exports`.
+  files from `result_manifest.exports`, including compact selection-summary
+  chips for manifest-backed export rows.
 - `[x]` Dashboard, report, static viewer, CLI GEXF/GraphML, and web network
   export paths write export manifests automatically.
 - `[~]` Artifact contracts can summarize export availability.
 - `[x]` VOSviewer-style map/network export writes tab-delimited map/network
   files and a manifest-backed export artifact.
-- `[ ]` Web VOSviewer bundle download and thesaurus/rule-set exports are not
-  complete.
-- `[ ]` Export manifests do not yet describe every exported view and filter from
-  each user-facing workflow.
+- `[x]` VOSviewer keyword-rule thesaurus export writes `label` / `replace by`
+  rows, a companion SciScape rule-set TSV, and a manifest-backed export
+  artifact.
+- `[x]` CLI `rule-export` supports VOSviewer thesaurus/rule-set export from a
+  keyword rule artifact.
+- `[x]` Web Download tab can build and download one `vosviewer_bundle.zip`
+  from manifest-backed VOSviewer exports.
+- `[x]` Graph, VOSviewer, dashboard, report, static viewer, CLI visualize/viewer,
+  `run_landscape` report, GUI viewer, quality-gate smoke, rule-export, and web
+  bundle export manifests preserve normalized `sciscape_export_selection_v1`
+  view/filter/layer metadata, and `result_manifest.exports` exposes compact
+  `selection_summary` rows.
+- `[ ]` Export manifests do not yet capture every UI-supplied filter, focus
+  object, and user-selected subset from each user-facing workflow.
 
 Review: good enough for graph/report exports, and the manifest contract plus
 writer/validator plus first command adapters now exist, but interoperability
-should not be called complete until VOSviewer bundle delivery, thesaurus/rule-set
-exports, and richer view/filter metadata are covered.
+should not be called complete until all user-facing view/filter state and
+remaining matrix/co-occurrence interoperability are covered.
 
 ### F15. Institutional Analytics
 
@@ -416,10 +434,11 @@ evolution map, and narrative system are stable.
 
 ## Next Implementation Targets
 
-1. Define replayable keyword cleaning rule artifacts and before/after diffs.
-2. Harden inspector-driven review affordances.
+1. Harden inspector-driven review affordances and Cleaning-mode rule review.
+2. Complete UI-supplied view/filter/focus export metadata across every workflow.
 3. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
 4. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-5. Add web VOSviewer bundle download plus thesaurus/rule-set export adapters.
+5. Add matrix/co-occurrence interoperability adapters when their source
+   contracts are stable.

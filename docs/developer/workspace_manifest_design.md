@@ -299,6 +299,12 @@ Rules:
 `rule_set_manifest.json` describes reusable cleaning, filter, alias,
 thesaurus, abbreviation, view, or export rules.
 
+Keyword cleaning rule sets that are applied to a result have a more detailed
+result-local artifact contract in `keyword_rule_artifact_design.md`. Workspace
+rule-set manifests register reusable rules; result-local rule artifacts record
+the actual applications, before/after rows, impact summary, and QA for one
+result.
+
 Required fields:
 
 | Field | Type | Meaning |
@@ -326,6 +332,9 @@ Rules:
   mutate source data.
 - Rule sets used by results should be referenced by result, matrix, temporal,
   narrative, or export manifests.
+- Result-local keyword rule applications should not be inferred from the
+  workspace registry alone; they require
+  `rules/<rule_set_id>/rule_set_manifest.json` under the result root.
 
 ## View Manifest
 

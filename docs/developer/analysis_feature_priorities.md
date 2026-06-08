@@ -312,8 +312,8 @@ Do not do yet:
 5. Maintain the P1 smoke fixture that exercises query/local load, network,
    clustering, keywords, atlas, co-occurrence, export manifest, and quality
    gate.
-6. Add replayable keyword cleaning rule artifacts and before/after impact
-   summaries.
+6. Implement replayable keyword cleaning rule artifact writer/validator and
+   before/after impact summaries from `keyword_rule_artifact_design.md`.
 7. Maintain the stable co-occurrence table/map artifact contract.
 8. Implement the Atlas evidence inspector contract from
    `atlas_evidence_inspector_design.md`, consuming only validated payload fields

@@ -9,6 +9,7 @@
 | `artifact_contract.md` | Result-root schema, feature inference, and validation rules |
 | `atlas_evidence_inspector_design.md` | Validated-payload Atlas evidence inspector contract and implementation order |
 | `atlas_render_engine_design.md` | deck.gl-oriented Atlas render payload, layer contract, and engine choice |
+| `keyword_rule_artifact_design.md` | Replayable keyword cleaning rules, application logs, before/after impact, and QA contract |
 | `matrix_artifact_design.md` | General matrix artifact schema, writer, validator, and QA contract |
 | `temporal_artifact_design.md` | Temporal trend artifact schema, writer, validator, and QA contract |
 | `evolution_artifact_design.md` | Cluster evolution artifact schema, synthetic smoke example, validator, and QA contract |

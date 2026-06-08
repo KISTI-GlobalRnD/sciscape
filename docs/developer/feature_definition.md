@@ -729,9 +729,12 @@ Artifacts:
 
 - `landscape/keywords.parquet`
 - cleaned keyword table
-- rule set files
-- rule application log
-- before/after QA summary
+- `rules/<rule_set_id>/rule_set_manifest.json`
+- `rules/<rule_set_id>/rules.parquet`
+- `rules/<rule_set_id>/rule_applications.parquet`
+- `rules/<rule_set_id>/term_before_after.parquet`
+- `rules/<rule_set_id>/impact_summary.json`
+- `rules/<rule_set_id>/rule_set_qa.json`
 
 Required cleaned keyword fields:
 
@@ -773,6 +776,7 @@ Blocking:
 - rule replay is not reproducible
 - raw terms cannot be recovered
 - metadata/HTML/LaTeX artifacts appear in top-ranked display labels
+- keyword rule QA is blocked or references unresolved rule ids
 
 UI/UX placement:
 

@@ -210,6 +210,8 @@ Initial stable artifact refs:
 | `edges` | `edges.parquet` or `combined_edges.parquet` |
 | `membership` | `landscape/membership.parquet` |
 | `keywords` | `landscape/keywords.parquet` |
+| `keyword_rules` | `rules/<rule_set_id>/rule_set_manifest.json` plus rules, applications, before/after table, and impact summary |
+| `keyword_rule_qa` | `rules/<rule_set_id>/rule_set_qa.json` |
 | `edge_evidence` | `landscape/edge_evidence_samples.json` |
 | `report_data` | `landscape/report/data.json` |
 | `report_html` | `landscape/report/report.html` |
@@ -315,6 +317,15 @@ Allowed validation states:
     "source_artifact_refs": ["report_data"],
     "export_manifest_ref": "exports/report_html/export_manifest.json",
     "status": "present",
+    "selection_summary": {
+      "scope": "full_landscape_result",
+      "view_mode": "html_report",
+      "view_family": "report",
+      "cluster_level": null,
+      "filter_count": 0,
+      "threshold_keys": ["gamma_high", "gamma_low", "min_docs_per_cluster"],
+      "layer_state_keys": ["pipeline", "n_hierarchy_levels", "term_network_enabled"]
+    },
     "files": [
       {
         "file_id": "report",
@@ -352,6 +363,12 @@ array copied from `export_files.parquet`. This is intentionally a small
 inventory, not a duplicate of the exported files. It lets the web app and static
 viewer resolve bundle outputs from `result_manifest.json` without opening every
 export sidecar first.
+
+Manifest-backed export rows should also expose the normalized `selection` object
+and a compact `selection_summary`. The full selection is the auditable state
+from `export_manifest.json`; the summary is for download lists and workspace
+browsing. UI surfaces should prefer `selection_summary` for compact chips such
+as view mode, scope, cluster level, filter count, and threshold keys.
 
 ## Source Block
 
@@ -458,6 +475,22 @@ analysis.
       "status": "present",
       "required_for": ["keyword", "term_network", "cooccurrence"]
     },
+    "keyword_rules": {
+      "role": "keyword_rules",
+      "path": "rules/keyword_cleaning_default_v1/rule_set_manifest.json",
+      "format": "json",
+      "schema_version": "sciscape_keyword_rule_set_manifest_v1",
+      "status": "present",
+      "required_for": ["keyword", "quality"]
+    },
+    "keyword_rule_qa": {
+      "role": "qa",
+      "path": "rules/keyword_cleaning_default_v1/rule_set_qa.json",
+      "format": "json",
+      "schema_version": "sciscape_keyword_rule_qa_v1",
+      "status": "present",
+      "required_for": ["quality"]
+    },
     "artifact_contract": {
       "role": "qa",
       "path": "landscape/qa/artifact_contract.json",
@@ -469,7 +502,7 @@ analysis.
   "features": {
     "overview": {"state": "stable", "reason": "records validated", "artifact_refs": ["records"], "warnings": []},
     "cluster_map": {"state": "stable", "reason": "membership validated", "artifact_refs": ["membership"], "warnings": []},
-    "keyword": {"state": "stable", "reason": "keywords validated", "artifact_refs": ["keywords"], "warnings": []},
+    "keyword": {"state": "stable", "reason": "keywords validated", "artifact_refs": ["keywords", "keyword_rules"], "warnings": []},
     "term_network": {"state": "stable", "reason": "feature validated", "artifact_refs": ["cooccurrence"], "warnings": []},
     "cooccurrence": {"state": "stable", "reason": "feature validated", "artifact_refs": ["cooccurrence"], "warnings": []},
     "matrix": {"state": "hidden", "reason": "no matrix artifact", "artifact_refs": [], "warnings": []},
@@ -477,7 +510,7 @@ analysis.
     "temporal": {"state": "beta", "reason": "pubyear exists but no temporal artifact", "artifact_refs": ["records"], "warnings": []},
     "evolution": {"state": "hidden", "reason": "no evolution artifact", "artifact_refs": [], "warnings": []},
     "narrative": {"state": "hidden", "reason": "no narrative artifact", "artifact_refs": [], "warnings": []},
-    "quality": {"state": "stable", "reason": "artifact contract passed", "artifact_refs": ["artifact_contract"], "warnings": []},
+    "quality": {"state": "stable", "reason": "artifact contract and keyword rule QA passed", "artifact_refs": ["artifact_contract", "keyword_rule_qa"], "warnings": []},
     "export": {"state": "beta", "reason": "report export present but export manifest incomplete", "artifact_refs": ["report_data"], "warnings": []}
   },
   "quality": {
@@ -534,6 +567,8 @@ all pipelines at once.
 8. Update release readiness docs after the writer exists.
 9. `[x]` Summarize manifest-backed export file inventories in
    `result_manifest.exports`.
+10. `[x]` Surface normalized export `selection` and compact
+    `selection_summary` rows in `result_manifest.exports`.
 
 ## Open Design Decisions
 

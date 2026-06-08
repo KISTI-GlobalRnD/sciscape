@@ -29,7 +29,7 @@ sciscape/
 │   └── ...                  #   vectorization → scoring → normalization → ...
 ├── adapters/                # WoS, Scopus, OpenAlex, BibTeX 입력 변환
 ├── landscape.py             # 엔드투엔드 파이프라인
-├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | visualize | viewer | export | web | gui
+├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | visualize | viewer | export | rule-export | web | gui
 └── gui.py                   # Tkinter GUI
 ```
 
@@ -151,6 +151,30 @@ sciscape export edges.parquet membership.parquet --format vosviewer -o vosviewer
 
 Manifest-backed exports are discoverable from `result_manifest.json` when a
 result manifest is written for the result root.
+
+In the web app Download tab, manifest-backed VOSviewer exports are also
+available as a single `vosviewer_bundle.zip` download.
+
+Keyword cleaning rule artifacts can also be exported to VOSviewer thesaurus
+format from the CLI:
+
+```bash
+sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json \
+  --format vosviewer-thesaurus \
+  -o result/vosviewer
+```
+
+The same export is available from Python:
+
+```python
+from sciscape.export import export_vosviewer_thesaurus
+
+export_vosviewer_thesaurus(
+    "result/rules/keyword_cleaning_default_v1/rule_set_manifest.json",
+    "result/vosviewer",
+    result_root="result",
+)
+```
 
 ### `sciscape gui` — GUI 실행
 

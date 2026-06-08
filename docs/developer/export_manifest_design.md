@@ -155,10 +155,22 @@ Example:
     {"role": "membership", "artifact_ref": "membership", "path": "landscape/membership.parquet"}
   ],
   "selection": {
+    "schema_version": "sciscape_export_selection_v1",
     "scope": "full_result",
-    "included_entity_types": ["work", "cluster"],
+    "view": {
+      "mode": "cluster_network_export",
+      "family": "graph",
+      "surface": "graph_export"
+    },
+    "cluster_level": "cluster",
     "filters": [],
-    "view_state_ref": null
+    "thresholds": {"min_link_strength": 0},
+    "layer_state": {
+      "network_format": "graphml",
+      "edge_table": "edges"
+    },
+    "focus": {},
+    "feature_refs": ["cluster_map", "evidence", "export"]
   },
   "transform_summary": {
     "edge_weight_field": "rel_sum2",
@@ -184,6 +196,32 @@ Example:
   "warnings": []
 }
 ```
+
+## Export Selection
+
+`selection` is the normalized view/filter contract for the export. It should
+use `sciscape_export_selection_v1` and preserve enough state for the app to
+explain what the exported file represents.
+
+Required normalized keys:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `schema_version` | string | `sciscape_export_selection_v1` |
+| `scope` | string | `full_result`, `manifest_backed_exports`, `keyword_rule_artifact`, or a selected-subset scope |
+| `view` | object | view mode, export family, and optional UI/API surface |
+| `cluster_level` | string or null | active cluster layer when applicable |
+| `filters` | array | field/operator/value filters applied before export |
+| `thresholds` | object | numeric or categorical thresholds used by the view |
+| `layer_state` | object | export-layer settings such as format, source table, visible files, or bundle inventory |
+| `focus` | object | selected cluster, term, node, or document focus state |
+| `feature_refs` | array | features represented by the selected export |
+
+Result manifests expose both the full normalized `selection` and a compact
+`selection_summary` with `scope`, `view_mode`, `view_family`, `cluster_level`,
+filter count, threshold keys, and layer-state keys. The summary is intended for
+download lists and workspace browsing; the full selection remains the auditable
+source of truth.
 
 ## Export Files Table
 
@@ -399,9 +437,10 @@ Rules:
 
 - VOSviewer-style map/network exports must write item rows, link rows, field
   mappings, and compatibility limitations into a manifest-backed export.
-- Do not mark thesaurus, matrix, or co-occurrence VOSviewer-style exports as
-  stable until their required file formats and field mappings are validated
-  against the declared target workflow.
+- Do not mark matrix or co-occurrence VOSviewer-style exports as stable until
+  their required file formats and field mappings are validated against the
+  declared target workflow. Keyword-rule thesaurus/rule-set export can be
+  stable when its source rule artifact and export manifest validation pass.
 - VOSviewer compatibility limitations should be explicit, not implied by file
   names.
 
@@ -454,10 +493,10 @@ The writer should:
 8. update the result manifest export list when requested;
 9. return paths, counts, warnings, and QA status.
 
-The first adapters wrap existing report, static viewer, GEXF, GraphML, and
-paper-network VOSviewer-style map/network exports. Matrix, co-occurrence, and
-thesaurus-oriented adapters can follow after their source artifact contracts are
-stable.
+The first adapters wrap existing dashboard, report, static viewer, GEXF,
+GraphML, paper-network VOSviewer-style map/network exports, and keyword-rule
+VOSviewer-style thesaurus/rule-set exports. Matrix and co-occurrence adapters
+can follow after their source artifact contracts are stable.
 
 ## Validator Utility Design
 
@@ -496,18 +535,28 @@ commands.
 6. `[x]` Add a tiny synthetic export smoke that writes a table export and validates
    file inventory, source refs, and private-path checks.
 7. `[~]` Add matrix and VOSviewer-style export manifests only after their source
-   artifact contracts are stable. VOSviewer-style paper-network map/network
-   export exists; matrix/co-occurrence VOSviewer exports remain future work.
+   artifact contracts are stable. VOSviewer-style paper-network map/network and
+   keyword-rule thesaurus/rule-set exports exist, and the web app can package
+   manifest-backed VOSviewer exports into a bundle. Matrix/co-occurrence
+   VOSviewer exports remain future work.
+8. `[x]` Normalize export selection/view/filter metadata and surface compact
+   selection summaries through `result_manifest.exports`.
+9. `[x]` Preserve dashboard, report, static viewer, CLI visualize/viewer,
+   `run_landscape` report, GUI viewer, and quality-gate smoke export surfaces
+   through normalized selection metadata.
 
 ## Acceptance Criteria
 
 - An export can be validated without opening the web app or external tool.
 - Every export records source artifacts, feature states, transforms, output
   files, and QA.
+- Export selections use `sciscape_export_selection_v1` and preserve view mode,
+  filters, thresholds, layer state, and focus state when available.
 - Exported files use stable IDs or explicitly declare field mappings.
 - Public export manifests do not contain private absolute paths.
-- Report, static viewer, GEXF, GraphML, and VOSviewer-style map/network outputs
-  can be wrapped by the export manifest contract.
+- Report, static viewer, GEXF, GraphML, VOSviewer-style map/network,
+  keyword-rule VOSviewer thesaurus, and VOSviewer bundle outputs can be wrapped
+  by the export manifest contract.
 - `export=stable` requires manifest-backed QA, not only file existence.
 - The full result contract can tell whether `export` is hidden, beta, stable,
   or blocked from artifacts alone.

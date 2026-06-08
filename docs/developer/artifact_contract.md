@@ -72,6 +72,12 @@ writers should emit `result_manifest.json`.
 | `landscape/edge_evidence_samples.json` | `source_uid`, `target_uid`, bounded `samples` | Powers raw work-pair evidence for Atlas neighbor relations when generated. |
 | `landscape/term_cooccurrence.parquet` | `schema_version`, `cluster_uid`, `cluster_level`, `cluster_id`, `source`, `target`, `weight`, `relation` | Stable P1.5 term co-occurrence table artifact. |
 | `landscape/term_cooccurrence_map.json` | `schema_version`, `edge_count`, `term_count`, `cluster_count`, `terms` | Term lookup map paired with `term_cooccurrence.parquet`. |
+| `rules/<rule_set_id>/rule_set_manifest.json` | `schema_version`, `rule_set_id`, `rule_type`, `rules_path`, `applications_path`, `before_after_path`, `impact_summary_ref`, `qa_ref` | Replayable keyword cleaning rule artifact contract defined in `keyword_rule_artifact_design.md`. |
+| `rules/<rule_set_id>/rules.parquet` | `schema_version`, `rule_set_id`, `rule_id`, `rule_family`, `match_type`, `pattern`, `action`, `destructive`, `enabled` | Rule definitions for keyword cleaning, aliasing, acronym expansion, grouping, and flags. |
+| `rules/<rule_set_id>/rule_applications.parquet` | `schema_version`, `rule_set_id`, `application_id`, `rule_id`, `cluster_id`, `raw_term`, `action`, `decision`, `evidence_type` | Replay audit log for rule-term applications. |
+| `rules/<rule_set_id>/term_before_after.parquet` | `schema_version`, `rule_set_id`, `cluster_id`, `raw_term`, `term_before`, `term_after`, `display_label`, `rule_ids`, `blocked` | Compact before/after table for Cleaning mode and QA review. |
+| `rules/<rule_set_id>/impact_summary.json` | `schema_version`, `rule_set_id`, `counts`, `rule_family_counts`, `action_counts`, `contamination_summary`, `examples` | Bounded summary of cleaning impact. |
+| `rules/<rule_set_id>/rule_set_qa.json` | `schema_version`, `rule_set_id`, `status`, `checks`, `counts`, `contamination_counts`, `warnings`, `blocking_issues` | Keyword rule artifact QA summary. |
 | `matrices/<matrix_id>/matrix_manifest.json` | `schema_version`, `matrix_id`, `matrix_family`, `format`, `shape`, `value`, `weighting`, `outputs` | General matrix artifact contract defined in `matrix_artifact_design.md`. |
 | `matrices/<matrix_id>/matrix_values.parquet` | `schema_version`, `matrix_id`, `row_key`, `column_key`, `row_index`, `column_index`, `value`, `relation` | Sparse triplet matrix values. |
 | `matrices/<matrix_id>/row_entities.parquet` and `column_entities.parquet` | `schema_version`, `matrix_id`, `entity_key`, `entity_index`, `entity_type`, `label` | Axis metadata for matrix rows and columns. |
@@ -139,14 +145,14 @@ Feature inference rules:
 | --- | --- |
 | `overview` | abstracts exist or report clusters exist |
 | `cluster_map` | membership exists or report clusters exist |
-| `keyword` | keyword table exists or report clusters carry keywords |
+| `keyword` | keyword table exists or report clusters carry keywords; replayable keyword rule artifacts may strengthen stable exposure only when QA passes |
 | `term_network` | stable co-occurrence artifact rows, report co-occurrence/network edges, or keyword rows can form within-cluster pairs |
 | `matrix` | stable general matrix manifest exists, or a legacy matrix-like artifact exists for beta exposure |
 | `evidence` | abstracts and membership both exist |
 | `temporal` | stable temporal artifacts exist, or abstracts include `pubyear` for beta temporal views |
 | `evolution` | stable evolution artifacts exist; embedded legacy evolution payloads may support beta views only |
 | `narrative` | stable narrative artifacts exist; embedded legacy narrative payloads may support beta views only |
-| `quality` | validation can run |
+| `quality` | validation can run; keyword rule QA may add warnings or blocking issues |
 | `export` | stable export manifests exist, or keyword/cluster map/report data exists for beta legacy exports |
 
 `cooccurrence` is a result-manifest feature state rather than a legacy boolean in
