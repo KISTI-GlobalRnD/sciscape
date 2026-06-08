@@ -1058,6 +1058,7 @@ class TermCooccurrenceNetwork {
     this.exportConfig = options.cooccurrenceExport || null;
     this.labelThreshold = 0.3;
     this.edgeMinWeight = 0;
+    this.edgePreset = 'all';
     this.visibleEdgeCount = 0;
     this.visibleLabelCount = 0;
     this.colorMode = 'cluster'; // 'cluster' | 'score' | 'breadth'
@@ -1134,6 +1135,11 @@ class TermCooccurrenceNetwork {
         <input type="range" min="0" max="100" value="${Math.round((1-this.labelThreshold)*100)}" id="tsl-labels" style="width:80px;">
         <span class="term-control-readout" id="term-label-state"></span>
       </div>
+      <div class="net-ctrl-group"><span class="net-ctrl-label">Density</span>
+        <button class="net-chip active" data-te-preset="all">All</button>
+        <button class="net-chip" data-te-preset="core">Core</button>
+        <button class="net-chip" data-te-preset="backbone">Backbone</button>
+      </div>
       <div class="net-ctrl-group"><span class="net-ctrl-label">Min edge</span>
         <input type="range" min="0" max="100" value="0" id="tsl-edge" style="width:80px;">
         <span class="term-control-readout" id="term-edge-state"></span>
@@ -1180,6 +1186,8 @@ class TermCooccurrenceNetwork {
     this._termLabelState = ctrl.querySelector('#term-label-state');
     this._termEdgeState = ctrl.querySelector('#term-edge-state');
     this._termQualityBar = ctrl.querySelector('#term-quality-bar');
+    this._edgeSlider = ctrl.querySelector('#tsl-edge');
+    this._edgePresetButtons = Array.from(ctrl.querySelectorAll('[data-te-preset]'));
 
     const self = this;
 
@@ -1246,7 +1254,7 @@ class TermCooccurrenceNetwork {
     this._zoomGroup = g;
 
     this._updateLabels();
-    this._applyEdgeFilter(0);
+    this._setEdgeThreshold(0, 'all');
 
     // Bind controls
     ctrl.querySelectorAll('[data-tc]').forEach(b => b.onclick = () => {
@@ -1259,8 +1267,14 @@ class TermCooccurrenceNetwork {
     const slE = ctrl.querySelector('#tsl-edge');
     if (slE) slE.oninput = () => {
       const minW = (slE.value / 100) * maxW;
-      self._applyEdgeFilter(minW);
+      self._setEdgeThreshold(minW, 'custom');
     };
+    this._edgePresetButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const preset = button.dataset.tePreset || 'all';
+        self._setEdgeThreshold(self._edgePresetThreshold(preset), preset);
+      });
+    });
     ctrl.querySelector('#tbtn-reset')?.addEventListener('click', () => {
       nodes.forEach(d => { d.fx = null; d.fy = null; });
       svg.transition().duration(160).call(zoom.transform, d3.zoomIdentity);
@@ -1310,6 +1324,36 @@ class TermCooccurrenceNetwork {
     this._updateQualityBar();
   }
 
+  _setEdgeThreshold(minWeight, preset) {
+    this.edgePreset = preset || 'custom';
+    this._applyEdgeFilter(minWeight);
+    if (this._edgeSlider && this._termMaxWeight) {
+      const value = Math.max(0, Math.min(100, (this.edgeMinWeight / this._termMaxWeight) * 100));
+      this._edgeSlider.value = String(Math.round(value));
+    }
+    if (this._edgePresetButtons) {
+      this._edgePresetButtons.forEach(button => {
+        button.classList.toggle('active', button.dataset.tePreset === this.edgePreset);
+      });
+    }
+  }
+
+  _edgePresetThreshold(preset) {
+    if (preset === 'core') return this._edgeQuantile(0.5);
+    if (preset === 'backbone') return this._edgeQuantile(0.75);
+    return 0;
+  }
+
+  _edgeQuantile(q) {
+    const weights = (this._termEdges || [])
+      .map(edge => Number(edge.weight || 0))
+      .filter(value => Number.isFinite(value))
+      .sort((a, b) => a - b);
+    if (!weights.length) return 0;
+    const index = Math.max(0, Math.min(weights.length - 1, Math.floor((weights.length - 1) * q)));
+    return weights[index];
+  }
+
   _updateQualityBar() {
     if (!this._termQualityBar) return;
     const nodes = this._termNodes || [];
@@ -1321,6 +1365,7 @@ class TermCooccurrenceNetwork {
       `<span class="term-quality-metric"><strong>${this.visibleEdgeCount}</strong>/${edges.length} edges visible</span>`,
       `<span class="term-quality-metric"><strong>${hiddenEdges}</strong> edges hidden</span>`,
       `<span class="term-quality-metric"><strong>${this.visibleLabelCount}</strong> labels visible</span>`,
+      `<span class="term-quality-metric">preset <strong>${this._esc(String(this.edgePreset || 'custom'))}</strong></span>`,
       `<span class="term-quality-metric">max weight <strong>${this._fmtNumber(maxWeight)}</strong></span>`,
     ].join('');
   }

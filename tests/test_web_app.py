@@ -348,6 +348,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert network_response.status_code == 200
     assert "term-label-state" in network_response.text
     assert "term-edge-state" in network_response.text
+    assert "data-te-preset" in network_response.text
+    assert "_setEdgeThreshold" in network_response.text
+    assert "_edgePresetThreshold" in network_response.text
+    assert "_edgeQuantile" in network_response.text
     assert "_applyEdgeFilter" in network_response.text
     assert "term-quality-metric" in network_response.text
     assert "renderAtlasNeighborSummary" in response.text
