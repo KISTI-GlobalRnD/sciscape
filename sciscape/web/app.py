@@ -637,6 +637,83 @@ def _first_landscape_file(result: dict[str, Any], pattern: str) -> Path | None:
     return None
 
 
+def _clean_export_query_value(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _web_network_export_selection(
+    *,
+    fmt: str,
+    membership_path: Path | None,
+    atlas_level: str | None = None,
+    atlas_node: str | None = None,
+    atlas_query: str | None = None,
+    atlas_lens: str | None = None,
+    atlas_view: str | None = None,
+    atlas_focus: str | None = None,
+    atlas_review: str | None = None,
+    atlas_layers: str | None = None,
+    atlas_edge_min: float | None = None,
+    atlas_label_limit: int | None = None,
+    atlas_neighbor: str | None = None,
+) -> dict[str, Any]:
+    filters: list[dict[str, Any]] = []
+    query = _clean_export_query_value(atlas_query)
+    review = _clean_export_query_value(atlas_review)
+    if query:
+        filters.append({"field": "atlas_query", "op": "contains", "value": query})
+    if review and review != "all":
+        filters.append({"field": "atlas_review_state", "op": "eq", "value": review})
+
+    thresholds: dict[str, Any] = {}
+    if atlas_edge_min is not None and atlas_edge_min > 0:
+        thresholds["atlas_edge_min"] = round(float(atlas_edge_min), 3)
+
+    layers = [
+        layer.strip()
+        for layer in _clean_export_query_value(atlas_layers).split(",")
+        if layer.strip() and layer.strip() != "none"
+    ]
+    layer_state: dict[str, Any] = {
+        "network_format": fmt,
+        "membership_source": str(membership_path) if membership_path else "",
+    }
+    lens = _clean_export_query_value(atlas_lens)
+    view = _clean_export_query_value(atlas_view)
+    if lens:
+        layer_state["atlas_lens"] = lens
+    if view:
+        layer_state["atlas_view"] = view
+    if layers or atlas_layers == "none":
+        layer_state["atlas_layers"] = layers
+    if atlas_label_limit is not None:
+        layer_state["atlas_label_limit"] = int(atlas_label_limit)
+
+    focus: dict[str, Any] = {}
+    level = _clean_export_query_value(atlas_level)
+    node = _clean_export_query_value(atlas_node)
+    focus_mode = _clean_export_query_value(atlas_focus)
+    neighbor = _clean_export_query_value(atlas_neighbor)
+    if node:
+        focus["cluster_uid"] = node
+    if focus_mode and focus_mode != "global":
+        focus["focus_mode"] = focus_mode
+    if neighbor:
+        focus["neighbor_uid"] = neighbor
+
+    return {
+        "scope": "full_result",
+        "view": {"mode": "web_network_export", "surface": "web_export_endpoint"},
+        "cluster_level": level or None,
+        "filters": filters,
+        "thresholds": thresholds,
+        "layer_state": layer_state,
+        "focus": focus,
+    }
+
+
 def _attach_report_atlas(result: dict[str, Any]) -> None:
     """Attach the report-level Atlas payload when a viewer data file is present."""
     data_path = _report_data_path_for_result(result)
@@ -1739,7 +1816,21 @@ async def get_quality_report(job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/export/{fmt}")
-async def export_network(job_id: str, fmt: str):
+async def export_network(
+    job_id: str,
+    fmt: str,
+    atlas_level: str | None = None,
+    atlas_node: str | None = None,
+    atlas_query: str | None = None,
+    atlas_lens: str | None = None,
+    atlas_view: str | None = None,
+    atlas_focus: str | None = None,
+    atlas_review: str | None = None,
+    atlas_layers: str | None = None,
+    atlas_edge_min: float | None = None,
+    atlas_label_limit: int | None = None,
+    atlas_neighbor: str | None = None,
+):
     """Export network as GEXF or GraphML."""
     if fmt not in ("gexf", "graphml"):
         return {"error": f"unsupported format: {fmt}"}
@@ -1773,16 +1864,21 @@ async def export_network(job_id: str, fmt: str):
         "membership": mem_path,
         "abstracts": abs_path,
     }
-    export_selection = {
-        "scope": "full_result",
-        "view": {"mode": "web_network_export", "surface": "web_export_endpoint"},
-        "filters": [],
-        "thresholds": {},
-        "layer_state": {
-            "network_format": fmt,
-            "membership_source": str(mem_path) if mem_path else "",
-        },
-    }
+    export_selection = _web_network_export_selection(
+        fmt=fmt,
+        membership_path=mem_path,
+        atlas_level=atlas_level,
+        atlas_node=atlas_node,
+        atlas_query=atlas_query,
+        atlas_lens=atlas_lens,
+        atlas_view=atlas_view,
+        atlas_focus=atlas_focus,
+        atlas_review=atlas_review,
+        atlas_layers=atlas_layers,
+        atlas_edge_min=atlas_edge_min,
+        atlas_label_limit=atlas_label_limit,
+        atlas_neighbor=atlas_neighbor,
+    )
 
     if fmt == "graphml":
         export_graphml(

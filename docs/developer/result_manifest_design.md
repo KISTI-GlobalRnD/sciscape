@@ -324,7 +324,8 @@ Allowed validation states:
       "cluster_level": null,
       "filter_count": 0,
       "threshold_keys": ["gamma_high", "gamma_low", "min_docs_per_cluster"],
-      "layer_state_keys": ["pipeline", "n_hierarchy_levels", "term_network_enabled"]
+      "layer_state_keys": ["pipeline", "n_hierarchy_levels", "term_network_enabled"],
+      "focus_keys": []
     },
     "files": [
       {
@@ -368,7 +369,7 @@ Manifest-backed export rows should also expose the normalized `selection` object
 and a compact `selection_summary`. The full selection is the auditable state
 from `export_manifest.json`; the summary is for download lists and workspace
 browsing. UI surfaces should prefer `selection_summary` for compact chips such
-as view mode, scope, cluster level, filter count, and threshold keys.
+as view mode, scope, cluster level, filter count, threshold keys, and focus keys.
 
 ## Source Block
 

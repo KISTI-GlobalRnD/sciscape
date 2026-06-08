@@ -4933,6 +4933,7 @@ def _manifest_selection_summary(selection: Mapping[str, Any]) -> dict[str, Any]:
     filters = selection.get("filters") if isinstance(selection.get("filters"), list) else []
     thresholds = selection.get("thresholds") if isinstance(selection.get("thresholds"), Mapping) else {}
     layer_state = selection.get("layer_state") if isinstance(selection.get("layer_state"), Mapping) else {}
+    focus = selection.get("focus") if isinstance(selection.get("focus"), Mapping) else {}
     return {
         "scope": selection.get("scope"),
         "view_mode": view.get("mode"),
@@ -4941,6 +4942,7 @@ def _manifest_selection_summary(selection: Mapping[str, Any]) -> dict[str, Any]:
         "filter_count": len(filters),
         "threshold_keys": sorted(str(key) for key in thresholds),
         "layer_state_keys": sorted(str(key) for key in layer_state),
+        "focus_keys": sorted(str(key) for key in focus),
     }
 
 

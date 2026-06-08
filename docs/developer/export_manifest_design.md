@@ -219,9 +219,9 @@ Required normalized keys:
 
 Result manifests expose both the full normalized `selection` and a compact
 `selection_summary` with `scope`, `view_mode`, `view_family`, `cluster_level`,
-filter count, threshold keys, and layer-state keys. The summary is intended for
-download lists and workspace browsing; the full selection remains the auditable
-source of truth.
+filter count, threshold keys, layer-state keys, and focus keys. The summary is
+intended for download lists and workspace browsing; the full selection remains
+the auditable source of truth.
 
 ## Export Files Table
 

@@ -1186,6 +1186,7 @@ def test_write_export_manifest_promotes_stable_export_feature(tmp_path):
         "filter_count": 0,
         "threshold_keys": [],
         "layer_state_keys": [],
+        "focus_keys": [],
     }
 
 

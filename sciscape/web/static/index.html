@@ -5146,6 +5146,8 @@ function manifestExportSelectionMeta(exportRow) {
   if (Number(summary.filter_count || 0) > 0) meta.push('filters: ' + String(summary.filter_count));
   const thresholdText = compactList(summary.threshold_keys, 3);
   if (thresholdText) meta.push('thresholds: ' + thresholdText.replace(/_/g, ' '));
+  const focusText = compactList(summary.focus_keys, 3);
+  if (focusText) meta.push('focus: ' + focusText.replace(/_/g, ' '));
   return meta;
 }
 
@@ -5885,9 +5887,30 @@ async function loadQuality() {
   } catch(e) { el.innerHTML = `<span style="color:var(--coral);">${e.message}</span>`; }
 }
 
+function atlasExportStateParams() {
+  const params = new URLSearchParams();
+  if (currentAtlasLevel) params.set('atlas_level', currentAtlasLevel);
+  if (currentAtlasNodeUid) params.set('atlas_node', currentAtlasNodeUid);
+  const query = String(currentAtlasSearchQuery || '').trim();
+  if (query) params.set('atlas_query', query);
+  if (currentAtlasLens) params.set('atlas_lens', currentAtlasLens);
+  if (currentAtlasViewMode) params.set('atlas_view', currentAtlasViewMode);
+  if (currentAtlasFocusMode) params.set('atlas_focus', currentAtlasFocusMode);
+  if (currentAtlasReviewFilter) params.set('atlas_review', currentAtlasReviewFilter);
+  const deckSettings = atlasDeckSettings();
+  const activeLayers = ['edges', 'hierarchy', 'labels'].filter(key => deckSettings[key]);
+  params.set('atlas_layers', activeLayers.length ? activeLayers.join(',') : 'none');
+  params.set('atlas_label_limit', String(deckSettings.labelLimit || 80));
+  if (Number(deckSettings.minWeight || 0) > 0) params.set('atlas_edge_min', String(deckSettings.minWeight));
+  if (currentAtlasNeighborUid) params.set('atlas_neighbor', currentAtlasNeighborUid);
+  return params;
+}
+
 async function exportNetwork(fmt) {
   if (!window._currentJobId) return;
-  window.open(`/api/jobs/${window._currentJobId}/export/${fmt}`, '_blank');
+  const params = atlasExportStateParams();
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  window.open(`/api/jobs/${window._currentJobId}/export/${fmt}${suffix}`, '_blank');
 }
 
 /* ── INIT ──────────────────────────────────────────────── */

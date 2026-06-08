@@ -116,7 +116,22 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     web_app._jobs.persist(job_id)
 
     client = TestClient(app)
-    response = client.get(f"/api/jobs/{job_id}/export/graphml")
+    response = client.get(
+        f"/api/jobs/{job_id}/export/graphml",
+        params={
+            "atlas_level": "cluster",
+            "atlas_node": "cluster:0",
+            "atlas_query": "passivation",
+            "atlas_lens": "evidence",
+            "atlas_view": "map",
+            "atlas_focus": "neighbors",
+            "atlas_review": "review",
+            "atlas_layers": "edges,labels",
+            "atlas_edge_min": "0.25",
+            "atlas_label_limit": "24",
+            "atlas_neighbor": "cluster:1",
+        },
+    )
 
     assert response.status_code == 200
     manifest_path = output_dir / "exports" / "network_graphml" / "export_manifest.json"
@@ -133,6 +148,21 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     assert export_manifest["selection"]["layer_state"] == {
         "network_format": "graphml",
         "membership_source": str(landscape_dir / "membership.parquet"),
+        "atlas_lens": "evidence",
+        "atlas_view": "map",
+        "atlas_layers": ["edges", "labels"],
+        "atlas_label_limit": 24,
+    }
+    assert export_manifest["selection"]["cluster_level"] == "cluster"
+    assert export_manifest["selection"]["filters"] == [
+        {"field": "atlas_query", "op": "contains", "value": "passivation"},
+        {"field": "atlas_review_state", "op": "eq", "value": "review"},
+    ]
+    assert export_manifest["selection"]["thresholds"] == {"atlas_edge_min": 0.25}
+    assert export_manifest["selection"]["focus"] == {
+        "cluster_uid": "cluster:0",
+        "focus_mode": "neighbors",
+        "neighbor_uid": "cluster:1",
     }
 
     job_payload = client.get(f"/api/jobs/{job_id}").json()
@@ -142,7 +172,19 @@ def test_network_export_endpoint_writes_export_manifest(tmp_path):
     assert graphml_exports[0]["path"] == "network.graphml"
     assert graphml_exports[0]["export_manifest_ref"] == "exports/network_graphml/export_manifest.json"
     assert graphml_exports[0]["selection_summary"]["view_mode"] == "web_network_export"
+    assert graphml_exports[0]["selection_summary"]["cluster_level"] == "cluster"
+    assert graphml_exports[0]["selection_summary"]["filter_count"] == 2
+    assert graphml_exports[0]["selection_summary"]["threshold_keys"] == ["atlas_edge_min"]
+    assert graphml_exports[0]["selection_summary"]["focus_keys"] == [
+        "cluster_uid",
+        "focus_mode",
+        "neighbor_uid",
+    ]
     assert graphml_exports[0]["selection_summary"]["layer_state_keys"] == [
+        "atlas_label_limit",
+        "atlas_layers",
+        "atlas_lens",
+        "atlas_view",
         "membership_source",
         "network_format",
     ]
