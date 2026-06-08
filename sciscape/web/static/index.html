@@ -2445,6 +2445,13 @@ body {
 .net-chip.layer-chip[data-layer="bc"].active { background: #dc2626; border-color: #dc2626; }
 .net-chip.layer-chip[data-layer="cc"].active { background: #059669; border-color: #059669; }
 .net-chip.layer-chip[data-layer="combined"].active { background: var(--slate); border-color: var(--slate); }
+.net-chip.term-export-link { text-decoration: none; display: inline-flex; align-items: center; }
+.term-export-state {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
 
 /* ── DETAIL PANEL ──────────────────────────────────────── */
 .net-detail {
@@ -2724,6 +2731,7 @@ input[type="range"]::-webkit-slider-thumb {
 <script>
 /* ── STATE ─────────────────────────────────────────────── */
 let currentJobId = null;
+let currentResult = null;
 let evtSource = null;
 let currentResultFeatures = {};
 let currentAtlasPayload = null;
@@ -5048,6 +5056,7 @@ function resetBtn() {
 /* ── RESULTS ───────────────────────────────────────────── */
 function showResults(result) {
   if (!result) return;
+  currentResult = result;
   window._currentJobId = currentJobId;
   const panel = document.getElementById('results');
   panel.classList.add('active');
@@ -5159,6 +5168,32 @@ function manifestExportRow(exportRows, exportId) {
   return (Array.isArray(exportRows) ? exportRows : []).find(row =>
     row && row.export_id === exportId && row.status !== 'missing' && row.status !== 'blocked'
   ) || null;
+}
+
+function cooccurrenceExportConfig(result, jobId) {
+  const manifest = result && result.result_manifest || {};
+  const exportRows = Array.isArray(manifest.exports) ? manifest.exports : [];
+  const exportRow = manifestExportRow(exportRows, 'term_cooccurrence_table');
+  if (!exportRow || !jobId) return null;
+  const files = Array.isArray(exportRow.files) ? exportRow.files : [];
+  const tableFile = files.find(row => row && row.role === 'primary')
+    || files.find(row => row && row.path)
+    || {path: exportRow.path, role: 'primary', format: exportRow.format, exists: exportRow.status !== 'missing'};
+  const mapFile = files.find(row => row && row.role === 'map');
+  const selection = exportRow.selection || {};
+  const layerState = selection.layer_state || {};
+  return {
+    exportId: exportRow.export_id,
+    status: exportRow.status || 'present',
+    tablePath: tableFile && tableFile.path,
+    tableUrl: tableFile && tableFile.path ? artifactUrl(jobId, 'download', tableFile.path) : '',
+    mapPath: mapFile && mapFile.path,
+    mapUrl: mapFile && mapFile.path ? artifactUrl(jobId, 'download', mapFile.path) : '',
+    manifestPath: exportRow.export_manifest_ref,
+    manifestUrl: exportRow.export_manifest_ref ? artifactUrl(jobId, 'download', exportRow.export_manifest_ref) : '',
+    rowCount: Number(layerState.row_count || 0),
+    tableFormat: layerState.table_format || (tableFile && tableFile.format) || exportRow.format || 'table',
+  };
 }
 
 function manifestExportCards(result, jobId, seenPaths) {
@@ -5389,7 +5424,9 @@ async function loadTermNetwork(jobId) {
     return;
   }
   document.getElementById('viz-placeholder').style.display = 'none';
-  termNetViz = new TermCooccurrenceNetwork('network-container');
+  termNetViz = new TermCooccurrenceNetwork('network-container', {
+    cooccurrenceExport: cooccurrenceExportConfig(currentResult, jobId),
+  });
   await termNetViz.load(jobId);
 }
 

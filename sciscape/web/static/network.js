@@ -1051,17 +1051,21 @@ window.ClusterNetwork = ClusterNetwork;
  * Node color = dominant cluster, size = frequency/score.
  */
 class TermCooccurrenceNetwork {
-  constructor(containerId) {
+  constructor(containerId, options = {}) {
     this.container = document.getElementById(containerId);
     this.data = null;
     this.jobId = null;
+    this.exportConfig = options.cooccurrenceExport || null;
     this.labelThreshold = 0.3;
     this.edgeMinWeight = 0;
     this.colorMode = 'cluster'; // 'cluster' | 'score' | 'breadth'
   }
 
-  async load(jobId) {
+  async load(jobId, options = {}) {
     this.jobId = jobId;
+    if (Object.prototype.hasOwnProperty.call(options, 'cooccurrenceExport')) {
+      this.exportConfig = options.cooccurrenceExport || null;
+    }
     this.container.innerHTML = '';
     let resp;
     try {
@@ -1080,6 +1084,34 @@ class TermCooccurrenceNetwork {
       return;
     }
     this._render();
+  }
+
+  _exportControlsHtml() {
+    const cfg = this.exportConfig || {};
+    const links = [];
+    if (cfg.tableUrl) {
+      links.push(
+        `<a class="net-chip term-export-link" href="${this._escAttr(cfg.tableUrl)}" title="${this._escAttr(cfg.tablePath || 'Download co-occurrence table')}">Table</a>`
+      );
+    }
+    if (cfg.mapUrl) {
+      links.push(
+        `<a class="net-chip term-export-link" href="${this._escAttr(cfg.mapUrl)}" title="${this._escAttr(cfg.mapPath || 'Download co-occurrence map')}">Map</a>`
+      );
+    }
+    if (cfg.manifestUrl) {
+      links.push(
+        `<a class="net-chip term-export-link" href="${this._escAttr(cfg.manifestUrl)}" title="${this._escAttr(cfg.manifestPath || 'Download export manifest')}">Manifest</a>`
+      );
+    }
+    if (!links.length) return '';
+    const meta = [];
+    if (cfg.rowCount) meta.push(`${this._esc(String(cfg.rowCount))} rows`);
+    if (cfg.tableFormat) meta.push(this._esc(String(cfg.tableFormat).toUpperCase()));
+    if (cfg.status) meta.push(this._esc(String(cfg.status)));
+    return `<div class="net-ctrl-group"><span class="net-ctrl-label">Artifact</span>${links.join('')}` +
+      (meta.length ? `<span class="term-export-state">${meta.join(' / ')}</span>` : '') +
+      `</div>`;
   }
 
   _render() {
@@ -1106,6 +1138,7 @@ class TermCooccurrenceNetwork {
         <button class="net-chip" id="tbtn-png">PNG</button>
         <button class="net-chip" id="tbtn-svg">SVG</button>
       </div>
+      ${this._exportControlsHtml()}
     </div>`;
     this.container.appendChild(ctrl);
 
@@ -1235,6 +1268,9 @@ class TermCooccurrenceNetwork {
     const t = this.labelThreshold;
     this._labelEls.attr('display', d => (d.score / this._maxScore) >= t ? null : 'none');
   }
+
+  _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  _escAttr(s) { return this._esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 }
 
 window.TermCooccurrenceNetwork = TermCooccurrenceNetwork;
