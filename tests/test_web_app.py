@@ -282,6 +282,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "term_cooccurrence_table" in response.text
     assert "cooccurrenceExport" in response.text
     assert "term-export-link" in response.text
+    assert "term-quality-bar" in response.text
     assert "result_manifest.exports" in response.text
     assert "selection_summary" in response.text
     assert "dl-meta" in response.text
@@ -342,6 +343,13 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasNeighborEvidence" in response.text
     assert "atlasNeighborSamples" in response.text
     assert "atlas_neighbor" in response.text
+
+    network_response = client.get("/static/network.js")
+    assert network_response.status_code == 200
+    assert "term-label-state" in network_response.text
+    assert "term-edge-state" in network_response.text
+    assert "_applyEdgeFilter" in network_response.text
+    assert "term-quality-metric" in network_response.text
     assert "renderAtlasNeighborSummary" in response.text
     assert 'data-tab="evolution"' in response.text
     assert 'id="evolution-content"' in response.text

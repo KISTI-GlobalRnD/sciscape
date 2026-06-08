@@ -2452,6 +2452,35 @@ body {
   font-size: 0.62rem;
   white-space: nowrap;
 }
+.term-control-readout {
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  min-width: 2.4rem;
+}
+.term-quality-bar {
+  align-items: center;
+  border-top: 1px solid rgba(197, 207, 224, 0.55);
+  color: var(--silver);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+}
+.term-quality-metric {
+  background: var(--white);
+  border: 1px solid var(--fog);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  line-height: 1.2;
+  padding: 0.18rem 0.34rem;
+}
+.term-quality-metric strong {
+  color: var(--ink);
+  font-weight: 600;
+}
 
 /* ── DETAIL PANEL ──────────────────────────────────────── */
 .net-detail {

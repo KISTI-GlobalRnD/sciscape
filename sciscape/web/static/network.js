@@ -1058,6 +1058,8 @@ class TermCooccurrenceNetwork {
     this.exportConfig = options.cooccurrenceExport || null;
     this.labelThreshold = 0.3;
     this.edgeMinWeight = 0;
+    this.visibleEdgeCount = 0;
+    this.visibleLabelCount = 0;
     this.colorMode = 'cluster'; // 'cluster' | 'score' | 'breadth'
   }
 
@@ -1130,19 +1132,23 @@ class TermCooccurrenceNetwork {
       </div>
       <div class="net-ctrl-group"><span class="net-ctrl-label">Labels</span>
         <input type="range" min="0" max="100" value="${Math.round((1-this.labelThreshold)*100)}" id="tsl-labels" style="width:80px;">
+        <span class="term-control-readout" id="term-label-state"></span>
       </div>
       <div class="net-ctrl-group"><span class="net-ctrl-label">Min edge</span>
         <input type="range" min="0" max="100" value="0" id="tsl-edge" style="width:80px;">
+        <span class="term-control-readout" id="term-edge-state"></span>
       </div>
       <div class="net-ctrl-group">
+        <button class="net-chip" id="tbtn-reset">Reset</button>
         <button class="net-chip" id="tbtn-png">PNG</button>
         <button class="net-chip" id="tbtn-svg">SVG</button>
       </div>
       ${this._exportControlsHtml()}
-    </div>`;
+    </div>
+    <div class="term-quality-bar" id="term-quality-bar"></div>`;
     this.container.appendChild(ctrl);
 
-    const svgH = H - 50;
+    const svgH = Math.max(H - ctrl.getBoundingClientRect().height, 320);
     const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgEl.setAttribute('width', W);
     svgEl.setAttribute('height', svgH);
@@ -1151,7 +1157,8 @@ class TermCooccurrenceNetwork {
 
     const svg = d3.select(svgEl);
     const g = svg.append('g');
-    svg.call(d3.zoom().scaleExtent([0.2, 8]).on('zoom', e => g.attr('transform', e.transform)));
+    const zoom = d3.zoom().scaleExtent([0.2, 8]).on('zoom', e => g.attr('transform', e.transform));
+    svg.call(zoom);
 
     const defs = svg.append('defs');
     const glow = defs.append('filter').attr('id', 'tglow');
@@ -1160,6 +1167,8 @@ class TermCooccurrenceNetwork {
 
     const nodes = this.data.nodes.map(d => ({...d}));
     const edges = this.data.edges.map(d => ({...d}));
+    this._termNodes = nodes;
+    this._termEdges = edges;
 
     const maxFreq = Math.max(...nodes.map(n => n.frequency), 1);
     const maxScore = Math.max(...nodes.map(n => n.score), 0.01);
@@ -1167,6 +1176,10 @@ class TermCooccurrenceNetwork {
     const rScale = d3.scaleSqrt().domain([0, maxScore]).range([3, 22]);
     const maxW = Math.max(...edges.map(e => e.weight), 1);
     const wScale = d3.scaleLinear().domain([0, maxW]).range([0.3, 3]);
+    this._termMaxWeight = maxW;
+    this._termLabelState = ctrl.querySelector('#term-label-state');
+    this._termEdgeState = ctrl.querySelector('#term-edge-state');
+    this._termQualityBar = ctrl.querySelector('#term-quality-bar');
 
     const self = this;
 
@@ -1227,8 +1240,13 @@ class TermCooccurrenceNetwork {
           .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
         nodeEls.attr('transform', d => `translate(${d.x},${d.y})`);
       });
+    this._sim = sim;
+    this._svg = svg;
+    this._zoom = zoom;
+    this._zoomGroup = g;
 
     this._updateLabels();
+    this._applyEdgeFilter(0);
 
     // Bind controls
     ctrl.querySelectorAll('[data-tc]').forEach(b => b.onclick = () => {
@@ -1241,8 +1259,13 @@ class TermCooccurrenceNetwork {
     const slE = ctrl.querySelector('#tsl-edge');
     if (slE) slE.oninput = () => {
       const minW = (slE.value / 100) * maxW;
-      linkEls.attr('display', d => d.weight >= minW ? null : 'none');
+      self._applyEdgeFilter(minW);
     };
+    ctrl.querySelector('#tbtn-reset')?.addEventListener('click', () => {
+      nodes.forEach(d => { d.fx = null; d.fy = null; });
+      svg.transition().duration(160).call(zoom.transform, d3.zoomIdentity);
+      sim.alpha(0.85).restart();
+    });
 
     // Export
     ctrl.querySelector('#tbtn-svg')?.addEventListener('click', () => {
@@ -1267,6 +1290,46 @@ class TermCooccurrenceNetwork {
     if (!this._labelEls) return;
     const t = this.labelThreshold;
     this._labelEls.attr('display', d => (d.score / this._maxScore) >= t ? null : 'none');
+    this.visibleLabelCount = (this._termNodes || []).filter(d => (d.score / this._maxScore) >= t).length;
+    if (this._termLabelState) {
+      this._termLabelState.textContent = `${this.visibleLabelCount}/${(this._termNodes || []).length}`;
+    }
+    this._updateQualityBar();
+  }
+
+  _applyEdgeFilter(minWeight) {
+    this.edgeMinWeight = Number(minWeight || 0);
+    const edges = this._termEdges || [];
+    this.visibleEdgeCount = edges.filter(d => Number(d.weight || 0) >= this.edgeMinWeight).length;
+    if (this._linkEls) {
+      this._linkEls.attr('display', d => Number(d.weight || 0) >= this.edgeMinWeight ? null : 'none');
+    }
+    if (this._termEdgeState) {
+      this._termEdgeState.textContent = this.edgeMinWeight <= 0 ? 'all' : `>= ${this._fmtNumber(this.edgeMinWeight)}`;
+    }
+    this._updateQualityBar();
+  }
+
+  _updateQualityBar() {
+    if (!this._termQualityBar) return;
+    const nodes = this._termNodes || [];
+    const edges = this._termEdges || [];
+    const hiddenEdges = Math.max(edges.length - this.visibleEdgeCount, 0);
+    const maxWeight = this._termMaxWeight || 0;
+    this._termQualityBar.innerHTML = [
+      `<span class="term-quality-metric"><strong>${nodes.length}</strong> nodes</span>`,
+      `<span class="term-quality-metric"><strong>${this.visibleEdgeCount}</strong>/${edges.length} edges visible</span>`,
+      `<span class="term-quality-metric"><strong>${hiddenEdges}</strong> edges hidden</span>`,
+      `<span class="term-quality-metric"><strong>${this.visibleLabelCount}</strong> labels visible</span>`,
+      `<span class="term-quality-metric">max weight <strong>${this._fmtNumber(maxWeight)}</strong></span>`,
+    ].join('');
+  }
+
+  _fmtNumber(value) {
+    const num = Number(value || 0);
+    if (num >= 100) return String(Math.round(num));
+    if (num >= 10) return num.toFixed(1);
+    return num.toFixed(2);
   }
 
   _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

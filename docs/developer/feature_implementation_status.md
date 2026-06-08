@@ -49,7 +49,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 80% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 91% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
-| F10 | Term network and co-occurrence visualization | `[~]` | 84% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, Term view export links | map polish, richer threshold controls, VOSviewer-style co-occurrence export |
+| F10 | Term network and co-occurrence visualization | `[~]` | 86% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, Term view export links and QA readouts | map polish, advanced threshold presets, VOSviewer-style co-occurrence export |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
@@ -289,7 +289,7 @@ workflow are still required before treating it as a finished Atlas App.
 
 ### F10. Term Network And Co-Occurrence Visualization
 
-Status: `[~]` Partial. Rough completeness: 84%.
+Status: `[~]` Partial. Rough completeness: 86%.
 
 - `[x]` Term network construction exists.
 - `[x]` Co-occurrence collection exists.
@@ -302,13 +302,15 @@ Status: `[~]` Partial. Rough completeness: 84%.
   export through `result_manifest.exports`.
 - `[x]` Term Co-occurrence view shows manifest-backed table, map, and export
   manifest download links when the co-occurrence export is present.
+- `[x]` Term Co-occurrence view shows threshold/readability QA readouts for
+  visible edges, hidden edges, visible labels, max edge weight, and reset layout.
 - `[~]` Visualization controls for thresholding, layout, clustering, and export
   are not yet complete.
 
 Review: the previously broken co-occurrence path has enough implementation
-surface to stabilize. The table/map artifact contract, table export, and Term
-view download affordance now exist; the remaining gap is UI QA plus richer
-threshold/layout/export control behavior.
+surface to stabilize. The table/map artifact contract, table export, Term view
+download affordance, and threshold/readability readouts now exist; the remaining
+gap is richer preset behavior and VOSviewer-style co-occurrence interoperability.
 
 ### F11. Temporal And Evolution
 
@@ -451,8 +453,8 @@ evolution map, and narrative system are stable.
 ## Next Implementation Targets
 
 1. Harden inspector-driven review affordances and Cleaning-mode rule review.
-2. Add richer co-occurrence visualization controls and map/table QA affordances
-   in the Term Network UI.
+2. Add co-occurrence threshold presets and VOSviewer-style co-occurrence
+   interoperability when the target field mapping is validated.
 3. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
 4. Implement the narrative evidence-reference writer, validator, and unsupported
