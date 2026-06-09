@@ -862,6 +862,17 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         "exports/term_cooccurrence_table/term_cooccurrence.tsv",
         "exports/term_cooccurrence_table/term_cooccurrence_map.json",
     ]
+    term_vos_exports = [row for row in exports if row["export_id"] == "vosviewer_term_cooccurrence"]
+    assert len(term_vos_exports) == 1
+    assert term_vos_exports[0]["path"] == "vosviewer/vosviewer_term_map.txt"
+    assert term_vos_exports[0]["export_manifest_ref"] == "exports/vosviewer_term_cooccurrence/export_manifest.json"
+    assert term_vos_exports[0]["selection_summary"]["scope"] == "cooccurrence_artifact"
+    assert term_vos_exports[0]["selection_summary"]["view_mode"] == "vosviewer_term_cooccurrence"
+    assert term_vos_exports[0]["selection_summary"]["threshold_keys"] == ["min_link_strength"]
+    assert [row["path"] for row in term_vos_exports[0]["files"]] == [
+        "vosviewer/vosviewer_term_map.txt",
+        "vosviewer/vosviewer_term_network.txt",
+    ]
     assert job_payload["result"]["artifact_contract"]["ok"] is True
     assert job_payload["result"]["features"]["evolution"] is True
     assert job_payload["result"]["feature_states"]["evolution"] == "stable"
@@ -913,6 +924,11 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert "perovskite" in cooc_download.text
     assert "passivation" in cooc_download.text
 
+    term_vos_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_term_map.txt")
+    assert term_vos_download.status_code == 200
+    assert "perovskite" in term_vos_download.text
+    assert "passivation" in term_vos_download.text
+
     bundle_download = client.get(f"/api/jobs/{job_id}/download/vosviewer-bundle.zip")
     assert bundle_download.status_code == 200
     bundle_path = output_dir / "exports" / "vosviewer_bundle" / "vosviewer_bundle.zip"
@@ -922,8 +938,12 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         assert {
             "vosviewer/vosviewer_map.txt",
             "vosviewer/vosviewer_network.txt",
+            "vosviewer/vosviewer_term_map.txt",
+            "vosviewer/vosviewer_term_network.txt",
             "exports/vosviewer_map_network/export_manifest.json",
             "exports/vosviewer_map_network/export_qa.json",
+            "exports/vosviewer_term_cooccurrence/export_manifest.json",
+            "exports/vosviewer_term_cooccurrence/export_qa.json",
             "vosviewer_bundle_inventory.json",
         }.issubset(names)
 

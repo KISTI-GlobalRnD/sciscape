@@ -684,6 +684,215 @@ def export_cooccurrence_table(
     }
 
 
+def export_vosviewer_term_cooccurrence(
+    result_root: str | Path,
+    output_dir: str | Path | None = None,
+    *,
+    map_filename: str = "vosviewer_term_map.txt",
+    network_filename: str = "vosviewer_term_network.txt",
+    write_manifest: bool = True,
+    selection: Mapping[str, Any] | None = None,
+) -> dict[str, Path]:
+    """Export stable term co-occurrence artifacts as VOSviewer map/network files."""
+
+    from sciscape.artifacts import infer_result_artifacts, write_export_manifest
+
+    root = Path(result_root).expanduser().resolve()
+    artifacts = infer_result_artifacts(root)
+    source_table = artifacts.landscape_dir / "term_cooccurrence.parquet" if artifacts.landscape_dir else None
+    source_map = artifacts.landscape_dir / "term_cooccurrence_map.json" if artifacts.landscape_dir else None
+    if source_table is None or not source_table.exists():
+        raise ValueError("term_cooccurrence.parquet not found")
+
+    output_path = Path(output_dir).expanduser().resolve() if output_dir is not None else root / "vosviewer"
+    output_path.mkdir(parents=True, exist_ok=True)
+    map_path = output_path / map_filename
+    network_path = output_path / network_filename
+
+    cooc = pl.read_parquet(source_table)
+    required = {"source", "target", "weight"}
+    missing = required - set(cooc.columns)
+    if missing:
+        raise ValueError(f"term co-occurrence table is missing columns: {sorted(missing)}")
+
+    pair_strength: dict[tuple[str, str], float] = {}
+    term_cluster_strength: dict[str, dict[str, float]] = {}
+    for row in cooc.to_dicts():
+        source = str(row.get("source") or "").strip()
+        target = str(row.get("target") or "").strip()
+        if not source or not target or source == target:
+            continue
+        try:
+            weight = float(row.get("weight") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if weight <= 0:
+            continue
+        left, right = sorted((source, target))
+        pair_key = (left, right)
+        pair_strength[pair_key] = pair_strength.get(pair_key, 0.0) + weight
+        cluster_uid = str(row.get("cluster_uid") or "").strip()
+        if not cluster_uid:
+            cluster_level = str(row.get("cluster_level") or "cluster")
+            cluster_id = str(row.get("cluster_id") or "unknown")
+            cluster_uid = f"{cluster_level}:{cluster_id}"
+        for term in (source, target):
+            clusters = term_cluster_strength.setdefault(term, {})
+            clusters[cluster_uid] = clusters.get(cluster_uid, 0.0) + weight
+
+    terms = sorted(term_cluster_strength)
+    if not terms:
+        raise ValueError("term co-occurrence table has no positive term links")
+    term_to_item_id = {term: index + 1 for index, term in enumerate(terms)}
+    term_link_count = {term: 0 for term in terms}
+    term_total_strength = {term: 0.0 for term in terms}
+    for (source, target), strength in pair_strength.items():
+        term_link_count[source] = term_link_count.get(source, 0) + 1
+        term_link_count[target] = term_link_count.get(target, 0) + 1
+        term_total_strength[source] = term_total_strength.get(source, 0.0) + strength
+        term_total_strength[target] = term_total_strength.get(target, 0.0) + strength
+
+    term_cluster_uid: dict[str, str] = {}
+    for term, clusters in term_cluster_strength.items():
+        term_cluster_uid[term] = sorted(clusters.items(), key=lambda item: (-item[1], item[0]))[0][0]
+    cluster_uids = sorted(set(term_cluster_uid.values()))
+    if len(cluster_uids) > 1000:
+        raise ValueError("VOSviewer cluster IDs support at most 1000 clusters")
+    cluster_to_vos = {cluster_uid: index + 1 for index, cluster_uid in enumerate(cluster_uids)}
+
+    map_header = [
+        "id",
+        "label",
+        "description",
+        "cluster",
+        "weight<Links>",
+        "weight<Total link strength>",
+        "score<Cluster breadth>",
+    ]
+    map_rows: list[list[Any]] = []
+    for term in terms:
+        clusters = term_cluster_strength.get(term, {})
+        cluster_list = ", ".join(sorted(clusters)[:5])
+        if len(clusters) > 5:
+            cluster_list += f" +{len(clusters) - 5}"
+        map_rows.append(
+            [
+                term_to_item_id[term],
+                term,
+                f"co-occurrence clusters: {cluster_list}",
+                cluster_to_vos[term_cluster_uid[term]],
+                int(term_link_count.get(term, 0)),
+                f"{float(term_total_strength.get(term, 0.0)):.6f}",
+                int(len(clusters)),
+            ]
+        )
+
+    network_rows = [
+        [term_to_item_id[source], term_to_item_id[target], f"{strength:.6f}"]
+        for (source, target), strength in sorted(pair_strength.items())
+    ]
+    _write_tab_rows(map_path, map_rows, header=map_header)
+    _write_tab_rows(network_path, network_rows)
+
+    manifest_path = None
+    if write_manifest:
+        source_artifacts = [
+            _source_artifact(
+                "cooccurrence",
+                source_table,
+                result_root=root,
+                artifact_ref="cooccurrence",
+                feature_ref="cooccurrence",
+            )
+        ]
+        if source_map is not None and source_map.exists():
+            source_artifacts.append(
+                _source_artifact(
+                    "cooccurrence_map",
+                    source_map,
+                    result_root=root,
+                    artifact_ref="cooccurrence_map",
+                    feature_ref="cooccurrence",
+                    required=False,
+                )
+            )
+        manifest = write_export_manifest(
+            root,
+            export_id="vosviewer_term_cooccurrence",
+            export_family="vosviewer",
+            export_kind="vosviewer_term_cooccurrence",
+            primary_file=map_path,
+            source_artifacts=source_artifacts,
+            feature_refs=["cooccurrence", "term_network", "export"],
+            selection=selection
+            or {
+                "scope": "cooccurrence_artifact",
+                "view": {"mode": "vosviewer_term_cooccurrence", "surface": "export"},
+                "filters": [{"field": "link_strength", "op": "gt", "value": 0}],
+                "thresholds": {"min_link_strength": 0},
+                "layer_state": {
+                    "map_file": map_filename,
+                    "network_file": network_filename,
+                    "source_table": "term_cooccurrence.parquet",
+                    "term_count": len(terms),
+                    "link_count": len(network_rows),
+                    "cluster_count": len(cluster_uids),
+                    "counting_method": "summed_cooccurrence_weight",
+                },
+            },
+            files=[
+                {
+                    "file_id": "map",
+                    "path": map_path,
+                    "role": "map",
+                    "format": "txt",
+                    "public_share_state": "local",
+                },
+                {
+                    "file_id": "network",
+                    "path": network_path,
+                    "role": "network",
+                    "format": "txt",
+                    "public_share_state": "local",
+                },
+            ],
+            transforms=[
+                {
+                    "transform_type": "load_term_cooccurrence_artifact",
+                    "description": "Load stable term co-occurrence artifact.",
+                },
+                {
+                    "transform_type": "aggregate_term_pair_strength",
+                    "description": "Sum co-occurrence weights for repeated term pairs.",
+                },
+                {
+                    "transform_type": "assign_term_vosviewer_ids",
+                    "description": "Assign 1-based VOSviewer item and cluster IDs to terms.",
+                },
+                {
+                    "transform_type": "write_vosviewer_term_cooccurrence",
+                    "description": "Write VOSviewer-style term map and network files.",
+                },
+            ],
+            compatibility={
+                "target_tools": ["VOSviewer", "VOSviewer Online"],
+                "format_version": "map/network text files",
+                "limitations": [
+                    "layout coordinates are not exported",
+                    "term cluster is inferred from the strongest co-occurrence cluster",
+                ],
+            },
+            title="VOSviewer term co-occurrence export",
+        )
+        manifest_path = Path(manifest["manifest_path"])
+
+    log.info("Exported VOSviewer term co-occurrence: %d terms, %d links -> %s", len(terms), len(network_rows), output_path)
+    result = {"map_path": map_path, "network_path": network_path}
+    if manifest_path is not None:
+        result["manifest_path"] = manifest_path
+    return result
+
+
 def export_gexf(
     edges: pl.DataFrame,
     membership: pl.DataFrame | Dict[str, int],
@@ -1078,5 +1287,6 @@ __all__ = [
     "export_graphml",
     "export_vosviewer_bundle",
     "export_vosviewer_network",
+    "export_vosviewer_term_cooccurrence",
     "export_vosviewer_thesaurus",
 ]

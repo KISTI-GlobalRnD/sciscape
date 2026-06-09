@@ -60,6 +60,7 @@ from sciscape.export import (
     export_graphml,
     export_vosviewer_bundle,
     export_vosviewer_network,
+    export_vosviewer_term_cooccurrence,
     export_vosviewer_thesaurus,
 )
 from sciscape.keyword_extraction.rule_artifact import write_keyword_cleaning_rule_artifacts
@@ -292,6 +293,95 @@ def test_export_cooccurrence_table_writes_manifest_backed_table(tmp_path):
         "exports/term_cooccurrence_table/term_cooccurrence.tsv",
         "exports/term_cooccurrence_table/term_cooccurrence_map.json",
     ]
+
+
+def test_export_vosviewer_term_cooccurrence_writes_map_network_and_manifest(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+
+    written = export_vosviewer_term_cooccurrence(root)
+
+    map_path = root / "vosviewer" / "vosviewer_term_map.txt"
+    network_path = root / "vosviewer" / "vosviewer_term_network.txt"
+    manifest_path = root / "exports" / "vosviewer_term_cooccurrence" / "export_manifest.json"
+    assert written["map_path"] == map_path
+    assert written["network_path"] == network_path
+    assert written["manifest_path"] == manifest_path
+    assert map_path.exists()
+    assert network_path.exists()
+
+    map_lines = map_path.read_text(encoding="utf-8").splitlines()
+    assert map_lines[0].split("\t") == [
+        "id",
+        "label",
+        "description",
+        "cluster",
+        "weight<Links>",
+        "weight<Total link strength>",
+        "score<Cluster breadth>",
+    ]
+    map_rows = [line.split("\t") for line in map_lines[1:]]
+    assert {row[1]: row[4:7] for row in map_rows} == {
+        "graph neural networks": ["1", "1.000000", "1"],
+        "interface passivation": ["1", "1.000000", "1"],
+        "perovskite solar cells": ["1", "1.000000", "1"],
+        "traffic forecasting": ["1", "1.000000", "1"],
+    }
+    assert network_path.read_text(encoding="utf-8").splitlines() == [
+        "1\t4\t1.000000",
+        "2\t3\t1.000000",
+    ]
+
+    validation = validate_export_manifest(manifest_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "vosviewer"
+    assert validation["export_kind"] == "vosviewer_term_cooccurrence"
+    assert validation["counts"]["files"] == 2
+    assert validation["counts"]["inputs"] == 2
+    export_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "cooccurrence_artifact"
+    assert export_manifest["selection"]["view"]["mode"] == "vosviewer_term_cooccurrence"
+    assert export_manifest["selection"]["thresholds"] == {"min_link_strength": 0}
+    assert export_manifest["selection"]["layer_state"] == {
+        "map_file": "vosviewer_term_map.txt",
+        "network_file": "vosviewer_term_network.txt",
+        "source_table": "term_cooccurrence.parquet",
+        "term_count": 4,
+        "link_count": 2,
+        "cluster_count": 2,
+        "counting_method": "summed_cooccurrence_weight",
+    }
+
+    result_manifest = build_result_manifest(root).to_dict()
+    exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_term_cooccurrence"]
+    assert len(exports) == 1
+    assert exports[0]["path"] == "vosviewer/vosviewer_term_map.txt"
+    assert exports[0]["export_manifest_ref"] == "exports/vosviewer_term_cooccurrence/export_manifest.json"
+    assert exports[0]["selection_summary"] == {
+        "scope": "cooccurrence_artifact",
+        "view_mode": "vosviewer_term_cooccurrence",
+        "view_family": "vosviewer",
+        "cluster_level": None,
+        "filter_count": 1,
+        "threshold_keys": ["min_link_strength"],
+        "layer_state_keys": [
+            "cluster_count",
+            "counting_method",
+            "link_count",
+            "map_file",
+            "network_file",
+            "source_table",
+            "term_count",
+        ],
+        "focus_keys": [],
+        "subset_mode": None,
+        "subset_count": None,
+        "subset_keys": [],
+    }
+    assert {row["role"]: row["path"] for row in exports[0]["files"]} == {
+        "map": "vosviewer/vosviewer_term_map.txt",
+        "network": "vosviewer/vosviewer_term_network.txt",
+    }
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):
@@ -2013,6 +2103,8 @@ def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
     )
     rule_artifact = write_keyword_cleaning_rule_artifacts(result_root, keywords=keywords)
     export_vosviewer_thesaurus(rule_artifact["manifest_path"], result_root / "vosviewer", result_root=result_root)
+    write_cooccurrence_artifacts(result_root)
+    export_vosviewer_term_cooccurrence(result_root)
 
     written = export_vosviewer_bundle(result_root)
 
@@ -2029,7 +2121,7 @@ def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
     ]
     assert export_manifest["selection"]["layer_state"] == {
         "source_inventory": "result_manifest.exports",
-        "bundle_file_count": 8,
+        "bundle_file_count": 12,
     }
 
     with zipfile.ZipFile(written["bundle_path"]) as archive:
@@ -2037,17 +2129,21 @@ def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
         assert {
             "vosviewer/vosviewer_map.txt",
             "vosviewer/vosviewer_network.txt",
+            "vosviewer/vosviewer_term_map.txt",
+            "vosviewer/vosviewer_term_network.txt",
             "vosviewer/vosviewer_thesaurus.txt",
             "vosviewer/sciscape_keyword_rules.tsv",
             "exports/vosviewer_map_network/export_manifest.json",
             "exports/vosviewer_map_network/export_qa.json",
+            "exports/vosviewer_term_cooccurrence/export_manifest.json",
+            "exports/vosviewer_term_cooccurrence/export_qa.json",
             "exports/vosviewer_thesaurus/export_manifest.json",
             "exports/vosviewer_thesaurus/export_qa.json",
             "vosviewer_bundle_inventory.json",
         }.issubset(names)
         inventory = json.loads(archive.read("vosviewer_bundle_inventory.json").decode("utf-8"))
     assert inventory["source"] == "result_manifest.exports"
-    assert inventory["file_count"] == 8
+    assert inventory["file_count"] == 12
 
     result_manifest = write_result_manifest(result_root).to_dict()
     bundle_exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_bundle"]

@@ -438,10 +438,12 @@ Rules:
 
 - VOSviewer-style map/network exports must write item rows, link rows, field
   mappings, and compatibility limitations into a manifest-backed export.
-- Do not mark matrix or co-occurrence VOSviewer-style exports as stable until
-  their required file formats and field mappings are validated against the
-  declared target workflow. Keyword-rule thesaurus/rule-set export can be
-  stable when its source rule artifact and export manifest validation pass.
+- Do not mark matrix exports as stable until their required file formats and
+  field mappings are validated against the declared target workflow.
+  Term co-occurrence VOSviewer-style exports can be stable when the source
+  co-occurrence artifact, map/network files, and export manifest validation
+  pass. Keyword-rule thesaurus/rule-set export can be stable when its source
+  rule artifact and export manifest validation pass.
 - VOSviewer compatibility limitations should be explicit, not implied by file
   names.
 
@@ -496,9 +498,10 @@ The writer should:
 
 The first adapters wrap existing dashboard, report, static viewer, GEXF,
 GraphML, paper-network VOSviewer-style map/network exports, keyword-rule
-VOSviewer-style thesaurus/rule-set exports, and the stable term co-occurrence
-table/map export. Matrix-builder exports and VOSviewer-style co-occurrence
-adapters can follow after their source artifact contracts are stable.
+VOSviewer-style thesaurus/rule-set exports, the stable term co-occurrence
+table/map export, and VOSviewer-style term co-occurrence map/network exports.
+Matrix-builder exports can follow after their source artifact contracts are
+stable.
 
 ## Validator Utility Design
 
@@ -541,8 +544,8 @@ commands.
    keyword-rule thesaurus/rule-set exports exist, and the web app can package
    manifest-backed VOSviewer exports into a bundle. Stable term co-occurrence
    artifacts can be exported as a manifest-backed TSV table plus paired map
-   JSON. Matrix-builder exports and VOSviewer-style co-occurrence exports remain
-   future work.
+   JSON, or as VOSviewer-style term co-occurrence map/network files.
+   Matrix-builder exports remain future work.
 8. `[x]` Normalize export selection/view/filter metadata and surface compact
    selection summaries through `result_manifest.exports`.
 9. `[x]` Preserve dashboard, report, static viewer, CLI visualize/viewer,
@@ -561,8 +564,8 @@ commands.
 - Exported files use stable IDs or explicitly declare field mappings.
 - Public export manifests do not contain private absolute paths.
 - Report, static viewer, GEXF, GraphML, VOSviewer-style map/network,
-  keyword-rule VOSviewer thesaurus, and VOSviewer bundle outputs can be wrapped
-  by the export manifest contract.
+  keyword-rule VOSviewer thesaurus, VOSviewer-style term co-occurrence, and
+  VOSviewer bundle outputs can be wrapped by the export manifest contract.
 - `export=stable` requires manifest-backed QA, not only file existence.
 - The full result contract can tell whether `export` is hidden, beta, stable,
   or blocked from artifacts alone.

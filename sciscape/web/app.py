@@ -577,11 +577,12 @@ def _ensure_local_result_table_exports(output_dir: Path) -> None:
 
     try:
         from sciscape.artifacts import write_cooccurrence_artifacts
-        from sciscape.export import export_cooccurrence_table
+        from sciscape.export import export_cooccurrence_table, export_vosviewer_term_cooccurrence
 
         written = write_cooccurrence_artifacts(output_dir)
         if written is not None:
             export_cooccurrence_table(output_dir)
+            export_vosviewer_term_cooccurrence(output_dir)
     except Exception:
         # Local result opening should not fail just because an optional export
         # sidecar cannot be generated from a partial result root.

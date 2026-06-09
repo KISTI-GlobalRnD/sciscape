@@ -49,11 +49,11 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 80% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 91% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
-| F10 | Term network and co-occurrence visualization | `[~]` | 88% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, Term view export links, QA readouts, threshold presets | map polish, VOSviewer-style co-occurrence export |
+| F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
 | F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
-| F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | matrix builder and VOSviewer-style co-occurrence export adapters |
+| F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | matrix builder export adapter |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
 ## Code Surface Inventory
@@ -289,7 +289,7 @@ workflow are still required before treating it as a finished Atlas App.
 
 ### F10. Term Network And Co-Occurrence Visualization
 
-Status: `[~]` Partial. Rough completeness: 88%.
+Status: `[~]` Partial. Rough completeness: 91%.
 
 - `[x]` Term network construction exists.
 - `[x]` Co-occurrence collection exists.
@@ -306,14 +306,15 @@ Status: `[~]` Partial. Rough completeness: 88%.
   visible edges, hidden edges, visible labels, max edge weight, and reset layout.
 - `[x]` Term Co-occurrence view includes data-driven density presets for all,
   core, and backbone views of the same term network.
+- `[x]` Stable co-occurrence artifacts can be exported as VOSviewer-style term
+  map/network files and included in the web VOSviewer bundle.
 - `[~]` Visualization controls for thresholding, layout, clustering, and export
   are not yet complete.
 
 Review: the previously broken co-occurrence path has enough implementation
 surface to stabilize. The table/map artifact contract, table export, Term view
 download affordance, threshold/readability readouts, and density presets now
-exist; the remaining gap is VOSviewer-style co-occurrence interoperability plus
-map polish.
+exist; the remaining gap is map polish and more complete layout UX.
 
 ### F11. Temporal And Evolution
 
@@ -420,14 +421,15 @@ Status: `[~]` Partial. Rough completeness: 99%.
   GEXF output files and records an `apply_selected_subset` transform.
 - `[x]` Term co-occurrence table/map export writes a TSV table plus paired map
   JSON and records a manifest-backed export artifact.
-- `[ ]` Matrix-builder export mode and VOSviewer-style co-occurrence external
-  export adapters remain future work.
+- `[x]` VOSviewer-style term co-occurrence export writes term map/network files,
+  records a manifest-backed export artifact, and is included in VOSviewer web
+  bundles.
+- `[ ]` Matrix-builder export mode remains future work.
 
 Review: good enough for graph/report exports, and the manifest contract plus
 writer/validator plus first command adapters now exist, but interoperability
 should not be called complete until all user-facing view/filter state and
-remaining matrix-builder and VOSviewer-style co-occurrence interoperability are
-covered.
+remaining matrix-builder interoperability is covered.
 
 ### F15. Institutional Analytics
 
@@ -450,17 +452,13 @@ evolution map, and narrative system are stable.
 - Expose as beta: live query jobs, Atlas evidence reading, label review/merge,
   temporal keyword views, and co-occurrence visualization.
 - Do not expose as complete: workspace projects, matrix builder mode, cluster
-  evolution map, evidence-backed narratives, institutional analytics, and full
-  VOSviewer-compatible interoperability.
+  evolution map, evidence-backed narratives, and institutional analytics.
 
 ## Next Implementation Targets
 
 1. Harden inspector-driven review affordances and Cleaning-mode rule review.
-2. Add VOSviewer-style co-occurrence interoperability when the target field
-   mapping is validated.
-3. Implement richer time-slice matching for evolution beyond static membership
+2. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
-4. Implement the narrative evidence-reference writer, validator, and unsupported
+3. Implement the narrative evidence-reference writer, validator, and unsupported
    claim gate from `narrative_artifact_design.md`.
-5. Add matrix-builder and VOSviewer-style co-occurrence interoperability
-   adapters when their source contracts are stable.
+4. Add a matrix-builder export adapter when its source contract is stable.
