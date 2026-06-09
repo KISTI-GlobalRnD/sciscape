@@ -29,6 +29,15 @@ EDGE_EVIDENCE_SCHEMA_VERSION = "sciscape_edge_evidence_samples_v1"
 COOCCURRENCE_ARTIFACT_SCHEMA_VERSION = "sciscape_cooccurrence_artifact_v1"
 CLUSTER_REVIEW_PACKET_SCHEMA_VERSION = "sciscape_cluster_review_packet_v1"
 CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION = "sciscape_cluster_review_packet_qa_v1"
+NARRATIVE_MANIFEST_SCHEMA_VERSION = "sciscape_narrative_manifest_v1"
+NARRATIVE_TARGETS_SCHEMA_VERSION = "sciscape_narrative_targets_v1"
+NARRATIVE_CLAIMS_SCHEMA_VERSION = "sciscape_narrative_claims_v1"
+NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION = "sciscape_narrative_evidence_sources_v1"
+NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION = "sciscape_narrative_evidence_refs_v1"
+NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION = "sciscape_narrative_claim_evidence_links_v1"
+NARRATIVE_SECTIONS_SCHEMA_VERSION = "sciscape_narrative_sections_v1"
+NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION = "sciscape_narrative_review_decisions_v1"
+NARRATIVE_QA_SCHEMA_VERSION = "sciscape_narrative_qa_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
 MATRIX_ENTITIES_SCHEMA_VERSION = "sciscape_matrix_entities_v1"
@@ -166,6 +175,80 @@ REQUIRED_EXPORT_TRANSFORM_COLUMNS = {
     "transform_type",
     "description",
     "parameters",
+}
+REQUIRED_NARRATIVE_TARGET_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "target_id",
+    "target_type",
+    "target_key",
+    "target_label",
+    "feature_state",
+}
+REQUIRED_NARRATIVE_CLAIM_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "claim_id",
+    "target_id",
+    "section_id",
+    "claim_type",
+    "claim_text",
+    "support_state",
+    "confidence",
+    "evidence_ref_count",
+    "text_origin",
+    "review_state",
+}
+REQUIRED_NARRATIVE_EVIDENCE_SOURCE_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "evidence_source_id",
+    "artifact_ref",
+    "artifact_role",
+    "artifact_path",
+    "resolver",
+    "source_state",
+}
+REQUIRED_NARRATIVE_EVIDENCE_REF_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "evidence_ref_id",
+    "evidence_source_id",
+    "evidence_type",
+    "entity_type",
+    "entity_key",
+    "locator_type",
+    "locator",
+    "evidence_label",
+}
+REQUIRED_NARRATIVE_CLAIM_LINK_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "claim_id",
+    "evidence_ref_id",
+    "evidence_role",
+    "link_strength",
+    "required",
+}
+REQUIRED_NARRATIVE_SECTION_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "section_id",
+    "target_id",
+    "section_type",
+    "section_title",
+    "section_state",
+    "claim_count",
+}
+REQUIRED_NARRATIVE_REVIEW_COLUMNS = {
+    "schema_version",
+    "narrative_id",
+    "decision_id",
+    "claim_id",
+    "decision_type",
+    "reviewer",
+    "decided_at_utc",
+    "reason",
 }
 REQUIRED_TEMPORAL_PERIOD_COLUMNS = {
     "schema_version",
@@ -422,6 +505,7 @@ class ResultArtifacts:
     export_manifest_paths: tuple[Path, ...] = ()
     edge_evidence_paths: tuple[Path, ...] = ()
     evolution_paths: tuple[Path, ...] = ()
+    narrative_manifest_paths: tuple[Path, ...] = ()
     narrative_paths: tuple[Path, ...] = ()
     review_packet_paths: tuple[Path, ...] = ()
     qa_path: Path | None = None
@@ -696,6 +780,32 @@ class ClusterReviewPacketValidationResult:
         return data
 
 
+@dataclass(frozen=True)
+class NarrativeArtifactValidationResult:
+    schema_version: str
+    narrative_id: str | None
+    status: str
+    narrative_dir: str
+    manifest_path: str
+    paths: dict[str, str | None]
+    counts: dict[str, int]
+    claim_counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    feature_state: str
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -814,6 +924,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
     keyword_rule_manifest_paths: list[Path] = []
     temporal_manifest_paths: list[Path] = []
     evolution_manifest_paths: list[Path] = []
+    narrative_manifest_paths: list[Path] = []
     export_manifest_paths: list[Path] = []
     for base in [landscape_dir, result_root]:
         if base is None or not base.exists() or not base.is_dir():
@@ -835,6 +946,9 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         evolution_manifest = base / "evolution" / "evolution_manifest.json"
         if evolution_manifest.exists() and evolution_manifest.is_file():
             evolution_manifest_paths.append(evolution_manifest)
+        narrative_manifest = base / "narrative" / "narrative_manifest.json"
+        if narrative_manifest.exists() and narrative_manifest.is_file():
+            narrative_manifest_paths.append(narrative_manifest)
 
     evolution_paths = _collect_optional_artifacts(
         [
@@ -877,6 +991,13 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         ],
         ("*narrative*.json", "*narrative*.parquet"),
     )
+    narrative_manifest_set = set(narrative_manifest_paths)
+    narrative_paths = tuple(
+        path
+        for path in narrative_paths
+        if path not in narrative_manifest_set
+        and not (path.parent.name == "narrative" and (path.parent / "narrative_manifest.json").exists())
+    )
     review_packet_paths = _collect_optional_artifacts(
         [
             landscape_dir / "review" if landscape_dir else None,
@@ -912,6 +1033,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         export_manifest_paths=tuple(sorted(set(export_manifest_paths))),
         edge_evidence_paths=edge_evidence_paths,
         evolution_paths=evolution_paths,
+        narrative_manifest_paths=tuple(sorted(set(narrative_manifest_paths))),
         narrative_paths=narrative_paths,
         review_packet_paths=review_packet_paths,
         qa_path=qa_path,
@@ -3511,6 +3633,637 @@ def validate_cluster_review_packet_artifact(path: str | Path) -> ClusterReviewPa
         blocking_issues=blocking_issues,
         created_at_utc=_utc_now(),
     )
+
+def _narrative_issue(code: str, severity: str, message: str, *, artifact: str | None = None) -> dict[str, Any]:
+    issue = {"code": code, "severity": severity, "message": message}
+    if artifact:
+        issue["artifact"] = artifact
+    return issue
+
+
+def _narrative_dir_and_manifest(path: str | Path) -> tuple[Path, Path]:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        return candidate.parent, candidate
+    manifest = candidate / "narrative_manifest.json"
+    if manifest.exists() or candidate.name == "narrative":
+        return candidate, manifest
+    nested = candidate / "narrative" / "narrative_manifest.json"
+    if nested.exists() or (candidate / "narrative").is_dir():
+        return nested.parent, nested
+    return candidate, manifest
+
+
+def _narrative_result_root(narrative_dir: Path) -> Path:
+    if narrative_dir.name == "narrative":
+        if narrative_dir.parent.name == "landscape":
+            return narrative_dir.parent.parent
+        return narrative_dir.parent
+    return narrative_dir
+
+
+def _narrative_output_path(narrative_dir: Path, manifest: Mapping[str, Any], key: str, default_name: str) -> Path:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    raw = str(outputs.get(key) or default_name)
+    path = Path(raw)
+    return path if path.is_absolute() else narrative_dir / path
+
+
+def _read_narrative_table(
+    path: Path,
+    *,
+    required: set[str],
+    schema_version: str,
+    artifact: str,
+    warnings: list[dict[str, Any]],
+    blocking_issues: list[dict[str, Any]],
+) -> pd.DataFrame | None:
+    if not path.exists():
+        blocking_issues.append(_narrative_issue(f"missing_narrative_{artifact}", "blocking", f"Missing narrative {artifact} table.", artifact=artifact))
+        return None
+    try:
+        df = pd.read_parquet(path)
+    except Exception as exc:
+        blocking_issues.append(_narrative_issue(f"invalid_narrative_{artifact}_table", "blocking", f"Could not read narrative {artifact} table: {exc}", artifact=artifact))
+        return None
+    missing = required - set(df.columns)
+    if missing:
+        blocking_issues.append(_narrative_issue(f"missing_narrative_{artifact}_columns", "blocking", f"Narrative {artifact} table is missing columns: {sorted(missing)}", artifact=artifact))
+        return df
+    schema_values = set(df["schema_version"].dropna().map(str).unique().tolist()) if "schema_version" in df.columns else set()
+    if schema_values and schema_values != {schema_version}:
+        blocking_issues.append(_narrative_issue(f"unsupported_narrative_{artifact}_schema", "blocking", f"Unsupported narrative {artifact} schema values: {sorted(schema_values)}", artifact=artifact))
+    if df.empty and artifact != "reviews":
+        warnings.append(_narrative_issue(f"empty_narrative_{artifact}", "warning", f"Narrative {artifact} table is empty.", artifact=artifact))
+    return df
+
+
+def _narrative_claim_counts(claims: pd.DataFrame | None) -> dict[str, int]:
+    counts = {"supported": 0, "weak": 0, "contradicted": 0, "unsupported": 0, "caveat": 0, "model_generated": 0}
+    if claims is None or claims.empty:
+        return counts
+    if "support_state" in claims.columns:
+        values = claims["support_state"].fillna("").map(str).str.lower()
+        for key in ("supported", "weak", "contradicted", "unsupported", "caveat"):
+            counts[key] = int((values == key).sum())
+    if "text_origin" in claims.columns:
+        counts["model_generated"] = int((claims["text_origin"].fillna("").map(str) == "model_generated").sum())
+    return counts
+
+
+def _bounded_float(value: Any) -> float | None:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric if math.isfinite(numeric) and 0.0 <= numeric <= 1.0 else None
+
+
+def validate_narrative_artifact(path: str | Path) -> NarrativeArtifactValidationResult:
+    """Validate a narrative claim/evidence artifact without loading the web app."""
+
+    narrative_dir, manifest_path = _narrative_dir_and_manifest(path)
+    result_root = _narrative_result_root(narrative_dir)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+    manifest: dict[str, Any] = {}
+    if not manifest_path.exists():
+        blocking_issues.append(_narrative_issue("missing_narrative_manifest", "blocking", "Missing narrative_manifest.json.", artifact="manifest"))
+    else:
+        try:
+            loaded = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                manifest = loaded
+            else:
+                blocking_issues.append(_narrative_issue("invalid_narrative_manifest_shape", "blocking", "Narrative manifest JSON must be an object.", artifact="manifest"))
+        except Exception as exc:
+            blocking_issues.append(_narrative_issue("invalid_narrative_manifest_json", "blocking", f"Could not read narrative manifest JSON: {exc}", artifact="manifest"))
+    narrative_id = str(manifest.get("narrative_id") or "") if manifest else ""
+    if manifest and manifest.get("schema_version") != NARRATIVE_MANIFEST_SCHEMA_VERSION:
+        blocking_issues.append(_narrative_issue("unsupported_narrative_manifest_schema", "blocking", f"Unsupported narrative manifest schema: {manifest.get('schema_version')}", artifact="manifest"))
+
+    paths = {
+        "targets": _narrative_output_path(narrative_dir, manifest, "targets", "narrative_targets.parquet"),
+        "claims": _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet"),
+        "evidence_sources": _narrative_output_path(narrative_dir, manifest, "evidence_sources", "evidence_sources.parquet"),
+        "evidence_refs": _narrative_output_path(narrative_dir, manifest, "evidence_refs", "evidence_refs.parquet"),
+        "claim_evidence_links": _narrative_output_path(narrative_dir, manifest, "claim_evidence_links", "claim_evidence_links.parquet"),
+        "sections": _narrative_output_path(narrative_dir, manifest, "sections", "narrative_sections.parquet"),
+        "reviews": _narrative_output_path(narrative_dir, manifest, "reviews", "review_decisions.parquet"),
+        "qa": _narrative_output_path(narrative_dir, manifest, "qa", "narrative_qa.json"),
+    }
+    targets = _read_narrative_table(paths["targets"], required=REQUIRED_NARRATIVE_TARGET_COLUMNS, schema_version=NARRATIVE_TARGETS_SCHEMA_VERSION, artifact="targets", warnings=warnings, blocking_issues=blocking_issues)
+    claims = _read_narrative_table(paths["claims"], required=REQUIRED_NARRATIVE_CLAIM_COLUMNS, schema_version=NARRATIVE_CLAIMS_SCHEMA_VERSION, artifact="claims", warnings=warnings, blocking_issues=blocking_issues)
+    sources = _read_narrative_table(paths["evidence_sources"], required=REQUIRED_NARRATIVE_EVIDENCE_SOURCE_COLUMNS, schema_version=NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION, artifact="evidence_sources", warnings=warnings, blocking_issues=blocking_issues)
+    refs = _read_narrative_table(paths["evidence_refs"], required=REQUIRED_NARRATIVE_EVIDENCE_REF_COLUMNS, schema_version=NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION, artifact="evidence_refs", warnings=warnings, blocking_issues=blocking_issues)
+    links = _read_narrative_table(paths["claim_evidence_links"], required=REQUIRED_NARRATIVE_CLAIM_LINK_COLUMNS, schema_version=NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION, artifact="claim_evidence_links", warnings=warnings, blocking_issues=blocking_issues)
+    sections = _read_narrative_table(paths["sections"], required=REQUIRED_NARRATIVE_SECTION_COLUMNS, schema_version=NARRATIVE_SECTIONS_SCHEMA_VERSION, artifact="sections", warnings=warnings, blocking_issues=blocking_issues)
+    reviews = None
+    if bool(manifest.get("review_state_advertised")) or paths["reviews"].exists():
+        reviews = _read_narrative_table(paths["reviews"], required=REQUIRED_NARRATIVE_REVIEW_COLUMNS, schema_version=NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION, artifact="reviews", warnings=warnings, blocking_issues=blocking_issues)
+
+    def _id_set(df: pd.DataFrame | None, column: str) -> set[str]:
+        if df is None or column not in df.columns:
+            return set()
+        return set(df[column].dropna().map(str).tolist())
+
+    target_ids = _id_set(targets, "target_id")
+    section_ids = _id_set(sections, "section_id")
+    claim_ids = _id_set(claims, "claim_id")
+    source_ids = _id_set(sources, "evidence_source_id")
+    evidence_ids = _id_set(refs, "evidence_ref_id")
+    for name, df, column in [
+        ("targets", targets, "target_id"),
+        ("sections", sections, "section_id"),
+        ("claims", claims, "claim_id"),
+        ("evidence_sources", sources, "evidence_source_id"),
+        ("evidence_refs", refs, "evidence_ref_id"),
+    ]:
+        if df is not None and column in df.columns:
+            duplicates = int(df[column].map(str).duplicated().sum())
+            if duplicates:
+                blocking_issues.append(_narrative_issue(f"duplicate_narrative_{name}", "blocking", f"{duplicates} duplicate narrative {column} values were found.", artifact=name))
+
+    unresolved_target_refs = unresolved_section_refs = invalid_confidence = 0
+    unsupported_normal_claims = model_metadata_missing = supported_claims_without_required_links = 0
+    if claims is not None:
+        for row in claims.to_dict("records"):
+            claim_id = str(row.get("claim_id") or "")
+            if str(row.get("target_id") or "") not in target_ids:
+                unresolved_target_refs += 1
+            if str(row.get("section_id") or "") not in section_ids:
+                unresolved_section_refs += 1
+            if _bounded_float(row.get("confidence")) is None:
+                invalid_confidence += 1
+            support_state = str(row.get("support_state") or "").lower()
+            claim_type = str(row.get("claim_type") or "").lower()
+            if support_state in {"unsupported", "contradicted"} and claim_type not in {"quality_caveat", "limitation"}:
+                unsupported_normal_claims += 1
+            if str(row.get("text_origin") or "") == "model_generated" and not manifest.get("model_generation"):
+                model_metadata_missing += 1
+            if support_state == "supported":
+                claim_links = links[links["claim_id"].map(str) == claim_id] if links is not None and "claim_id" in links.columns else pd.DataFrame()
+                has_required = any(
+                    bool(link.get("required")) or str(link.get("evidence_role") or "") in {"primary", "supporting"}
+                    for link in claim_links.to_dict("records")
+                )
+                if not has_required:
+                    supported_claims_without_required_links += 1
+
+    unresolved_source_refs = aggregate_only_refs = 0
+    if refs is not None:
+        for row in refs.to_dict("records"):
+            if str(row.get("evidence_source_id") or "") not in source_ids:
+                unresolved_source_refs += 1
+            if str(row.get("locator_type") or "") == "aggregate" or bool(row.get("aggregate_only", False)):
+                aggregate_only_refs += 1
+
+    unresolved_claim_links = unresolved_evidence_links = duplicate_links = invalid_link_strength = 0
+    if links is not None:
+        seen_links: set[tuple[str, str, str]] = set()
+        for row in links.to_dict("records"):
+            claim_id = str(row.get("claim_id") or "")
+            evidence_ref_id = str(row.get("evidence_ref_id") or "")
+            role = str(row.get("evidence_role") or "")
+            key = (claim_id, evidence_ref_id, role)
+            if key in seen_links:
+                duplicate_links += 1
+            seen_links.add(key)
+            if claim_id not in claim_ids:
+                unresolved_claim_links += 1
+            if evidence_ref_id not in evidence_ids:
+                unresolved_evidence_links += 1
+            if _bounded_float(row.get("link_strength")) is None:
+                invalid_link_strength += 1
+
+    section_target_refs = 0
+    if sections is not None and "target_id" in sections.columns:
+        section_target_refs = int(sum(1 for value in sections["target_id"].dropna().map(str).tolist() if value not in target_ids))
+    source_missing = source_absolute = source_blocked = 0
+    if sources is not None:
+        root_resolved = result_root.resolve()
+        for row in sources.to_dict("records"):
+            artifact_path = str(row.get("artifact_path") or "")
+            if str(row.get("source_state") or "") == "blocked":
+                source_blocked += 1
+            if not artifact_path:
+                source_missing += 1
+                continue
+            path_obj = Path(artifact_path)
+            if path_obj.is_absolute():
+                source_absolute += 1
+                continue
+            resolved = (result_root / path_obj).resolve()
+            try:
+                resolved.relative_to(root_resolved)
+            except ValueError:
+                source_absolute += 1
+                continue
+            if not resolved.exists():
+                source_missing += 1
+
+    blocking_checks = {
+        "unresolved_target_refs": unresolved_target_refs + section_target_refs,
+        "unresolved_section_refs": unresolved_section_refs,
+        "unresolved_source_refs": unresolved_source_refs,
+        "unresolved_claim_links": unresolved_claim_links,
+        "unresolved_evidence_links": unresolved_evidence_links,
+        "duplicate_links": duplicate_links,
+        "invalid_confidence": invalid_confidence,
+        "invalid_link_strength": invalid_link_strength,
+        "unsupported_normal_claims": unsupported_normal_claims,
+        "model_metadata_missing": model_metadata_missing,
+        "supported_claims_without_required_links": supported_claims_without_required_links,
+        "missing_source_artifacts": source_missing,
+        "absolute_source_paths": source_absolute,
+        "blocked_sources": source_blocked,
+    }
+    for code, count in blocking_checks.items():
+        if count:
+            blocking_issues.append(_narrative_issue(f"narrative_{code}", "blocking", f"{count} narrative {code.replace('_', ' ')} were found.", artifact="narrative"))
+
+    claim_counts = _narrative_claim_counts(claims)
+    checks["refs_resolvable"] = {"status": "blocked" if any(blocking_checks.values()) else "passed", **{key: int(value) for key, value in blocking_checks.items()}}
+    checks["claim_support"] = {
+        "status": "blocked" if supported_claims_without_required_links else ("warning" if claim_counts["weak"] or aggregate_only_refs else "passed"),
+        "weak_claims": int(claim_counts["weak"]),
+        "aggregate_only_refs": int(aggregate_only_refs),
+    }
+    if not paths["qa"].exists():
+        warnings.append(_narrative_issue("missing_narrative_qa", "warning", "Narrative QA sidecar is missing.", artifact="qa"))
+    else:
+        try:
+            qa_payload = json.loads(paths["qa"].read_text(encoding="utf-8"))
+            if qa_payload.get("schema_version") != NARRATIVE_QA_SCHEMA_VERSION:
+                warnings.append(_narrative_issue("unsupported_narrative_qa_schema", "warning", "Unsupported narrative QA schema.", artifact="qa"))
+        except Exception as exc:
+            warnings.append(_narrative_issue("invalid_narrative_qa_json", "warning", f"Could not read narrative QA: {exc}", artifact="qa"))
+
+    counts = {
+        "targets": int(len(targets) if targets is not None else 0),
+        "sections": int(len(sections) if sections is not None else 0),
+        "claims": int(len(claims) if claims is not None else 0),
+        "evidence_sources": int(len(sources) if sources is not None else 0),
+        "evidence_refs": int(len(refs) if refs is not None else 0),
+        "claim_evidence_links": int(len(links) if links is not None else 0),
+        "reviews": int(len(reviews) if reviews is not None else 0),
+        "aggregate_only_refs": int(aggregate_only_refs),
+    }
+    status = "blocked" if blocking_issues else ("warning" if warnings or claim_counts["weak"] or aggregate_only_refs else "passed")
+    feature_state = "blocked" if status == "blocked" else ("beta" if status == "warning" else "stable")
+    return NarrativeArtifactValidationResult(
+        schema_version=NARRATIVE_MANIFEST_SCHEMA_VERSION,
+        narrative_id=narrative_id or None,
+        status=status,
+        narrative_dir=str(narrative_dir),
+        manifest_path=str(manifest_path),
+        paths={key: _rel(value, result_root) if value.exists() else None for key, value in paths.items()},
+        counts=counts,
+        claim_counts=claim_counts,
+        checks=checks,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        feature_state=feature_state,
+        created_at_utc=_utc_now(),
+    )
+
+
+def _narrative_empty_frame(columns: set[str]) -> pd.DataFrame:
+    return pd.DataFrame(columns=sorted(columns))
+
+
+def _narrative_source_id(role: str) -> str:
+    return _safe_id(f"source_{role}", fallback="source")
+
+
+def _review_packet_for_narrative(path: str | Path, artifacts: ResultArtifacts) -> tuple[Path | None, dict[str, Any] | None, list[dict[str, Any]]]:
+    warnings: list[dict[str, Any]] = []
+    packet_path = artifacts.review_packet_paths[0] if artifacts.review_packet_paths else None
+    if packet_path is None:
+        written = write_cluster_review_packet_artifact(path)
+        if written is None:
+            warnings.append(_narrative_issue("missing_cluster_review_packet", "warning", "No cluster review packet could be created for narrative scaffolding.", artifact="cluster_review_packet"))
+            return None, None, warnings
+        packet_path = Path(written["packet_path"])
+    validation = validate_cluster_review_packet_artifact(packet_path)
+    if validation.status == "blocked":
+        warnings.extend(dict(issue) for issue in validation.blocking_issues)
+        return packet_path, None, warnings
+    try:
+        loaded = json.loads(packet_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        warnings.append(_narrative_issue("cluster_review_packet_read_failed", "warning", f"Could not read cluster review packet: {exc}", artifact="cluster_review_packet"))
+        return packet_path, None, warnings
+    return packet_path, loaded if isinstance(loaded, dict) else None, warnings
+
+
+def _narrative_claim_row(
+    *,
+    narrative_id: str,
+    claim_id: str,
+    target_id: str,
+    section_id: str,
+    claim_type: str,
+    claim_text: str,
+    support_state: str,
+    confidence: float,
+    evidence_ref_ids: list[str],
+    sort_order: int,
+    warning_flags: str = "",
+) -> dict[str, Any]:
+    return {
+        "schema_version": NARRATIVE_CLAIMS_SCHEMA_VERSION,
+        "narrative_id": narrative_id,
+        "claim_id": claim_id,
+        "target_id": target_id,
+        "section_id": section_id,
+        "claim_type": claim_type,
+        "claim_text": claim_text,
+        "support_state": support_state,
+        "confidence": confidence,
+        "evidence_ref_count": len(evidence_ref_ids),
+        "text_origin": "deterministic_template",
+        "review_state": "not_required",
+        "claim_template_id": claim_type,
+        "language": "en",
+        "sort_order": sort_order,
+        "warning_flags": warning_flags,
+    }
+
+
+def write_narrative_evidence_artifacts(
+    path: str | Path,
+    *,
+    output_dir: str | Path | None = None,
+    narrative_id: str = "cluster_narrative_evidence_default",
+    max_targets: int = 500,
+    max_terms_per_claim: int = 3,
+    max_works_per_claim: int = 2,
+    max_relations_per_claim: int = 2,
+) -> dict[str, Any] | None:
+    """Write deterministic narrative claim/evidence scaffolds from a cluster review packet."""
+
+    artifacts = infer_result_artifacts(path)
+    packet_path, packet, warnings = _review_packet_for_narrative(path, artifacts)
+    if not packet:
+        return None
+    clusters = [row for row in packet.get("clusters", []) if isinstance(row, Mapping)]
+    if not clusters:
+        return None
+    target_dir = Path(output_dir).expanduser().resolve() if output_dir is not None else artifacts.result_root / "narrative"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    outputs = {
+        "targets": "narrative_targets.parquet",
+        "claims": "claims.parquet",
+        "evidence_sources": "evidence_sources.parquet",
+        "evidence_refs": "evidence_refs.parquet",
+        "claim_evidence_links": "claim_evidence_links.parquet",
+        "sections": "narrative_sections.parquet",
+        "qa": "narrative_qa.json",
+    }
+    packet_rel = _review_packet_portable_rel(
+        packet_path or artifacts.result_root / "review" / "cluster_review_packet.json",
+        result_root=artifacts.result_root,
+        packet_path=target_dir / "narrative_manifest.json",
+    )
+    source_by_role: dict[str, dict[str, Any]] = {}
+    for row in packet.get("source_artifacts") or []:
+        if not isinstance(row, Mapping):
+            continue
+        role = str(row.get("role") or "").strip()
+        source_path = str(row.get("path") or "").strip()
+        if role and source_path and not Path(source_path).is_absolute():
+            source_by_role.setdefault(role, {"role": role, "path": source_path})
+    used_source_roles = {"cluster_review_packet"}
+    for cluster in clusters[: max(1, int(max_targets))]:
+        for ref in cluster.get("evidence_refs") or []:
+            if isinstance(ref, Mapping):
+                used_source_roles.add(str(ref.get("source_role") or "cluster_review_packet"))
+    source_rows = []
+    for role in sorted(used_source_roles):
+        source = source_by_role.get(role)
+        artifact_path = str(source.get("path")) if source else packet_rel
+        source_rows.append(
+            {
+                "schema_version": NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION,
+                "narrative_id": narrative_id,
+                "evidence_source_id": _narrative_source_id(role),
+                "artifact_ref": role,
+                "artifact_role": role,
+                "artifact_path": artifact_path,
+                "schema_version_ref": None,
+                "resolver": "cluster_review_packet_ref" if artifact_path == packet_rel else "result_relative_artifact",
+                "source_state": "stable",
+            }
+        )
+
+    target_rows: list[dict[str, Any]] = []
+    evidence_rows: list[dict[str, Any]] = []
+    section_rows: list[dict[str, Any]] = []
+    claim_rows: list[dict[str, Any]] = []
+    link_rows: list[dict[str, Any]] = []
+    for target_index, cluster in enumerate(clusters[: max(1, int(max_targets))], start=1):
+        cluster_uid = str(cluster.get("cluster_uid") or f"cluster:{target_index}")
+        target_id = _safe_id(f"target_{cluster_uid}", fallback=f"target_{target_index}")
+        label = str(cluster.get("label") or cluster.get("short_label") or cluster_uid)
+        keywords = [row for row in cluster.get("keyword_evidence") or [] if isinstance(row, Mapping)]
+        works = [row for row in cluster.get("representative_works") or [] if isinstance(row, Mapping)]
+        relations = [row for row in cluster.get("cooccurrence_evidence") or [] if isinstance(row, Mapping)]
+        caveats = [row for row in cluster.get("quality_caveats") or [] if isinstance(row, Mapping)]
+        all_refs = [row for row in cluster.get("evidence_refs") or [] if isinstance(row, Mapping)]
+        target_rows.append(
+            {
+                "schema_version": NARRATIVE_TARGETS_SCHEMA_VERSION,
+                "narrative_id": narrative_id,
+                "target_id": target_id,
+                "target_type": "cluster",
+                "target_key": cluster_uid,
+                "target_label": label,
+                "feature_state": "beta" if cluster.get("review_status") == "review_required" else "stable",
+                "cluster_uid": cluster_uid,
+                "cluster_id": str(cluster.get("cluster_id") or ""),
+                "level": str(cluster.get("cluster_level") or ""),
+                "doc_count": _coerce_int(cluster.get("doc_count")),
+                "keyword_count": len(keywords),
+                "evidence_count": len(all_refs),
+                "warning_flags": str(cluster.get("review_status") or ""),
+            }
+        )
+        ref_lookup = {str(row.get("evidence_ref_id")): row for row in all_refs if row.get("evidence_ref_id")}
+        for ref_id, ref in ref_lookup.items():
+            source_role = str(ref.get("source_role") or "cluster_review_packet")
+            evidence_type = str(ref.get("evidence_type") or "metric")
+            evidence_rows.append(
+                {
+                    "schema_version": NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION,
+                    "narrative_id": narrative_id,
+                    "evidence_ref_id": ref_id,
+                    "evidence_source_id": _narrative_source_id(source_role),
+                    "evidence_type": "relation" if evidence_type == "cooccurrence" else evidence_type,
+                    "entity_type": "cluster",
+                    "entity_key": cluster_uid,
+                    "locator_type": "aggregate" if bool(ref.get("aggregate_only", True)) else "entity_key",
+                    "locator": str(ref.get("entity_key") or ref.get("evidence_label") or ref_id),
+                    "evidence_label": str(ref.get("evidence_label") or ref_id),
+                    "support_count": None,
+                    "cluster_uid": cluster_uid,
+                    "aggregate_only": bool(ref.get("aggregate_only", True)),
+                    "warning_flags": "",
+                }
+            )
+
+        def add_claim(section_type: str, title: str, claim_type: str, text: str, ref_ids: list[str], *, state: str, confidence: float, role: str = "primary", flags: str = "") -> None:
+            if not ref_ids and state == "supported":
+                return
+            section_id = _safe_id(f"{target_id}_{section_type}", fallback=f"{target_id}_section")
+            claim_id = _safe_id(f"{target_id}_{claim_type}_{len(claim_rows) + 1}", fallback=f"claim_{len(claim_rows) + 1}")
+            claim_rows.append(
+                _narrative_claim_row(
+                    narrative_id=narrative_id,
+                    claim_id=claim_id,
+                    target_id=target_id,
+                    section_id=section_id,
+                    claim_type=claim_type,
+                    claim_text=text,
+                    support_state=state,
+                    confidence=confidence,
+                    evidence_ref_ids=ref_ids,
+                    sort_order=len(claim_rows) + 1,
+                    warning_flags=flags,
+                )
+            )
+            for link_index, ref_id in enumerate(ref_ids, start=1):
+                link_rows.append(
+                    {
+                        "schema_version": NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION,
+                        "narrative_id": narrative_id,
+                        "claim_id": claim_id,
+                        "evidence_ref_id": ref_id,
+                        "evidence_role": role,
+                        "link_strength": max(0.0, min(1.0, confidence)),
+                        "required": role in {"primary", "caveat"},
+                        "sort_order": link_index,
+                        "link_reason": claim_type,
+                    }
+                )
+            section = next((row for row in section_rows if row["section_id"] == section_id), None)
+            if section is None:
+                section_rows.append(
+                    {
+                        "schema_version": NARRATIVE_SECTIONS_SCHEMA_VERSION,
+                        "narrative_id": narrative_id,
+                        "section_id": section_id,
+                        "target_id": target_id,
+                        "section_type": section_type,
+                        "section_title": title,
+                        "section_state": "beta" if state == "weak" else "stable",
+                        "claim_count": 1,
+                        "sort_order": len(section_rows) + 1,
+                        "artifact_refs": "cluster_review_packet",
+                        "warning_flags": flags,
+                    }
+                )
+            else:
+                section["claim_count"] = int(section.get("claim_count") or 0) + 1
+                if state == "weak":
+                    section["section_state"] = "beta"
+
+        term_refs = [str(row.get("evidence_ref_id")) for row in keywords[: max(1, int(max_terms_per_claim))] if row.get("evidence_ref_id")]
+        term_labels = [str(row.get("term") or "") for row in keywords[: max(1, int(max_terms_per_claim))] if row.get("term")]
+        if term_refs:
+            add_claim("identity", "Identity", "identity", f"{label} is represented by top terms: {', '.join(term_labels)}.", term_refs, state="weak", confidence=0.65, flags="aggregate_only")
+            add_claim("meaning", "Meaning", "keyword_meaning", f"Representative keyword evidence for {label} includes {', '.join(term_labels)}.", term_refs, state="weak", confidence=0.6, role="supporting", flags="aggregate_only")
+        work_refs = [str(row.get("evidence_ref_id")) for row in works[: max(1, int(max_works_per_claim))] if row.get("evidence_ref_id")]
+        work_labels = [str(row.get("title") or row.get("uid") or "") for row in works[: max(1, int(max_works_per_claim))] if row.get("title") or row.get("uid")]
+        if work_refs:
+            add_claim("works", "Representative Works", "representative_work", f"Representative works for {label} include {', '.join(work_labels)}.", work_refs, state="supported", confidence=0.82)
+        relation_refs = [str(row.get("evidence_ref_id")) for row in relations[: max(1, int(max_relations_per_claim))] if row.get("evidence_ref_id")]
+        relation_labels = [f"{row.get('source')} - {row.get('target')}" for row in relations[: max(1, int(max_relations_per_claim))]]
+        if relation_refs:
+            add_claim("relations", "Relations", "relation", f"Term co-occurrence evidence for {label} includes {', '.join(relation_labels)}.", relation_refs, state="weak", confidence=0.55, role="supporting", flags="aggregate_only")
+        caveat_refs = [str(row.get("evidence_ref_id")) for row in caveats if row.get("evidence_ref_id")]
+        if caveat_refs:
+            add_claim("limitations", "Limitations", "quality_caveat", f"{label} has quality caveats that should be reviewed before narrative use.", caveat_refs, state="caveat", confidence=0.9, role="caveat")
+        if cluster.get("review_status") == "review_required" or not cluster.get("narrative_ready"):
+            fallback_refs = caveat_refs or term_refs[:1] or list(ref_lookup.keys())[:1]
+            add_claim("limitations", "Limitations", "limitation", f"{label} requires review before it can be treated as a complete narrative.", fallback_refs, state="caveat", confidence=0.75, role="caveat", flags=str(cluster.get("review_status") or "review_required"))
+
+    tables = {
+        "targets": pd.DataFrame(target_rows) if target_rows else _narrative_empty_frame(REQUIRED_NARRATIVE_TARGET_COLUMNS),
+        "claims": pd.DataFrame(claim_rows) if claim_rows else _narrative_empty_frame(REQUIRED_NARRATIVE_CLAIM_COLUMNS),
+        "evidence_sources": pd.DataFrame(source_rows) if source_rows else _narrative_empty_frame(REQUIRED_NARRATIVE_EVIDENCE_SOURCE_COLUMNS),
+        "evidence_refs": pd.DataFrame(evidence_rows) if evidence_rows else _narrative_empty_frame(REQUIRED_NARRATIVE_EVIDENCE_REF_COLUMNS),
+        "claim_evidence_links": pd.DataFrame(link_rows) if link_rows else _narrative_empty_frame(REQUIRED_NARRATIVE_CLAIM_LINK_COLUMNS),
+        "sections": pd.DataFrame(section_rows) if section_rows else _narrative_empty_frame(REQUIRED_NARRATIVE_SECTION_COLUMNS),
+    }
+    for key, df in tables.items():
+        table_path = target_dir / outputs[key]
+        table_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(table_path, index=False)
+
+    manifest = {
+        "schema_version": NARRATIVE_MANIFEST_SCHEMA_VERSION,
+        "narrative_id": narrative_id,
+        "title": "Cluster narrative evidence references",
+        "result_id": None,
+        "narrative_scope": {"target_types": ["cluster"], "cluster_level": "mixed", "max_targets": int(max_targets), "source_packet": packet_rel},
+        "claim_policy": {
+            "allowed_claim_types": ["identity", "keyword_meaning", "representative_work", "relation", "quality_caveat", "limitation"],
+            "minimum_evidence_refs": 1,
+            "unsupported_claim_action": "block",
+            "contradiction_action": "block",
+            "weak_evidence_action": "mark_beta",
+        },
+        "evidence_policy": {"allowed_source_roles": sorted(used_source_roles), "require_resolvable_refs": True, "allow_aggregate_only": True, "allow_quotes": False},
+        "text_policy": {"allowed_origins": ["deterministic_template", "human_review"], "llm_generation_allowed": False, "require_generation_metadata_when_model_generated": True},
+        "source_artifacts": [
+            {"role": "cluster_review_packet", "path": packet_rel, "required": True},
+            *[dict(row) for row in packet.get("source_artifacts") or [] if isinstance(row, Mapping)],
+        ],
+        "rule_sets": [],
+        "transforms": [
+            {"step": "load_cluster_review_packet"},
+            {"step": "collect_narrative_targets"},
+            {"step": "collect_evidence_refs"},
+            {"step": "build_deterministic_claim_scaffold"},
+            {"step": "link_claim_evidence"},
+            {"step": "validate_claim_support"},
+        ],
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": warnings,
+    }
+    manifest_path = target_dir / "narrative_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_narrative_artifact(manifest_path)
+    qa = {
+        "schema_version": NARRATIVE_QA_SCHEMA_VERSION,
+        "narrative_id": narrative_id,
+        "status": validation.status,
+        "checks": validation.checks,
+        "counts": validation.counts,
+        "claim_counts": validation.claim_counts,
+        "unsupported_claims": [],
+        "warnings": validation.warnings,
+        "blocking_issues": validation.blocking_issues,
+        "feature_state": validation.feature_state,
+        "created_at_utc": _utc_now(),
+    }
+    qa_path = target_dir / outputs["qa"]
+    qa_path.write_text(json.dumps(qa, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_narrative_artifact(manifest_path)
+    return {
+        "schema_version": NARRATIVE_MANIFEST_SCHEMA_VERSION,
+        "narrative_id": narrative_id,
+        "manifest_path": manifest_path,
+        "qa_path": qa_path,
+        "validation": validation.to_dict(),
+        "counts": validation.counts,
+        "feature_state": validation.feature_state,
+    }
 
 
 def _matrix_issue(
@@ -9074,6 +9827,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "export_summaries": [],
         "edge_evidence_artifacts": [_rel(path, root) for path in artifacts.edge_evidence_paths],
         "evolution_artifacts": [_rel(path, root) for path in artifacts.evolution_paths],
+        "narrative_manifest_artifacts": [_rel(path, root) for path in artifacts.narrative_manifest_paths],
+        "narrative_summaries": [],
         "narrative_artifacts": [_rel(path, root) for path in artifacts.narrative_paths],
         "review_packet_artifacts": [_rel(path, root) for path in artifacts.review_packet_paths],
         "review_packet_summaries": [],
@@ -9409,6 +10164,60 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
             )
 
+    narrative_artifacts = 0
+    stable_narrative_artifacts = 0
+    narrative_targets = 0
+    narrative_claims = 0
+    narrative_evidence_refs = 0
+    narrative_aggregate_only_refs = 0
+    for manifest_path in artifacts.narrative_manifest_paths:
+        narrative_validation = validate_narrative_artifact(manifest_path)
+        narrative_payload = narrative_validation.to_dict()
+        artifact_info["narrative_summaries"].append(
+            {
+                "narrative_id": narrative_payload.get("narrative_id"),
+                "status": narrative_payload.get("status"),
+                "feature_state": narrative_payload.get("feature_state"),
+                "path": _rel(manifest_path, root),
+                "counts": narrative_payload.get("counts", {}),
+                "claim_counts": narrative_payload.get("claim_counts", {}),
+            }
+        )
+        narrative_artifacts += 1
+        narrative_targets += int(narrative_validation.counts.get("targets", 0))
+        narrative_claims += int(narrative_validation.counts.get("claims", 0))
+        narrative_evidence_refs += int(narrative_validation.counts.get("evidence_refs", 0))
+        narrative_aggregate_only_refs += int(narrative_validation.counts.get("aggregate_only_refs", 0))
+        if narrative_validation.status == "passed":
+            stable_narrative_artifacts += 1
+        elif narrative_validation.status == "warning":
+            issues.append(
+                ArtifactIssue(
+                    "narrative_artifact_warning_state",
+                    "warning",
+                    "Narrative artifact is available but should be treated as beta.",
+                    "narrative",
+                )
+            )
+        for issue in narrative_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "narrative_artifact_blocked"),
+                    "error",
+                    str(issue.get("message") or "Narrative artifact validation failed."),
+                    "narrative",
+                )
+            )
+        for warning in narrative_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "narrative_artifact_warning"),
+                    "warning",
+                    str(warning.get("message") or "Narrative artifact has validation warnings."),
+                    "narrative",
+                )
+            )
+
     review_packet_artifacts = 0
     stable_review_packet_artifacts = 0
     review_packet_clusters = 0
@@ -9472,6 +10281,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
             artifacts.temporal_manifest_paths,
             artifacts.evolution_manifest_paths,
             artifacts.export_manifest_paths,
+            artifacts.narrative_manifest_paths,
             artifacts.review_packet_paths,
         ]
     ):
@@ -9527,7 +10337,13 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "evolution_lineages": int(evolution_lineages),
         "evolution_event_rows": int(evolution_event_rows),
         "legacy_evolution_artifacts": len(artifacts.evolution_paths),
-        "narrative_artifacts": len(artifacts.narrative_paths),
+        "narrative_artifacts": int(narrative_artifacts + len(artifacts.narrative_paths)),
+        "stable_narrative_artifacts": int(stable_narrative_artifacts),
+        "legacy_narrative_artifacts": len(artifacts.narrative_paths),
+        "narrative_targets": int(narrative_targets),
+        "narrative_claims": int(narrative_claims),
+        "narrative_evidence_refs": int(narrative_evidence_refs),
+        "narrative_aggregate_only_refs": int(narrative_aggregate_only_refs),
         "export_artifacts": int(export_artifacts),
         "stable_export_artifacts": int(stable_export_artifacts),
         "export_file_rows": int(export_file_rows),
@@ -9555,7 +10371,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
     has_pubyear = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
     features["temporal"] = bool(temporal_artifacts or has_pubyear)
     features["evolution"] = bool(evolution_artifacts or artifacts.evolution_paths) or report_has_evolution
-    features["narrative"] = bool(artifacts.narrative_paths) or report_has_narrative
+    features["narrative"] = bool(narrative_artifacts or artifacts.narrative_paths) or report_has_narrative
     features["quality"] = True
     features["export"] = any(
         [
@@ -9940,6 +10756,36 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
         key = "evolution" if "evolution" not in records else f"evolution_legacy_{i}"
         records[key] = _artifact_record(root=root, role="evolution", path=rel_path, required_for=["evolution"])
 
+    for i, rel_path in enumerate(artifact_info.get("narrative_manifest_artifacts", []), start=1):
+        key = "narrative" if "narrative" not in records else f"narrative_{i}"
+        suffix = 2
+        while key in records:
+            key = f"narrative_{suffix}"
+            suffix += 1
+        records[key] = _artifact_record(
+            root=root,
+            role="narrative",
+            path=rel_path,
+            required_for=["narrative"],
+            schema_version=NARRATIVE_MANIFEST_SCHEMA_VERSION,
+            description="Evidence-backed narrative claim graph manifest.",
+        )
+        qa_path = Path(str(rel_path)).parent / "narrative_qa.json"
+        if (root / qa_path).exists():
+            qa_key = "narrative_qa" if "narrative_qa" not in records else f"narrative_qa_{i}"
+            qa_suffix = 2
+            while qa_key in records:
+                qa_key = f"narrative_qa_{qa_suffix}"
+                qa_suffix += 1
+            records[qa_key] = _artifact_record(
+                root=root,
+                role="qa",
+                path=qa_path.as_posix(),
+                required_for=["quality"],
+                schema_version=NARRATIVE_QA_SCHEMA_VERSION,
+                description="Narrative claim graph QA report.",
+            )
+
     for i, rel_path in enumerate(artifact_info.get("export_manifest_artifacts", []), start=1):
         key = "export" if "export" not in records else f"export_{i}"
         suffix = 2
@@ -9956,7 +10802,7 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
         )
 
     for i, rel_path in enumerate(artifact_info.get("narrative_artifacts", []), start=1):
-        key = "narrative" if i == 1 else f"narrative_{i}"
+        key = "narrative" if "narrative" not in records and i == 1 else f"narrative_legacy_{i}"
         records[key] = _artifact_record(root=root, role="narrative", path=rel_path, required_for=["narrative"])
 
     for key, role, rel_path, description in _run_metadata_artifact_candidates(root, landscape_dir):
@@ -10040,6 +10886,15 @@ def _has_evolution_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     )
 
 
+def _has_narrative_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
+    return any(
+        record.get("role") == "narrative"
+        and record.get("status") == "present"
+        and record.get("schema_version") == NARRATIVE_MANIFEST_SCHEMA_VERSION
+        for record in artifacts.values()
+    )
+
+
 def _has_export_manifest_artifact(artifacts: Mapping[str, Mapping[str, Any]]) -> bool:
     return any(
         record.get("role") == "export"
@@ -10068,6 +10923,8 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
         return "pubyear exists but no temporal artifact has been written yet"
     if feature == "evolution" and not _has_evolution_artifact(artifacts):
         return "legacy/report evolution payload exists but stable evolution artifact has not been written yet"
+    if feature == "narrative" and not _has_narrative_artifact(artifacts):
+        return "legacy/report narrative payload exists but stable narrative claim graph has not been written yet"
     if feature == "export" and not _has_export_manifest_artifact(artifacts):
         return "legacy report/viewer export files are available but no stable export manifest has been written yet"
     if state == "beta":
@@ -10098,6 +10955,8 @@ def _feature_exposures(
         elif feature == "temporal" and not _has_temporal_artifact(artifacts):
             state = "beta"
         elif feature == "evolution" and not _has_evolution_artifact(artifacts):
+            state = "beta"
+        elif feature == "narrative" and not _has_narrative_artifact(artifacts):
             state = "beta"
         elif feature == "export" and not _has_export_manifest_artifact(artifacts):
             state = "beta"
@@ -10377,6 +11236,10 @@ def _manifest_quality(validation: ArtifactValidationResult) -> dict[str, Any]:
             gate_paths.append(qa_path.as_posix())
     for rel_path in validation.artifacts.get("review_packet_artifacts", []):
         qa_path = Path(str(rel_path)).parent / "cluster_review_packet_qa.json"
+        if (root / qa_path).exists():
+            gate_paths.append(qa_path.as_posix())
+    for rel_path in validation.artifacts.get("narrative_manifest_artifacts", []):
+        qa_path = Path(str(rel_path)).parent / "narrative_qa.json"
         if (root / qa_path).exists():
             gate_paths.append(qa_path.as_posix())
     blocking_count = sum(1 for warning in validation.warnings if warning.get("severity") in {"error", "blocking"})
@@ -11528,6 +12391,15 @@ __all__ = [
     "MATRIX_MANIFEST_SCHEMA_VERSION",
     "MATRIX_QA_SCHEMA_VERSION",
     "MATRIX_VALUES_SCHEMA_VERSION",
+    "NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION",
+    "NARRATIVE_CLAIMS_SCHEMA_VERSION",
+    "NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION",
+    "NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION",
+    "NARRATIVE_MANIFEST_SCHEMA_VERSION",
+    "NARRATIVE_QA_SCHEMA_VERSION",
+    "NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION",
+    "NARRATIVE_SECTIONS_SCHEMA_VERSION",
+    "NARRATIVE_TARGETS_SCHEMA_VERSION",
     "REPORT_DATA_CONTRACT_SCHEMA_VERSION",
     "RESULT_MANIFEST_SCHEMA_VERSION",
     "RESULT_MANIFEST_FEATURE_KEYS",
@@ -11548,6 +12420,7 @@ __all__ = [
     "FeatureExposure",
     "KeywordRuleValidationResult",
     "MatrixArtifactValidationResult",
+    "NarrativeArtifactValidationResult",
     "ResultManifest",
     "ResultArtifacts",
     "RunState",
@@ -11570,6 +12443,7 @@ __all__ = [
     "validate_keyword_rule_artifact",
     "validate_cluster_review_packet_artifact",
     "validate_matrix_artifact",
+    "validate_narrative_artifact",
     "validate_evolution_artifact",
     "validate_export_manifest",
     "validate_result_root",
@@ -11577,6 +12451,7 @@ __all__ = [
     "validate_workspace",
     "write_edge_evidence_samples",
     "write_cluster_review_packet_artifact",
+    "write_narrative_evidence_artifacts",
     "write_cooccurrence_artifacts",
     "write_keyword_rule_artifacts",
     "write_matrix_artifact",

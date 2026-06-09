@@ -575,15 +575,17 @@ rewriting narrative text.
 
 0. `[x]` Add a deterministic cluster review packet writer and validator as the
    evidence packet feeding future narrative artifacts.
-1. Add schema constants and dataclasses for narrative manifests, targets,
+1. `[x]` Add schema constants and dataclasses for narrative manifests, targets,
    claims, evidence refs, links, sections, review decisions, and QA.
-2. Add `validate_narrative_artifact`.
-3. Add a tiny deterministic narrative evidence smoke fixture.
-4. Add `write_narrative_evidence_artifacts` for claim scaffolds.
-5. Extend `validate_result_root` to identify narrative manifests and expose
+2. `[x]` Add `validate_narrative_artifact`.
+3. `[x]` Add a tiny deterministic narrative evidence smoke fixture.
+4. `[x]` Add `write_narrative_evidence_artifacts` for claim scaffolds.
+5. `[x]` Extend `validate_result_root` to identify narrative manifests and expose
    stable/beta/blocked narrative states.
-6. Add a quality-gate flag that rejects unsupported normal claims.
-7. Only then add narrative review UI or optional generation hooks.
+6. `[~]` Add a quality-gate flag that rejects unsupported normal claims.
+   Result-root validation now blocks unsupported normal claims; a dedicated CLI
+   flag can still make this explicit in release checks.
+7. `[ ]` Only then add narrative review UI or optional generation hooks.
 
 ## Acceptance Criteria
 

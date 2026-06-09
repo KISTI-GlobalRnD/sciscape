@@ -23,6 +23,9 @@ from sciscape.artifacts import (
     MATRIX_MANIFEST_SCHEMA_VERSION,
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
+    NARRATIVE_CLAIMS_SCHEMA_VERSION,
+    NARRATIVE_MANIFEST_SCHEMA_VERSION,
+    NARRATIVE_QA_SCHEMA_VERSION,
     RESULT_MANIFEST_SCHEMA_VERSION,
     TEMPORAL_ACTIVITY_SCHEMA_VERSION,
     TEMPORAL_MANIFEST_SCHEMA_VERSION,
@@ -42,6 +45,7 @@ from sciscape.artifacts import (
     validate_export_manifest,
     validate_keyword_rule_artifact,
     validate_matrix_artifact,
+    validate_narrative_artifact,
     validate_result_root,
     validate_temporal_artifact,
     validate_workspace,
@@ -53,6 +57,7 @@ from sciscape.artifacts import (
     write_keyword_rule_artifacts,
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
+    write_narrative_evidence_artifacts,
     write_temporal_artifacts,
     write_artifact_contract,
     write_cluster_review_packet_artifact,
@@ -544,6 +549,68 @@ def test_validate_cluster_review_packet_blocks_unresolved_evidence_refs(tmp_path
     assert validation["status"] == "blocked"
     assert validation["checks"]["evidence_refs_resolvable"]["status"] == "blocked"
     assert any(issue["code"] == "unresolved_review_evidence_refs" for issue in validation["blocking_issues"])
+
+
+def test_write_narrative_evidence_artifacts_creates_claim_graph_from_review_packet(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+
+    written = write_narrative_evidence_artifacts(root)
+
+    assert written is not None
+    manifest_path = root / "narrative" / "narrative_manifest.json"
+    qa_path = root / "narrative" / "narrative_qa.json"
+    assert written["manifest_path"] == manifest_path
+    assert written["qa_path"] == qa_path
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == NARRATIVE_MANIFEST_SCHEMA_VERSION
+    assert manifest["text_policy"]["llm_generation_allowed"] is False
+    qa = json.loads(qa_path.read_text(encoding="utf-8"))
+    assert qa["schema_version"] == NARRATIVE_QA_SCHEMA_VERSION
+    assert qa["feature_state"] == "beta"
+
+    claims = pd.read_parquet(root / "narrative" / "claims.parquet")
+    links = pd.read_parquet(root / "narrative" / "claim_evidence_links.parquet")
+    refs = pd.read_parquet(root / "narrative" / "evidence_refs.parquet")
+    assert set(claims["schema_version"]) == {NARRATIVE_CLAIMS_SCHEMA_VERSION}
+    assert {"identity", "keyword_meaning", "representative_work", "relation"}.issubset(set(claims["claim_type"]))
+    assert claims["evidence_ref_count"].min() >= 1
+    assert set(links["claim_id"]) <= set(claims["claim_id"])
+    assert set(links["evidence_ref_id"]) <= set(refs["evidence_ref_id"])
+
+    validation = validate_narrative_artifact(manifest_path).to_dict()
+    assert validation["status"] == "warning"
+    assert validation["feature_state"] == "beta"
+    assert validation["checks"]["refs_resolvable"]["status"] == "passed"
+    assert validation["counts"]["targets"] == 2
+    assert validation["counts"]["aggregate_only_refs"] > 0
+
+    result_manifest = build_result_manifest(root).to_dict()
+    assert result_manifest["features"]["narrative"]["state"] == "beta"
+    assert "narrative" in result_manifest["features"]["narrative"]["artifact_refs"]
+    assert "narrative/narrative_qa.json" in result_manifest["quality"]["gate_paths"]
+
+
+def test_validate_narrative_artifact_blocks_unsupported_normal_claim(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    written = write_narrative_evidence_artifacts(root)
+    assert written is not None
+    claims_path = root / "narrative" / "claims.parquet"
+    claims = pd.read_parquet(claims_path)
+    claims.loc[0, "support_state"] = "unsupported"
+    claims.loc[0, "claim_type"] = "identity"
+    claims.to_parquet(claims_path, index=False)
+
+    validation = validate_narrative_artifact(root).to_dict()
+
+    assert validation["status"] == "blocked"
+    assert any(issue["code"] == "narrative_unsupported_normal_claims" for issue in validation["blocking_issues"])
+    contract = validate_result_root(root).to_dict()
+    assert contract["result_state"] == "blocked"
+    assert any(warning["code"] == "narrative_unsupported_normal_claims" for warning in contract["warnings"])
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):
