@@ -43,16 +43,16 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 65% | `/api/query`, job status, SSE, OpenAlex pipeline output | cancellation, retry policy, partial artifact recovery UI |
+| F04 | Live query and job execution | `[~]` | 67% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output | cancellation, retry policy, partial artifact recovery UI |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 80% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
-| F09 | Atlas map, evidence, cluster reading | `[~]` | 92% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
+| F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
-| F12 | Evidence-backed narratives | `[~]` | 29% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator | claim graph writer, validator, review UI, and optional generator |
-| F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
+| F12 | Evidence-backed narratives | `[~]` | 43% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure | review UI and optional generator |
+| F13 | Validation and QA | `[x]` | 85% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | matrix builder export adapter |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
@@ -232,6 +232,12 @@ Status: `[~]` Partial. Rough completeness: 91%.
 - `[x]` Cluster detail and atlas-related web endpoints exist.
 - `[x]` `/api/jobs/{job_id}/atlas-render` exposes renderer-oriented layer rows
   for deck.gl-style Atlas map engines.
+- `[x]` `/api/jobs/{job_id}/features` and `/api/jobs/{job_id}/readiness` expose
+  job-scoped feature states, artifact references, quality counts, and module
+  readiness for Atlas-style capability gating.
+- `[x]` `/api/jobs/{job_id}/atlas-render/summary` and
+  `/api/jobs/{job_id}/atlas-render/layers/{layer_key}` split renderer metadata
+  from layer row hydration while preserving the legacy full payload endpoint.
 - `[x]` A validated-payload evidence inspector contract is defined in
   `atlas_evidence_inspector_design.md`.
 - `[x]` The web inspector builds a client-side
@@ -348,7 +354,7 @@ membership projection.
 
 ### F12. Evidence-Backed Narratives
 
-Status: `[~]` Partial. Rough completeness: 29%.
+Status: `[~]` Partial. Rough completeness: 43%.
 
 - `[~]` Narrative is named in the feature definition and artifact feature
   inference can detect narrative-like payloads.
@@ -357,13 +363,21 @@ Status: `[~]` Partial. Rough completeness: 29%.
 - `[x]` Cluster review packet writer/validator creates a deterministic,
   evidence-ref-checked packet for label, keyword, representative-work,
   co-occurrence, and QA caveat review.
-- `[ ]` There is no stable narrative claim graph writer.
-- `[ ]` There is no narrative claim graph validator or QA gate.
+- `[x]` Deterministic narrative claim graph scaffolds can be written from a
+  validated cluster review packet without LLM generation.
+- `[x]` Narrative claim graph validation checks targets, sections, evidence
+  sources, evidence refs, claim links, unsupported normal claims, model-generated
+  metadata, and source artifact paths.
+- `[x]` Result-root validation exposes narrative claim graphs as stable, beta, or
+  blocked from artifacts alone; aggregate-only deterministic scaffolds remain
+  beta.
 - `[ ]` There is no stable narrative generation pipeline.
 - `[ ]` There is no final app surface for cluster narrative review.
 
-Review: the evidence-reference contract now exists, but narrative should remain
-hidden or beta until writer, validator, QA gate, and review UI exist.
+Review: the evidence-reference contract now has a deterministic writer and
+validator, so narrative can be treated as an artifact-backed beta surface. It
+should remain hidden or beta in the UI until the review workflow and any
+generation hooks preserve evidence refs and write review/generation metadata.
 
 ### F13. Validation And QA
 
