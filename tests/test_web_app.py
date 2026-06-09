@@ -322,6 +322,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "setAtlasDeckLabelLimit" in response.text
     assert "loadAtlasDeckRender" in response.text
     assert "/atlas-render" in response.text
+    assert "/atlas-render/summary" in response.text
+    assert "/atlas-render/layers/" in response.text
     assert "new deck.ScatterplotLayer" in response.text
     assert "new deck.LineLayer" in response.text
     assert "new deck.TextLayer" in response.text
@@ -414,6 +416,12 @@ def test_atlas_deck_edge_handlers_prioritize_relation_rows():
 
     hover = text[text.index("function atlasDeckHover") : text.index("function renderAtlasDeckLegend")]
     assert hover.index("object.source_uid && object.target_uid") < hover.index("object.cluster_uid || object.id")
+
+
+def test_safe_json_response_sanitizes_non_finite_values():
+    payload = json.loads(web_app.SafeJSONResponse({"x": float("nan"), "items": [float("inf")]}).body)
+
+    assert payload == {"x": None, "items": [None]}
 
 
 def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
@@ -895,6 +903,23 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     ]
     assert job_payload["result"]["atlas_report_rel_path"] == "landscape/report/data.json"
 
+    features_response = client.get(f"/api/jobs/{job_id}/features")
+    assert features_response.status_code == 200
+    features_payload = features_response.json()
+    assert features_payload["schema_version"] == "sciscape_job_features_v1"
+    assert features_payload["readiness"] == "ready"
+    assert features_payload["api_profile"] == "job_result"
+    assert features_payload["features"]["keyword"] is True
+    assert features_payload["feature_states"]["keyword"] == "stable"
+    assert features_payload["modules"]["keyword"]["ready"] is True
+    assert "keywords" in features_payload["modules"]["keyword"]["artifact_refs"]
+    assert features_payload["quality"]["validation_state"] == "passed_with_warnings"
+    assert features_payload["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
+
+    readiness_response = client.get(f"/api/jobs/{job_id}/readiness")
+    assert readiness_response.status_code == 200
+    assert readiness_response.json()["schema_version"] == "sciscape_job_features_v1"
+
     render_response = client.get(f"/api/jobs/{job_id}/atlas-render")
     assert render_response.status_code == 200
     render_payload = render_response.json()
@@ -902,6 +927,27 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert render_payload["view"]["type"] == "OrthographicView"
     assert render_payload["layers"]["nodes"]["recommended_deck_layer"] == "ScatterplotLayer"
     assert render_payload["layers"]["labels"]["rows"][0]["text"] == "perovskite"
+
+    render_summary_response = client.get(f"/api/jobs/{job_id}/atlas-render/summary")
+    assert render_summary_response.status_code == 200
+    render_summary = render_summary_response.json()
+    assert render_summary["schema_version"] == "sciscape_atlas_render_summary_v1"
+    assert render_summary["source_schema_version"] == "sciscape_atlas_render_payload_v1"
+    assert render_summary["node_count"] == 1
+    assert render_summary["layer_summaries"]["nodes"]["row_count"] == 1
+    assert render_summary["layer_summaries"]["labels"]["recommended_deck_layer"] == "TextLayer"
+
+    render_layer_response = client.get(f"/api/jobs/{job_id}/atlas-render/layers/nodes")
+    assert render_layer_response.status_code == 200
+    render_layer = render_layer_response.json()
+    assert render_layer["schema_version"] == "sciscape_atlas_render_layer_response_v1"
+    assert render_layer["layer_key"] == "nodes"
+    assert render_layer["row_count"] == 1
+    assert render_layer["layer"]["rows"][0]["cluster_uid"] == "cluster:0"
+
+    missing_layer_response = client.get(f"/api/jobs/{job_id}/atlas-render/layers/missing")
+    assert missing_layer_response.status_code == 200
+    assert missing_layer_response.json()["available_layers"] == ["edges", "hierarchy", "labels", "nodes"]
 
     evolution_response = client.get(f"/api/jobs/{job_id}/evolution")
     assert evolution_response.status_code == 200

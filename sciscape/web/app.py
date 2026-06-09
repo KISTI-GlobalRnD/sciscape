@@ -11,13 +11,15 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
@@ -35,7 +37,29 @@ from sciscape.artifacts import (
 
 log = logging.getLogger(__name__)
 
-app = FastAPI(title="SciScape", version="0.2.0")
+
+class SafeJSONResponse(JSONResponse):
+    """Emit strict JSON while sanitizing non-finite values on the slow path."""
+
+    def render(self, content: Any) -> bytes:
+        try:
+            return json.dumps(
+                content,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        except ValueError:
+            return json.dumps(
+                _json_safe(content),
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+
+
+app = FastAPI(title="SciScape", version="0.2.0", default_response_class=SafeJSONResponse)
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # Serve static files (frontend)
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -131,6 +155,21 @@ async def get_job(job_id: str):
     )
 
 
+@app.get("/api/jobs/{job_id}/features")
+async def get_job_features(job_id: str):
+    """Get job-scoped capability, feature-state, and artifact readiness flags."""
+    job = _jobs.get(job_id)
+    if not job:
+        return {"error": "job not found"}
+    return _job_feature_payload(job_id, job)
+
+
+@app.get("/api/jobs/{job_id}/readiness")
+async def get_job_readiness(job_id: str):
+    """Alias for the job capability map, named for Atlas-style runtime checks."""
+    return await get_job_features(job_id)
+
+
 @app.get("/api/jobs/{job_id}/stream")
 async def stream_progress(job_id: str):
     """SSE stream of job progress updates."""
@@ -203,6 +242,123 @@ def _refresh_job_result_manifest(job_id: str, result: dict[str, Any], output_dir
         _jobs.persist(job_id)
 
 
+def _manifest_for_result(result: dict[str, Any]) -> dict[str, Any]:
+    manifest = result.get("result_manifest")
+    if isinstance(manifest, dict):
+        return manifest
+    output_dir = result.get("output_dir")
+    if output_dir:
+        try:
+            loaded = load_result_manifest(output_dir)
+            if isinstance(loaded, dict):
+                return loaded
+        except Exception:
+            return {}
+    return {}
+
+
+def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    manifest = _manifest_for_result(result)
+    feature_details = manifest.get("features") if isinstance(manifest.get("features"), dict) else {}
+    result_feature_states = result.get("feature_states") if isinstance(result.get("feature_states"), dict) else {}
+    feature_states: dict[str, str] = {
+        str(name): str(details.get("state", "hidden"))
+        for name, details in feature_details.items()
+        if isinstance(details, dict)
+    }
+    for name, state in result_feature_states.items():
+        feature_states.setdefault(str(name), str(state or "hidden"))
+
+    bool_features: dict[str, bool] = {
+        name: state not in {"hidden", "blocked", "false", "False"}
+        for name, state in feature_states.items()
+    }
+    for name, value in (result.get("features") if isinstance(result.get("features"), dict) else {}).items():
+        bool_features.setdefault(str(name), bool(value))
+
+    artifact_contract = result.get("artifact_contract") if isinstance(result.get("artifact_contract"), dict) else {}
+    quality = manifest.get("quality") if isinstance(manifest.get("quality"), dict) else {}
+    artifacts = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
+    artifact_summaries = {
+        str(key): {
+            field: record.get(field)
+            for field in ("role", "path", "status", "schema_version", "rows", "size_bytes")
+            if isinstance(record, dict) and field in record
+        }
+        for key, record in artifacts.items()
+        if isinstance(record, dict)
+    }
+    warnings = (
+        artifact_contract.get("warnings")
+        if isinstance(artifact_contract.get("warnings"), list)
+        else []
+    )
+    blocking_issues = [
+        warning
+        for warning in warnings
+        if isinstance(warning, dict) and warning.get("severity") in {"error", "blocking"}
+    ]
+    modules: dict[str, dict[str, Any]] = {}
+    for feature, state in sorted(feature_states.items()):
+        details = feature_details.get(feature) if isinstance(feature_details.get(feature), dict) else {}
+        feature_warnings = details.get("warnings") if isinstance(details.get("warnings"), list) else []
+        modules[feature] = {
+            "state": state,
+            "ready": state in {"stable", "beta"},
+            "reason": details.get("reason"),
+            "artifact_refs": details.get("artifact_refs") if isinstance(details.get("artifact_refs"), list) else [],
+            "warning_count": len(feature_warnings),
+            "required_for_profile": feature in {"overview", "cluster_map", "keyword", "quality"},
+        }
+
+    result_state = str(result.get("result_state") or artifact_contract.get("result_state") or "unknown")
+    if job.get("status") != "done":
+        readiness = "not_ready"
+    elif result_state == "blocked" or quality.get("validation_state") == "blocked" or blocking_issues:
+        readiness = "blocked"
+    elif any(state in {"stable", "beta"} for state in feature_states.values()):
+        readiness = "ready"
+    else:
+        readiness = "partial"
+
+    return _json_safe(
+        {
+            "schema_version": "sciscape_job_features_v1",
+            "job_id": job_id,
+            "job_status": job.get("status"),
+            "readiness": readiness,
+            "api_profile": "job_result",
+            "result_state": result_state,
+            "features": bool_features,
+            "feature_states": feature_states,
+            "feature_details": feature_details,
+            "modules": modules,
+            "hidden_features": sorted(
+                feature for feature, state in feature_states.items() if state == "hidden"
+            ),
+            "quality": {
+                "validation_state": quality.get("validation_state"),
+                "warning_count": quality.get("warning_count", len(warnings)),
+                "blocking_count": quality.get("blocking_count", len(blocking_issues)),
+                "gate_paths": quality.get("gate_paths", []),
+                "last_validated_at_utc": quality.get("last_validated_at_utc"),
+            },
+            "counts": artifact_contract.get("counts", {}),
+            "artifacts": artifact_summaries,
+            "artifact_count": len(artifact_summaries),
+            "warning_count": len(warnings),
+            "blocking_issue_count": len(blocking_issues),
+            "versions": {
+                "sciscape_version": manifest.get("sciscape_version"),
+                "result_manifest_schema": manifest.get("schema_version"),
+                "result_id": manifest.get("result_id"),
+                "updated_at_utc": manifest.get("updated_at_utc"),
+            },
+        }
+    )
+
+
 @app.get("/api/jobs/{job_id}/download/vosviewer-bundle.zip")
 async def download_vosviewer_bundle(job_id: str):
     """Build and download a zip bundle from manifest-backed VOSviewer exports."""
@@ -245,6 +401,73 @@ async def view_file(job_id: str, filename: str):
 @app.get("/api/jobs/{job_id}/atlas-render")
 async def get_atlas_render(job_id: str):
     """Get renderer-oriented Atlas layer rows for deck.gl-style map engines."""
+    return _atlas_render_payload_for_job(job_id)
+
+
+@app.get("/api/jobs/{job_id}/atlas-render/summary")
+async def get_atlas_render_summary(job_id: str):
+    """Get Atlas render metadata and layer row counts without full layer rows."""
+    payload = _atlas_render_payload_for_job(job_id)
+    if payload.get("error"):
+        return payload
+    layers = payload.get("layers") if isinstance(payload.get("layers"), dict) else {}
+    layer_summaries = {
+        str(key): {
+            "layer_id": layer.get("layer_id"),
+            "recommended_deck_layer": layer.get("recommended_deck_layer"),
+            "row_count": len(layer.get("rows") or []),
+        }
+        for key, layer in layers.items()
+        if isinstance(layer, dict)
+    }
+    return _json_safe(
+        {
+            "schema_version": "sciscape_atlas_render_summary_v1",
+            "source_schema_version": payload.get("schema_version"),
+            "semantic_schema_version": payload.get("source_schema_version"),
+            "job_id": job_id,
+            "engine_family": payload.get("engine_family"),
+            "view": payload.get("view"),
+            "levels": payload.get("levels", []),
+            "node_count": payload.get("node_count"),
+            "edge_count": payload.get("edge_count"),
+            "label_count": payload.get("label_count"),
+            "hierarchy_edge_count": payload.get("hierarchy_edge_count"),
+            "layer_summaries": layer_summaries,
+            "warnings": payload.get("warnings", []),
+        }
+    )
+
+
+@app.get("/api/jobs/{job_id}/atlas-render/layers/{layer_key}")
+async def get_atlas_render_layer(job_id: str, layer_key: str):
+    """Get one Atlas render layer row group for lazy map hydration."""
+    payload = _atlas_render_payload_for_job(job_id)
+    if payload.get("error"):
+        return payload
+    layers = payload.get("layers") if isinstance(payload.get("layers"), dict) else {}
+    layer = layers.get(layer_key)
+    if not isinstance(layer, dict):
+        return {
+            "error": f"atlas render layer not found: {layer_key}",
+            "available_layers": sorted(str(key) for key in layers),
+        }
+    return _json_safe(
+        {
+            "schema_version": "sciscape_atlas_render_layer_response_v1",
+            "source_schema_version": payload.get("schema_version"),
+            "job_id": job_id,
+            "layer_key": layer_key,
+            "view": payload.get("view"),
+            "levels": payload.get("levels", []),
+            "layer": layer,
+            "row_count": len(layer.get("rows") or []),
+            "warnings": payload.get("warnings", []),
+        }
+    )
+
+
+def _atlas_render_payload_for_job(job_id: str) -> dict[str, Any]:
     job = _jobs.get(job_id)
     if not job or job["status"] != "done":
         return {"error": "job not done"}
@@ -947,6 +1170,8 @@ def _atlas_render_payload_for_result(result: dict[str, Any]) -> dict[str, Any] |
 
 def _json_safe(value: Any) -> Any:
     """Convert pandas/numpy-ish values to strict JSON-friendly values."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
     try:
         import pandas as pd
 

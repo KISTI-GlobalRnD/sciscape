@@ -56,11 +56,24 @@ the full evidence surface into every layer row.
 
 ## Render Payload Contract
 
-Endpoint:
+Full payload endpoint:
 
 ```text
 GET /api/jobs/{job_id}/atlas-render
 ```
+
+Split payload endpoints:
+
+```text
+GET /api/jobs/{job_id}/atlas-render/summary
+GET /api/jobs/{job_id}/atlas-render/layers/{layer_key}
+```
+
+The full endpoint remains the backward-compatible contract for smoke tests and
+simple clients. The split endpoints are the Atlas App benchmark absorption path:
+the browser can first load view metadata and layer row counts, then hydrate only
+the layer groups it needs. The static web prototype now attempts the split
+contract first and falls back to the full endpoint if an older server is used.
 
 Top-level fields:
 
@@ -74,6 +87,24 @@ Top-level fields:
 | `layers` | Renderer layer row groups |
 | `node_count`, `edge_count`, `label_count` | Layer row counts |
 | `warnings` | Semantic and render warnings |
+
+Summary fields:
+
+| Field | Meaning |
+|---|---|
+| `schema_version` | `sciscape_atlas_render_summary_v1` |
+| `source_schema_version` | Render payload schema represented by this summary |
+| `semantic_schema_version` | Semantic Atlas payload schema when available |
+| `layer_summaries` | Layer id, recommended deck.gl layer, and row count by layer key |
+
+Layer response fields:
+
+| Field | Meaning |
+|---|---|
+| `schema_version` | `sciscape_atlas_render_layer_response_v1` |
+| `layer_key` | Requested layer key |
+| `layer` | One renderer layer group, including rows |
+| `row_count` | Number of rows in the layer |
 
 Layer groups:
 
@@ -112,6 +143,10 @@ Current implementation status:
 - Steps 1-4 are implemented for a tiny smoke surface.
 - The prototype is intentionally guarded: if deck.gl or `/atlas-render` is not
   available, the existing card-based Atlas view remains visible.
+- The web API uses gzip for large JSON responses and a strict JSON response
+  class that sanitizes non-finite values on the slow path.
+- The static prototype loads `/atlas-render/summary` plus layer endpoints first,
+  then falls back to the legacy full `/atlas-render` payload.
 - The static prototype includes layer visibility controls, edge-weight
   thresholding, label-density control, URL-state persistence, and selected-node
   view centering.

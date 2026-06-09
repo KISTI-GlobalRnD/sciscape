@@ -3235,13 +3235,46 @@ async function loadAtlasRenderPayload() {
   if (currentAtlasRenderPayload && currentAtlasRenderJobId === String(currentJobId || '')) {
     return currentAtlasRenderPayload;
   }
-  const response = await fetch('/api/jobs/' + currentJobId + '/atlas-render');
-  const payload = await response.json();
-  if (response.ok && !payload.error) {
+  const payload = await loadAtlasRenderPayloadSplit(String(currentJobId || ''));
+  if (payload && !payload.error) {
     currentAtlasRenderPayload = payload;
     currentAtlasRenderJobId = String(currentJobId || '');
   }
   return payload;
+}
+
+async function loadAtlasRenderPayloadSplit(jobId) {
+  try {
+    const summaryResponse = await fetch('/api/jobs/' + jobId + '/atlas-render/summary');
+    const summary = await summaryResponse.json();
+    if (!summaryResponse.ok || summary.error) throw new Error(summary.error || 'atlas render summary unavailable');
+    const layerKeys = Object.keys(summary.layer_summaries || {});
+    if (!layerKeys.length) throw new Error('atlas render summary has no layers');
+    const layerResponses = await Promise.all(layerKeys.map(async key => {
+      const response = await fetch('/api/jobs/' + jobId + '/atlas-render/layers/' + encodeURIComponent(key));
+      const payload = await response.json();
+      if (!response.ok || payload.error) throw new Error(payload.error || 'atlas render layer unavailable: ' + key);
+      return [key, payload.layer];
+    }));
+    const layers = {};
+    layerResponses.forEach(([key, layer]) => { layers[key] = layer; });
+    return {
+      schema_version: summary.source_schema_version || 'sciscape_atlas_render_payload_v1',
+      source_schema_version: summary.semantic_schema_version || null,
+      engine_family: summary.engine_family,
+      view: summary.view,
+      levels: summary.levels || [],
+      layers,
+      node_count: summary.node_count,
+      edge_count: summary.edge_count,
+      label_count: summary.label_count,
+      hierarchy_edge_count: summary.hierarchy_edge_count,
+      warnings: summary.warnings || []
+    };
+  } catch (_) {
+    const response = await fetch('/api/jobs/' + jobId + '/atlas-render');
+    return await response.json();
+  }
 }
 
 function renderAtlasDeckMap(payload, selected, levelNodes) {
