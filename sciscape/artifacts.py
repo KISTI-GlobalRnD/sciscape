@@ -2770,11 +2770,51 @@ def _cluster_review_packet_path(path: str | Path) -> Path:
         candidate = candidate.resolve()
     if candidate.is_file():
         return candidate
-    return candidate / "cluster_review_packet.json"
+    direct = candidate / "cluster_review_packet.json"
+    if direct.exists() or candidate.name == "review":
+        return direct
+    review_path = candidate / "review" / "cluster_review_packet.json"
+    if review_path.exists() or (candidate / "review").is_dir():
+        return review_path
+    return direct
 
 
 def _review_packet_qa_path(packet_path: Path) -> Path:
     return packet_path.parent / "cluster_review_packet_qa.json"
+
+
+def _review_packet_result_root(packet_path: Path) -> Path:
+    if packet_path.parent.name == "review":
+        return packet_path.parent.parent
+    return packet_path.parent
+
+
+def _review_packet_portable_rel(path: Path, *, result_root: Path, packet_path: Path) -> str:
+    rel = _rel(path, result_root)
+    if rel and not Path(rel).is_absolute():
+        return rel
+    try:
+        return path.relative_to(packet_path.parent).as_posix()
+    except ValueError:
+        return path.name
+
+
+def _review_packet_declared_qa_path(packet_path: Path, payload: Mapping[str, Any]) -> tuple[Path, str | None, bool]:
+    qa_ref = None
+    qa = payload.get("qa")
+    if isinstance(qa, Mapping):
+        raw = str(qa.get("path") or "").strip()
+        qa_ref = raw or None
+    if not qa_ref:
+        return _review_packet_qa_path(packet_path), None, False
+    ref_path = Path(qa_ref)
+    if ref_path.is_absolute():
+        return ref_path, qa_ref, True
+    result_root = _review_packet_result_root(packet_path)
+    result_relative = result_root / ref_path
+    if result_relative.exists():
+        return result_relative, qa_ref, False
+    return packet_path.parent / ref_path, qa_ref, False
 
 
 def _review_packet_source_artifacts(artifacts: ResultArtifacts) -> list[dict[str, Any]]:
@@ -3102,10 +3142,11 @@ def _cluster_review_packet_qa(packet: Mapping[str, Any], warnings: list[dict[str
             "total": counts["clusters"],
         },
     }
+    status = "warning" if warnings or any(check.get("status") != "passed" for check in checks.values()) else "passed"
     return {
         "schema_version": CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION,
         "packet_id": packet.get("packet_id"),
-        "status": "passed",
+        "status": status,
         "counts": counts,
         "checks": checks,
         "warnings": warnings,
@@ -3178,7 +3219,7 @@ def write_cluster_review_packet_artifact(
     }
     qa = _cluster_review_packet_qa(packet, warnings)
     packet["qa"] = {
-        "path": _rel(qa_path, artifacts.result_root),
+        "path": _review_packet_portable_rel(qa_path, result_root=artifacts.result_root, packet_path=packet_path),
         "status": qa["status"],
         "counts": qa["counts"],
     }
@@ -3326,8 +3367,102 @@ def validate_cluster_review_packet_artifact(path: str | Path) -> ClusterReviewPa
             _review_packet_issue("unresolved_review_evidence_refs", "blocking", f"{unresolved_refs} evidence rows do not resolve to cluster evidence_refs.", artifact="clusters")
         )
 
-    qa_path = _review_packet_qa_path(packet_path)
-    qa_rel = qa_path.name if qa_path.exists() else None
+    result_root = _review_packet_result_root(packet_path)
+    source_artifacts = payload.get("source_artifacts") if payload else None
+    source_count = 0
+    missing_sources = 0
+    absolute_source_paths = 0
+    outside_source_paths = 0
+    invalid_source_rows = 0
+    if payload:
+        if not isinstance(source_artifacts, list) or not source_artifacts:
+            warnings.append(
+                _review_packet_issue(
+                    "missing_review_packet_source_artifacts",
+                    "warning",
+                    "Cluster review packet should record source artifacts.",
+                    artifact="source_artifacts",
+                )
+            )
+        else:
+            source_count = len(source_artifacts)
+            root_resolved = result_root.resolve()
+            for source in source_artifacts:
+                if not isinstance(source, Mapping):
+                    invalid_source_rows += 1
+                    continue
+                raw_path = str(source.get("path") or "").strip()
+                if not raw_path:
+                    invalid_source_rows += 1
+                    continue
+                source_path = Path(raw_path)
+                if source_path.is_absolute():
+                    absolute_source_paths += 1
+                    continue
+                resolved = (result_root / source_path).resolve()
+                try:
+                    resolved.relative_to(root_resolved)
+                except ValueError:
+                    outside_source_paths += 1
+                    continue
+                if not resolved.exists():
+                    missing_sources += 1
+            if invalid_source_rows:
+                warnings.append(
+                    _review_packet_issue(
+                        "invalid_review_packet_source_artifact",
+                        "warning",
+                        f"{invalid_source_rows} source artifact refs are invalid.",
+                        artifact="source_artifacts",
+                    )
+                )
+            if absolute_source_paths:
+                warnings.append(
+                    _review_packet_issue(
+                        "absolute_review_packet_source_path",
+                        "warning",
+                        f"{absolute_source_paths} source artifact refs use absolute paths.",
+                        artifact="source_artifacts",
+                    )
+                )
+            if outside_source_paths:
+                warnings.append(
+                    _review_packet_issue(
+                        "outside_review_packet_source_path",
+                        "warning",
+                        f"{outside_source_paths} source artifact refs escape the result root.",
+                        artifact="source_artifacts",
+                    )
+                )
+            if missing_sources:
+                warnings.append(
+                    _review_packet_issue(
+                        "missing_review_packet_source_artifact",
+                        "warning",
+                        f"{missing_sources} source artifact refs do not exist.",
+                        artifact="source_artifacts",
+                    )
+                )
+    checks["source_artifacts"] = {
+        "status": "warning" if missing_sources or absolute_source_paths or outside_source_paths or invalid_source_rows or source_count == 0 else "passed",
+        "count": int(source_count),
+        "missing": int(missing_sources),
+        "absolute_paths": int(absolute_source_paths),
+        "outside_paths": int(outside_source_paths),
+        "invalid_rows": int(invalid_source_rows),
+    }
+
+    qa_path, qa_ref, qa_absolute = _review_packet_declared_qa_path(packet_path, payload)
+    qa_rel = qa_ref or (qa_path.name if qa_path.exists() else None)
+    if qa_absolute:
+        blocking_issues.append(
+            _review_packet_issue(
+                "absolute_review_packet_qa_path",
+                "blocking",
+                "Cluster review packet QA path must be portable, not absolute.",
+                artifact="qa",
+            )
+        )
     if not qa_path.exists():
         warnings.append(
             _review_packet_issue("missing_review_packet_qa", "warning", "Cluster review packet QA sidecar is missing.", artifact="qa")
@@ -9296,7 +9431,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         review_packet_narrative_ready_clusters += int(packet_validation.counts.get("narrative_ready_clusters", 0))
         review_packet_review_required_clusters += int(packet_validation.counts.get("review_required_clusters", 0))
         review_packet_evidence_refs += int(packet_validation.counts.get("evidence_refs", 0))
-        if packet_validation.status == "passed":
+        source_check = packet_validation.checks.get("source_artifacts", {})
+        if packet_validation.status == "passed" and source_check.get("status") == "passed":
             stable_review_packet_artifacts += 1
         for issue in packet_validation.blocking_issues:
             issues.append(

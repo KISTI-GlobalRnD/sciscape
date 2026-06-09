@@ -755,10 +755,21 @@ def export_vosviewer_term_cooccurrence(
     term_cluster_uid: dict[str, str] = {}
     for term, clusters in term_cluster_strength.items():
         term_cluster_uid[term] = sorted(clusters.items(), key=lambda item: (-item[1], item[0]))[0][0]
-    cluster_uids = sorted(set(term_cluster_uid.values()))
-    if len(cluster_uids) > 1000:
-        raise ValueError("VOSviewer cluster IDs support at most 1000 clusters")
-    cluster_to_vos = {cluster_uid: index + 1 for index, cluster_uid in enumerate(cluster_uids)}
+    cluster_strength: dict[str, float] = {}
+    for clusters in term_cluster_strength.values():
+        for cluster_uid, strength in clusters.items():
+            cluster_strength[cluster_uid] = cluster_strength.get(cluster_uid, 0.0) + float(strength)
+    cluster_uids = sorted(cluster_strength)
+    overflow_cluster_uid = "__sciscape_overflow__" if len(cluster_uids) > 1000 else None
+    retained_cluster_uids = cluster_uids
+    if overflow_cluster_uid is not None:
+        retained_cluster_uids = [
+            cluster_uid
+            for cluster_uid, _ in sorted(cluster_strength.items(), key=lambda item: (-item[1], item[0]))[:999]
+        ]
+    vos_cluster_uids = [*retained_cluster_uids, overflow_cluster_uid] if overflow_cluster_uid is not None else retained_cluster_uids
+    retained_cluster_set = set(retained_cluster_uids)
+    cluster_to_vos = {cluster_uid: index + 1 for index, cluster_uid in enumerate(vos_cluster_uids)}
 
     map_header = [
         "id",
@@ -780,7 +791,11 @@ def export_vosviewer_term_cooccurrence(
                 term_to_item_id[term],
                 term,
                 f"co-occurrence clusters: {cluster_list}",
-                cluster_to_vos[term_cluster_uid[term]],
+                cluster_to_vos[
+                    term_cluster_uid[term]
+                    if overflow_cluster_uid is None or term_cluster_uid[term] in retained_cluster_set
+                    else overflow_cluster_uid
+                ],
                 int(term_link_count.get(term, 0)),
                 f"{float(term_total_strength.get(term, 0.0)):.6f}",
                 int(len(clusters)),
@@ -796,6 +811,28 @@ def export_vosviewer_term_cooccurrence(
 
     manifest_path = None
     if write_manifest:
+        layer_state = {
+            "map_file": map_filename,
+            "network_file": network_filename,
+            "source_table": "term_cooccurrence.parquet",
+            "term_count": len(terms),
+            "link_count": len(network_rows),
+            "cluster_count": len(vos_cluster_uids),
+            "counting_method": "summed_cooccurrence_weight",
+        }
+        limitations = [
+            "layout coordinates are not exported",
+            "term cluster is inferred from the strongest co-occurrence cluster",
+        ]
+        if overflow_cluster_uid is not None:
+            layer_state.update(
+                {
+                    "source_cluster_count": len(cluster_uids),
+                    "vosviewer_cluster_count": len(vos_cluster_uids),
+                    "cluster_assignment": "top_999_plus_overflow",
+                }
+            )
+            limitations.append("source clusters beyond the VOSviewer cluster limit are assigned to an overflow cluster")
         source_artifacts = [
             _source_artifact(
                 "cooccurrence",
@@ -830,15 +867,7 @@ def export_vosviewer_term_cooccurrence(
                 "view": {"mode": "vosviewer_term_cooccurrence", "surface": "export"},
                 "filters": [{"field": "link_strength", "op": "gt", "value": 0}],
                 "thresholds": {"min_link_strength": 0},
-                "layer_state": {
-                    "map_file": map_filename,
-                    "network_file": network_filename,
-                    "source_table": "term_cooccurrence.parquet",
-                    "term_count": len(terms),
-                    "link_count": len(network_rows),
-                    "cluster_count": len(cluster_uids),
-                    "counting_method": "summed_cooccurrence_weight",
-                },
+                "layer_state": layer_state,
             },
             files=[
                 {
@@ -877,10 +906,7 @@ def export_vosviewer_term_cooccurrence(
             compatibility={
                 "target_tools": ["VOSviewer", "VOSviewer Online"],
                 "format_version": "map/network text files",
-                "limitations": [
-                    "layout coordinates are not exported",
-                    "term cluster is inferred from the strongest co-occurrence cluster",
-                ],
+                "limitations": limitations,
             },
             title="VOSviewer term co-occurrence export",
         )

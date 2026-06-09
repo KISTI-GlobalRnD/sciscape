@@ -388,6 +388,37 @@ def test_export_vosviewer_term_cooccurrence_writes_map_network_and_manifest(tmp_
     }
 
 
+def test_export_vosviewer_term_cooccurrence_collapses_more_than_1000_clusters(tmp_path):
+    root = tmp_path / "result"
+    landscape = root / "landscape"
+    landscape.mkdir(parents=True)
+    pd.DataFrame({"cluster_id": [0], "term": ["seed"], "score": [1.0]}).to_parquet(landscape / "keywords.parquet")
+    pd.DataFrame(
+        [
+            {
+                "source": f"term_{index}",
+                "target": f"term_x_{index}",
+                "weight": 1.0,
+                "cluster_uid": f"cluster:{index}",
+            }
+            for index in range(1001)
+        ]
+    ).to_parquet(landscape / "term_cooccurrence.parquet")
+
+    written = export_vosviewer_term_cooccurrence(root)
+
+    map_lines = written["map_path"].read_text(encoding="utf-8").splitlines()
+    cluster_ids = [int(line.split("\t")[3]) for line in map_lines[1:]]
+    assert max(cluster_ids) == 1000
+    manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    layer_state = manifest["selection"]["layer_state"]
+    assert layer_state["cluster_count"] == 1000
+    assert layer_state["source_cluster_count"] == 1001
+    assert layer_state["vosviewer_cluster_count"] == 1000
+    assert layer_state["cluster_assignment"] == "top_999_plus_overflow"
+    assert validate_export_manifest(written["manifest_path"]).to_dict()["status"] == "passed"
+
+
 def test_write_cluster_review_packet_artifact_promotes_evidence_and_quality_refs(tmp_path):
     root = _write_valid_result_root(tmp_path / "result")
     write_cooccurrence_artifacts(root)
@@ -451,6 +482,52 @@ def test_write_cluster_review_packet_artifact_promotes_evidence_and_quality_refs
         "landscape/qa/artifact_contract.json",
         "review/cluster_review_packet_qa.json",
     ]
+
+
+def test_validate_cluster_review_packet_accepts_result_root(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+
+    validation = validate_cluster_review_packet_artifact(root).to_dict()
+
+    assert validation["status"] == "passed"
+    assert validation["checks"]["source_artifacts"]["status"] == "passed"
+    assert validation["counts"]["clusters"] == 2
+
+
+def test_validate_result_root_does_not_promote_stale_review_packet_evidence(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cluster_review_packet_artifact(root)
+    stale = tmp_path / "stale"
+    (stale / "review").mkdir(parents=True)
+    (stale / "review" / "cluster_review_packet.json").write_text(
+        (root / "review" / "cluster_review_packet.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (stale / "review" / "cluster_review_packet_qa.json").write_text(
+        (root / "review" / "cluster_review_packet_qa.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    validation = validate_result_root(stale).to_dict()
+
+    assert validation["features"]["evidence"] is False
+    assert validation["counts"]["review_packet_artifacts"] == 1
+    assert validation["counts"]["stable_review_packet_artifacts"] == 0
+    assert any(warning["code"] == "missing_review_packet_source_artifact" for warning in validation["warnings"])
+
+
+def test_write_cluster_review_packet_external_output_uses_portable_qa_path(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    external = tmp_path / "handoff_review"
+
+    written = write_cluster_review_packet_artifact(root, output_dir=external)
+
+    assert written is not None
+    packet = json.loads((external / "cluster_review_packet.json").read_text(encoding="utf-8"))
+    assert packet["qa"]["path"] == "cluster_review_packet_qa.json"
+    assert not Path(packet["qa"]["path"]).is_absolute()
 
 
 def test_validate_cluster_review_packet_blocks_unresolved_evidence_refs(tmp_path):

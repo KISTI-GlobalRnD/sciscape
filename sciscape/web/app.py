@@ -580,13 +580,21 @@ def _ensure_local_result_table_exports(output_dir: Path) -> None:
         from sciscape.export import export_cooccurrence_table, export_vosviewer_term_cooccurrence
 
         written = write_cooccurrence_artifacts(output_dir)
-        if written is not None:
-            export_cooccurrence_table(output_dir)
-            export_vosviewer_term_cooccurrence(output_dir)
-    except Exception:
+    except Exception as exc:
         # Local result opening should not fail just because an optional export
         # sidecar cannot be generated from a partial result root.
+        log.warning("Could not create local result co-occurrence artifacts for %s: %s", output_dir, exc)
         return
+    if written is None:
+        return
+    for export_name, export_fn in [
+        ("cooccurrence_table", export_cooccurrence_table),
+        ("vosviewer_term_cooccurrence", export_vosviewer_term_cooccurrence),
+    ]:
+        try:
+            export_fn(output_dir)
+        except Exception as exc:
+            log.warning("Could not create local result %s export for %s: %s", export_name, output_dir, exc)
 
 
 def _infer_local_result(path: Path) -> dict[str, Any]:
