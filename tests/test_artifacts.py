@@ -33,8 +33,11 @@ from sciscape.artifacts import (
     build_atlas_render_payload,
     build_result_manifest,
     build_report_data_contract,
+    CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION,
+    CLUSTER_REVIEW_PACKET_SCHEMA_VERSION,
     load_result_manifest,
     register_result_in_workspace,
+    validate_cluster_review_packet_artifact,
     validate_evolution_artifact,
     validate_export_manifest,
     validate_keyword_rule_artifact,
@@ -52,6 +55,7 @@ from sciscape.artifacts import (
     write_matrix_from_term_cooccurrence,
     write_temporal_artifacts,
     write_artifact_contract,
+    write_cluster_review_packet_artifact,
     write_result_manifest,
     write_workspace_manifest,
 )
@@ -382,6 +386,87 @@ def test_export_vosviewer_term_cooccurrence_writes_map_network_and_manifest(tmp_
         "map": "vosviewer/vosviewer_term_map.txt",
         "network": "vosviewer/vosviewer_term_network.txt",
     }
+
+
+def test_write_cluster_review_packet_artifact_promotes_evidence_and_quality_refs(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+
+    written = write_cluster_review_packet_artifact(root)
+
+    packet_path = root / "review" / "cluster_review_packet.json"
+    qa_path = root / "review" / "cluster_review_packet_qa.json"
+    assert written is not None
+    assert written["packet_path"] == packet_path
+    assert written["qa_path"] == qa_path
+    assert written["clusters"] == 2
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["schema_version"] == CLUSTER_REVIEW_PACKET_SCHEMA_VERSION
+    assert packet["review_policy"]["narrative_generation_allowed"] is False
+    assert packet["qa"]["path"] == "review/cluster_review_packet_qa.json"
+    qa = json.loads(qa_path.read_text(encoding="utf-8"))
+    assert qa["schema_version"] == CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION
+    assert qa["counts"]["clusters"] == 2
+    assert qa["counts"]["narrative_ready_clusters"] == 2
+
+    by_uid = {cluster["cluster_uid"]: cluster for cluster in packet["clusters"]}
+    cluster = by_uid["cluster:0"]
+    assert cluster["review_status"] == "clean"
+    assert cluster["narrative_ready"] is True
+    assert [row["term"] for row in cluster["keyword_evidence"]] == [
+        "perovskite solar cells",
+        "interface passivation",
+    ]
+    assert cluster["representative_works"][0]["title"] == "Perovskite device stability"
+    assert cluster["cooccurrence_evidence"] == [
+        {
+            "evidence_ref_id": cluster["cooccurrence_evidence"][0]["evidence_ref_id"],
+            "rank": 1,
+            "source": "perovskite solar cells",
+            "target": "interface passivation",
+            "weight": 1.0,
+            "count": 1,
+            "relation": "cooccurrence",
+        }
+    ]
+    ref_ids = {row["evidence_ref_id"] for row in cluster["evidence_refs"]}
+    assert {row["evidence_ref_id"] for row in cluster["keyword_evidence"]} <= ref_ids
+    assert {row["evidence_ref_id"] for row in cluster["representative_works"]} <= ref_ids
+    assert {row["evidence_ref_id"] for row in cluster["cooccurrence_evidence"]} <= ref_ids
+
+    validation = validate_cluster_review_packet_artifact(packet_path).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["clusters"] == 2
+    assert validation["counts"]["evidence_refs"] == 10
+    assert validation["checks"]["evidence_refs_resolvable"]["status"] == "passed"
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["artifacts"]["cluster_review_packet"]["path"] == "review/cluster_review_packet.json"
+    assert manifest["artifacts"]["cluster_review_packet"]["schema_version"] == CLUSTER_REVIEW_PACKET_SCHEMA_VERSION
+    assert manifest["artifacts"]["cluster_review_packet_qa"]["path"] == "review/cluster_review_packet_qa.json"
+    assert "cluster_review_packet" in manifest["features"]["evidence"]["artifact_refs"]
+    assert "cluster_review_packet_qa" in manifest["features"]["quality"]["artifact_refs"]
+    assert manifest["features"]["narrative"]["state"] == "hidden"
+    assert manifest["quality"]["gate_paths"] == [
+        "landscape/qa/artifact_contract.json",
+        "review/cluster_review_packet_qa.json",
+    ]
+
+
+def test_validate_cluster_review_packet_blocks_unresolved_evidence_refs(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    written = write_cluster_review_packet_artifact(root)
+    assert written is not None
+    packet_path = written["packet_path"]
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    packet["clusters"][0]["keyword_evidence"][0]["evidence_ref_id"] = "missing-ref"
+    packet_path.write_text(json.dumps(packet, indent=2, sort_keys=True), encoding="utf-8")
+
+    validation = validate_cluster_review_packet_artifact(packet_path).to_dict()
+
+    assert validation["status"] == "blocked"
+    assert validation["checks"]["evidence_refs_resolvable"]["status"] == "blocked"
+    assert any(issue["code"] == "unresolved_review_evidence_refs" for issue in validation["blocking_issues"])
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):

@@ -507,6 +507,13 @@ Rules:
 
 ## Writer Utility Design
 
+The first implementation step is the lighter
+`cluster_review_packet_artifact` defined in
+`cluster_review_packet_design.md`. It collects deterministic cluster evidence
+rows and validates local evidence refs, but it does not create narrative
+claims. Narrative claim artifacts should consume that packet rather than
+re-reading unrelated UI state.
+
 The first writer utility should create deterministic scaffolds only:
 
 ```python
@@ -566,6 +573,8 @@ rewriting narrative text.
 
 ## Implementation Order
 
+0. `[x]` Add a deterministic cluster review packet writer and validator as the
+   evidence packet feeding future narrative artifacts.
 1. Add schema constants and dataclasses for narrative manifests, targets,
    claims, evidence refs, links, sections, review decisions, and QA.
 2. Add `validate_narrative_artifact`.

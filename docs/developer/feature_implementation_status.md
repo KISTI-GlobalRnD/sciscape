@@ -48,10 +48,10 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 80% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
-| F09 | Atlas map, evidence, cluster reading | `[~]` | 91% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
+| F09 | Atlas map, evidence, cluster reading | `[~]` | 92% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
-| F12 | Evidence-backed narratives | `[~]` | 24% | narrative feature detection, target definition, evidence-reference artifact design | writer, validator, review UI, and optional generator |
+| F12 | Evidence-backed narratives | `[~]` | 29% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator | claim graph writer, validator, review UI, and optional generator |
 | F13 | Validation and QA | `[x]` | 83% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution artifact validators | strict checks for narrative/export features |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | matrix builder export adapter |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
@@ -283,8 +283,9 @@ gives the deck.gl prototype a stable entry point, and the static viewer now has
 a first GPU map surface with smoke coverage plus CI-scale and small-demo-scale
 render payload performance gates. Optional browser smokes cover small-demo map
 interaction, the inspector review checklist, the selected-cluster review packet,
-and filterable current-level review queue behavior. Analyst-scale browser gates
-and a fuller evidence review
+and filterable current-level review queue behavior; the persisted
+`cluster_review_packet` artifact now gives that review surface a validated
+file-level handoff. Analyst-scale browser gates and a fuller evidence review
 workflow are still required before treating it as a finished Atlas App.
 
 ### F10. Term Network And Co-Occurrence Visualization
@@ -347,14 +348,17 @@ membership projection.
 
 ### F12. Evidence-Backed Narratives
 
-Status: `[~]` Partial. Rough completeness: 24%.
+Status: `[~]` Partial. Rough completeness: 29%.
 
 - `[~]` Narrative is named in the feature definition and artifact feature
   inference can detect narrative-like payloads.
 - `[x]` Narrative evidence-reference artifact contract is defined in
   `docs/developer/narrative_artifact_design.md`.
-- `[ ]` There is no stable narrative evidence-reference writer.
-- `[ ]` There is no narrative artifact validator or QA gate.
+- `[x]` Cluster review packet writer/validator creates a deterministic,
+  evidence-ref-checked packet for label, keyword, representative-work,
+  co-occurrence, and QA caveat review.
+- `[ ]` There is no stable narrative claim graph writer.
+- `[ ]` There is no narrative claim graph validator or QA gate.
 - `[ ]` There is no stable narrative generation pipeline.
 - `[ ]` There is no final app surface for cluster narrative review.
 
@@ -459,6 +463,6 @@ evolution map, and narrative system are stable.
 1. Harden inspector-driven review affordances and Cleaning-mode rule review.
 2. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
-3. Implement the narrative evidence-reference writer, validator, and unsupported
-   claim gate from `narrative_artifact_design.md`.
+3. Implement the narrative claim graph writer, validator, and unsupported claim
+   gate from `narrative_artifact_design.md`.
 4. Add a matrix-builder export adapter when its source contract is stable.

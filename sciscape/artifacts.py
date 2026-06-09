@@ -27,6 +27,8 @@ ATLAS_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_payload_v1"
 ATLAS_RENDER_PAYLOAD_SCHEMA_VERSION = "sciscape_atlas_render_payload_v1"
 EDGE_EVIDENCE_SCHEMA_VERSION = "sciscape_edge_evidence_samples_v1"
 COOCCURRENCE_ARTIFACT_SCHEMA_VERSION = "sciscape_cooccurrence_artifact_v1"
+CLUSTER_REVIEW_PACKET_SCHEMA_VERSION = "sciscape_cluster_review_packet_v1"
+CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION = "sciscape_cluster_review_packet_qa_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
 MATRIX_ENTITIES_SCHEMA_VERSION = "sciscape_matrix_entities_v1"
@@ -421,6 +423,7 @@ class ResultArtifacts:
     edge_evidence_paths: tuple[Path, ...] = ()
     evolution_paths: tuple[Path, ...] = ()
     narrative_paths: tuple[Path, ...] = ()
+    review_packet_paths: tuple[Path, ...] = ()
     qa_path: Path | None = None
 
 
@@ -670,6 +673,29 @@ class EvolutionArtifactValidationResult:
         return data
 
 
+@dataclass(frozen=True)
+class ClusterReviewPacketValidationResult:
+    schema_version: str
+    packet_id: str | None
+    status: str
+    packet_path: str
+    qa_path: str | None
+    counts: dict[str, int]
+    checks: dict[str, dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    blocking_issues: list[dict[str, Any]]
+    created_at_utc: str
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "blocked"
+
+    def to_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["ok"] = self.ok
+        return data
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -851,6 +877,14 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         ],
         ("*narrative*.json", "*narrative*.parquet"),
     )
+    review_packet_paths = _collect_optional_artifacts(
+        [
+            landscape_dir / "review" if landscape_dir else None,
+            result_root / "review",
+        ],
+        ("cluster_review_packet.json", "cluster_review_packet_*.json"),
+    )
+    review_packet_paths = tuple(path for path in review_packet_paths if not path.name.endswith("_qa.json"))
 
     qa_path = None
     for candidate in [
@@ -879,6 +913,7 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         edge_evidence_paths=edge_evidence_paths,
         evolution_paths=evolution_paths,
         narrative_paths=narrative_paths,
+        review_packet_paths=review_packet_paths,
         qa_path=qa_path,
     )
 
@@ -2714,6 +2749,633 @@ def write_cooccurrence_artifacts(
         "terms": int(map_payload["term_count"]),
         "clusters": int(map_payload["cluster_count"]),
     }
+
+
+def _review_packet_issue(
+    code: str,
+    severity: str,
+    message: str,
+    *,
+    artifact: str | None = None,
+) -> dict[str, Any]:
+    issue = {"code": code, "severity": severity, "message": message}
+    if artifact:
+        issue["artifact"] = artifact
+    return issue
+
+
+def _cluster_review_packet_path(path: str | Path) -> Path:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        return candidate
+    return candidate / "cluster_review_packet.json"
+
+
+def _review_packet_qa_path(packet_path: Path) -> Path:
+    return packet_path.parent / "cluster_review_packet_qa.json"
+
+
+def _review_packet_source_artifacts(artifacts: ResultArtifacts) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    root = artifacts.result_root
+    for role, path, required in [
+        ("report_data", artifacts.report_data_path, False),
+        ("records", artifacts.abstracts_path, False),
+        ("membership", artifacts.membership_path, False),
+        ("keywords", artifacts.keywords_path, False),
+    ]:
+        if path is None:
+            continue
+        rows.append(
+            {
+                "role": role,
+                "path": _rel(path, root),
+                "required": required,
+            }
+        )
+    landscape_dir = artifacts.landscape_dir
+    if landscape_dir is not None:
+        cooc_table = landscape_dir / "term_cooccurrence.parquet"
+        if cooc_table.exists():
+            rows.append({"role": "cooccurrence", "path": _rel(cooc_table, root), "required": False})
+        cooc_map = landscape_dir / "term_cooccurrence_map.json"
+        if cooc_map.exists():
+            rows.append({"role": "cooccurrence_map", "path": _rel(cooc_map, root), "required": False})
+    for index, path in enumerate(artifacts.edge_evidence_paths, start=1):
+        rows.append({"role": f"edge_evidence_{index}", "path": _rel(path, root), "required": False})
+    return rows
+
+
+def _review_packet_nodes_from_keywords(
+    artifacts: ResultArtifacts,
+    *,
+    max_keywords_per_cluster: int,
+) -> list[dict[str, Any]]:
+    if artifacts.keywords_path is None or not artifacts.keywords_path.exists():
+        return []
+    try:
+        keywords = pd.read_parquet(artifacts.keywords_path)
+    except Exception:
+        return []
+    if keywords.empty:
+        return []
+    columns = list(keywords.columns)
+    cluster_col = next((column for column in columns if "cluster" in column.lower()), columns[0])
+    label_col = _keyword_label_column(columns)
+    score_col = _keyword_score_column(columns)
+    nodes: list[dict[str, Any]] = []
+    for cluster_id, group in keywords.groupby(cluster_col, sort=True):
+        work = group.copy()
+        if score_col:
+            work = work.sort_values(score_col, ascending=False, kind="stable")
+        keyword_rows = []
+        for rank, row in enumerate(work.head(max(1, max_keywords_per_cluster)).to_dict("records"), start=1):
+            term = str(row.get(label_col) or "").strip()
+            if not term:
+                continue
+            keyword = {"term": term, "rank": rank}
+            score = _coerce_float(row.get(score_col)) if score_col else None
+            if score is not None:
+                keyword["score"] = score
+            for key in ("frequency", "keyword_label_tier", "quality_flags", "review_status"):
+                if key in row and row.get(key) not in (None, ""):
+                    keyword[key] = row.get(key)
+            keyword_rows.append(keyword)
+        cluster_key = str(cluster_id)
+        label = keyword_rows[0]["term"] if keyword_rows else f"Cluster {cluster_key}"
+        nodes.append(
+            {
+                "cluster_uid": f"cluster:{cluster_key}",
+                "level": "cluster",
+                "cluster_id": cluster_key,
+                "label": label,
+                "short_label": _short_label(label),
+                "doc_count": None,
+                "keywords": keyword_rows,
+                "badges": _cluster_badges({"keywords": keyword_rows}),
+                "representative_works": [],
+                "representative_work_count": 0,
+            }
+        )
+    return nodes
+
+
+def _review_packet_nodes(
+    artifacts: ResultArtifacts,
+    *,
+    max_keywords_per_cluster: int,
+    max_representative_works: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    warnings: list[dict[str, Any]] = []
+    if artifacts.report_data_path is not None:
+        try:
+            report_data = json.loads(artifacts.report_data_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            warnings.append(_review_packet_issue("review_report_read_failed", "warning", str(exc), artifact="report_data"))
+            report_data = None
+        if isinstance(report_data, dict):
+            atlas = build_atlas_payload_from_report_data(
+                report_data,
+                membership_path=artifacts.membership_path,
+                edges_path=artifacts.edges_path,
+                abstracts_path=artifacts.abstracts_path,
+                edge_evidence_paths=artifacts.edge_evidence_paths,
+                max_representative_works=max_representative_works,
+            )
+            nodes = [dict(node) for node in atlas.get("nodes", []) if isinstance(node, Mapping)]
+            return nodes, [*warnings, *list(atlas.get("warnings") or [])]
+    return _review_packet_nodes_from_keywords(
+        artifacts,
+        max_keywords_per_cluster=max_keywords_per_cluster,
+    ), warnings
+
+
+def _review_packet_cooccurrence_by_cluster(artifacts: ResultArtifacts) -> dict[str, list[dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    landscape_dir = artifacts.landscape_dir
+    cooc_path = landscape_dir / "term_cooccurrence.parquet" if landscape_dir is not None else None
+    if cooc_path is not None and cooc_path.exists():
+        try:
+            rows = pd.read_parquet(cooc_path).to_dict("records")
+        except Exception:
+            rows = []
+    if not rows and artifacts.report_data_path is not None:
+        try:
+            payload = json.loads(artifacts.report_data_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            rows = _cooccurrence_rows_from_report_data(payload)
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        cluster_uid = str(row.get("cluster_uid") or "").strip()
+        if not cluster_uid:
+            cluster_level = str(row.get("cluster_level") or "cluster")
+            cluster_id = str(row.get("cluster_id") or "unknown")
+            cluster_uid = f"{cluster_level}:{cluster_id}"
+        grouped.setdefault(cluster_uid, []).append(row)
+    for cluster_uid, values in grouped.items():
+        grouped[cluster_uid] = sorted(
+            values,
+            key=lambda item: (
+                -float(_coerce_float(item.get("weight")) or 0.0),
+                str(item.get("source") or ""),
+                str(item.get("target") or ""),
+            ),
+        )
+    return grouped
+
+
+def _packet_ref_id(cluster_uid: str, evidence_type: str, value: str | int) -> str:
+    return _safe_id(f"{cluster_uid}_{evidence_type}_{value}", fallback=f"{evidence_type}_ref")
+
+
+def _cluster_review_packet_row(
+    node: Mapping[str, Any],
+    *,
+    cooccurrence_rows: list[Mapping[str, Any]],
+    max_keywords_per_cluster: int,
+    max_representative_works: int,
+    max_cooccurrence_links: int,
+) -> dict[str, Any]:
+    cluster_uid = str(node.get("cluster_uid") or "").strip()
+    level = str(node.get("level") or "cluster")
+    cluster_id = str(node.get("cluster_id") or cluster_uid.split(":", 1)[-1])
+    label = str(node.get("label") or node.get("short_label") or cluster_uid)
+    evidence_refs: list[dict[str, Any]] = []
+    keyword_evidence: list[dict[str, Any]] = []
+    representative_works: list[dict[str, Any]] = []
+    cooccurrence_evidence: list[dict[str, Any]] = []
+    quality_caveats: list[dict[str, Any]] = []
+
+    for rank, keyword in enumerate(list(node.get("keywords") or [])[:max_keywords_per_cluster], start=1):
+        if not isinstance(keyword, Mapping):
+            continue
+        term = str(keyword.get("term") or "").strip()
+        if not term:
+            continue
+        ref_id = _packet_ref_id(cluster_uid, "term", rank)
+        evidence_refs.append(
+            {
+                "evidence_ref_id": ref_id,
+                "evidence_type": "term",
+                "source_role": "keywords",
+                "evidence_label": term,
+                "aggregate_only": True,
+            }
+        )
+        row = {
+            "evidence_ref_id": ref_id,
+            "rank": rank,
+            "term": term,
+            "score": _coerce_float(keyword.get("score")),
+            "frequency": _coerce_int(keyword.get("frequency")),
+            "tier": str(keyword.get("keyword_label_tier") or keyword.get("keyword_scope") or ""),
+            "quality_flags": str(keyword.get("quality_flags") or ""),
+        }
+        keyword_evidence.append({key: value for key, value in row.items() if value not in (None, "")})
+
+    for rank, work in enumerate(list(node.get("representative_works") or [])[:max_representative_works], start=1):
+        if not isinstance(work, Mapping):
+            continue
+        uid = str(work.get("uid") or work.get("id") or "").strip()
+        title = _plain_atlas_text(work.get("title") or "")
+        if not uid and not title:
+            continue
+        ref_id = _packet_ref_id(cluster_uid, "work", uid or rank)
+        evidence_refs.append(
+            {
+                "evidence_ref_id": ref_id,
+                "evidence_type": "work",
+                "source_role": "records",
+                "evidence_label": title or uid,
+                "entity_key": uid,
+                "aggregate_only": False,
+            }
+        )
+        row = {
+            "evidence_ref_id": ref_id,
+            "rank": rank,
+            "uid": uid,
+            "title": title,
+            "year": _coerce_int(work.get("year") or work.get("pubyear")),
+            "cited_by_count": _coerce_int(work.get("cited_by_count")),
+        }
+        representative_works.append({key: value for key, value in row.items() if value not in (None, "")})
+
+    for rank, cooc in enumerate(cooccurrence_rows[:max_cooccurrence_links], start=1):
+        source = str(cooc.get("source") or "").strip()
+        target = str(cooc.get("target") or "").strip()
+        if not source or not target:
+            continue
+        ref_id = _packet_ref_id(cluster_uid, "cooccurrence", rank)
+        label_text = f"{source} - {target}"
+        evidence_refs.append(
+            {
+                "evidence_ref_id": ref_id,
+                "evidence_type": "cooccurrence",
+                "source_role": "cooccurrence",
+                "evidence_label": label_text,
+                "aggregate_only": True,
+            }
+        )
+        row = {
+            "evidence_ref_id": ref_id,
+            "rank": rank,
+            "source": source,
+            "target": target,
+            "weight": _coerce_float(cooc.get("weight")) or 1.0,
+            "count": _coerce_int(cooc.get("count")),
+            "relation": str(cooc.get("relation") or "cooccurrence"),
+        }
+        cooccurrence_evidence.append({key: value for key, value in row.items() if value not in (None, "")})
+
+    for rank, badge in enumerate(list(node.get("badges") or []), start=1):
+        if not isinstance(badge, Mapping):
+            continue
+        ref_id = _packet_ref_id(cluster_uid, "qa_caveat", rank)
+        label_text = str(badge.get("label") or badge.get("badge_id") or "Review caveat")
+        evidence_refs.append(
+            {
+                "evidence_ref_id": ref_id,
+                "evidence_type": "qa_caveat",
+                "source_role": "quality",
+                "evidence_label": label_text,
+                "aggregate_only": True,
+            }
+        )
+        quality_caveats.append(
+            {
+                "evidence_ref_id": ref_id,
+                "code": str(badge.get("badge_id") or "quality_caveat"),
+                "severity": str(badge.get("severity") or "warning"),
+                "message": str(badge.get("tooltip") or label_text),
+            }
+        )
+
+    critical_caveat = any(str(row.get("severity")) == "critical" for row in quality_caveats)
+    narrative_ready = bool(keyword_evidence and (representative_works or cooccurrence_evidence) and not critical_caveat)
+    review_status = "review_required" if quality_caveats or not narrative_ready else "clean"
+    return {
+        "cluster_uid": cluster_uid,
+        "cluster_level": level,
+        "cluster_id": cluster_id,
+        "label": label,
+        "short_label": str(node.get("short_label") or _short_label(label)),
+        "doc_count": _coerce_int(node.get("doc_count")),
+        "review_status": review_status,
+        "narrative_ready": narrative_ready,
+        "counts": {
+            "keywords": len(keyword_evidence),
+            "representative_works": len(representative_works),
+            "cooccurrence_links": len(cooccurrence_evidence),
+            "quality_caveats": len(quality_caveats),
+            "evidence_refs": len(evidence_refs),
+        },
+        "keyword_evidence": keyword_evidence,
+        "representative_works": representative_works,
+        "cooccurrence_evidence": cooccurrence_evidence,
+        "quality_caveats": quality_caveats,
+        "evidence_refs": evidence_refs,
+    }
+
+
+def _cluster_review_packet_qa(packet: Mapping[str, Any], warnings: list[dict[str, Any]]) -> dict[str, Any]:
+    clusters = [row for row in packet.get("clusters", []) if isinstance(row, Mapping)]
+    counts = {
+        "clusters": len(clusters),
+        "narrative_ready_clusters": sum(1 for row in clusters if row.get("narrative_ready") is True),
+        "review_required_clusters": sum(1 for row in clusters if row.get("review_status") == "review_required"),
+        "keyword_evidence_rows": sum(len(row.get("keyword_evidence") or []) for row in clusters),
+        "representative_work_rows": sum(len(row.get("representative_works") or []) for row in clusters),
+        "cooccurrence_evidence_rows": sum(len(row.get("cooccurrence_evidence") or []) for row in clusters),
+        "quality_caveat_rows": sum(len(row.get("quality_caveats") or []) for row in clusters),
+        "evidence_refs": sum(len(row.get("evidence_refs") or []) for row in clusters),
+    }
+    checks = {
+        "evidence_refs_resolvable": {"status": "passed"},
+        "narrative_ready": {
+            "status": "passed" if counts["narrative_ready_clusters"] == counts["clusters"] else "warning",
+            "ready": counts["narrative_ready_clusters"],
+            "total": counts["clusters"],
+        },
+    }
+    return {
+        "schema_version": CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION,
+        "packet_id": packet.get("packet_id"),
+        "status": "passed",
+        "counts": counts,
+        "checks": checks,
+        "warnings": warnings,
+        "blocking_issues": [],
+        "created_at_utc": _utc_now(),
+    }
+
+
+def write_cluster_review_packet_artifact(
+    path: str | Path,
+    *,
+    output_dir: str | Path | None = None,
+    packet_id: str = "cluster_review_packet_default",
+    max_clusters: int = 500,
+    max_keywords_per_cluster: int = 8,
+    max_representative_works: int = 3,
+    max_cooccurrence_links: int = 8,
+) -> dict[str, Any] | None:
+    """Write a compact evidence packet for cluster review and future narratives."""
+
+    artifacts = infer_result_artifacts(path)
+    nodes, warnings = _review_packet_nodes(
+        artifacts,
+        max_keywords_per_cluster=max_keywords_per_cluster,
+        max_representative_works=max_representative_works,
+    )
+    if not nodes:
+        return None
+    cooccurrence_by_cluster = _review_packet_cooccurrence_by_cluster(artifacts)
+    clusters = [
+        _cluster_review_packet_row(
+            node,
+            cooccurrence_rows=cooccurrence_by_cluster.get(str(node.get("cluster_uid") or ""), []),
+            max_keywords_per_cluster=max_keywords_per_cluster,
+            max_representative_works=max_representative_works,
+            max_cooccurrence_links=max_cooccurrence_links,
+        )
+        for node in nodes[: max(1, int(max_clusters))]
+        if str(node.get("cluster_uid") or "").strip()
+    ]
+    if not clusters:
+        return None
+
+    target_dir = Path(output_dir) if output_dir is not None else artifacts.result_root / "review"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    packet_path = target_dir / "cluster_review_packet.json"
+    qa_path = target_dir / "cluster_review_packet_qa.json"
+    packet = {
+        "schema_version": CLUSTER_REVIEW_PACKET_SCHEMA_VERSION,
+        "packet_id": packet_id,
+        "title": "Cluster review packet",
+        "result_id": None,
+        "created_at_utc": _utc_now(),
+        "packet_scope": {
+            "target_type": "cluster",
+            "max_clusters": int(max_clusters),
+            "max_keywords_per_cluster": int(max_keywords_per_cluster),
+            "max_representative_works": int(max_representative_works),
+            "max_cooccurrence_links": int(max_cooccurrence_links),
+        },
+        "review_policy": {
+            "allowed_evidence_types": ["term", "work", "cooccurrence", "qa_caveat"],
+            "narrative_generation_allowed": False,
+            "unsupported_claim_action": "block_in_narrative_validator",
+            "review_status_values": ["clean", "review_required"],
+        },
+        "source_artifacts": _review_packet_source_artifacts(artifacts),
+        "clusters": clusters,
+        "warnings": warnings,
+    }
+    qa = _cluster_review_packet_qa(packet, warnings)
+    packet["qa"] = {
+        "path": _rel(qa_path, artifacts.result_root),
+        "status": qa["status"],
+        "counts": qa["counts"],
+    }
+    packet_path.write_text(json.dumps(packet, indent=2, sort_keys=True), encoding="utf-8")
+    qa_path.write_text(json.dumps(qa, indent=2, sort_keys=True), encoding="utf-8")
+    validation = validate_cluster_review_packet_artifact(packet_path)
+    return {
+        "schema_version": CLUSTER_REVIEW_PACKET_SCHEMA_VERSION,
+        "packet_path": packet_path,
+        "qa_path": qa_path,
+        "packet_id": packet_id,
+        "qa": qa,
+        "validation": validation.to_dict(),
+        "clusters": int(len(clusters)),
+        "narrative_ready_clusters": int(qa["counts"]["narrative_ready_clusters"]),
+    }
+
+
+def validate_cluster_review_packet_artifact(path: str | Path) -> ClusterReviewPacketValidationResult:
+    """Validate a compact cluster review packet without loading the web app."""
+
+    packet_path = _cluster_review_packet_path(path)
+    warnings: list[dict[str, Any]] = []
+    blocking_issues: list[dict[str, Any]] = []
+    checks: dict[str, dict[str, Any]] = {}
+    payload: dict[str, Any] = {}
+    if not packet_path.exists():
+        blocking_issues.append(
+            _review_packet_issue("missing_review_packet", "blocking", "Cluster review packet is missing.", artifact="packet")
+        )
+    else:
+        try:
+            loaded = json.loads(packet_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                payload = loaded
+            else:
+                blocking_issues.append(
+                    _review_packet_issue("invalid_review_packet_shape", "blocking", "Packet JSON must be an object.", artifact="packet")
+                )
+        except Exception as exc:
+            blocking_issues.append(
+                _review_packet_issue("invalid_review_packet_json", "blocking", f"Could not read packet JSON: {exc}", artifact="packet")
+            )
+
+    packet_id = str(payload.get("packet_id") or "") if payload else None
+    if payload:
+        if payload.get("schema_version") != CLUSTER_REVIEW_PACKET_SCHEMA_VERSION:
+            blocking_issues.append(
+                _review_packet_issue(
+                    "unsupported_review_packet_schema",
+                    "blocking",
+                    f"Unsupported cluster review packet schema: {payload.get('schema_version')}",
+                    artifact="packet",
+                )
+            )
+        clusters = payload.get("clusters")
+        if not isinstance(clusters, list) or not clusters:
+            blocking_issues.append(
+                _review_packet_issue("missing_review_clusters", "blocking", "Packet must contain at least one cluster.", artifact="packet")
+            )
+            clusters = []
+    else:
+        clusters = []
+
+    cluster_count = 0
+    ready_count = 0
+    review_required_count = 0
+    evidence_ref_count = 0
+    keyword_count = 0
+    work_count = 0
+    cooccurrence_count = 0
+    caveat_count = 0
+    unresolved_refs = 0
+    duplicate_refs = 0
+    for index, cluster in enumerate(clusters):
+        if not isinstance(cluster, Mapping):
+            blocking_issues.append(
+                _review_packet_issue("invalid_review_cluster_shape", "blocking", "Cluster rows must be objects.", artifact="clusters")
+            )
+            continue
+        cluster_count += 1
+        cluster_uid = str(cluster.get("cluster_uid") or "").strip()
+        if not cluster_uid:
+            blocking_issues.append(
+                _review_packet_issue("missing_review_cluster_uid", "blocking", f"Cluster row {index} has no cluster_uid.", artifact="clusters")
+            )
+        if not str(cluster.get("label") or "").strip():
+            warnings.append(
+                _review_packet_issue("missing_review_cluster_label", "warning", f"Cluster {cluster_uid or index} has no label.", artifact="clusters")
+            )
+        if cluster.get("narrative_ready") is True:
+            ready_count += 1
+        if cluster.get("review_status") == "review_required":
+            review_required_count += 1
+        refs = cluster.get("evidence_refs")
+        if not isinstance(refs, list):
+            blocking_issues.append(
+                _review_packet_issue("missing_review_evidence_refs", "blocking", f"Cluster {cluster_uid or index} has no evidence refs.", artifact="clusters")
+            )
+            refs = []
+        ref_ids: set[str] = set()
+        for ref in refs:
+            if not isinstance(ref, Mapping):
+                continue
+            ref_id = str(ref.get("evidence_ref_id") or "").strip()
+            if not ref_id:
+                blocking_issues.append(
+                    _review_packet_issue("missing_review_evidence_ref_id", "blocking", f"Cluster {cluster_uid or index} has an unnamed evidence ref.", artifact="clusters")
+                )
+                continue
+            if ref_id in ref_ids:
+                duplicate_refs += 1
+            ref_ids.add(ref_id)
+        evidence_ref_count += len(ref_ids)
+        for field_name, counter_name in [
+            ("keyword_evidence", "keywords"),
+            ("representative_works", "works"),
+            ("cooccurrence_evidence", "cooccurrence"),
+            ("quality_caveats", "caveats"),
+        ]:
+            rows = cluster.get(field_name)
+            if not isinstance(rows, list):
+                rows = []
+            for row in rows:
+                if not isinstance(row, Mapping):
+                    continue
+                ref_id = str(row.get("evidence_ref_id") or "").strip()
+                if not ref_id or ref_id not in ref_ids:
+                    unresolved_refs += 1
+            if counter_name == "keywords":
+                keyword_count += len(rows)
+            elif counter_name == "works":
+                work_count += len(rows)
+            elif counter_name == "cooccurrence":
+                cooccurrence_count += len(rows)
+            elif counter_name == "caveats":
+                caveat_count += len(rows)
+
+    if duplicate_refs:
+        blocking_issues.append(
+            _review_packet_issue("duplicate_review_evidence_refs", "blocking", f"{duplicate_refs} duplicate evidence refs were found.", artifact="clusters")
+        )
+    if unresolved_refs:
+        blocking_issues.append(
+            _review_packet_issue("unresolved_review_evidence_refs", "blocking", f"{unresolved_refs} evidence rows do not resolve to cluster evidence_refs.", artifact="clusters")
+        )
+
+    qa_path = _review_packet_qa_path(packet_path)
+    qa_rel = qa_path.name if qa_path.exists() else None
+    if not qa_path.exists():
+        warnings.append(
+            _review_packet_issue("missing_review_packet_qa", "warning", "Cluster review packet QA sidecar is missing.", artifact="qa")
+        )
+    else:
+        try:
+            qa_payload = json.loads(qa_path.read_text(encoding="utf-8"))
+            if qa_payload.get("schema_version") != CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION:
+                warnings.append(
+                    _review_packet_issue("unsupported_review_packet_qa_schema", "warning", "Unsupported review packet QA schema.", artifact="qa")
+                )
+        except Exception as exc:
+            warnings.append(
+                _review_packet_issue("invalid_review_packet_qa_json", "warning", f"Could not read review packet QA: {exc}", artifact="qa")
+            )
+
+    checks["evidence_refs_resolvable"] = {
+        "status": "blocked" if unresolved_refs or duplicate_refs else "passed",
+        "unresolved_refs": int(unresolved_refs),
+        "duplicate_refs": int(duplicate_refs),
+    }
+    checks["narrative_ready"] = {
+        "status": "passed" if ready_count == cluster_count else "warning",
+        "ready": int(ready_count),
+        "total": int(cluster_count),
+    }
+    counts = {
+        "clusters": int(cluster_count),
+        "narrative_ready_clusters": int(ready_count),
+        "review_required_clusters": int(review_required_count),
+        "keyword_evidence_rows": int(keyword_count),
+        "representative_work_rows": int(work_count),
+        "cooccurrence_evidence_rows": int(cooccurrence_count),
+        "quality_caveat_rows": int(caveat_count),
+        "evidence_refs": int(evidence_ref_count),
+    }
+    return ClusterReviewPacketValidationResult(
+        schema_version=CLUSTER_REVIEW_PACKET_SCHEMA_VERSION,
+        packet_id=packet_id or None,
+        status="blocked" if blocking_issues else "passed",
+        packet_path=str(packet_path),
+        qa_path=qa_rel,
+        counts=counts,
+        checks=checks,
+        warnings=warnings,
+        blocking_issues=blocking_issues,
+        created_at_utc=_utc_now(),
+    )
 
 
 def _matrix_issue(
@@ -8278,6 +8940,8 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "edge_evidence_artifacts": [_rel(path, root) for path in artifacts.edge_evidence_paths],
         "evolution_artifacts": [_rel(path, root) for path in artifacts.evolution_paths],
         "narrative_artifacts": [_rel(path, root) for path in artifacts.narrative_paths],
+        "review_packet_artifacts": [_rel(path, root) for path in artifacts.review_packet_paths],
+        "review_packet_summaries": [],
         "qa": _rel(artifacts.qa_path, root),
         "tables": {},
     }
@@ -8610,6 +9274,49 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
                 )
             )
 
+    review_packet_artifacts = 0
+    stable_review_packet_artifacts = 0
+    review_packet_clusters = 0
+    review_packet_narrative_ready_clusters = 0
+    review_packet_review_required_clusters = 0
+    review_packet_evidence_refs = 0
+    for packet_path in artifacts.review_packet_paths:
+        packet_validation = validate_cluster_review_packet_artifact(packet_path)
+        packet_payload = packet_validation.to_dict()
+        artifact_info["review_packet_summaries"].append(
+            {
+                "packet_id": packet_payload.get("packet_id"),
+                "status": packet_payload.get("status"),
+                "path": _rel(packet_path, root),
+                "counts": packet_payload.get("counts", {}),
+            }
+        )
+        review_packet_artifacts += 1
+        review_packet_clusters += int(packet_validation.counts.get("clusters", 0))
+        review_packet_narrative_ready_clusters += int(packet_validation.counts.get("narrative_ready_clusters", 0))
+        review_packet_review_required_clusters += int(packet_validation.counts.get("review_required_clusters", 0))
+        review_packet_evidence_refs += int(packet_validation.counts.get("evidence_refs", 0))
+        if packet_validation.status == "passed":
+            stable_review_packet_artifacts += 1
+        for issue in packet_validation.blocking_issues:
+            issues.append(
+                ArtifactIssue(
+                    str(issue.get("code") or "review_packet_blocked"),
+                    "error",
+                    str(issue.get("message") or "Cluster review packet validation failed."),
+                    "cluster_review_packet",
+                )
+            )
+        for warning in packet_validation.warnings:
+            issues.append(
+                ArtifactIssue(
+                    str(warning.get("code") or "review_packet_warning"),
+                    "warning",
+                    str(warning.get("message") or "Cluster review packet has validation warnings."),
+                    "cluster_review_packet",
+                )
+            )
+
     _reconcile_counts(
         artifacts=artifacts,
         membership_info=membership_info,
@@ -8629,6 +9336,7 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
             artifacts.temporal_manifest_paths,
             artifacts.evolution_manifest_paths,
             artifacts.export_manifest_paths,
+            artifacts.review_packet_paths,
         ]
     ):
         issues.append(
@@ -8663,6 +9371,12 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
         "cooccurrence_artifacts": int(cooccurrence_artifacts),
         "cooccurrence_rows": int(cooccurrence_rows),
         "edge_evidence_artifacts": len(artifacts.edge_evidence_paths),
+        "review_packet_artifacts": int(review_packet_artifacts),
+        "stable_review_packet_artifacts": int(stable_review_packet_artifacts),
+        "review_packet_clusters": int(review_packet_clusters),
+        "review_packet_narrative_ready_clusters": int(review_packet_narrative_ready_clusters),
+        "review_packet_review_required_clusters": int(review_packet_review_required_clusters),
+        "review_packet_evidence_refs": int(review_packet_evidence_refs),
         "temporal_artifacts": int(temporal_artifacts),
         "stable_temporal_artifacts": int(stable_temporal_artifacts),
         "temporal_periods": int(temporal_periods),
@@ -8697,7 +9411,11 @@ def validate_result_root(path: str | Path, *, mode: str = "local_result") -> Art
 
     features["term_network"] = report_edge_count > 0 or keyword_edge_count > 0 or cooccurrence_rows > 0
     features["matrix"] = bool(general_matrix_artifacts or legacy_matrix_artifacts)
-    features["evidence"] = counts["abstract_rows"] > 0 and counts["membership_rows"] > 0
+    features["evidence"] = (
+        (counts["abstract_rows"] > 0 and counts["membership_rows"] > 0)
+        or counts["edge_evidence_artifacts"] > 0
+        or counts["stable_review_packet_artifacts"] > 0
+    )
     has_pubyear = bool(abstract_info and abstract_info.columns and "pubyear" in abstract_info.columns)
     features["temporal"] = bool(temporal_artifacts or has_pubyear)
     features["evolution"] = bool(evolution_artifacts or artifacts.evolution_paths) or report_has_evolution
@@ -8968,6 +9686,32 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             schema_version=EDGE_EVIDENCE_SCHEMA_VERSION,
         )
 
+    for i, rel_path in enumerate(artifact_info.get("review_packet_artifacts", []), start=1):
+        key = "cluster_review_packet" if i == 1 else f"cluster_review_packet_{i}"
+        records[key] = _artifact_record(
+            root=root,
+            role="cluster_review_packet",
+            path=rel_path,
+            required_for=["evidence", "quality"],
+            schema_version=CLUSTER_REVIEW_PACKET_SCHEMA_VERSION,
+            description="Cluster review packet for evidence-backed label and narrative review.",
+        )
+        qa_path = Path(str(rel_path)).parent / "cluster_review_packet_qa.json"
+        if (root / qa_path).exists():
+            qa_key = "cluster_review_packet_qa" if "cluster_review_packet_qa" not in records else f"cluster_review_packet_qa_{i}"
+            qa_suffix = 2
+            while qa_key in records:
+                qa_key = f"cluster_review_packet_qa_{qa_suffix}"
+                qa_suffix += 1
+            records[qa_key] = _artifact_record(
+                root=root,
+                role="qa",
+                path=qa_path.as_posix(),
+                required_for=["quality"],
+                schema_version=CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION,
+                description="Cluster review packet QA report.",
+            )
+
     for i, rel_path in enumerate(artifact_info.get("matrix_artifacts", []), start=1):
         role = "cooccurrence" if "cooccurrence" in str(rel_path).lower() else "matrix"
         key = role
@@ -9114,11 +9858,11 @@ def _feature_artifact_candidates(feature: str) -> list[str]:
         "term_network": ["term_network", "keywords", "report_data"],
         "cooccurrence": ["cooccurrence", "keywords", "report_data"],
         "matrix": ["matrix"],
-        "evidence": ["records", "membership", "edge_evidence"],
+        "evidence": ["records", "membership", "edge_evidence", "cluster_review_packet"],
         "temporal": ["records", "temporal"],
         "evolution": ["evolution"],
         "narrative": ["narrative"],
-        "quality": ["artifact_contract", "keyword_rule_qa"],
+        "quality": ["artifact_contract", "keyword_rule_qa", "cluster_review_packet_qa"],
         "export": ["export", "keyword_rules", "report_data", "report_html", "viewer_html"],
     }
     return mapping.get(feature, [])
@@ -9493,6 +10237,10 @@ def _manifest_quality(validation: ArtifactValidationResult) -> dict[str, Any]:
     gate_paths = [contract_path] if contract_path else []
     for rel_path in validation.artifacts.get("keyword_rule_manifest_artifacts", []):
         qa_path = Path(str(rel_path)).parent / "rule_set_qa.json"
+        if (root / qa_path).exists():
+            gate_paths.append(qa_path.as_posix())
+    for rel_path in validation.artifacts.get("review_packet_artifacts", []):
+        qa_path = Path(str(rel_path)).parent / "cluster_review_packet_qa.json"
         if (root / qa_path).exists():
             gate_paths.append(qa_path.as_posix())
     blocking_count = sum(1 for warning in validation.warnings if warning.get("severity") in {"error", "blocking"})
@@ -10617,6 +11365,8 @@ def build_report_data_contract(report_data: dict[str, Any], *, mode: str = "stat
 __all__ = [
     "ARTIFACT_CONTRACT_SCHEMA_VERSION",
     "ATLAS_PAYLOAD_SCHEMA_VERSION",
+    "CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION",
+    "CLUSTER_REVIEW_PACKET_SCHEMA_VERSION",
     "COOCCURRENCE_ARTIFACT_SCHEMA_VERSION",
     "EDGE_EVIDENCE_SCHEMA_VERSION",
     "EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION",
@@ -10656,6 +11406,7 @@ __all__ = [
     "ArtifactRecord",
     "ArtifactIssue",
     "ArtifactValidationResult",
+    "ClusterReviewPacketValidationResult",
     "EvolutionArtifactValidationResult",
     "ExportManifestValidationResult",
     "FeatureExposure",
@@ -10681,6 +11432,7 @@ __all__ = [
     "read_workspace_manifest",
     "register_result_in_workspace",
     "validate_keyword_rule_artifact",
+    "validate_cluster_review_packet_artifact",
     "validate_matrix_artifact",
     "validate_evolution_artifact",
     "validate_export_manifest",
@@ -10688,6 +11440,7 @@ __all__ = [
     "validate_temporal_artifact",
     "validate_workspace",
     "write_edge_evidence_samples",
+    "write_cluster_review_packet_artifact",
     "write_cooccurrence_artifacts",
     "write_keyword_rule_artifacts",
     "write_matrix_artifact",
