@@ -1064,6 +1064,270 @@ The next valid gate is persistence/reversibility, not broad localization:
 finer fractions around the step-2 saddle or a reverse target-to-source trace
 under the same boundary/control guards.
 
+That gate is now executed in two bounded steps. The persistence contract and
+trace at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_transient_persistence_trace_gamma1e5_20260605/`
+show that the `016` transient is not a single 0.75 point artifact. Across the
+three semantic-valid starts and eight seeds, the same signature
+`aeb59ab537e6` appears in 24/24 routes across six adjacent bridge fractions:
+0.625, 0.6875, 0.71875, 0.75, 0.78125, and 0.8125. It remains
+support-equidistant to original, drop-bridge, and drop-direct anchors, so this
+is finite transition-gateway band evidence, not endpoint-basin or wall evidence.
+
+The same-seed target-anchor reverse contract and trace at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_transient_reverse_trace_gamma1e5_20260605/`
+then test path asymmetry. Target-anchor initialization is clean in 24/24 routes
+at bridge fraction 0.5, and the reverse path re-enters the same transient band
+in 24/24 routes from 0.625 through 0.8125. Full bridge restoration is mixed:
+15/24 seed routes return to source at bridge fraction 1.0, while 9/24 do not.
+The reverse final-source-return gate therefore fails as evidence, not as an
+execution failure. The current read is a finite typed transition band with
+mixed reverse reversibility; wall, tunneling, method, full-replay, and
+quality/cost claims remain closed.
+
+The reverse non-return stratification audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_reverse_nonreturn_stratification_audit_gamma1e5_20260605/`
+then clarifies that mixed reversibility is not final target hysteresis. All 9
+strict non-return routes exit the target and transient signatures at full bridge
+weight. Eight end as the same-start source-family signature `5536308f50fc` but
+miss the same-seed source anchor; one ends as the same-seed drop-direct guard
+residual `c475d13ca500`. The next definition gate is therefore source-family
+equivalence for reverse final states, not threshold localization or broader
+control expansion.
+
+The source-family equivalence audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_source_family_equivalence_audit_gamma1e5_20260605/`
+closes that definition gate for the current `016` readout. Strict same-seed
+source-anchor equivalence accepts only 15/24 final states, so it undercounts
+seed-dependent source-family recovery. Same-start source-family equivalence
+accepts 24/24 final states with 0 target/transient leaks, while preserving one
+drop-direct guard-overlap caveat. Support-nearest-original is also too narrow
+at 15/24 and remains a diagnostic field, not the source-equivalence definition.
+
+The pathway-shape audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_pathway_shape_audit_gamma1e5_20260605/`
+then applies that vocabulary to the executed forward and reverse traces. All 24
+routes match the same bidirectional state ladder: source-family states at
+bridge fractions 0.875 and 1.0, the recurrent transient signature
+`aeb59ab537e6` at 0.625 through 0.8125, and the target anchor at 0.5. This
+upgrades the `016` wording from a strict-anchor mixed-reversibility problem to
+a source-family transition-band mechanism object, while preserving 8
+source-family anchor mismatches and 1 guard-overlap caveat as non-wall
+evidence.
+
+The objective/barrier audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_objective_barrier_audit_gamma1e5_20260605/`
+then tests whether the established state ladder can be promoted to objective
+barrier language. It cannot under the current evidence. Mean objectives are
+monotone with bridge fraction in both forward and reverse traces, the six
+transient-band fractions have identical forward/reverse objective means, and
+0/24 routes are marked as fixed-landscape barrier supported. The objective
+columns therefore remain perturbation-relative diagnostics, not wall,
+tunneling, quality/cost, full-replay, or method evidence.
+
+The mechanism-interpretation audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_mechanism_interpretation_audit_gamma1e5_20260605/`
+then names the local cause. `016` is a direct-edge-sensitive bridge-mass
+competition case: the direct edge is weak-positive and needed at input gamma,
+the selected bridge mass is 13.676976 times the direct edge, and the local
+counterfactual variants separate the roles. Dropping bridges gives 40/40
+target-like pair-coassigned-without-bridge states; dropping the direct edge
+gives 40/40 bridge-split guard/source states; and the finite transient band is
+288/288 pair-separated single-side-bridge route states across forward and
+reverse traces. This is the strongest current `016` claim: a named local
+mechanism object, not generality, wall, tunneling, quality/cost, full-replay, or
+method evidence.
+
+The fixed-predicate mechanism-generalization screen at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_mechanism_generalization_screen_gamma1e5_20260605/`
+then checks whether that mechanism is unique or recurrent across the 23-pair
+local-ablation/readout panel. The answer is split. The `016` local signature
+recurs in 7/23 pairs (`001`, `007`, `009`, `012`, `014`, `016`, `020`) and in
+5 strict-ready pairs (`009`, `012`, `014`, `016`, `020`), so the substrate is
+not a one-off local graph accident. But the route-level P1 typed-transient
+predicate is accepted only by `016`, and the generalization gate
+`G4_route_level_generality_not_yet_established` fails. The next route queue is
+therefore narrow and predeclared: `009`, `012`, and `020`, with `014` retained
+as the positive reference and `005` as the boundary guard.
+
+The fixed-predicate route contract and trace at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_mechanism_generalization_route_trace_gamma1e5_20260605/`
+then execute that queue under the same source-family/start, bridge-fraction,
+and seed logic. The trace produces 864 rows and does not reproduce the `016`
+route mechanism in any strict analog: `009` and `020` make source-family to
+target-like transitions without a single-side band, while `012` shows only
+single-fraction/nonfinite single-side events. `014` and `005` do not leak the
+full predicate. This closes the first strict analog queue as route-negative for
+the fixed `016` mechanism.
+
+The route-negative explanation audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_route_negative_explanation_audit_gamma1e5_20260605/`
+then explains that negative result without changing the predicate or rerunning
+Leiden. The fixed local signature recurs in the strict analogs, but local
+substrate is insufficient for route recurrence: `009`, `012`, and `020` each
+have zero full fixed-route predicate hits. `016` is distinguished by a finite
+plateau of six adjacent all-route single-side fractions, whereas `009` is an
+abrupt source-to-target switch without a band, `012` is point/seed-fragile at a
+single fraction, and `020` is a delayed abrupt switch. Controls remain
+negative. The next mechanism question is therefore what stabilizes the `016`
+single-side plateau: bridge side-balance, endpoint-side support geometry, and
+seed/start stability should be audited as predeclared features before any
+candidate expansion or threshold sweep.
+
+The plateau-stability feature audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_plateau_stability_feature_audit_gamma1e5_20260606/`
+then performs that read-only feature screen. It rejects scalar explanations:
+`016` is not the max bridge-ratio pair (`014` is), not the max direct-delta
+pair (`005` is), and object-dominant `020` still has zero all-route
+single-side fractions. It also separates point single-side observations from
+plateau recurrence: `012`, `014`, and `005` each show at most a single
+fraction with partial/point single-side behavior, while `016` has six
+all-route single-side fractions. The current best discriminator is an exact
+single-bridge latch (`left=1;right=0;pair=0`) with equal known-anchor support
+distance and 3-start / 8-seed finite-band stability. This is still feature
+localization only; it does not open wall, method, quality/cost, or full-replay
+claims.
+
+The plateau-stability gate contract at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_plateau_stability_gate_contract_gamma1e5_20260606/`
+freezes the next readout vocabulary. A future candidate can be called
+`016`-like plateau recurrence only if all six predicates pass: fixed local
+signature, source/target brackets, finite all-route single-side band, exact
+single-bridge latch, anchor-equidistant support geometry, and seed/start-stable
+band. The contract also makes three failure modes explicit blockers:
+point-only single-side evidence, abrupt source-target switching without a band,
+and scalar-only bridge/direct explanations. Near misses `009`, `012`, `014`,
+and `020` are retained as specificity guards. This is contract-only evidence;
+it permits at most route-level plateau-recurrence wording after a future pass.
+
+The plateau-stability gate application audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_plateau_stability_gate_application_gamma1e5_20260606/`
+then applies that contract to the current 23-pair first-pass surface. Only
+`016` passes all P1-P6 predicates. The four near misses `009`, `012`, `014`,
+and `020` remain negative specificity guards, all failing the finite all-route
+single-side band predicate. `005` fails the fixed local-signature precondition.
+At this pre-gap-fill stage, `001` and `007` are kept as non-strict
+local-signature diagnostics rather than expansion-ready candidates. The other 15 pairs are explicitly marked
+not-scoreable for P2-P6, because missing route/fraction readout is not
+backfilled. This means the current panel does not yet show plateau generality;
+the next run must be a named contract-application surface that supplies those
+readouts.
+
+The route-state morphology taxonomy audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_route_state_morphology_taxonomy_gamma1e5_20260606/`
+then resolves the readout/provenance issue. The strict analogs `009`, `012`,
+and `020` already have later route-trace evidence, even though the earlier
+screen-level readout flags are stale. The taxonomy keeps `016` as the only
+stable finite single-side plateau reference, classifies `009` and `020` as
+abrupt source-target switches, classifies `012` and `014` as fragmented or
+point single-side negatives, and keeps `005` as a boundary/endpoint-surface
+control. This means P1-P6 should be treated as an `016`-like plateau-family
+contract, not as the full basin definition.
+
+The basin-state x route-morphology bridge audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_basin_state_route_morphology_bridge_gamma1e5_20260606/`
+then prevents that taxonomy from being over-promoted. All six route-scoreable
+rows retain route-state morphology evidence, but source/target basin-state
+assignment is still proxy-only or missing, wall evidence is unknown, and every
+route label remains `unknown`. This means the next design step is not to choose
+a demo, rerun routes, broaden candidates, or name a pathway. It is to
+materialize a basin-state assignment surface that can decide whether the
+source and target states in these six rows are accepted basin candidates.
+
+The basin-state assignment surface at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_basin_state_assignment_surface_gamma1e5_20260606/`
+then makes the split explicit. `014` is the only accepted local object-level
+basin-state pair and has local-only primitive wall evidence, but it is still a
+negative guard under the current fixed-predicate route morphology. `016` is the
+positive stable-plateau route-morphology reference with complete source/target
+route anchors, but it lacks endpoint-object identity and wall evidence. This
+means basin-state evidence and positive route morphology are currently on
+different evidence surfaces; no pathway label is promoted.
+
+The 014/016 surface reconciliation audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_014_016_surface_reconciliation_gamma1e5_20260607/`
+then shows this is a route-family split rather than a contradiction. `014` is
+object-wall positive under the direct-only / recovery-loop pathway-probe
+surface, with `005` closed as the boundary guard, but it remains a
+fragmented/point single-side guard under the fixed-fraction P1-P6 morphology
+surface. `016` is positive under the fixed-fraction stable-plateau morphology
+surface, but object identity and wall evidence have not been attached. No
+pathway label is promoted.
+
+The `016` object-wall transfer contract at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_object_wall_transfer_contract_gamma1e5_20260607/`
+freezes the next narrow object-wall evidence gate without executing routes.
+It transfers the `014` direct-only/recovery-loop vocabulary to `016` only over
+the starts allowed by the `016` continuity audit (`bridges_to_left`,
+`pair_together`, `singleton`) and retains `005` as the boundary guard. The
+result is 14 predeclared route rows: six `016` positive-transfer rows and
+eight `005` boundary-control rows. All seven contract gates pass, but the
+artifact remains design-only and does not promote pathway, wall, method,
+quality/cost, or full-replay claims.
+
+The executed `016` object-wall transfer trace at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_object_wall_transfer_trace_gamma1e5_20260607/`
+then runs exactly those 14 route rows: 77 route-step configs and 616 trace
+rows. All 10 execution/readout gates pass. The result is asymmetric in the way
+that matters for the next definition audit: `016` direct-only target
+availability is observed in 24/24 seed routes, while `016` recovery-loop
+routes are 24/24 typed transient blocks rather than target-with-recovery. The
+`005` boundary guard stays non-positive with 0 positive leaks, despite 24
+structural target-not-positive seed-route openings. This is executed typed
+trace evidence only, not pathway, wall, method, quality/cost, or full-replay
+evidence.
+
+The follow-up `016` object-wall transfer trace audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_object_wall_transfer_trace_audit_gamma1e5_20260607/`
+then classifies the executed trace without rerunning routes. All eight audit
+gates pass, but `local_object_wall_evidence_audit_ready=false`: direct-only
+target-anchor shape is complete, recovery-loop evidence is a typed transient
+block, and object identity remains unresolved. The useful next gate is
+therefore an object/signature identity-resolution audit over the existing
+trace, with no route expansion and no pathway, wall, method, quality/cost, or
+full-replay promotion.
+
+The object/signature identity-resolution audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_object_signature_identity_resolution_gamma1e5_20260608/`
+then resolves the signature layer. All seven identity gates pass:
+target `3c9b8a190753`, transient `aeb59ab537e6`, and source-family
+`5536308f50fc` / `c475d13ca500` are stable state signatures across the existing
+trace and local-ablation provenance. This still does not resolve endpoint
+objects. The next useful gate is an object-identity certificate for those four
+local signatures, not route expansion or pathway/wall promotion.
+
+The object-identity certificate audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_016_object_identity_certificate_gamma1e5_20260608/`
+then resolves the certificate question without opening the claim. All eight
+certificate gates pass. Existing symmetric endpoint-object membership is absent
+for `016`, while all four stable signatures can be certified as local
+signature-objects. The target local object is certified, but endpoint-object
+identity is still not resolved because the source family is split and the
+recurrent transient is a typed non-endpoint blocker. This set up the
+object-surface rule decision: accept local signature-objects only as a primitive
+diagnostic surface, or build true symmetric endpoint-object membership for
+`016`; do not broaden routes or promote pathway/wall language.
+
+The surface-qualified claim schema is now the design rule for that decision.
+See `leiden_basin_surface_claim_schema.md`. Future audits should locate each
+case on the L1-L7 ladder and expose `surface_level`, `object_status`,
+`relation_status`, and `claim_status`. Under that schema, `014` is an
+endpoint-object primitive wall candidate on the direct/recovery surface, `016`
+is a signature-object transition-band case with wall evidence blocked, and
+`005` is a boundary/collapse control.
+
+The first schema application audit at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_claim_schema_application_gamma1e5_20260608/`
+materializes that mapping over existing artifacts. All six application gates
+pass. It fixes `014` as `endpoint_object / certified / clean /
+diagnostic_only`, `016` as `signature_object / split / ladder / blocked`, and
+`005` as `endpoint_object / collapse / collapse / closed`. This is the shared
+comparison vocabulary for future audits, not route execution or claim
+promotion. The reusable implementation contract is
+`research/consensus/scripts/leiden_basin/materialization/surface_claim_schema_adapter.py`;
+future basin-surface audits should use it before adding route or label-promotion
+logic.
+
 ## Immediate Next Work
 
 The next work should use the G4.9 scaffold to prevent another narrow
@@ -1094,12 +1358,129 @@ signatures outside this single local graph.
   bridge-reassignment transient, so the next definition decision is whether
   typed transient intermediates are pathway evidence or continuity blockers.
   The semantic validation now classifies `016` as a recurrent typed
-  transition-gateway candidate, not an endpoint or wall. The next gate should
-  test persistence or reversibility of the step-2 saddle; do not run another
-  broad fraction sweep unless it answers that mechanism question.
+  transition-gateway candidate, not an endpoint or wall. The persistence trace
+  upgrades this from a point-saddle possibility to a finite transition band,
+  while the reverse trace shows mixed final source return. The next gate should
+  use the new non-return stratification result: those 9/24 routes are
+  source-family or guard residuals, not final target/transient persistence. The
+  source-family equivalence audit now fixes the operational rule as same-start
+  source-family equivalence with a named guard-overlap caveat. The
+  pathway-shape audit now shows the same source-family/transient/target ladder
+  in both directions in 24/24 routes. The objective/barrier audit now blocks
+  fixed-landscape barrier wording: the objective profile is monotone with
+  bridge fraction and remains perturbation-relative. The mechanism-
+  interpretation audit now names the local cause as direct-edge-sensitive
+  bridge-mass competition with a single-side-bridge transition band. The
+  fixed-predicate generalization screen now shows local substrate recurrence
+  but not route-level generality: only `016` accepts the P1 route predicate, and
+  `009`, `012`, and `020` are the strict nonboundary local-signature analogs
+  that still need the same route/fraction predicate. The fixed-predicate route
+  trace now executes that queue and is route-negative for all three analogs:
+  no route accepts the full source-family plus finite single-side band plus
+  target-like final predicate. The route-negative explanation audit now shows
+  why: local substrate recurs, but only `016` has a stable finite single-side
+  plateau; `009` and `020` are abrupt switches and `012` is point/seed-fragile.
+  The plateau-stability feature audit now sharpens this: the current
+  discriminator is an exact single-bridge latch with equal known-anchor support
+  distance and seed/start-stable fraction-band width; scalar bridge mass,
+  direct delta, and bridge scope mix are not sufficient. The next useful work
+  has now predeclared those plateau-stability features as a P1-P6 gate contract
+  with near misses `009`, `012`, `014`, and `020` retained as guards. Any next
+  execution should apply that contract, not broaden into candidate expansion or
+  threshold localization sweep. The current-panel application now does this and
+  accepts only `016`. The route-state morphology taxonomy now clarifies that
+  `009`, `012`, and `020` do have later route-trace evidence despite stale
+  screen-level readout flags. The next design step is therefore to use the
+  family split--stable plateau, abrupt switch, fragmented/point single-side,
+  and boundary/endpoint surface--only as a route-morphology layer. The bridge
+  audit now blocks basin/pathway promotion until a basin-state assignment
+  surface accepts source and target basin candidates for the six scoreable
+  rows. The assignment surface now accepts only `014` as a local object-level
+  basin-state pair, while `016` remains the only positive stable-plateau
+  morphology and still needs endpoint-object identity and wall evidence. The
+  014/016 reconciliation audit now shows that the two positives are on
+  different route-family surfaces rather than in conflict. The `016`
+  object-wall transfer contract now fixes the next gate as 14 predeclared rows:
+  six `016` positive-transfer rows over allowed starts and eight `005` boundary
+  guards. The 14-row trace has now been executed and shows direct-only target
+  availability but recovery-loop typed transient blocking for `016`, with `005`
+  remaining non-positive. The read-only trace audit now classifies that result:
+  local object-wall evidence is not ready, but object/signature
+  identity-resolution over the existing trace is ready. The identity audit now
+  resolves signature identities but keeps endpoint-object identity unresolved.
+  The object-identity certificate now makes the local object surface explicit:
+  four stable local signature-objects are available and the target local object
+  is certified, but no existing symmetric endpoint-object membership covers
+  `016`, the source family is split, and the recurrent transient is a
+  non-endpoint blocker.
 
-This tests whether current NanoClustering evidence can become a general
-basin-candidate surface.
+The adapter-backed object-surface rule-decision audit is now materialized at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_object_surface_rule_decision_gamma1e5_20260608/`.
+All seven decision gates pass. It accepts local signature-objects as diagnostic
+basin-state surfaces only, keeps endpoint-object membership required for wall
+wording, and leaves typed ladder evidence closed until a separate rule and
+negative controls are predeclared. Thus `016` is diagnostic surface evidence,
+not pathway-label, wall, method, quality/cost, full-replay, or route-execution
+evidence.
+
+The adapter-backed surface-rule panel-readiness audit is now materialized at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_panel_readiness_gamma1e5_20260609/`.
+All nine readiness gates pass. It organizes all 23 first-pass pairs under the
+shared schema, isolates the six scoreable rows (`016`, `014`, `009`, `012`,
+`020`, `005`), and keeps 17 rows as not-scoreable gaps. `016` remains the only
+diagnostic transition-band reference, so this is a readiness surface rather
+than evidence of panel-level generality.
+
+The next work is not to claim generality from the current panel, but to either
+fill predeclared scoreability gaps or use the six-row core as a fixed guard set
+for the next mechanism test.
+
+The first such next-gate design is now materialized at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_gap_fill_contract_gamma1e5_20260609/`.
+All seven design gates pass. It chooses the conservative gap-fill branch:
+only `001` and `007` are opened as diagnostic-not-scoreable local-signature
+rows, while `016`/`014`/`009`/`012`/`020`/`005` are locked as fixed reference
+and guard evidence. The other 15 screened gaps remain excluded. The planned
+surface is 54 route rows over allowed starts and the fixed bridge-fraction
+schedule, and it can only produce diagnostic recurrence, scoreable negative,
+or residual-gap classifications for `001`/`007`.
+
+The gap-fill trace and audit are now materialized at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_gap_fill_trace_gamma1e5_20260609/`
+and
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_gap_fill_trace_audit_gamma1e5_20260609/`.
+All six trace gates and all seven audit gates pass. No diagnostic recurrence is
+observed for `001` or `007`: all 48 pair/start/seed readouts have
+`target_like_final_absent`, with zero finite single-side bands and zero
+target-like final states. The audit therefore promotes both rows only to
+scoreable negative guards, reducing the not-scoreable panel from 17 to 15 while
+keeping `016` as the single transition-band reference.
+
+The low-fraction schedule-boundary follow-up is now materialized at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_low_fraction_boundary_contract_gamma1e5_20260609/`,
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_low_fraction_boundary_trace_gamma1e5_20260609/`,
+and
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_low_fraction_boundary_trace_audit_gamma1e5_20260609/`.
+This is a schedule-boundary artifact check, not a broadened gap search. It
+keeps the same `001`/`007` starts and scans only `0.5`, `0.375`, `0.25`,
+`0.125`, and `0.0`. All six contract gates, seven trace gates, and six audit
+gates pass. The result shows late target collapse for both pairs without a
+single-side band: `001` switches to target-like at 0.375 and below, while `007`
+switches at 0.25 and below. The audit therefore reclassifies both as
+`low_fraction_late_target_collapse_guard`. They remain scoreable guards, but
+not reinforced no-recurrence guards and not `016`-like diagnostic transition
+references.
+
+The transition-type panel direction contract is now materialized at
+`../../../research/consensus/results/adaptive_refinement/leiden_basin_nanoclustering_g4_8_first_pass_transition_type_panel_contract_gamma1e5_20260609/`.
+All six design gates pass. It freezes the eight-row scoreable surface as a
+transition-type panel: `016` is the finite recurrent transition-band reference;
+`001`/`007` are late target-collapse controls; `009`/`012`/`020` are strict
+analog guards; `014` is a cross-surface object-wall guard; and `005` is a
+boundary collapse guard. The next recommended gate is a typed-ladder relation
+rule contract if stronger 016 relation wording is desired. Endpoint-object
+membership remains the alternative if wall/object wording is the target, and
+screened-gap expansion remains blocked.
 
 ### Thread 2: Demo
 

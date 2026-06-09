@@ -8,6 +8,14 @@ This document turns the current evidence state into a next-step methodology.
 It does not define a final basin theory, run a route batch, promote wall
 claims, or inspect basin quality/cost.
 
+The current claim vocabulary is refined by
+`leiden_basin_surface_claim_schema.md`. That schema treats basin evidence as
+surface-qualified: recurrent state signatures, local signature-objects,
+endpoint objects, typed relations, wall-ready relations, and quality/method
+claims are separate promotion levels. This v0 methodology keeps its
+support-local basin objects, but future audits should report the surface schema
+before using stronger basin or wall language.
+
 ## Current Evidence Basis
 
 The active evidence supports two different conclusions:
@@ -83,6 +91,12 @@ wall_pathway_relation:
 The operational object for the next pass is `support_local_basin_candidate`.
 It is intentionally weaker than a global attraction basin. The design should
 say this every time the result is reported.
+
+After the `014`/`016`/`005` surface split, this definition should be read as a
+surface-qualified claim. A support-local basin candidate may be endpoint-vector
+evidence, signature-object evidence, or endpoint-object evidence depending on
+the active surface. It becomes wall-ready only after a separate typed-relation
+gate passes.
 
 ## Threshold And Ambiguity Rule
 
