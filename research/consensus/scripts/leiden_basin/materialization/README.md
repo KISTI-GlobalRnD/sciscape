@@ -3,6 +3,17 @@
 Target location for cache, membership, prepare, join, and materialization
 scripts.
 
+Current basin-surface claim language is governed by
+`../../../../../docs/research/leiden_basin/core/leiden_basin_surface_claim_schema.md`.
+New Track C basin audits should report `surface_level`, `object_status`,
+`relation_status`, and `claim_status` before using stronger basin, wall,
+pathway, method, or quality wording. Use `surface_claim_schema_adapter.py` for
+the shared required-column vocabulary, value validation, and case mapping.
+
+- `surface_claim_schema_adapter.py`: reusable surface-claim schema adapter for
+  Track C basin-surface audits. It defines the required columns, allowed
+  vocabulary, case-row construction, count helpers, mapping-by-case helper, and
+  validation used before route execution or label-promotion logic.
 - `materialize_leiden_basin_methodology_v0_panel.py`: builds the
   precommitted non-field34 methodology-v0 panel from existing basin-existence
   and calibration artifacts. It does not run routes or inspect quality/cost.
@@ -618,3 +629,344 @@ scripts.
   objective debt without recovery. It is read-only and keeps method,
   quality/cost, full replay, wall-generality, endpoint-basin, and positive-wall
   claims closed.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_016_transient_persistence_contract.py`:
+  reads the `016` transient semantic-validation artifact and predeclares a
+  narrow fine bridge-fraction persistence scan for `local_pair_016` only. It
+  fixes the three semantic-valid starts, eight seeds, nine bridge fractions
+  around 0.75, and readout rules separating finite-band evidence from point
+  saddle evidence. It is design-only and keeps method, quality/cost, full
+  replay, wall-generality, endpoint-basin, and positive-wall claims closed.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_016_transient_persistence_trace.py`:
+  executes the `016` persistence contract and materializes 216 trace rows, 24
+  route-persistence rows, 9 fraction-summary rows, and a gate matrix. The
+  recurrent transient signature `aeb59ab537e6` appears in 24/24 routes across
+  six adjacent bridge fractions, 0.625 through 0.8125, so it is a finite
+  transition-gateway band rather than a 0.75 point artifact. It remains
+  support-equidistant to original, drop-bridge, and drop-direct anchors and
+  keeps wall/method/quality/full-replay claims closed.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_016_transient_reverse_contract.py`:
+  consumes the finite-band persistence trace and predeclares the same-seed
+  target-anchor reverse scan. For each semantic-valid start and seed, it uses
+  the same-seed `drop_bridge_edges` endpoint membership as the initial
+  membership and restores bridge fraction from 0.5 to 1.0. It is design-only
+  and keeps method, quality/cost, full replay, wall-generality, and positive
+  wall claims closed.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_016_transient_reverse_trace.py`:
+  executes the reverse contract and materializes 216 trace rows, 24
+  route-reversibility rows, 9 fraction-summary rows, and a gate matrix. The
+  reverse trace starts at the target anchor in 24/24 routes, re-enters the same
+  transient band at 0.625 through 0.8125 in 24/24 routes, and has mixed final
+  restoration: 15/24 seed routes return to source at full bridge weight while
+  9/24 do not. This is path-asymmetry/reversibility evidence only; the
+  final-source-return gate fails as evidence, not as an execution failure, and
+  all wall/method/quality/full-replay claims remain closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_reverse_nonreturn_stratification.py`:
+  reads the executed `016` reverse trace and local-ablation anchor table to
+  stratify the 9/24 strict source-return failures. It materializes 24 final
+  state rows, route rows, stratum rows, seed-pattern rows, decision rows, and a
+  gate matrix. The 9 non-return rows do not end in target or transient
+  signatures: 8 are same-start source-family signatures that fail same-seed
+  anchor reconciliation, and 1 is a same-seed drop-direct guard residual. This
+  blocks target-hysteresis wording and makes source-family equivalence the next
+  definition gate; it is read-only and keeps wall/method/quality/full-replay
+  claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_source_family_equivalence.py`:
+  reads the `016` reverse non-return stratification artifact and compares five
+  candidate source-equivalence rules over the 24 reverse final states. It
+  materializes route-rule rows, rule rows, decision rows, and a gate matrix.
+  Strict same-seed source-anchor matching accepts 15/24 final states, while
+  same-start source-family equivalence accepts 24/24 with 0 target/transient
+  leaks and 1 named guard-overlap caveat. This fixes the operational reverse
+  final-state vocabulary for `016`; it is read-only and keeps wall/method/
+  quality/full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_pathway_shape.py`:
+  reads the executed `016` persistence trace, executed reverse trace, and
+  source-family equivalence artifact to reclassify the pathway shape under the
+  fixed same-start source-family vocabulary. It materializes 24 route-shape
+  rows, 9 fraction-ladder rows, decision rows, and a gate matrix. The forward
+  and reverse traces share the same state ladder in 24/24 routes: source-family
+  at 0.875 and 1.0, recurrent transient signature `aeb59ab537e6` at
+  0.625-0.8125, and target anchor at 0.5. This names `016` as a
+  source-family transition-band mechanism object; it is read-only and keeps
+  wall/tunneling/method/quality/full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_objective_barrier_interpretation.py`:
+  reads the executed `016` persistence trace, executed reverse trace, and
+  pathway-shape audit to interpret objective profiles without rerunning Leiden.
+  It materializes 9 objective-fraction rows, 24 route-objective rows, decision
+  rows, and a gate matrix. Mean objectives are monotone with bridge fraction in
+  both directions; the transient-band objective means match across
+  forward/reverse traces; and 0/24 routes support fixed-landscape barrier
+  language. This keeps the positive `016` claim at perturbation-relative
+  source-family transition-band mechanism object; it is read-only and keeps
+  wall/tunneling/method/quality/full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_mechanism_interpretation.py`:
+  reads the local-ablation, semantic-validation, persistence/reverse trace,
+  pathway-shape, and objective/barrier artifacts to name the `016` local
+  mechanism without rerunning Leiden. It materializes local-substrate rows,
+  variant-mechanism rows, fraction-mechanism rows, route-mechanism rows,
+  decision rows, and a gate matrix. The mechanism class is
+  direct-edge-sensitive bridge-mass competition with a single-side-bridge
+  transition band: selected bridge mass is 13.676976 times the direct edge,
+  edge-removal variants separate target and guard/source roles, and all 288
+  transient route states are pair-separated single-side-bridge states. It is
+  read-only and keeps generality/wall/tunneling/method/quality/full-replay
+  claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_mechanism_generalization_screen.py`:
+  reads the existing local-ablation, local-validation, typed-predicate, and
+  `016` mechanism artifacts to test fixed `016` mechanism predicates over the
+  23-pair local panel without new Leiden execution. It materializes pair rows,
+  class rows, next-gate rows, decision rows, and a gate matrix. The local
+  `016` signature recurs in 7/23 pairs, but route-level P1 typed-transient
+  acceptance remains `016`-only; the screen therefore leaves
+  `G4_route_level_generality_not_yet_established` failed and narrows the next
+  queue to strict nonboundary local-signature analogs `009`, `012`, and `020`,
+  with `014` and `005` as controls. It is read-only and keeps
+  route-generality/wall/tunneling/method/quality/full-replay claims closed.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_mechanism_generalization_route_contract.py`:
+  reads the mechanism-generalization screen and local-validation start rows to
+  predeclare the narrow fixed-predicate route contract. It opens only
+  source-family starts for strict analogs `009`, `012`, `020` and controls
+  `014`, `005`, with the same 9 bridge fractions and direct fraction fixed at
+  1.0. It materializes route-plan rows, fraction-step rows, readout rules, and
+  a gate matrix. It is contract-only and keeps route-generality/wall/method/
+  quality/full-replay claims closed.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_mechanism_generalization_route_trace.py`:
+  executes the fixed-predicate route contract on the existing local-ablation
+  graph surface. It materializes 864 trace rows, 96 seed-route mechanism rows,
+  5 pair rows, 45 fraction rows, and a gate matrix. The first strict analog
+  queue is route-negative under the fixed `016` predicate: `009` and `020`
+  move source-family to target-like without a single-side band, `012` has only
+  single-fraction/nonfinite single-side rows, and controls `014`/`005` do not
+  leak the full predicate. It keeps wall/method/quality/full-replay claims
+  closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_route_negative_explanation.py`:
+  reads the local-ablation, mechanism-generalization screen, `016`
+  persistence, and fixed-predicate route-trace artifacts to explain why the
+  strict analog queue stays route-negative. It materializes decision,
+  fraction, gate, pair, substrate, summary, and report artifacts. `016` remains
+  the finite single-side band reference with six adjacent all-route
+  single-side fractions; `009` and `020` are abrupt source-to-target switches
+  without a band, and `012` is point/seed-fragile rather than finite-band
+  recurrence. It is read-only and keeps route-generality/wall/method/
+  quality/full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_plateau_stability_features.py`:
+  reads the route-negative explanation, local-ablation, `016` persistence, and
+  fixed-predicate route-trace artifacts to audit which feature candidates
+  separate the `016` finite plateau from strict analog near misses. It
+  materializes pair-feature, fraction-feature, decision, gate, summary, config,
+  and report artifacts. The strongest current discriminator is an exact
+  single-bridge latch (`left=1;right=0;pair=0`) with equal known-anchor support
+  distance and seed/start-stable finite-band width; scalar bridge mass, direct
+  delta, and bridge scope mix are rejected as sufficient explanations. It is
+  read-only and keeps route-generality/wall/method/quality/full-replay claims
+  closed.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_plateau_stability_gate_contract.py`:
+  reads the plateau-stability feature audit and freezes the next readout
+  vocabulary before any candidate expansion. It materializes feature-predicate,
+  contrast-case, evaluation-rule, gate, summary, config, and report artifacts.
+  The contract requires P1-P6 for any future `016`-like finite plateau
+  recurrence and declares blockers for point-only single-side evidence, abrupt
+  source-target switches, scalar-only explanations, and near-miss leakage. It
+  is design-only and keeps route-generality/wall/method/quality/full-replay
+  claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_plateau_stability_gate_application.py`:
+  applies the P1-P6 plateau-stability gate contract to the current 23-pair
+  first-pass panel without executing Leiden or expanding candidates. It
+  materializes pair, predicate, class, decision, gate, summary, config, and
+  report artifacts. Only `016` accepts all predicates; `009`, `012`, `014`,
+  and `020` remain near-miss guards; at this pre-gap-fill stage, `001` and
+  `007` stay non-strict diagnostics; and missing P2-P6 route/fraction readouts are marked
+  not-scoreable rather than inferred. It is read-only and keeps
+  route-generality/wall/method/quality/full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_route_state_morphology_taxonomy.py`:
+  synthesizes the existing screen, fixed route trace, route-negative
+  explanation, plateau-feature audit, and P1-P6 gate application into a
+  route-state morphology taxonomy. It materializes pair, class, provenance,
+  decision, gate, summary, config, and report artifacts. It keeps `016` as the
+  only stable finite single-side plateau reference, classifies `009`/`020` as
+  abrupt source-target switches, `012`/`014` as fragmented or point
+  single-side negatives, `005` as a boundary/endpoint control, and separates
+  stale screen readout flags from later route evidence. It is read-only and
+  keeps wall/method/quality/full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_basin_state_route_morphology_bridge.py`:
+  reads the route-state morphology taxonomy and audits which evidence can
+  bridge to basin-state assignment. It materializes pair, class, requirement,
+  decision, gate, summary, config, and report artifacts. The six current
+  route-scoreable pairs keep route morphology evidence, but none has accepted
+  source and target basin-state assignments; wall evidence remains unknown and
+  all route labels stay `unknown`. It is read-only and keeps basin identity,
+  wall/pathway-label, method, quality/cost, and full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_basin_state_assignment_surface.py`:
+  reads the bridge audit plus existing route-trace, route-negative, 016
+  continuity, 014/005 endpoint-object, and 014 wall-evidence artifacts. It
+  materializes pair, evidence, class, requirement, decision, gate, summary,
+  config, and report artifacts. It accepts only `014` as a local object-level
+  basin-state pair and keeps that local-only because current fixed-predicate
+  route morphology treats `014` as a negative guard. `016` remains the positive
+  stable-plateau route-morphology reference but lacks endpoint-object identity
+  and wall evidence. It is read-only and keeps pathway-label, general-wall,
+  method, quality/cost, and full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_014_016_surface_reconciliation.py`:
+  reconciles the `014` object-wall evidence surface with the `016` positive
+  route-morphology surface without executing new routes. It materializes pair,
+  axis, schedule, decision, gate, summary, config, and report artifacts. It
+  shows `014` is object-wall positive under direct-only/recovery-loop probes
+  but remains a fixed-fraction morphology guard, while `016` is fixed-fraction
+  stable-plateau positive but lacks endpoint-object identity and wall evidence.
+  It keeps pathway-label, general-wall, method, quality/cost, and full-replay
+  claims closed and recommends a design-only `016` object-wall transfer
+  contract next.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_016_object_wall_transfer_contract.py`:
+  consumes the 014/016 reconciliation, the 014 pathway-probe contract, the 016
+  continuity-block audit, and the basin-state assignment surface. It
+  materializes rule, pair, route-plan, boundary-guard, decision, gate, summary,
+  config, and report artifacts. It freezes 14 design-only route rows: six
+  `016` positive-transfer rows over `bridges_to_left`, `pair_together`, and
+  `singleton`, plus eight `005` boundary-control rows. All seven gates pass. It
+  does not execute routes and keeps pathway-label, general-wall, method,
+  quality/cost, and full-replay claims closed.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_016_object_wall_transfer_trace.py`:
+  executes exactly the 14 rows from the `016` object-wall transfer contract
+  using the local fractional-edge trace kernel. It materializes execution-plan,
+  trace, seed-route summary, route-contract summary, route-result,
+  route-summary, pair-result, boundary-guard result, gate, summary, config, and
+  report artifacts. All 10 execution/readout gates pass. `016` has 24/24
+  direct-only target-available seed routes and 24/24 recovery-loop typed
+  transient-block seed routes. `005` remains non-positive with zero positive
+  leaks. It keeps pathway-label, general-wall, method, quality/cost, and
+  full-replay claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_object_wall_transfer_trace.py`:
+  audits the executed `016` object-wall transfer trace without rerunning
+  routes. It materializes evidence, route, pair, decision, gate, summary,
+  config, and report artifacts. All eight audit gates pass. It keeps
+  local-object-wall evidence closed because object identity remains unresolved,
+  opens only a read-only object/signature identity-resolution audit over the
+  existing trace, and keeps pathway-label, general-wall, method, quality/cost,
+  full-replay, and route-expansion claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_object_signature_identity_resolution.py`:
+  audits the existing `016` transfer trace, transfer audit, local-ablation
+  seed runs, and prior `016` semantic/pathway summaries to resolve local state
+  signatures without rerunning routes. It materializes signature, step, route,
+  local-ablation-provenance, evidence, decision, gate, summary, config, and
+  report artifacts. All seven identity gates pass. It resolves signature-level
+  state identity for target `3c9b8a190753`, transient `aeb59ab537e6`, and
+  source-family `5536308f50fc` / `c475d13ca500`, but keeps endpoint-object
+  identity, pathway-label, general-wall, method, quality/cost, full-replay,
+  and route-expansion claims closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_016_object_identity_certificate.py`:
+  audits the existing `016` signature-identity output against the first-pass
+  symmetric endpoint-object audit without rerunning routes. It materializes
+  scope, local-object, relation, evidence, decision, gate, summary, config, and
+  report artifacts. All eight certificate gates pass. It confirms that existing
+  symmetric endpoint-object membership is absent for `016`, but all four stable
+  signatures can be locally certified as signature objects. The target local
+  object is certified; the source family remains split; the recurrent transient
+  remains a typed non-endpoint blocker; endpoint-object identity, pathway-label,
+  general-wall, method, quality/cost, full-replay, and route-expansion claims
+  remain closed.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_surface_claim_schema_application.py`:
+  applies the surface-qualified basin claim schema to the current `014`/`016`/
+  `005` evidence split without rerunning routes. It materializes case,
+  evidence, decision, gate, summary, config, and report artifacts. All six
+  application gates pass. It confirms that required columns are present and
+  valid: `014` is endpoint-object/certified/clean/diagnostic-only, `016` is
+  signature-object/split/ladder/blocked, and `005` is
+  endpoint-object/collapse/collapse/closed. It standardizes comparison
+  vocabulary only and keeps wall, pathway, method, quality/cost, full-replay,
+  and route-execution claims closed. It now imports
+  `surface_claim_schema_adapter.py` rather than re-declaring the schema contract
+  locally.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_object_surface_rule_decision.py`:
+  applies `surface_claim_schema_adapter.py` to the validated `014`/`016`/`005`
+  surface rows, then reads the `016` object-identity certificate, the `014`/`005`
+  primitive wall-evidence audit, and G4.9/G4.9A control summaries. It
+  materializes case-surface, rule, evidence, decision, gate, summary, config,
+  and report artifacts. All seven decision gates pass. It accepts `016` local
+  signature-objects as diagnostic basin-state surface evidence only, retains
+  endpoint-object membership as the wall-wording requirement, keeps typed ladder
+  wall wording closed pending a separate rule and controls, and opens no
+  pathway, wall, method, quality/cost, full-replay, or route-execution claim.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_panel_readiness.py`:
+  applies the adapter-backed object-surface rule to the full 23-pair first-pass
+  panel using existing mechanism-screen, plateau, morphology, and basin-state
+  assignment artifacts. It materializes pair-surface, core-readiness,
+  non-scoreable, class, evidence, decision, gate, summary, config, and report
+  artifacts. All nine readiness gates pass. It keeps only `016`, `014`, `009`,
+  `012`, `020`, and `005` as scoreable core rows; `016` is the single
+  diagnostic transition-band reference; 17 rows remain not-scoreable gaps. It
+  does not claim panel generality or promote wall/pathway/method/quality/
+  full-replay/route execution.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_gap_fill_contract.py`:
+  reads the panel-readiness audit and local validation start rows, then
+  materializes the next design-only gap-fill contract. It opens only `001` and
+  `007` as diagnostic-not-scoreable local-signature gap-fill candidates, locks
+  `016`/`014`/`009`/`012`/`020`/`005` as fixed reference/guard evidence, and
+  excludes the other 15 screened gaps. It writes pair-role, candidate,
+  route-plan, acceptance-rule, decision, gate, summary, config, and report
+  artifacts. All seven design gates pass. If executed, the contract permits
+  exactly 54 route rows over allowed starts and the fixed bridge-fraction
+  schedule, with no panel-generality, wall, pathway, method, quality/cost,
+  full-replay, or route-execution claim.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_gap_fill_trace.py`:
+  executes exactly the 54 fraction-expanded `001`/`007` route rows from the
+  gap-fill contract over 8 seeds. It writes trace, seed-route, pair, fraction,
+  gate, summary, config, and report artifacts. All six trace gates pass. The
+  run materializes 432 local fraction rows and 48 pair/start/seed readouts.
+  Neither `001` nor `007` shows diagnostic transition-band recurrence.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_gap_fill_trace.py`:
+  audits the gap-fill trace against the panel-readiness surface and shared
+  surface-claim schema. All seven audit gates pass. It updates only `001` and
+  `007`, moving them from diagnostic-not-scoreable gaps to scoreable negative
+  guards. The scoreable surface is now 8 rows, the remaining screened gaps are
+  15, and `016` remains the single diagnostic transition-band reference. It
+  opens no panel-generality, wall, pathway, method, quality/cost, full-replay,
+  or route-execution claim.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_low_fraction_boundary_contract.py`:
+  designs the narrow follow-up schedule-boundary artifact check for `001` and
+  `007`. It does not reopen the 15 screened gaps. It reuses the same allowed
+  starts and fixes five bridge fractions, `0.5`, `0.375`, `0.25`, `0.125`, and
+  `0.0`, yielding 30 route rows. All six contract gates pass.
+- `run_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_low_fraction_boundary_trace.py`:
+  executes the 30 low-fraction route rows over 8 seeds, producing 240 local
+  fraction rows and 48 pair/start/seed readouts. All seven trace gates pass.
+  Both `001` and `007` are classified as
+  `low_fraction_late_target_collapse_guard`: `001` becomes target-like from
+  0.375 downward, `007` from 0.25 downward, and neither pair ever shows a
+  single-side band or diagnostic recurrence.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_surface_rule_low_fraction_boundary_trace.py`:
+  audits the low-fraction trace against the surface-claim schema. All six audit
+  gates pass. It updates only `001` and `007`, reclassifying them from simple
+  no-recurrence negatives to late target-collapse guards. The scoreable surface
+  remains 8 rows, the 15 screened gaps remain not-scoreable, and no
+  panel-generality, wall, pathway, method, quality/cost, full-replay, or
+  route-execution claim is opened.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_transition_type_panel_contract.py`:
+  reads the existing `016` pathway-shape audit, the `001`/`007` low-fraction
+  boundary audit, and the surface-rule panel to freeze the next direction as a
+  transition-type panel. All six design gates pass. The contract separates
+  `016` as the finite recurrent transition-band reference, `001`/`007` as late
+  target-collapse controls, `009`/`012`/`020` as strict analog guards, `014` as
+  a cross-surface object-wall guard, and `005` as a boundary collapse guard. It
+  recommends a typed-ladder relation-rule contract before any stronger `016`
+  relation wording, lists endpoint-object membership as the wall/object
+  alternative, and keeps screened-gap expansion blocked.
+- `design_leiden_basin_nanoclustering_g4_8_first_pass_typed_ladder_relation_rule_contract.py`:
+  reads the transition-type panel, object-surface rule decision, `016`
+  object-identity certificate, and `016` signature-identity resolution to
+  predeclare typed-ladder relation wording. All six design gates pass. The
+  contract accepts only `016` as a diagnostic typed-ladder relation over local
+  signature-object states. It uses `001`/`007`, `009`/`012`/`020`, `005`, and
+  `014` as false-positive and surface-separation controls, keeps
+  endpoint-object wall/pathway wording blocked, and opens no screened-gap,
+  route-execution, panel-generality, method, quality/cost, or full-replay
+  claim.
+- `audit_leiden_basin_nanoclustering_g4_8_first_pass_typed_ladder_relation_rule_application.py`:
+  applies the predeclared typed-ladder relation rule to the current eight-row
+  scoreable surface from the low-fraction boundary audit. All six application
+  gates pass. It changes only `016` relation wording from blocked to
+  diagnostic-only typed-ladder relation wording, while keeping `014` as a
+  separate object-wall diagnostic surface, `001`/`007` as target-collapse
+  controls, `009`/`012`/`020` as strict analog controls, and `005` as a closed
+  boundary/collapse guard. It preserves 15 not-scoreable screened gaps and
+  opens no wall, pathway, panel-generality, method, quality/cost, full-replay,
+  route-execution, or screened-gap expansion claim.
