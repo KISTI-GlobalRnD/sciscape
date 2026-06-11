@@ -2121,6 +2121,92 @@ body {
   font-family: var(--font-mono);
   font-size: 0.54rem;
 }
+.evolution-map-panel {
+  border: 1px solid var(--fog);
+  border-radius: 5px;
+  background: var(--white);
+  padding: 0.72rem;
+}
+.evolution-map-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: start;
+  margin-bottom: 0.48rem;
+}
+.evolution-map-title {
+  color: var(--graphite);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.evolution-map-meta {
+  margin-top: 0.16rem;
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  overflow-wrap: anywhere;
+}
+.evolution-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  justify-content: flex-end;
+}
+.evolution-map {
+  overflow-x: auto;
+  border: 1px solid rgba(197, 207, 224, 0.66);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(248, 249, 252, 0.88), rgba(255, 255, 255, 0.94));
+}
+.evolution-map-svg {
+  display: block;
+  min-width: 760px;
+  width: 100%;
+  height: auto;
+}
+.evolution-map-slice-line {
+  stroke: rgba(151, 163, 184, 0.32);
+  stroke-width: 1;
+}
+.evolution-map-slice-label {
+  fill: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 16px;
+}
+.evolution-map-edge {
+  stroke: rgba(69, 82, 102, 0.36);
+  stroke-width: 2;
+  fill: none;
+}
+.evolution-map-edge.relation-continuation { stroke: rgba(43, 168, 156, 0.48); }
+.evolution-map-edge.relation-split-child,
+.evolution-map-edge.relation-merge-parent,
+.evolution-map-edge.relation-ambiguous { stroke: rgba(69, 82, 102, 0.46); stroke-dasharray: 8 5; }
+.evolution-map-node {
+  fill: var(--teal);
+  stroke: var(--white);
+  stroke-width: 2;
+}
+.evolution-map-node.event-emergence { fill: var(--amber); }
+.evolution-map-node.event-decline { fill: var(--coral); }
+.evolution-map-node.event-split,
+.evolution-map-node.event-merge,
+.evolution-map-node.event-ambiguous { fill: var(--graphite); }
+.evolution-map-event {
+  fill: var(--white);
+  stroke: var(--graphite);
+  stroke-width: 1.5;
+}
+.evolution-map-label {
+  fill: var(--graphite);
+  font-size: 14px;
+  font-weight: 700;
+}
+.evolution-map-lineage-label {
+  fill: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
 .evolution-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
@@ -2201,8 +2287,10 @@ body {
 
 @media (max-width: 760px) {
   .evolution-head,
+  .evolution-map-head,
   .evolution-grid,
   .evolution-summary-grid { grid-template-columns: 1fr; }
+  .evolution-map-legend { justify-content: flex-start; }
 }
 
 @media (max-width: 760px) {
@@ -5839,6 +5927,7 @@ function renderEvolutionLens() {
       renderEvolutionSummary(data) +
       renderEvolutionMethodNote(data) +
       renderEvolutionSliceRail(data) +
+      renderEvolutionMap(data) +
       renderEvolutionEventFilter(data) +
       '<div class="evolution-grid">' +
         '<div class="evolution-panel"><div class="evolution-panel-title">Events</div>' +
@@ -5895,6 +5984,104 @@ function renderEvolutionSliceRail(data) {
         formatAtlasCount(slice.active_cluster_count) + ' active</div>' +
     '</div>'
   ).join('') + '</div>';
+}
+
+function renderEvolutionMap(data) {
+  const map = data && data.evolution_map || {};
+  if (!map.available) {
+    return '<div class="evolution-empty">' + esc(map.reason || 'Evolution map layout is unavailable for this artifact.') + '</div>';
+  }
+  const slices = Array.isArray(map.slices) ? map.slices : [];
+  const nodes = Array.isArray(map.nodes) ? map.nodes : [];
+  const edges = Array.isArray(map.edges) ? map.edges : [];
+  const events = Array.isArray(map.events) ? map.events : [];
+  const lineages = Array.isArray(map.lineages) ? map.lineages : [];
+  const height = Math.max(220, Math.min(680, 96 + Math.max(1, map.lineage_count || lineages.length || 1) * 34));
+  const left = 92;
+  const right = 940;
+  const top = 42;
+  const bottom = height - 48;
+  const xOf = value => left + Number(value || 0.5) * (right - left);
+  const yOf = value => top + Number(value || 0.5) * Math.max(1, bottom - top);
+  const nodesById = new Map(nodes.map(node => [String(node.state_id || ''), node]));
+  const labelNodes = nodes.slice()
+    .sort((a, b) => Number(b.doc_count || 0) - Number(a.doc_count || 0))
+    .slice(0, Math.min(14, nodes.length));
+  const sliceLayer = slices.map(slice => {
+    const x = xOf(slice.x);
+    return '<g>' +
+      '<line class="evolution-map-slice-line" x1="' + x + '" y1="' + top + '" x2="' + x + '" y2="' + bottom + '"></line>' +
+      '<text class="evolution-map-slice-label" x="' + x + '" y="24" text-anchor="middle">' + esc(slice.slice_label || slice.slice_id || '') + '</text>' +
+    '</g>';
+  }).join('');
+  const lineageLayer = lineages.slice(0, 40).map(lineage => {
+    const row = Number(lineage.row || 0);
+    const y = top + (lineages.length <= 1 ? 0.5 : row / Math.max(1, lineages.length - 1)) * Math.max(1, bottom - top);
+    return '<text class="evolution-map-lineage-label" x="10" y="' + (y + 4) + '">' +
+      esc(evolutionMapShortLabel(lineage.label || lineage.lineage_id || '', 20)) + '</text>';
+  }).join('');
+  const edgeLayer = edges.map(edge => {
+    const relation = evolutionMapClassToken(edge.relation || 'transition');
+    const width = Math.max(1.4, Math.min(4.2, 1.4 + Number(edge.score || 0) * 2.2));
+    return '<path class="evolution-map-edge relation-' + escAttr(relation) + '" d="M ' +
+      xOf(edge.source_x) + ' ' + yOf(edge.source_y) + ' L ' + xOf(edge.target_x) + ' ' + yOf(edge.target_y) +
+      '" style="stroke-width:' + width.toFixed(2) + '"><title>' +
+      esc(edge.transition_id || 'transition') + ' / ' + esc(edge.relation || '') + ' / score ' +
+      esc(formatEvolutionScore(edge.score)) + '</title></path>';
+  }).join('');
+  const eventLayer = events.map(event => {
+    const x = xOf(event.x);
+    const y = yOf(event.y);
+    return '<circle class="evolution-map-event event-' + escAttr(evolutionMapClassToken(event.event_type || 'event')) +
+      '" cx="' + x + '" cy="' + y + '" r="4.2"><title>' +
+      esc(event.event_type || 'event') + ' / ' + esc(event.event_id || '') + '</title></circle>';
+  }).join('');
+  const nodeLayer = nodes.map(node => {
+    const x = xOf(node.x);
+    const y = yOf(node.y);
+    const eventClass = node.primary_event_type ? ' event-' + evolutionMapClassToken(node.primary_event_type) : '';
+    const radius = Math.max(4, Math.min(12, 4 + Math.sqrt(Math.max(1, Number(node.doc_count || 1))) * 1.4));
+    const terms = Array.isArray(node.top_terms) && node.top_terms.length ? ' / ' + node.top_terms.slice(0, 4).join(', ') : '';
+    return '<circle class="evolution-map-node' + escAttr(eventClass) + '" cx="' + x + '" cy="' + y +
+      '" r="' + radius.toFixed(1) + '"><title>' +
+      esc((node.cluster_label || node.cluster_key || node.state_id || 'state') + ' / ' +
+        formatAtlasCount(node.doc_count || 0) + ' docs' + terms) + '</title></circle>';
+  }).join('');
+  const labelLayer = labelNodes.map(node => {
+    const x = xOf(node.x) + 9;
+    const y = yOf(node.y) - 7;
+    return '<text class="evolution-map-label" x="' + x + '" y="' + y + '">' +
+      esc(evolutionMapShortLabel(node.cluster_label || node.cluster_key || node.state_id || '', 24)) + '</text>';
+  }).join('');
+  const truncated = map.truncated || {};
+  const truncationNote = Object.entries(truncated).filter(([, value]) => value).map(([key]) => key).join(', ');
+  return '<div class="evolution-map-panel">' +
+    '<div class="evolution-map-head">' +
+      '<div><div class="evolution-map-title">Lineage time map</div>' +
+      '<div class="evolution-map-meta">' + esc(map.layout || 'lineage_time_grid') + ' / ' +
+        formatAtlasCount(map.node_count || nodes.length) + ' states / ' +
+        formatAtlasCount(map.edge_count || edges.length) + ' transitions' +
+        (truncationNote ? ' / truncated ' + esc(truncationNote) : '') + '</div></div>' +
+      '<div class="evolution-map-legend">' +
+        '<span class="evolution-mini-tag">node docs</span>' +
+        '<span class="evolution-mini-tag">edge score</span>' +
+        '<span class="evolution-mini-tag">event anchors</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="evolution-map"><svg class="evolution-map-svg" viewBox="0 0 1000 ' + height + '" role="img" aria-label="Cluster evolution lineage map">' +
+      sliceLayer + lineageLayer + edgeLayer + eventLayer + nodeLayer + labelLayer +
+    '</svg></div>' +
+  '</div>';
+}
+
+function evolutionMapClassToken(value) {
+  return String(value || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'unknown';
+}
+
+function evolutionMapShortLabel(value, limit) {
+  const text = String(value || '').trim();
+  const max = Math.max(8, Number(limit || 20));
+  return text.length > max ? text.slice(0, max - 1) + '...' : text;
 }
 
 function renderEvolutionEventFilter(data) {

@@ -369,6 +369,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert 'id="evolution-content"' in response.text
     assert "loadEvolution" in response.text
     assert "renderEvolutionLens" in response.text
+    assert "renderEvolutionMap" in response.text
+    assert "evolution-map-panel" in response.text
     assert "selectEvolutionEventFilter" in response.text
     assert "/api/jobs/${currentJobId}/evolution" in response.text
     assert "evolution-shell" in response.text
@@ -1045,6 +1047,21 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert evolution["event_counts"]["merge"] == 1
     assert len(evolution["time_slices"]) == 3
     assert len(evolution["events"]) == 8
+    assert evolution["evolution_map"]["schema_version"] == "sciscape_evolution_map_v1"
+    assert evolution["evolution_map"]["layout"] == "lineage_time_grid"
+    assert evolution["evolution_map"]["slice_count"] == 3
+    assert evolution["evolution_map"]["node_count"] == 15
+    assert evolution["evolution_map"]["edge_count"] == 9
+    assert evolution["evolution_map"]["event_count"] == 8
+    assert evolution["evolution_map"]["slices"][0]["x"] == 0.0
+    assert evolution["evolution_map"]["slices"][-1]["x"] == 1.0
+    assert any(edge["relation"] == "split_child" for edge in evolution["evolution_map"]["edges"])
+
+    bounded_evolution_response = client.get(f"/api/jobs/{job_id}/evolution?map_node_limit=2")
+    assert bounded_evolution_response.status_code == 200
+    bounded_evolution = bounded_evolution_response.json()
+    assert bounded_evolution["evolution_map"]["node_count"] == 2
+    assert bounded_evolution["evolution_map"]["truncated"]["nodes"] is True
 
     export_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_map.txt")
     assert export_download.status_code == 200

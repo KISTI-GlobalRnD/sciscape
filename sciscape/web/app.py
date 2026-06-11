@@ -1672,6 +1672,337 @@ def _normalize_evolution_rows(payload: dict[str, Any]) -> None:
         event["target_state_ids"] = _parse_evolution_refs(event.get("target_state_ids"))
 
 
+def _evolution_int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        number = float(value)
+        if math.isfinite(number):
+            return int(number)
+    except Exception:
+        pass
+    return default
+
+
+def _evolution_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        number = float(value)
+        if math.isfinite(number):
+            return float(number)
+    except Exception:
+        pass
+    return default
+
+
+def _build_evolution_map_payload(
+    payload: dict[str, Any],
+    *,
+    node_limit: int = 240,
+    edge_limit: int = 360,
+    lineage_limit: int = 80,
+) -> dict[str, Any]:
+    """Derive a bounded lineage-by-time map from validated evolution rows."""
+
+    slices = sorted(
+        [row for row in payload.get("time_slices", []) if isinstance(row, dict)],
+        key=lambda row: (_evolution_int(row.get("slice_index")), str(row.get("slice_id") or "")),
+    )
+    states = [row for row in payload.get("cluster_states", []) if isinstance(row, dict)]
+    transitions = [row for row in payload.get("transitions", []) if isinstance(row, dict)]
+    lineages = [row for row in payload.get("lineages", []) if isinstance(row, dict)]
+    events = [row for row in payload.get("events", []) if isinstance(row, dict)]
+    if not slices or not states:
+        return {
+            "schema_version": "sciscape_evolution_map_v1",
+            "available": False,
+            "reason": "time slices or cluster states are unavailable",
+            "layout": "lineage_time_grid",
+            "nodes": [],
+            "edges": [],
+            "events": [],
+            "lineages": [],
+            "slices": [],
+        }
+
+    node_limit = max(0, int(node_limit))
+    edge_limit = max(0, int(edge_limit))
+    lineage_limit = max(1, int(lineage_limit))
+    slice_ids = [str(row.get("slice_id") or "") for row in slices]
+    slice_count = len(slice_ids)
+    slice_x = {
+        slice_id: (0.5 if slice_count <= 1 else index / max(1, slice_count - 1))
+        for index, slice_id in enumerate(slice_ids)
+    }
+    slice_index_by_id = {
+        str(row.get("slice_id") or ""): _evolution_int(row.get("slice_index"))
+        for row in slices
+    }
+    state_by_id = {
+        str(row.get("state_id") or ""): row
+        for row in states
+        if str(row.get("state_id") or "").strip()
+    }
+    lineage_by_state: dict[str, str] = {}
+    lineage_meta: dict[str, dict[str, Any]] = {}
+    for row in lineages:
+        state_id = str(row.get("state_id") or "").strip()
+        lineage_id = str(row.get("lineage_id") or "").strip()
+        if not lineage_id:
+            continue
+        if state_id and state_id not in lineage_by_state:
+            lineage_by_state[state_id] = lineage_id
+        meta = lineage_meta.setdefault(
+            lineage_id,
+            {
+                "lineage_id": lineage_id,
+                "label": str(row.get("lineage_label") or lineage_id),
+                "state_count": 0,
+                "max_doc_count": 0,
+                "total_doc_count": 0,
+                "min_slice_index": _evolution_int(row.get("slice_index"), 999999),
+                "stability_scores": [],
+                "roles": {},
+                "state_ids": set(),
+            },
+        )
+        if state_id:
+            meta.setdefault("state_ids", set()).add(state_id)
+        meta["state_count"] = len(meta.get("state_ids") or []) or int(meta.get("state_count", 0))
+        meta["min_slice_index"] = min(int(meta.get("min_slice_index", 999999)), _evolution_int(row.get("slice_index"), 999999))
+        score = _evolution_float(row.get("stability_score"), default=float("nan"))
+        if math.isfinite(score):
+            meta["stability_scores"].append(score)
+        role = str(row.get("role") or "").strip()
+        if role:
+            roles = meta.setdefault("roles", {})
+            roles[role] = int(roles.get(role, 0)) + 1
+
+    for row in states:
+        state_id = str(row.get("state_id") or "").strip()
+        if not state_id:
+            continue
+        lineage_id = lineage_by_state.get(state_id)
+        if not lineage_id:
+            lineage_id = f"lineage:{row.get('cluster_key') or state_id}"
+            lineage_by_state[state_id] = lineage_id
+        doc_count = _evolution_int(row.get("doc_count"))
+        slice_index = _evolution_int(row.get("slice_index"), slice_index_by_id.get(str(row.get("slice_id") or ""), 999999))
+        meta = lineage_meta.setdefault(
+            lineage_id,
+            {
+                "lineage_id": lineage_id,
+                "label": str(row.get("cluster_label") or row.get("cluster_key") or lineage_id),
+                "state_count": 0,
+                "max_doc_count": 0,
+                "total_doc_count": 0,
+                "min_slice_index": slice_index,
+                "stability_scores": [],
+                "roles": {},
+                "state_ids": set(),
+            },
+        )
+        meta.setdefault("state_ids", set()).add(state_id)
+        meta["state_count"] = len(meta.get("state_ids") or []) or int(meta.get("state_count", 0))
+        meta["max_doc_count"] = max(int(meta.get("max_doc_count", 0)), doc_count)
+        meta["total_doc_count"] = int(meta.get("total_doc_count", 0)) + doc_count
+        meta["min_slice_index"] = min(int(meta.get("min_slice_index", 999999)), slice_index)
+
+    ordered_lineages = sorted(
+        lineage_meta.values(),
+        key=lambda row: (
+            int(row.get("min_slice_index", 999999)),
+            -int(row.get("max_doc_count", 0)),
+            str(row.get("label") or row.get("lineage_id") or ""),
+        ),
+    )
+    total_lineage_count = len(ordered_lineages)
+    visible_lineages = ordered_lineages[:lineage_limit]
+    visible_lineage_ids = {str(row["lineage_id"]) for row in visible_lineages}
+    row_index_by_lineage = {
+        str(row["lineage_id"]): index
+        for index, row in enumerate(visible_lineages)
+    }
+    visible_lineage_count = max(1, len(visible_lineages))
+
+    event_types_by_state: dict[str, set[str]] = {}
+    for event in events:
+        event_type = str(event.get("event_type") or "").strip()
+        if not event_type:
+            continue
+        anchors = [str(event.get("state_id") or "").strip()]
+        anchors.extend(_parse_evolution_refs(event.get("source_state_ids")))
+        anchors.extend(_parse_evolution_refs(event.get("target_state_ids")))
+        for state_id in anchors:
+            if state_id and state_id in state_by_id:
+                event_types_by_state.setdefault(state_id, set()).add(event_type)
+
+    node_source = []
+    for row in states:
+        state_id = str(row.get("state_id") or "").strip()
+        lineage_id = lineage_by_state.get(state_id, "")
+        if state_id and lineage_id in visible_lineage_ids:
+            node_source.append(row)
+    total_visible_states = len(node_source)
+    node_source = sorted(
+        node_source,
+        key=lambda row: (
+            row_index_by_lineage.get(lineage_by_state.get(str(row.get("state_id") or ""), ""), 999999),
+            _evolution_int(row.get("slice_index"), slice_index_by_id.get(str(row.get("slice_id") or ""), 999999)),
+            -_evolution_int(row.get("doc_count")),
+            str(row.get("state_id") or ""),
+        ),
+    )[:node_limit]
+
+    nodes: list[dict[str, Any]] = []
+    for row in node_source:
+        state_id = str(row.get("state_id") or "")
+        lineage_id = lineage_by_state.get(state_id, "")
+        row_index = row_index_by_lineage.get(lineage_id, 0)
+        slice_id = str(row.get("slice_id") or "")
+        y = 0.5 if visible_lineage_count <= 1 else row_index / max(1, visible_lineage_count - 1)
+        event_types = sorted(event_types_by_state.get(state_id, set()))
+        nodes.append(
+            {
+                "state_id": state_id,
+                "slice_id": slice_id,
+                "slice_index": _evolution_int(row.get("slice_index"), slice_index_by_id.get(slice_id, 0)),
+                "lineage_id": lineage_id,
+                "lineage_row": row_index,
+                "x": round(float(slice_x.get(slice_id, 0.5)), 6),
+                "y": round(float(y), 6),
+                "cluster_key": row.get("cluster_key"),
+                "cluster_label": row.get("cluster_label"),
+                "cluster_uid": row.get("cluster_uid"),
+                "doc_count": _evolution_int(row.get("doc_count")),
+                "top_terms": row.get("top_terms") if isinstance(row.get("top_terms"), list) else _parse_evolution_refs(row.get("top_terms")),
+                "event_types": event_types,
+                "primary_event_type": next((event for event in ["split", "merge", "ambiguous", "emergence", "decline", "continuation"] if event in event_types), event_types[0] if event_types else ""),
+            }
+        )
+    visible_state_ids = {node["state_id"] for node in nodes}
+    node_coord = {
+        node["state_id"]: (node["x"], node["y"])
+        for node in nodes
+    }
+
+    edge_source = []
+    for row in transitions:
+        source_id = str(row.get("source_state_id") or "")
+        target_id = str(row.get("target_state_id") or "")
+        if source_id in visible_state_ids and target_id in visible_state_ids:
+            edge_source.append(row)
+    total_visible_edges = len(edge_source)
+    edge_source = sorted(
+        edge_source,
+        key=lambda row: (
+            _evolution_int(row.get("source_slice_id"), slice_index_by_id.get(str(row.get("source_slice_id") or ""), 0)),
+            -_evolution_float(row.get("score")),
+            str(row.get("transition_id") or ""),
+        ),
+    )[:edge_limit]
+    edges = []
+    for row in edge_source:
+        source_id = str(row.get("source_state_id") or "")
+        target_id = str(row.get("target_state_id") or "")
+        source_x, source_y = node_coord[source_id]
+        target_x, target_y = node_coord[target_id]
+        edges.append(
+            {
+                "transition_id": row.get("transition_id"),
+                "source_state_id": source_id,
+                "target_state_id": target_id,
+                "relation": row.get("relation"),
+                "score": _evolution_float(row.get("score")),
+                "support_count": _evolution_int(row.get("support_count")),
+                "source_x": round(float(source_x), 6),
+                "source_y": round(float(source_y), 6),
+                "target_x": round(float(target_x), 6),
+                "target_y": round(float(target_y), 6),
+            }
+        )
+
+    map_events = []
+    for event in events:
+        anchor_ids = [str(event.get("state_id") or "").strip()]
+        anchor_ids.extend(_parse_evolution_refs(event.get("target_state_ids")))
+        anchor_ids.extend(_parse_evolution_refs(event.get("source_state_ids")))
+        anchor_id = next((state_id for state_id in anchor_ids if state_id in node_coord), "")
+        if not anchor_id:
+            continue
+        x, y = node_coord[anchor_id]
+        map_events.append(
+            {
+                "event_id": event.get("event_id"),
+                "event_type": event.get("event_type"),
+                "state_id": anchor_id,
+                "slice_id": event.get("slice_id"),
+                "x": round(float(x), 6),
+                "y": round(float(y), 6),
+                "score": _evolution_float(event.get("score")),
+                "support_count": _evolution_int(event.get("support_count")),
+                "transition_refs": _parse_evolution_refs(event.get("transition_refs")),
+            }
+        )
+
+    map_lineages = []
+    for row in visible_lineages:
+        lineage_id = str(row["lineage_id"])
+        scores = row.get("stability_scores") or []
+        stability = float(sum(scores) / len(scores)) if scores else None
+        map_lineages.append(
+            {
+                "lineage_id": lineage_id,
+                "label": row.get("label"),
+                "row": row_index_by_lineage[lineage_id],
+                "state_count": int(row.get("state_count", 0)),
+                "max_doc_count": int(row.get("max_doc_count", 0)),
+                "total_doc_count": int(row.get("total_doc_count", 0)),
+                "stability_score": round(stability, 6) if stability is not None else None,
+                "roles": row.get("roles", {}),
+            }
+        )
+
+    return _json_safe(
+        {
+            "schema_version": "sciscape_evolution_map_v1",
+            "available": True,
+            "layout": "lineage_time_grid",
+            "slices": [
+                {
+                    "slice_id": str(row.get("slice_id") or ""),
+                    "slice_index": _evolution_int(row.get("slice_index")),
+                    "slice_label": row.get("slice_label") or row.get("slice_id"),
+                    "x": round(float(slice_x.get(str(row.get("slice_id") or ""), 0.5)), 6),
+                    "doc_count": _evolution_int(row.get("doc_count")),
+                    "active_cluster_count": _evolution_int(row.get("active_cluster_count")),
+                }
+                for row in slices
+            ],
+            "lineages": map_lineages,
+            "nodes": nodes,
+            "edges": edges,
+            "events": map_events,
+            "slice_count": len(slices),
+            "lineage_count": len(map_lineages),
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "event_count": len(map_events),
+            "truncated": {
+                "lineages": total_lineage_count > len(map_lineages),
+                "nodes": total_visible_states > len(nodes),
+                "edges": total_visible_edges > len(edges),
+            },
+            "limits": {
+                "lineages": lineage_limit,
+                "nodes": node_limit,
+                "edges": edge_limit,
+            },
+        }
+    )
+
+
 def _evolution_manifest_path_for_result(result: dict[str, Any]) -> Path | None:
     output_dir = result.get("output_dir")
     if not output_dir:
@@ -1690,6 +2021,10 @@ def _load_evolution_payload(
     transition_limit: int = 180,
     event_limit: int = 180,
     lineage_limit: int = 180,
+    include_map: bool = True,
+    map_node_limit: int = 240,
+    map_edge_limit: int = 360,
+    map_lineage_limit: int = 80,
 ) -> dict[str, Any]:
     manifest_path = _evolution_manifest_path_for_result(result)
     if manifest_path is None:
@@ -1753,6 +2088,13 @@ def _load_evolution_payload(
         **tables,
     }
     _normalize_evolution_rows(payload)
+    if include_map:
+        payload["evolution_map"] = _build_evolution_map_payload(
+            payload,
+            node_limit=map_node_limit,
+            edge_limit=map_edge_limit,
+            lineage_limit=map_lineage_limit,
+        )
     return payload
 
 
@@ -1763,6 +2105,7 @@ def _attach_evolution_summary(result: dict[str, Any]) -> None:
         transition_limit=0,
         event_limit=0,
         lineage_limit=0,
+        include_map=False,
     )
     if not payload.get("available"):
         return
@@ -2421,6 +2764,9 @@ async def get_evolution_artifact(
     state_limit: int = 120,
     transition_limit: int = 180,
     event_limit: int = 180,
+    map_node_limit: int = 240,
+    map_edge_limit: int = 360,
+    map_lineage_limit: int = 80,
 ):
     """Get artifact-backed cluster evolution rows for the Evolution lens."""
     job = _jobs.get(job_id)
@@ -2433,6 +2779,9 @@ async def get_evolution_artifact(
             state_limit=max(0, min(int(state_limit), 500)),
             transition_limit=max(0, min(int(transition_limit), 1000)),
             event_limit=max(0, min(int(event_limit), 1000)),
+            map_node_limit=max(0, min(int(map_node_limit), 1000)),
+            map_edge_limit=max(0, min(int(map_edge_limit), 2000)),
+            map_lineage_limit=max(1, min(int(map_lineage_limit), 300)),
         )
     except Exception as exc:
         return {"error": str(exc)}
