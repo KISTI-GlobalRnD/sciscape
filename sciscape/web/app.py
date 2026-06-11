@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
 from sciscape.artifacts import (
+    NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION,
     build_atlas_payload_from_report_data,
     build_atlas_render_payload,
     infer_result_artifacts,
@@ -97,6 +98,13 @@ class JobStatus(BaseModel):
 
 class LocalDataOpenRequest(BaseModel):
     path: str
+
+
+class NarrativeReviewRequest(BaseModel):
+    claim_id: str
+    decision_type: str
+    reviewer: str | None = "web"
+    reason: str | None = None
 
 
 _LOCAL_DATA_ROOTS = [
@@ -189,6 +197,32 @@ async def get_cluster_narrative(job_id: str, cluster_uid: str, limit: int = 40):
         return {"available": False, "error": "job not done"}
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     return _load_narrative_payload_for_result(result, cluster_uid=cluster_uid, claim_limit=limit)
+
+
+@app.post("/api/jobs/{job_id}/clusters/{cluster_uid}/narrative/review")
+async def review_cluster_narrative_claim(job_id: str, cluster_uid: str, req: NarrativeReviewRequest):
+    """Persist a review decision for one narrative claim and refresh the job view."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    written = _write_narrative_review_decision(result, cluster_uid=cluster_uid, request=req)
+    if written.get("error"):
+        return written
+    root = _result_root_for_result(result)
+    if root is not None:
+        try:
+            _refresh_job_result_manifest(job_id, result, root, mode="local_result")
+        except Exception:
+            pass
+    _attach_report_atlas(result)
+    _attach_narrative_summary(result)
+    job["result"] = result
+    _jobs.persist(job_id)
+    payload = _load_narrative_payload_for_result(result, cluster_uid=cluster_uid, claim_limit=40)
+    payload["review_decision"] = written.get("review_decision")
+    payload["review_validation"] = written.get("validation")
+    return payload
 
 
 @app.get("/api/jobs/{job_id}/stream")
@@ -438,6 +472,25 @@ def _read_narrative_records(path: Path, *, limit: int | None = None) -> list[dic
     return [_json_safe(row) for row in df.to_dict(orient="records")]
 
 
+def _empty_narrative_review_frame() -> Any:
+    import pandas as pd
+
+    return pd.DataFrame(
+        columns=[
+            "schema_version",
+            "narrative_id",
+            "decision_id",
+            "claim_id",
+            "decision_type",
+            "reviewer",
+            "decided_at_utc",
+            "reason",
+            "target_id",
+            "cluster_uid",
+        ]
+    )
+
+
 def _narrative_target_matches(row: dict[str, Any], cluster_uid: str) -> bool:
     wanted = str(cluster_uid or "").strip()
     if not wanted:
@@ -454,6 +507,94 @@ def _narrative_target_matches(row: dict[str, Any], cluster_uid: str) -> bool:
         suffix = wanted.split(":", 1)[1]
         return suffix in keys
     return False
+
+
+_NARRATIVE_REVIEW_DECISIONS = {"accepted", "rejected", "needs_revision", "not_required"}
+
+
+def _write_narrative_review_decision(
+    result: dict[str, Any],
+    *,
+    cluster_uid: str,
+    request: NarrativeReviewRequest,
+) -> dict[str, Any]:
+    import pandas as pd
+
+    decision_type = str(request.decision_type or "").strip()
+    if decision_type not in _NARRATIVE_REVIEW_DECISIONS:
+        return {
+            "available": False,
+            "error": f"unsupported decision_type: {decision_type}",
+            "allowed_decision_types": sorted(_NARRATIVE_REVIEW_DECISIONS),
+        }
+    claim_id = str(request.claim_id or "").strip()
+    if not claim_id:
+        return {"available": False, "error": "claim_id is required"}
+    manifest_path = _narrative_manifest_path_for_result(result)
+    if manifest_path is None:
+        return {"available": False, "error": "no narrative claim graph artifact"}
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"available": False, "error": f"could not read narrative manifest: {exc}"}
+    narrative_dir = manifest_path.parent
+    targets_path = _narrative_output_path(narrative_dir, manifest, "targets", "narrative_targets.parquet")
+    claims_path = _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet")
+    targets = _read_narrative_records(targets_path)
+    target_ids = {
+        str(target.get("target_id") or "")
+        for target in targets
+        if _narrative_target_matches(target, cluster_uid)
+    }
+    if not target_ids:
+        return {"available": False, "error": f"narrative target not found: {cluster_uid}"}
+    try:
+        claims = pd.read_parquet(claims_path)
+    except Exception as exc:
+        return {"available": False, "error": f"could not read narrative claims: {exc}"}
+    if "claim_id" not in claims.columns or "target_id" not in claims.columns:
+        return {"available": False, "error": "narrative claims table is missing claim_id or target_id"}
+    mask = (claims["claim_id"].map(str) == claim_id) & claims["target_id"].map(str).isin(target_ids)
+    if not bool(mask.any()):
+        return {"available": False, "error": f"claim not found for cluster: {claim_id}"}
+    if "review_state" not in claims.columns:
+        claims["review_state"] = "not_reviewed"
+    claims.loc[mask, "review_state"] = decision_type
+    claims.to_parquet(claims_path, index=False)
+
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
+    outputs["reviews"] = str(outputs.get("reviews") or "review_decisions.parquet")
+    manifest["outputs"] = outputs
+    manifest["review_state_advertised"] = True
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    reviews_path = _narrative_output_path(narrative_dir, manifest, "reviews", "review_decisions.parquet")
+    try:
+        reviews = pd.read_parquet(reviews_path) if reviews_path.exists() else _empty_narrative_review_frame()
+    except Exception:
+        reviews = _empty_narrative_review_frame()
+    target_id = sorted(target_ids)[0]
+    decided_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    review_row = {
+        "schema_version": NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION,
+        "narrative_id": str(manifest.get("narrative_id") or ""),
+        "decision_id": f"decision_{uuid.uuid4().hex[:12]}",
+        "claim_id": claim_id,
+        "decision_type": decision_type,
+        "reviewer": str(request.reviewer or "web"),
+        "decided_at_utc": decided_at,
+        "reason": str(request.reason or ""),
+        "target_id": target_id,
+        "cluster_uid": str(cluster_uid),
+    }
+    reviews = pd.concat([reviews, pd.DataFrame([review_row])], ignore_index=True)
+    reviews.to_parquet(reviews_path, index=False)
+    validation = validate_narrative_artifact(manifest_path).to_dict()
+    return {
+        "available": True,
+        "review_decision": review_row,
+        "validation": validation,
+        "reviews_path": str(reviews_path),
+    }
 
 
 def _cluster_narrative_view(

@@ -275,6 +275,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasReviewPacket" in response.text
     assert "renderAtlasNarrativeReview" in response.text
     assert "atlas-narrative-panel" in response.text
+    assert "submitAtlasNarrativeReview" in response.text
+    assert "/narrative/review" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -982,6 +984,53 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert cluster_narrative["target_found"] is True
     assert cluster_narrative["cluster"]["cluster_uid"] == "cluster:0"
     assert cluster_narrative["cluster"]["claim_count"] >= 3
+    claim_id = cluster_narrative["cluster"]["claims"][0]["claim_id"]
+
+    invalid_review_response = client.post(
+        f"/api/jobs/{job_id}/clusters/cluster:0/narrative/review",
+        json={
+            "claim_id": claim_id,
+            "decision_type": "maybe",
+            "reviewer": "tester",
+        },
+    )
+    assert invalid_review_response.status_code == 200
+    assert invalid_review_response.json()["available"] is False
+    assert invalid_review_response.json()["allowed_decision_types"] == [
+        "accepted",
+        "needs_revision",
+        "not_required",
+        "rejected",
+    ]
+
+    review_response = client.post(
+        f"/api/jobs/{job_id}/clusters/cluster:0/narrative/review",
+        json={
+            "claim_id": claim_id,
+            "decision_type": "accepted",
+            "reviewer": "tester",
+            "reason": "evidence refs are sufficient",
+        },
+    )
+    assert review_response.status_code == 200
+    review_payload = review_response.json()
+    assert review_payload["available"] is True
+    assert review_payload["review_decision"]["claim_id"] == claim_id
+    assert review_payload["review_decision"]["decision_type"] == "accepted"
+    assert review_payload["review_decision"]["reviewer"] == "tester"
+    assert review_payload["review_validation"]["blocking_issues"] == []
+    assert review_payload["cluster"]["claims"][0]["review_state"] == "accepted"
+    review_decisions = pd.read_parquet(output_dir / "narrative" / "review_decisions.parquet")
+    assert review_decisions["claim_id"].tolist() == [claim_id]
+    assert review_decisions["decision_type"].tolist() == ["accepted"]
+    claims_after_review = pd.read_parquet(output_dir / "narrative" / "claims.parquet")
+    assert claims_after_review.loc[claims_after_review["claim_id"] == claim_id, "review_state"].iloc[0] == "accepted"
+
+    cluster_narrative_after_review_response = client.get(
+        f"/api/jobs/{job_id}/clusters/cluster:0/narrative"
+    )
+    assert cluster_narrative_after_review_response.status_code == 200
+    assert cluster_narrative_after_review_response.json()["cluster"]["claims"][0]["review_state"] == "accepted"
 
     missing_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:missing/narrative")
     assert missing_narrative_response.status_code == 200

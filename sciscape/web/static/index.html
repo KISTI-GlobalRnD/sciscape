@@ -1440,6 +1440,31 @@ body {
   margin-top: 0.18rem;
   overflow-wrap: anywhere;
 }
+.atlas-narrative-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+  margin-top: 0.32rem;
+}
+.atlas-narrative-action {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--steel);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  padding: 0.14rem 0.32rem;
+}
+.atlas-narrative-action:hover {
+  border-color: var(--amber);
+  color: var(--ink);
+}
+.atlas-narrative-action.active {
+  border-color: rgba(43, 168, 156, 0.35);
+  background: rgba(43, 168, 156, 0.1);
+  color: var(--teal-dim);
+}
 .atlas-review-packet-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -4560,6 +4585,8 @@ function renderAtlasNarrativeReview(node, model) {
       '<div class="atlas-unavailable-row">Narrative artifacts are available, but this cluster has no claim rows in the current Atlas payload.</div>';
   }
   const state = narrative.state || section.state || 'beta';
+  const clusterUid = String(node && node.cluster_uid || narrative.cluster_uid || '');
+  const encodeReviewArg = value => encodeURIComponent(String(value || '')).replace(/'/g, '%27');
   const claims = narrative.claims.slice(0, 4).map(claim => {
     const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
     const evidenceLabel = evidence.length
@@ -4567,14 +4594,23 @@ function renderAtlasNarrativeReview(node, model) {
           [ref.evidence_role, ref.evidence_label || ref.evidence_ref_id, ref.aggregate_only ? 'aggregate-only' : 'direct'].filter(Boolean).join(' / ')
         ).join(' | ')
       : 'no linked evidence refs';
+    const claimId = String(claim.claim_id || '');
+    const reviewState = String(claim.review_state || 'not_reviewed');
+    const actionButtons = ['accepted', 'needs_revision', 'rejected'].map(decision =>
+      '<button class="atlas-narrative-action' + (reviewState === decision ? ' active' : '') + '" onclick="submitAtlasNarrativeReview(decodeURIComponent(\'' +
+        encodeReviewArg(clusterUid) + '\'), decodeURIComponent(\'' + encodeReviewArg(claimId) + '\'), \'' + decision + '\')">' +
+        esc(decision.replace('_', ' ')) + '</button>'
+    ).join('');
     return '<div class="atlas-narrative-claim">' +
       '<div class="atlas-narrative-claim-head">' +
         '<span class="atlas-mini-pill">' + esc(claim.claim_type || 'claim') + '</span>' +
         '<span class="atlas-mini-pill">' + esc(claim.support_state || 'unknown') + '</span>' +
+        '<span class="atlas-mini-pill">review ' + esc(reviewState) + '</span>' +
         '<span class="atlas-mini-pill">refs ' + formatAtlasCount(claim.evidence_ref_count || evidence.length) + '</span>' +
       '</div>' +
       '<div class="atlas-narrative-claim-text">' + esc(claim.claim_text || '') + '</div>' +
       '<div class="atlas-narrative-evidence" title="' + escAttr(evidenceLabel) + '">' + esc(evidenceLabel) + '</div>' +
+      '<div class="atlas-narrative-actions">' + actionButtons + '</div>' +
     '</div>';
   }).join('');
   const note = formatAtlasCount(narrative.claim_count || narrative.claims.length) + ' claims / ' +
@@ -4588,6 +4624,25 @@ function renderAtlasNarrativeReview(node, model) {
       '</div>' +
       '<div class="atlas-narrative-claims">' + claims + '</div>' +
     '</div>';
+}
+
+async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
+  if (!currentJobId || !clusterUid || !claimId) return;
+  try {
+    const response = await fetch('/api/jobs/' + currentJobId + '/clusters/' + encodeURIComponent(clusterUid) + '/narrative/review', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({claim_id: claimId, decision_type: decisionType, reviewer: 'web'})
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) throw new Error(payload.error || 'narrative review failed');
+    const node = (currentAtlasPayload && currentAtlasPayload.nodes || []).find(row => String(row.cluster_uid || '') === String(clusterUid));
+    if (node && payload.cluster) node.narrative = payload.cluster;
+    const inspector = document.querySelector('.atlas-body > .atlas-inspector');
+    if (node && inspector) inspector.innerHTML = renderAtlasInspector(node);
+  } catch (err) {
+    console.warn(err);
+  }
 }
 
 function renderAtlasUnavailableSection(title, section) {
