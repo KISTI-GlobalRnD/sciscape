@@ -6,11 +6,17 @@ import pandas as pd
 import pytest
 
 import sciscape
-from sciscape.evolution import build_membership_projection_evolution, classify_evolution_events, rank_evolution_transitions
+from sciscape.evolution import (
+    build_membership_projection_evolution,
+    classify_evolution_events,
+    label_evolution_transition_relations,
+    rank_evolution_transitions,
+)
 
 
 def test_evolution_is_public_lazy_submodule():
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
+    assert sciscape.evolution.label_evolution_transition_relations is label_evolution_transition_relations
     assert sciscape.evolution.rank_evolution_transitions is rank_evolution_transitions
 
 
@@ -314,3 +320,68 @@ def test_rank_evolution_transitions_is_deterministic_by_source_and_target():
     assert by_id["t_D_B"].rank_to_target == 1
     assert by_id["t_E_B"].rank_to_target == 2
     assert by_id["t_A_B"].rank_to_target == 3
+
+
+def test_label_evolution_transition_relations_marks_candidates_without_overwriting_explicit_labels():
+    transitions = pd.DataFrame(
+        [
+            {
+                "transition_id": "t_A_B",
+                "source_state_id": "A",
+                "target_state_id": "B",
+                "score": 0.9,
+                "support_count": 3,
+                "relation": "candidate",
+            },
+            {
+                "transition_id": "t_A_C",
+                "source_state_id": "A",
+                "target_state_id": "C",
+                "score": 0.8,
+                "support_count": 3,
+                "relation": "candidate",
+            },
+            {
+                "transition_id": "t_D_E",
+                "source_state_id": "D",
+                "target_state_id": "E",
+                "score": 0.9,
+                "support_count": 3,
+                "relation": "candidate",
+            },
+            {
+                "transition_id": "t_F_E",
+                "source_state_id": "F",
+                "target_state_id": "E",
+                "score": 0.8,
+                "support_count": 3,
+                "relation": "candidate",
+            },
+            {
+                "transition_id": "t_G_H",
+                "source_state_id": "G",
+                "target_state_id": "H",
+                "score": 0.9,
+                "support_count": 3,
+                "relation": "",
+            },
+            {
+                "transition_id": "t_X_Y",
+                "source_state_id": "X",
+                "target_state_id": "Y",
+                "score": 0.6,
+                "support_count": 3,
+                "relation": "ambiguous",
+            },
+        ]
+    )
+
+    labeled = label_evolution_transition_relations(transitions)
+    by_id = {row.transition_id: row for row in labeled.itertuples(index=False)}
+
+    assert by_id["t_A_B"].relation == "split_child"
+    assert by_id["t_A_C"].relation == "split_child"
+    assert by_id["t_D_E"].relation == "merge_parent"
+    assert by_id["t_F_E"].relation == "merge_parent"
+    assert by_id["t_G_H"].relation == "continuation"
+    assert by_id["t_X_Y"].relation == "ambiguous"

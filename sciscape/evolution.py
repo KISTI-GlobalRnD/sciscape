@@ -403,7 +403,7 @@ def _transition_rows(
                     }
                 )
     transitions = pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
-    return rank_evolution_transitions(transitions)
+    return label_evolution_transition_relations(transitions)
 
 
 def rank_evolution_transitions(transitions: pd.DataFrame) -> pd.DataFrame:
@@ -442,6 +442,65 @@ def rank_evolution_transitions(transitions: pd.DataFrame) -> pd.DataFrame:
     target_ranks = target_order.groupby("target_state_id", sort=False).cumcount() + 1
     out.loc[target_order.index, "rank_to_target"] = target_ranks.astype(int).to_numpy()
     return out.drop(columns=["_rank_score", "_rank_support", "_rank_target", "_rank_source"])
+
+
+def label_evolution_transition_relations(
+    transitions: pd.DataFrame,
+    *,
+    event_rules: Mapping[str, Any] | None = None,
+) -> pd.DataFrame:
+    """Assign deterministic relation labels to ranked transition evidence."""
+
+    rules = _default_event_rules()
+    if event_rules:
+        rules.update(dict(event_rules))
+    continuation_min = float(rules.get("continuation_min_score", 0.5))
+    split_min_children = _config_int(rules, "split_min_children", 2, label="evolution event_rules")
+    merge_min_parents = _config_int(rules, "merge_min_parents", 2, label="evolution event_rules")
+    ambiguous_margin = float(rules.get("ambiguous_score_margin", 0.05))
+    if split_min_children < 2:
+        raise ValueError("evolution event_rules split_min_children must be at least 2")
+    if merge_min_parents < 2:
+        raise ValueError("evolution event_rules merge_min_parents must be at least 2")
+
+    out = rank_evolution_transitions(transitions)
+    if out.empty:
+        if "relation" not in out.columns:
+            out["relation"] = pd.Series(dtype="object")
+        return out
+    if "relation" not in out.columns:
+        out["relation"] = "candidate"
+    existing = out["relation"].fillna("").map(lambda value: str(value).strip())
+    mutable = existing.isin({"", "candidate"})
+    out.loc[mutable, "relation"] = "candidate"
+
+    score = pd.to_numeric(out["score"], errors="coerce").fillna(float("-inf"))
+    strong = score >= continuation_min
+    strong_source_counts = out.loc[strong].groupby("source_state_id")["target_state_id"].transform("count")
+    strong_target_counts = out.loc[strong].groupby("target_state_id")["source_state_id"].transform("count")
+    out["_strong_source_count"] = 0
+    out["_strong_target_count"] = 0
+    out.loc[strong, "_strong_source_count"] = strong_source_counts.to_numpy()
+    out.loc[strong, "_strong_target_count"] = strong_target_counts.to_numpy()
+
+    continuation_mask = mutable & strong & (out["_strong_source_count"] == 1) & (out["_strong_target_count"] == 1)
+    split_mask = mutable & strong & (out["_strong_source_count"] >= split_min_children)
+    merge_mask = mutable & strong & (out["_strong_target_count"] >= merge_min_parents)
+    out.loc[continuation_mask, "relation"] = "continuation"
+    out.loc[split_mask, "relation"] = "split_child"
+    out.loc[merge_mask, "relation"] = "merge_parent"
+    out.loc[split_mask & merge_mask, "relation"] = "ambiguous"
+
+    for source_id, group in out.loc[mutable & strong].groupby("source_state_id", sort=False):
+        if len(group) < 2 or int(group["_strong_source_count"].iloc[0]) >= split_min_children:
+            continue
+        ordered = group.sort_values(["score", "support_count", "target_state_id"], ascending=[False, False, True], kind="stable")
+        top_score = float(ordered.iloc[0]["score"])
+        second_score = float(ordered.iloc[1]["score"])
+        if abs(top_score - second_score) <= ambiguous_margin:
+            out.loc[ordered.index, "relation"] = "ambiguous"
+
+    return out.drop(columns=["_strong_source_count", "_strong_target_count"])
 
 
 def _lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
@@ -821,5 +880,6 @@ __all__ = [
     "EvolutionAnalysisResult",
     "build_membership_projection_evolution",
     "classify_evolution_events",
+    "label_evolution_transition_relations",
     "rank_evolution_transitions",
 ]

@@ -583,6 +583,9 @@ lineage from raw records.
   multi-target or multi-source transition patterns.
 - `sciscape.evolution.rank_evolution_transitions` assigns deterministic
   source-side and target-side ranks for transition evidence tables.
+- `sciscape.evolution.label_evolution_transition_relations` turns unlabeled
+  candidate transitions into continuation, split, merge, ambiguous, or
+  candidate relation rows without overwriting explicit labels.
 - `validate_evolution_artifact` validates manifests, slices, states,
   transitions, lineages, events, QA, references, adjacent-slice transitions,
   event support, and score ranges.
