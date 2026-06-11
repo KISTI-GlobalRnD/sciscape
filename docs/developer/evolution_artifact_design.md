@@ -581,6 +581,8 @@ lineage from raw records.
 - `sciscape.evolution.classify_evolution_events` classifies events from
   explicit transition evidence, including split and merge events from
   multi-target or multi-source transition patterns.
+- `sciscape.evolution.rank_evolution_transitions` assigns deterministic
+  source-side and target-side ranks for transition evidence tables.
 - `validate_evolution_artifact` validates manifests, slices, states,
   transitions, lineages, events, QA, references, adjacent-slice transitions,
   event support, and score ranges.

@@ -402,7 +402,46 @@ def _transition_rows(
                         "warning_flags": "",
                     }
                 )
-    return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
+    transitions = pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
+    return rank_evolution_transitions(transitions)
+
+
+def rank_evolution_transitions(transitions: pd.DataFrame) -> pd.DataFrame:
+    """Add deterministic source-side and target-side transition ranks."""
+
+    if transitions.empty:
+        out = transitions.copy()
+        if "rank_from_source" not in out.columns:
+            out["rank_from_source"] = pd.Series(dtype="int64")
+        if "rank_to_target" not in out.columns:
+            out["rank_to_target"] = pd.Series(dtype="int64")
+        return out
+    required = {"source_state_id", "target_state_id", "score"}
+    missing = sorted(required - set(transitions.columns))
+    if missing:
+        raise ValueError(f"transitions missing required columns for ranking: {', '.join(missing)}")
+    out = transitions.copy()
+    if "support_count" not in out.columns:
+        out["support_count"] = 0
+    out["_rank_score"] = pd.to_numeric(out["score"], errors="coerce").fillna(float("-inf"))
+    out["_rank_support"] = pd.to_numeric(out["support_count"], errors="coerce").fillna(0)
+    out["_rank_target"] = out["target_state_id"].map(str)
+    out["_rank_source"] = out["source_state_id"].map(str)
+    source_order = out.sort_values(
+        ["source_state_id", "_rank_score", "_rank_support", "_rank_target"],
+        ascending=[True, False, False, True],
+        kind="stable",
+    )
+    source_ranks = source_order.groupby("source_state_id", sort=False).cumcount() + 1
+    out.loc[source_order.index, "rank_from_source"] = source_ranks.astype(int).to_numpy()
+    target_order = out.sort_values(
+        ["target_state_id", "_rank_score", "_rank_support", "_rank_source"],
+        ascending=[True, False, False, True],
+        kind="stable",
+    )
+    target_ranks = target_order.groupby("target_state_id", sort=False).cumcount() + 1
+    out.loc[target_order.index, "rank_to_target"] = target_ranks.astype(int).to_numpy()
+    return out.drop(columns=["_rank_score", "_rank_support", "_rank_target", "_rank_source"])
 
 
 def _lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
@@ -782,4 +821,5 @@ __all__ = [
     "EvolutionAnalysisResult",
     "build_membership_projection_evolution",
     "classify_evolution_events",
+    "rank_evolution_transitions",
 ]

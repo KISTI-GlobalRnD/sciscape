@@ -6,11 +6,12 @@ import pandas as pd
 import pytest
 
 import sciscape
-from sciscape.evolution import build_membership_projection_evolution, classify_evolution_events
+from sciscape.evolution import build_membership_projection_evolution, classify_evolution_events, rank_evolution_transitions
 
 
 def test_evolution_is_public_lazy_submodule():
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
+    assert sciscape.evolution.rank_evolution_transitions is rank_evolution_transitions
 
 
 def test_membership_projection_evolution_builds_in_memory_tables():
@@ -269,3 +270,47 @@ def test_classify_evolution_events_rejects_degenerate_split_rule():
             lineages=lineages,
             event_rules={"split_min_children": 1},
         )
+
+
+def test_rank_evolution_transitions_is_deterministic_by_source_and_target():
+    transitions = pd.DataFrame(
+        [
+            {
+                "transition_id": "t_A_C",
+                "source_state_id": "A",
+                "target_state_id": "C",
+                "score": 0.7,
+                "support_count": 5,
+            },
+            {
+                "transition_id": "t_A_B",
+                "source_state_id": "A",
+                "target_state_id": "B",
+                "score": 0.9,
+                "support_count": 2,
+            },
+            {
+                "transition_id": "t_D_B",
+                "source_state_id": "D",
+                "target_state_id": "B",
+                "score": 0.9,
+                "support_count": 3,
+            },
+            {
+                "transition_id": "t_E_B",
+                "source_state_id": "E",
+                "target_state_id": "B",
+                "score": 0.9,
+                "support_count": 3,
+            },
+        ]
+    )
+
+    ranked = rank_evolution_transitions(transitions)
+    by_id = {row.transition_id: row for row in ranked.itertuples(index=False)}
+
+    assert by_id["t_A_B"].rank_from_source == 1
+    assert by_id["t_A_C"].rank_from_source == 2
+    assert by_id["t_D_B"].rank_to_target == 1
+    assert by_id["t_E_B"].rank_to_target == 2
+    assert by_id["t_A_B"].rank_to_target == 3
