@@ -7,6 +7,7 @@ import pytest
 
 import sciscape
 from sciscape.evolution import (
+    build_evolution_transition_table,
     build_membership_projection_evolution,
     classify_evolution_events,
     label_evolution_transition_relations,
@@ -15,6 +16,7 @@ from sciscape.evolution import (
 
 
 def test_evolution_is_public_lazy_submodule():
+    assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
     assert sciscape.evolution.label_evolution_transition_relations is label_evolution_transition_relations
     assert sciscape.evolution.rank_evolution_transitions is rank_evolution_transitions
@@ -385,3 +387,75 @@ def test_label_evolution_transition_relations_marks_candidates_without_overwriti
     assert by_id["t_F_E"].relation == "merge_parent"
     assert by_id["t_G_H"].relation == "continuation"
     assert by_id["t_X_Y"].relation == "ambiguous"
+
+
+def test_build_evolution_transition_table_normalizes_raw_evidence():
+    states = pd.DataFrame(
+        [
+            {"state_id": "A20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 6},
+            {"state_id": "B21a", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "B21b", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "C20a", "slice_id": "year:2020", "slice_index": 0, "doc_count": 3},
+            {"state_id": "C20b", "slice_id": "year:2020", "slice_index": 0, "doc_count": 3},
+            {"state_id": "C21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 6},
+            {"state_id": "D20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 4},
+            {"state_id": "D21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 4},
+            {"state_id": "E21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 4},
+        ]
+    )
+    evidence = pd.DataFrame(
+        [
+            {"source_state_id": "A20", "target_state_id": "B21a", "score": 0.76, "support_count": 3},
+            {"source_state_id": "A20", "target_state_id": "B21b", "score": 0.74, "support_count": 3},
+            {"source_state_id": "C20a", "target_state_id": "C21", "score": 0.81, "support_count": 3},
+            {"source_state_id": "C20b", "target_state_id": "C21", "score": 0.79, "support_count": 3},
+            {"source_state_id": "D20", "target_state_id": "D21", "score": 0.91, "support_count": 4, "evidence_ref": "manual:D"},
+            {"source_state_id": "D20", "target_state_id": "E21", "score": 0.10, "support_count": 4},
+        ]
+    )
+
+    transitions = build_evolution_transition_table(
+        evolution_id="raw evidence",
+        states=states,
+        transition_evidence=evidence,
+        metric="term_overlap",
+        matching_method={"min_transition_score": 0.5, "min_support_count": 2},
+    )
+
+    assert len(transitions) == 5
+    by_pair = {(row.source_state_id, row.target_state_id): row for row in transitions.itertuples(index=False)}
+    assert by_pair[("A20", "B21a")].relation == "split_child"
+    assert by_pair[("A20", "B21a")].source_doc_count == 6
+    assert by_pair[("A20", "B21a")].target_doc_count == 3
+    assert by_pair[("C20a", "C21")].relation == "merge_parent"
+    assert by_pair[("D20", "D21")].relation == "continuation"
+    assert by_pair[("D20", "D21")].metric == "term_overlap"
+    assert by_pair[("D20", "D21")].evidence_ref == "manual:D"
+    assert ("D20", "E21") not in by_pair
+
+
+def test_build_evolution_transition_table_rejects_unknown_or_non_adjacent_states():
+    states = pd.DataFrame(
+        [
+            {"state_id": "A20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 1},
+            {"state_id": "A22", "slice_id": "year:2022", "slice_index": 2, "doc_count": 1},
+        ]
+    )
+    unknown = pd.DataFrame([{"source_state_id": "missing", "target_state_id": "A22", "score": 1.0, "support_count": 1}])
+
+    with pytest.raises(ValueError, match="unknown source_state_id"):
+        build_evolution_transition_table(
+            evolution_id="bad",
+            states=states,
+            transition_evidence=unknown,
+            metric="term_overlap",
+        )
+
+    non_adjacent = pd.DataFrame([{"source_state_id": "A20", "target_state_id": "A22", "score": 1.0, "support_count": 1}])
+    with pytest.raises(ValueError, match="adjacent slices"):
+        build_evolution_transition_table(
+            evolution_id="bad",
+            states=states,
+            transition_evidence=non_adjacent,
+            metric="term_overlap",
+        )

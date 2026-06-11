@@ -578,6 +578,9 @@ lineage from raw records.
   in-memory slice, state, transition, lineage, and event tables before artifact
   serialization; this keeps analysis logic separate from artifact validation and
   lets richer matching strategies evolve in the analysis module first.
+- `sciscape.evolution.build_evolution_transition_table` normalizes raw
+  source-target state evidence from external or future slice-local matchers into
+  ranked, labeled transition rows.
 - `sciscape.evolution.classify_evolution_events` classifies events from
   explicit transition evidence, including split and merge events from
   multi-target or multi-source transition patterns.

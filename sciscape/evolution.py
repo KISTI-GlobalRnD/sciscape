@@ -140,15 +140,7 @@ def _normalize_matching_method(matching_method: Mapping[str, Any]) -> dict[str, 
             "unsupported evolution matching metric for membership projection: "
             f"{metric}. Use projected_cluster_identity."
         )
-    try:
-        threshold = float(matching_method.get("min_transition_score", 0.5))
-    except (TypeError, ValueError) as exc:
-        raise ValueError("evolution matching min_transition_score must be a number") from exc
-    if not math.isfinite(threshold) or threshold < 0.0 or threshold > 1.0:
-        raise ValueError("evolution matching min_transition_score must be between 0 and 1")
-    min_support = _config_int(matching_method, "min_support_count", 1, label="evolution matching")
-    if min_support < 1:
-        raise ValueError("evolution matching min_support_count must be at least 1")
+    threshold, min_support = _score_support_thresholds(matching_method)
     normalized = dict(matching_method)
     normalized.update(
         {
@@ -158,6 +150,19 @@ def _normalize_matching_method(matching_method: Mapping[str, Any]) -> dict[str, 
         }
     )
     return normalized
+
+
+def _score_support_thresholds(matching_method: Mapping[str, Any] | None) -> tuple[float, int]:
+    try:
+        threshold = float((matching_method or {}).get("min_transition_score", 0.5))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("evolution matching min_transition_score must be a number") from exc
+    if not math.isfinite(threshold) or threshold < 0.0 or threshold > 1.0:
+        raise ValueError("evolution matching min_transition_score must be between 0 and 1")
+    min_support = _config_int(matching_method, "min_support_count", 1, label="evolution matching")
+    if min_support < 1:
+        raise ValueError("evolution matching min_support_count must be at least 1")
+    return threshold, min_support
 
 
 def _default_event_rules() -> dict[str, Any]:
@@ -501,6 +506,105 @@ def label_evolution_transition_relations(
             out.loc[ordered.index, "relation"] = "ambiguous"
 
     return out.drop(columns=["_strong_source_count", "_strong_target_count"])
+
+
+def build_evolution_transition_table(
+    *,
+    evolution_id: str,
+    states: pd.DataFrame,
+    transition_evidence: pd.DataFrame,
+    metric: str,
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    allow_skip_slices: bool = False,
+) -> pd.DataFrame:
+    """Normalize raw state-transition evidence into the evolution transition schema."""
+
+    metric = str(metric or "").strip()
+    if not metric:
+        raise ValueError("evolution transition metric must not be empty")
+    state_required = {"state_id", "slice_id", "slice_index", "doc_count"}
+    state_missing = sorted(state_required - set(states.columns))
+    if state_missing:
+        raise ValueError(f"states missing required columns for transition table: {', '.join(state_missing)}")
+    evidence_required = {"source_state_id", "target_state_id", "score", "support_count"}
+    evidence_missing = sorted(evidence_required - set(transition_evidence.columns))
+    if evidence_missing:
+        raise ValueError(f"transition_evidence missing required columns: {', '.join(evidence_missing)}")
+    if states.empty or transition_evidence.empty:
+        return label_evolution_transition_relations(pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS)), event_rules=event_rules)
+
+    threshold, min_support = _score_support_thresholds(matching_method)
+    state_index: dict[str, Any] = {}
+    for state in states.itertuples(index=False):
+        state_id = str(state.state_id)
+        if state_id in state_index:
+            raise ValueError(f"states contains duplicate state_id: {state_id}")
+        state_index[state_id] = state
+
+    rows = []
+    optional_columns = [
+        "shared_doc_count",
+        "shared_term_count",
+        "jaccard",
+        "overlap_source",
+        "overlap_target",
+        "evidence_ref",
+        "warning_flags",
+    ]
+    for evidence in transition_evidence.itertuples(index=False):
+        source_state_id = str(evidence.source_state_id)
+        target_state_id = str(evidence.target_state_id)
+        if source_state_id not in state_index:
+            raise ValueError(f"transition_evidence references unknown source_state_id: {source_state_id}")
+        if target_state_id not in state_index:
+            raise ValueError(f"transition_evidence references unknown target_state_id: {target_state_id}")
+        source = state_index[source_state_id]
+        target = state_index[target_state_id]
+        source_slice_index = int(source.slice_index)
+        target_slice_index = int(target.slice_index)
+        if target_slice_index <= source_slice_index:
+            raise ValueError("transition_evidence target slices must follow source slices")
+        if not allow_skip_slices and target_slice_index != source_slice_index + 1:
+            raise ValueError("transition_evidence must connect adjacent slices unless allow_skip_slices=True")
+        try:
+            score = float(evidence.score)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("transition_evidence score must be a number") from exc
+        if not math.isfinite(score) or score < 0.0 or score > 1.0:
+            raise ValueError("transition_evidence score must be finite and between 0 and 1")
+        support_count = _coerce_int(evidence.support_count)
+        if support_count is None or support_count < 0:
+            raise ValueError("transition_evidence support_count must be a non-negative integer")
+        if score < threshold or support_count < min_support:
+            continue
+        transition_id = getattr(evidence, "transition_id", None)
+        if transition_id is None or str(transition_id).strip() == "":
+            transition_id = _safe_id(f"{source_state_id}_to_{target_state_id}_{metric}", fallback="transition")
+        row: dict[str, Any] = {
+            "schema_version": EVOLUTION_TRANSITIONS_SCHEMA_VERSION,
+            "evolution_id": _safe_id(evolution_id, fallback="cluster_evolution"),
+            "transition_id": str(transition_id),
+            "source_state_id": source_state_id,
+            "target_state_id": target_state_id,
+            "source_slice_id": str(source.slice_id),
+            "target_slice_id": str(target.slice_id),
+            "metric": metric,
+            "score": float(score),
+            "support_count": int(support_count),
+            "source_doc_count": int(source.doc_count),
+            "target_doc_count": int(target.doc_count),
+            "relation": str(getattr(evidence, "relation", "candidate") or "candidate"),
+        }
+        for column in optional_columns:
+            if hasattr(evidence, column):
+                row[column] = getattr(evidence, column)
+        if "warning_flags" not in row:
+            row["warning_flags"] = ""
+        rows.append(row)
+
+    transitions = pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
+    return label_evolution_transition_relations(transitions, event_rules=event_rules)
 
 
 def _lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
@@ -879,6 +983,7 @@ def build_membership_projection_evolution(
 __all__ = [
     "EvolutionAnalysisResult",
     "build_membership_projection_evolution",
+    "build_evolution_transition_table",
     "classify_evolution_events",
     "label_evolution_transition_relations",
     "rank_evolution_transitions",
