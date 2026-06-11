@@ -347,6 +347,8 @@ Status: `[~]` Partial. Rough completeness: 70%.
 - `[x]` Membership-projection evolution analysis is separated into
   `sciscape.evolution.build_membership_projection_evolution`, so the analysis
   module can evolve independently from artifact serialization and validation.
+- `[x]` Evidence-backed evolution artifacts can be generated from CLI-supplied
+  slice, state, and transition evidence tables via `sciscape evolution`.
 - `[x]` Web app exposes an artifact-backed Evolution lens and bounded
   `/api/jobs/{job_id}/evolution` payload for slices, states, transitions,
   lineages, and events.

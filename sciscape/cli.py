@@ -8,6 +8,7 @@ Usage:
     sciscape landscape <edge_file> <abstract_parquet> [options]
     sciscape visualize <keyword_table> [options]
     sciscape viewer    [options]
+    sciscape evolution <result_root> <slices_table> <state_evidence_table> <transition_evidence_table> [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
     sciscape web       [options]
@@ -20,12 +21,14 @@ Examples:
     sciscape convert wos savedrecs.txt -o abstracts.parquet
     sciscape landscape edges.parquet abstracts.parquet -o workspace/output/landscape
     sciscape visualize keywords.parquet -o workspace/reports/keywords
+    sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -230,6 +233,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Write one standalone dashboard HTML instead of a multi-page report",
     )
     vz.add_argument("--open", action="store_true", help="Open the generated output in a browser")
+
+    # ---- evolution ----
+    ev = sub.add_parser("evolution", help="Write artifact-backed cluster evolution tables")
+    ev.add_argument("result_root", type=Path, help="SciScape result root to receive evolution/")
+    ev.add_argument("slices_table", type=Path, help="Time-slice table (.parquet, .csv, .tsv, .json, .jsonl)")
+    ev.add_argument("state_evidence_table", type=Path, help="Slice-local cluster state evidence table")
+    ev.add_argument("transition_evidence_table", type=Path, help="State transition evidence table")
+    ev.add_argument("--evolution-id", type=str, default="cluster_evolution", help="Evolution artifact ID")
+    ev.add_argument("--metric", type=str, default="transition_score", help="Transition metric name")
+    ev.add_argument("--title", type=str, default=None, help="Evolution artifact title")
+    ev.add_argument("--output-dir", type=Path, default=None, help="Output directory (default: <result_root>/evolution)")
+    ev.add_argument("--temporal-manifest", type=Path, default=None, help="Optional temporal_manifest.json source ref")
+    ev.add_argument("--default-level", type=str, default="cluster", help="Default cluster level for state evidence")
+    ev.add_argument(
+        "--allow-skip-slices",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Allow transitions across non-adjacent slices",
+    )
+    ev.add_argument("--min-transition-score", type=float, default=0.5, help="Minimum transition score")
+    ev.add_argument("--min-support-count", type=int, default=1, help="Minimum transition support count")
+    ev.add_argument("--matching-method", type=str, default=None, help="Inline JSON object or path for matching metadata")
+    ev.add_argument("--event-rules", type=str, default=None, help="Inline JSON object or path for event rules")
+    ev.add_argument("--periodization", type=str, default=None, help="Inline JSON object or path for slice metadata")
+    ev.add_argument("--entity-scope", type=str, default=None, help="Inline JSON object or path for entity-scope metadata")
 
     # ---- export ----
     ex = sub.add_parser("export", help="Export network to GEXF, GraphML, or VOSviewer-style files")
@@ -680,7 +708,7 @@ def _run_viewer(args: argparse.Namespace) -> None:
         webbrowser.open(f"file://{path}")
 
 
-def _read_keyword_table(path: Path) -> pd.DataFrame:
+def _read_table(path: Path) -> pd.DataFrame:
     suffix = path.suffix.lower()
     if suffix in {".parquet", ".pq"}:
         return pd.read_parquet(path)
@@ -693,9 +721,16 @@ def _read_keyword_table(path: Path) -> pd.DataFrame:
     if suffix == ".json":
         return pd.read_json(path)
     raise ValueError(
-        f"Unsupported keyword table format: {path.suffix!r}. "
+        f"Unsupported table format: {path.suffix!r}. "
         "Use .parquet, .csv, .tsv, .json, or .jsonl."
     )
+
+
+def _read_keyword_table(path: Path) -> pd.DataFrame:
+    try:
+        return _read_table(path)
+    except ValueError as exc:
+        raise ValueError(str(exc).replace("table", "keyword table")) from exc
 
 
 def _prepare_keyword_table_for_visualization(df: pd.DataFrame) -> pd.DataFrame:
@@ -783,6 +818,83 @@ def _run_visualize(args: argparse.Namespace) -> None:
     )
     print(f"Report generated: {Path(args.output) / 'report.html'}")
     print(f"Files written: {len(paths)}")
+
+
+def _read_json_object_arg(value: str | None, *, label: str) -> dict | None:
+    if value is None:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    path = Path(text).expanduser()
+    if path.exists():
+        text = path.read_text(encoding="utf-8")
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label} must be a JSON object or a path to one") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return payload
+
+
+def _run_evolution(args: argparse.Namespace) -> None:
+    from sciscape.artifacts import write_evidence_backed_evolution_artifacts
+
+    try:
+        slices = _read_table(args.slices_table)
+        state_evidence = _read_table(args.state_evidence_table)
+        transition_evidence = _read_table(args.transition_evidence_table)
+        matching_method = _read_json_object_arg(args.matching_method, label="--matching-method") or {}
+        event_rules = _read_json_object_arg(args.event_rules, label="--event-rules")
+        periodization = _read_json_object_arg(args.periodization, label="--periodization")
+        entity_scope = _read_json_object_arg(args.entity_scope, label="--entity-scope")
+    except Exception as exc:
+        print(f"Could not load evolution evidence: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    matching_method.update(
+        {
+            "metric": args.metric,
+            "min_transition_score": args.min_transition_score,
+            "min_support_count": args.min_support_count,
+        }
+    )
+    try:
+        written = write_evidence_backed_evolution_artifacts(
+            args.result_root,
+            evolution_id=args.evolution_id,
+            slices_df=slices,
+            state_evidence_df=state_evidence,
+            transition_evidence_df=transition_evidence,
+            metric=args.metric,
+            temporal_manifest=args.temporal_manifest,
+            periodization=periodization,
+            matching_method=matching_method,
+            event_rules=event_rules,
+            entity_scope=entity_scope,
+            output_dir=args.output_dir,
+            title=args.title,
+            default_level=args.default_level,
+            allow_skip_slices=args.allow_skip_slices,
+        )
+    except Exception as exc:
+        print(f"Could not write evolution artifact: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    qa = written["qa"]
+    counts = qa.get("counts", {})
+    print(f"Evolution artifact saved: {written['manifest_path']}")
+    print(
+        "  status={status}, slices={slices}, states={states}, transitions={transitions}, events={events}".format(
+            status=qa.get("status"),
+            slices=counts.get("slices", 0),
+            states=counts.get("states", 0),
+            transitions=counts.get("transitions", 0),
+            events=counts.get("events", counts.get("event_rows", 0)),
+        )
+    )
+    print(f"  QA → {written['qa_path']}")
 
 
 def _run_export(args: argparse.Namespace) -> None:
@@ -905,6 +1017,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_viewer(args)
     elif args.command == "visualize":
         _run_visualize(args)
+    elif args.command == "evolution":
+        _run_evolution(args)
     elif args.command == "export":
         _run_export(args)
     elif args.command == "rule-export":

@@ -6,7 +6,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sciscape.cli import _build_parser, _run_visualize
+from sciscape.artifacts import validate_evolution_artifact
+from sciscape.cli import _build_parser, _run_evolution, _run_visualize
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ class TestBuildParser:
     def test_returns_parser(self, parser):
         assert parser.prog == "sciscape"
 
-    @pytest.mark.parametrize("cmd", ["cluster", "keywords", "convert", "landscape", "visualize", "viewer", "gui"])
+    @pytest.mark.parametrize("cmd", ["cluster", "keywords", "convert", "landscape", "visualize", "viewer", "evolution", "gui"])
     def test_subcommands_exist(self, parser, cmd):
         # Should not raise
         parser.parse_args([cmd] if cmd in ("gui",) else self._minimal_args(cmd))
@@ -46,6 +47,8 @@ class TestBuildParser:
             return ["visualize", "keywords.parquet"]
         if cmd == "viewer":
             return ["viewer"]
+        if cmd == "evolution":
+            return ["evolution", "result", "slices.parquet", "states.parquet", "transitions.parquet"]
         if cmd == "gui":
             return ["gui"]
         raise ValueError(cmd)
@@ -376,6 +379,139 @@ class TestVisualizeArgs:
         assert manifest["selection"]["layer_state"]["command"] == "visualize"
         assert manifest["selection"]["layer_state"]["dashboard_only"] is True
         assert manifest["selection"]["layer_state"]["keyword_table"] == str(keyword_path)
+
+
+# ---------------------------------------------------------------------------
+# Evolution subcommand
+# ---------------------------------------------------------------------------
+
+class TestEvolutionArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args([
+            "evolution",
+            "result",
+            "slices.parquet",
+            "states.parquet",
+            "transitions.parquet",
+        ])
+        assert args.command == "evolution"
+        assert args.result_root == Path("result")
+        assert args.slices_table == Path("slices.parquet")
+        assert args.state_evidence_table == Path("states.parquet")
+        assert args.transition_evidence_table == Path("transitions.parquet")
+
+    def test_defaults(self, parser):
+        args = parser.parse_args([
+            "evolution",
+            "result",
+            "slices.parquet",
+            "states.parquet",
+            "transitions.parquet",
+        ])
+        assert args.evolution_id == "cluster_evolution"
+        assert args.metric == "transition_score"
+        assert args.output_dir is None
+        assert args.temporal_manifest is None
+        assert args.default_level == "cluster"
+        assert args.allow_skip_slices is False
+        assert args.min_transition_score == 0.5
+        assert args.min_support_count == 1
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "evolution",
+            "result",
+            "slices.csv",
+            "states.csv",
+            "transitions.csv",
+            "--evolution-id",
+            "term_evolution",
+            "--metric",
+            "term_overlap",
+            "--title",
+            "Term Evolution",
+            "--output-dir",
+            "custom_evolution",
+            "--temporal-manifest",
+            "temporal/temporal_manifest.json",
+            "--default-level",
+            "micro",
+            "--allow-skip-slices",
+            "--min-transition-score",
+            "0.25",
+            "--min-support-count",
+            "2",
+            "--matching-method",
+            '{"tie_policy":"keep_all"}',
+            "--event-rules",
+            '{"ambiguous_score_margin":0.1}',
+            "--periodization",
+            '{"unit":"year"}',
+            "--entity-scope",
+            '{"cluster_level":"micro"}',
+        ])
+        assert args.evolution_id == "term_evolution"
+        assert args.metric == "term_overlap"
+        assert args.title == "Term Evolution"
+        assert args.output_dir == Path("custom_evolution")
+        assert args.temporal_manifest == Path("temporal/temporal_manifest.json")
+        assert args.default_level == "micro"
+        assert args.allow_skip_slices is True
+        assert args.min_transition_score == pytest.approx(0.25)
+        assert args.min_support_count == 2
+        assert args.matching_method == '{"tie_policy":"keep_all"}'
+
+    def test_run_evolution_writes_valid_artifact_from_csv(self, parser, tmp_path):
+        root = tmp_path / "result"
+        root.mkdir()
+        pd.DataFrame({"uid": ["D0"]}).to_parquet(root / "abstracts.parquet", index=False)
+
+        slices_path = tmp_path / "slices.csv"
+        states_path = tmp_path / "states.csv"
+        transitions_path = tmp_path / "transitions.csv"
+        pd.DataFrame(
+            [
+                {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+            ]
+        ).to_csv(slices_path, index=False)
+        pd.DataFrame(
+            [
+                {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 3, "top_terms": '["alpha"]'},
+                {"slice_id": "year:2021", "cluster_id": "A", "doc_count": 3, "top_terms": '["alpha"]'},
+            ]
+        ).to_csv(states_path, index=False)
+        pd.DataFrame(
+            [
+                {
+                    "source_state_id": "year:2020_cluster:A",
+                    "target_state_id": "year:2021_cluster:A",
+                    "score": 0.9,
+                    "support_count": 3,
+                }
+            ]
+        ).to_csv(transitions_path, index=False)
+
+        args = parser.parse_args([
+            "evolution",
+            str(root),
+            str(slices_path),
+            str(states_path),
+            str(transitions_path),
+            "--evolution-id",
+            "csv_evolution",
+            "--metric",
+            "term_overlap",
+        ])
+        _run_evolution(args)
+
+        manifest_path = root / "evolution" / "evolution_manifest.json"
+        validation = validate_evolution_artifact(manifest_path).to_dict()
+        assert validation["status"] == "passed"
+        assert validation["counts"]["slices"] == 2
+        assert validation["counts"]["states"] == 2
+        assert validation["counts"]["transitions"] == 1
+        assert validation["event_counts"]["continuation"] == 1
 
 
 # ---------------------------------------------------------------------------
