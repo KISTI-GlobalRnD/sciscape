@@ -566,6 +566,10 @@ lineage from raw records.
 
 - `write_evolution_artifacts` writes yearly membership-projection evolution
   artifacts under `<result_root>/evolution/`.
+- `sciscape.evolution.build_membership_projection_evolution` builds the
+  in-memory slice, state, transition, lineage, and event tables before artifact
+  serialization; this keeps analysis logic separate from artifact validation and
+  lets richer matching strategies evolve in the analysis module first.
 - `validate_evolution_artifact` validates manifests, slices, states,
   transitions, lineages, events, QA, references, adjacent-slice transitions,
   event support, and score ranges.

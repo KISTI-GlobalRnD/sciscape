@@ -50,7 +50,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 80% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
-| F11 | Temporal and evolution | `[~]` | 68% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens, lineage-time map payload/UI | richer time-slice matching and interaction polish |
+| F11 | Temporal and evolution | `[~]` | 70% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens, lineage-time map payload/UI | richer time-slice matching and interaction polish |
 | F12 | Evidence-backed narratives | `[~]` | 56% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback | stable generator and reviewed publication surface |
 | F13 | Validation and QA | `[x]` | 86% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | matrix builder export adapter |
@@ -330,7 +330,7 @@ exist; the remaining gap is map polish and more complete layout UX.
 
 ### F11. Temporal And Evolution
 
-Status: `[~]` Partial. Rough completeness: 68%.
+Status: `[~]` Partial. Rough completeness: 70%.
 
 - `[x]` Temporal keyword utilities and visualization helpers exist.
 - `[x]` Burst and trend helpers exist.
@@ -344,6 +344,9 @@ Status: `[~]` Partial. Rough completeness: 68%.
 - `[x]` Cluster evolution writer, validator, lineage transition artifacts, and
   synthetic split/merge/emergence/decline/continuation/ambiguous smoke are
   implemented.
+- `[x]` Membership-projection evolution analysis is separated into
+  `sciscape.evolution.build_membership_projection_evolution`, so the analysis
+  module can evolve independently from artifact serialization and validation.
 - `[x]` Web app exposes an artifact-backed Evolution lens and bounded
   `/api/jobs/{job_id}/evolution` payload for slices, states, transitions,
   lineages, and events.
@@ -359,9 +362,11 @@ Status: `[~]` Partial. Rough completeness: 68%.
   polish.
 
 Review: temporal/evolution artifacts are now inspectable and independently
-validated, and the web app can inspect evolution rows plus a first lineage-time
-map. The promised cluster evolution map remains gated on richer matching beyond
-static membership projection and stronger interaction polish.
+validated, and the membership-projection analysis path is no longer buried in
+artifact serialization. The web app can inspect evolution rows plus a first
+lineage-time map, but the promised cluster evolution map remains gated on
+richer matching beyond static membership projection and stronger interaction
+polish.
 
 ### F12. Evidence-Backed Narratives
 

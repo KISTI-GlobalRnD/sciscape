@@ -16,6 +16,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from . import __version__ as SCISCAPE_VERSION
+from .evolution import build_membership_projection_evolution
 
 
 ARTIFACT_CONTRACT_SCHEMA_VERSION = "sciscape_artifact_contract_v1"
@@ -8502,374 +8503,6 @@ def validate_evolution_artifact(path: str | Path) -> EvolutionArtifactValidation
     )
 
 
-def _evolution_cluster_column(membership: pd.DataFrame) -> str | None:
-    columns = _temporal_cluster_columns(membership)
-    if "cluster" in columns:
-        return "cluster"
-    return sorted(columns)[0] if columns else None
-
-
-def _evolution_build_time_slices(evolution_id: str, years: list[int], periodization: Mapping[str, Any] | None) -> pd.DataFrame:
-    if not years:
-        raise ValueError("evolution artifacts require at least one valid publication year")
-    start_year = int(periodization.get("start_year", min(years))) if periodization else min(years)
-    end_year = int(periodization.get("end_year", max(years))) if periodization else max(years)
-    if end_year < start_year:
-        raise ValueError("evolution end_year must be greater than or equal to start_year")
-    rows = []
-    for index, year in enumerate(range(start_year, end_year + 1)):
-        rows.append(
-            {
-                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
-                "evolution_id": evolution_id,
-                "slice_id": f"year:{year}",
-                "slice_index": int(index),
-                "slice_label": str(year),
-                "start_year": int(year),
-                "end_year": int(year),
-                "unit": "year",
-                "doc_count": 0,
-                "edge_count": None,
-                "active_cluster_count": 0,
-                "unknown_year_count": 0,
-                "warning_flags": "",
-            }
-        )
-    return pd.DataFrame(rows)
-
-
-def _evolution_state_id(slice_id: str, cluster_key: str) -> str:
-    return _safe_id(f"{slice_id}_{cluster_key}", fallback="state")
-
-
-def _evolution_lineage_id(cluster_key: str) -> str:
-    return _safe_id(f"lineage_{cluster_key}", fallback="lineage")
-
-
-def _evolution_cluster_label_map(keywords: pd.DataFrame | None, cluster_column: str) -> dict[str, dict[str, Any]]:
-    if keywords is None or keywords.empty or "cluster_id" not in keywords.columns:
-        return {}
-    label_col = _keyword_label_column(list(keywords.columns))
-    rows: dict[str, dict[str, Any]] = {}
-    for cluster_id, group in keywords.groupby("cluster_id", dropna=False, sort=True):
-        terms = [str(value).strip() for value in group[label_col].dropna().head(5).tolist() if str(value).strip()]
-        key = f"{_temporal_level_from_cluster_column(cluster_column)}:{cluster_id}"
-        rows[key] = {
-            "label": terms[0] if terms else key,
-            "top_terms": terms,
-            "term_count": int(len(terms)),
-        }
-    return rows
-
-
-def _evolution_state_rows(
-    evolution_id: str,
-    records: pd.DataFrame,
-    membership: pd.DataFrame,
-    slices: pd.DataFrame,
-    *,
-    year_column: str,
-    uid_column: str,
-    cluster_column: str,
-    keywords: pd.DataFrame | None,
-) -> tuple[pd.DataFrame, dict[str, set[str]]]:
-    level = _temporal_level_from_cluster_column(cluster_column)
-    label_map = _evolution_cluster_label_map(keywords, cluster_column)
-    work = records[[uid_column, year_column]].copy()
-    work[uid_column] = work[uid_column].map(str)
-    work["_evolution_year"] = pd.to_numeric(work[year_column], errors="coerce")
-    mem = membership[["uid", cluster_column]].copy()
-    mem["uid"] = mem["uid"].map(str)
-    joined = work.merge(mem, left_on=uid_column, right_on="uid", how="inner")
-    year_to_slice = {
-        int(row.start_year): (str(row.slice_id), int(row.slice_index))
-        for row in slices.itertuples(index=False)
-    }
-    rows = []
-    state_docs: dict[str, set[str]] = {}
-    grouped = (
-        joined.dropna(subset=["_evolution_year", cluster_column])
-        .groupby(["_evolution_year", cluster_column], sort=True)
-        .agg(doc_count=(uid_column, "count"), work_ids=(uid_column, lambda values: sorted(set(map(str, values)))))
-        .reset_index()
-    )
-    for _, item in grouped.iterrows():
-        year = _coerce_int(item["_evolution_year"])
-        if year is None or year not in year_to_slice:
-            continue
-        cluster_id = str(item[cluster_column])
-        cluster_key = f"{level}:{cluster_id}"
-        slice_id, slice_index = year_to_slice[year]
-        state_id = _evolution_state_id(slice_id, cluster_key)
-        label_info = label_map.get(cluster_key, {})
-        top_terms = label_info.get("top_terms") or []
-        doc_ids = set(item["work_ids"])
-        state_docs[state_id] = doc_ids
-        rows.append(
-            {
-                "schema_version": EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
-                "evolution_id": evolution_id,
-                "state_id": state_id,
-                "slice_id": slice_id,
-                "slice_index": int(slice_index),
-                "cluster_key": cluster_key,
-                "cluster_label": str(label_info.get("label") or cluster_key),
-                "doc_count": int(item["doc_count"]),
-                "term_count": int(label_info.get("term_count") or len(top_terms)),
-                "top_terms": json.dumps(top_terms, ensure_ascii=True),
-                "cluster_uid": cluster_key,
-                "cluster_id": cluster_id,
-                "level": level,
-                "representative_work_ids": json.dumps(sorted(doc_ids), ensure_ascii=True),
-                "source_cluster_key": cluster_key,
-                "warning_flags": "",
-            }
-        )
-    states = pd.DataFrame(rows)
-    if states.empty:
-        states = pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_STATE_COLUMNS))
-    return states, state_docs
-
-
-def _evolution_update_slice_counts(slices: pd.DataFrame, states: pd.DataFrame) -> pd.DataFrame:
-    out = slices.copy()
-    if states.empty:
-        return out
-    counts = states.groupby("slice_id").agg(doc_count=("doc_count", "sum"), active_cluster_count=("state_id", "count"))
-    for index, row in out.iterrows():
-        slice_id = row["slice_id"]
-        if slice_id in counts.index:
-            out.at[index, "doc_count"] = int(counts.loc[slice_id, "doc_count"])
-            out.at[index, "active_cluster_count"] = int(counts.loc[slice_id, "active_cluster_count"])
-    return out
-
-
-def _evolution_transition_rows(
-    evolution_id: str,
-    slices: pd.DataFrame,
-    states: pd.DataFrame,
-    state_docs: Mapping[str, set[str]],
-    *,
-    matching_method: Mapping[str, Any],
-) -> pd.DataFrame:
-    if states.empty or len(slices) < 2:
-        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
-    metric = str(matching_method.get("metric") or "projected_cluster_identity")
-    threshold = float(matching_method.get("min_transition_score", 0.5))
-    states_by_slice = {slice_id: group.copy() for slice_id, group in states.groupby("slice_id", sort=False)}
-    ordered_slices = slices.sort_values("slice_index", kind="stable")
-    rows = []
-    for source_slice, target_slice in zip(ordered_slices.iloc[:-1].itertuples(index=False), ordered_slices.iloc[1:].itertuples(index=False)):
-        source_states = states_by_slice.get(str(source_slice.slice_id), pd.DataFrame())
-        target_states = states_by_slice.get(str(target_slice.slice_id), pd.DataFrame())
-        if source_states.empty or target_states.empty:
-            continue
-        for source in source_states.itertuples(index=False):
-            for target in target_states.itertuples(index=False):
-                if metric == "jaccard_doc_overlap":
-                    source_docs = state_docs.get(str(source.state_id), set())
-                    target_docs = state_docs.get(str(target.state_id), set())
-                    union = source_docs | target_docs
-                    shared = len(source_docs & target_docs)
-                    score = float(shared / len(union)) if union else 0.0
-                    support = shared
-                else:
-                    same_cluster = str(source.cluster_key) == str(target.cluster_key)
-                    score = 1.0 if same_cluster else 0.0
-                    support = min(int(source.doc_count), int(target.doc_count)) if same_cluster else 0
-                if score < threshold:
-                    continue
-                transition_id = _safe_id(f"{source.state_id}_to_{target.state_id}_{metric}", fallback="transition")
-                rows.append(
-                    {
-                        "schema_version": EVOLUTION_TRANSITIONS_SCHEMA_VERSION,
-                        "evolution_id": evolution_id,
-                        "transition_id": transition_id,
-                        "source_state_id": str(source.state_id),
-                        "target_state_id": str(target.state_id),
-                        "source_slice_id": str(source.slice_id),
-                        "target_slice_id": str(target.slice_id),
-                        "metric": metric,
-                        "score": float(score),
-                        "support_count": int(support),
-                        "source_doc_count": int(source.doc_count),
-                        "target_doc_count": int(target.doc_count),
-                        "relation": "continuation",
-                        "shared_doc_count": int(support),
-                        "rank_from_source": 1,
-                        "rank_to_target": 1,
-                        "warning_flags": "",
-                    }
-                )
-    return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
-
-
-def _evolution_lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
-    if states.empty:
-        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_LINEAGE_COLUMNS))
-    incoming_scores: dict[str, list[float]] = {}
-    outgoing_scores: dict[str, list[float]] = {}
-    if not transitions.empty:
-        for row in transitions.itertuples(index=False):
-            incoming_scores.setdefault(str(row.target_state_id), []).append(float(row.score))
-            outgoing_scores.setdefault(str(row.source_state_id), []).append(float(row.score))
-    rows = []
-    for cluster_key, group in states.sort_values(["cluster_key", "slice_index"], kind="stable").groupby("cluster_key", sort=True):
-        ordered = group.sort_values("slice_index", kind="stable")
-        lineage_id = _evolution_lineage_id(str(cluster_key))
-        for offset, row in enumerate(ordered.itertuples(index=False)):
-            if len(ordered) == 1:
-                role = "singleton"
-            elif offset == 0:
-                role = "root"
-            elif offset == len(ordered) - 1:
-                role = "terminal"
-            else:
-                role = "continuation"
-            scores = incoming_scores.get(str(row.state_id), []) + outgoing_scores.get(str(row.state_id), [])
-            stability = float(sum(scores) / len(scores)) if scores else 1.0
-            rows.append(
-                {
-                    "schema_version": EVOLUTION_LINEAGES_SCHEMA_VERSION,
-                    "evolution_id": evolution_id,
-                    "lineage_id": lineage_id,
-                    "state_id": str(row.state_id),
-                    "slice_id": str(row.slice_id),
-                    "slice_index": int(row.slice_index),
-                    "role": role,
-                    "stability_score": max(0.0, min(1.0, stability)),
-                    "root_state_id": str(ordered.iloc[0]["state_id"]),
-                    "lineage_label": str(row.cluster_label),
-                    "event_refs": "[]",
-                    "warning_flags": "",
-                }
-            )
-    return pd.DataFrame(rows)
-
-
-def _lineage_by_state(lineages: pd.DataFrame) -> dict[str, str]:
-    if lineages.empty or "state_id" not in lineages.columns:
-        return {}
-    return {str(row.state_id): str(row.lineage_id) for row in lineages.itertuples(index=False)}
-
-
-def _evolution_event_rows_from_graph(
-    evolution_id: str,
-    slices: pd.DataFrame,
-    states: pd.DataFrame,
-    transitions: pd.DataFrame,
-    lineages: pd.DataFrame,
-    *,
-    event_rules: Mapping[str, Any],
-) -> pd.DataFrame:
-    if states.empty:
-        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_EVENT_COLUMNS))
-    continuation_min = float(event_rules.get("continuation_min_score", 0.5))
-    ambiguous_margin = float(event_rules.get("ambiguous_score_margin", 0.05))
-    lineage_lookup = _lineage_by_state(lineages)
-    last_slice_index = int(slices["slice_index"].max()) if not slices.empty else 0
-    incoming: dict[str, list[Any]] = {}
-    outgoing: dict[str, list[Any]] = {}
-    if not transitions.empty:
-        for row in transitions.itertuples(index=False):
-            if float(row.score) < continuation_min:
-                continue
-            outgoing.setdefault(str(row.source_state_id), []).append(row)
-            incoming.setdefault(str(row.target_state_id), []).append(row)
-    rows = []
-    for row in transitions.itertuples(index=False) if not transitions.empty else []:
-        if str(row.relation) != "continuation" or float(row.score) < continuation_min:
-            continue
-        event_id = _safe_id(f"continuation_{row.transition_id}", fallback="continuation_event")
-        rows.append(
-            {
-                "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
-                "evolution_id": evolution_id,
-                "event_id": event_id,
-                "event_type": "continuation",
-                "slice_id": str(row.target_slice_id),
-                "state_id": str(row.target_state_id),
-                "lineage_id": lineage_lookup.get(str(row.target_state_id)),
-                "transition_refs": json.dumps([str(row.transition_id)], ensure_ascii=True),
-                "score": float(row.score),
-                "support_count": int(row.support_count),
-                "method": "projected_membership_transition",
-                "source_state_ids": json.dumps([str(row.source_state_id)], ensure_ascii=True),
-                "target_state_ids": json.dumps([str(row.target_state_id)], ensure_ascii=True),
-                "event_label": "Continuation",
-                "warning_flags": "",
-            }
-        )
-    for state in states.itertuples(index=False):
-        state_id = str(state.state_id)
-        slice_index = int(state.slice_index)
-        in_rows = incoming.get(state_id, [])
-        out_rows = outgoing.get(state_id, [])
-        if slice_index > 0 and not in_rows:
-            rows.append(
-                {
-                    "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
-                    "evolution_id": evolution_id,
-                    "event_id": _safe_id(f"emergence_{state_id}", fallback="emergence_event"),
-                    "event_type": "emergence",
-                    "slice_id": str(state.slice_id),
-                    "state_id": state_id,
-                    "lineage_id": lineage_lookup.get(state_id),
-                    "transition_refs": "[]",
-                    "score": 1.0,
-                    "support_count": int(state.doc_count),
-                    "method": "no_incoming_transition_above_threshold",
-                    "source_state_ids": "[]",
-                    "target_state_ids": json.dumps([state_id], ensure_ascii=True),
-                    "event_label": "Emergence",
-                    "warning_flags": "",
-                }
-            )
-        if slice_index < last_slice_index and not out_rows:
-            rows.append(
-                {
-                    "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
-                    "evolution_id": evolution_id,
-                    "event_id": _safe_id(f"decline_{state_id}", fallback="decline_event"),
-                    "event_type": "decline",
-                    "slice_id": str(state.slice_id),
-                    "state_id": state_id,
-                    "lineage_id": lineage_lookup.get(state_id),
-                    "transition_refs": "[]",
-                    "score": 1.0,
-                    "support_count": int(state.doc_count),
-                    "method": "no_outgoing_transition_above_threshold",
-                    "source_state_ids": json.dumps([state_id], ensure_ascii=True),
-                    "target_state_ids": "[]",
-                    "event_label": "Decline",
-                    "warning_flags": "",
-                }
-            )
-        if len(out_rows) >= 2:
-            scores = sorted((float(item.score) for item in out_rows), reverse=True)
-            if len(scores) >= 2 and abs(scores[0] - scores[1]) <= ambiguous_margin:
-                rows.append(
-                    {
-                        "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
-                        "evolution_id": evolution_id,
-                        "event_id": _safe_id(f"ambiguous_{state_id}", fallback="ambiguous_event"),
-                        "event_type": "ambiguous",
-                        "slice_id": str(state.slice_id),
-                        "state_id": state_id,
-                        "lineage_id": lineage_lookup.get(state_id),
-                        "transition_refs": json.dumps([str(item.transition_id) for item in out_rows], ensure_ascii=True),
-                        "score": float(scores[0]),
-                        "support_count": int(sum(int(item.support_count) for item in out_rows)),
-                        "method": "near_tie_transition_scores",
-                        "source_state_ids": json.dumps([state_id], ensure_ascii=True),
-                        "target_state_ids": json.dumps([str(item.target_state_id) for item in out_rows], ensure_ascii=True),
-                        "event_label": "Ambiguous transition",
-                        "warning_flags": "",
-                    }
-                )
-    return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_EVENT_COLUMNS))
-
-
 def _evolution_default_sources(root: Path, artifacts: ResultArtifacts, temporal_manifest: str | Path | None = None) -> list[dict[str, Any]]:
     sources: list[dict[str, Any]] = []
     for role, path in [
@@ -8951,72 +8584,15 @@ def write_evolution_artifacts(
     """Write v1 membership-projection cluster evolution artifacts."""
 
     root = Path(result_root).expanduser().resolve()
-    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
-    if records_df.empty:
-        raise ValueError("records_df must not be empty")
-    if membership_df.empty:
-        raise ValueError("membership_df must not be empty")
-    year_column = _temporal_year_column(records_df)
-    uid_column = _temporal_uid_column(records_df)
-    cluster_column = _evolution_cluster_column(membership_df)
-    if year_column is None:
-        raise ValueError("records_df must include pubyear, year, or publication_year")
-    if uid_column is None:
-        raise ValueError("records_df must include uid, work_id, paper_id, or id")
-    if "uid" not in membership_df.columns:
-        raise ValueError("membership_df must include uid")
-    if cluster_column is None:
-        raise ValueError("membership_df must include cluster or cluster_* column")
-    years_raw = pd.to_numeric(records_df[year_column], errors="coerce")
-    valid_years = sorted({int(year) for year in years_raw.dropna().tolist() if int(year) > 0})
-    if not valid_years:
-        raise ValueError("records_df has no valid publication years")
-    matching = {
-        "metric": "projected_cluster_identity",
-        "min_transition_score": 0.5,
-        "min_support_count": 1,
-        "tie_policy": "keep_all_above_threshold",
-        "normalization": "static_membership_projection",
-    }
-    if matching_method:
-        matching.update(dict(matching_method))
-    rules = {
-        "continuation_min_score": 0.5,
-        "split_min_children": 2,
-        "merge_min_parents": 2,
-        "emergence_max_incoming_score": 0.0,
-        "decline_max_outgoing_score": 0.0,
-        "ambiguous_score_margin": 0.05,
-    }
-    if event_rules:
-        rules.update(dict(event_rules))
-    slices = _evolution_build_time_slices(evolution_id, valid_years, periodization)
-    states, state_docs = _evolution_state_rows(
-        evolution_id,
-        records_df,
-        membership_df,
-        slices,
-        year_column=year_column,
-        uid_column=uid_column,
-        cluster_column=cluster_column,
-        keywords=keywords_df,
-    )
-    slices = _evolution_update_slice_counts(slices, states)
-    transitions = _evolution_transition_rows(
-        evolution_id,
-        slices,
-        states,
-        state_docs,
-        matching_method=matching,
-    )
-    lineages = _evolution_lineage_rows(evolution_id, states, transitions)
-    events = _evolution_event_rows_from_graph(
-        evolution_id,
-        slices,
-        states,
-        transitions,
-        lineages,
-        event_rules=rules,
+    analysis = build_membership_projection_evolution(
+        evolution_id=evolution_id,
+        records_df=records_df,
+        membership_df=membership_df,
+        keywords_df=keywords_df,
+        periodization=periodization,
+        matching_method=matching_method,
+        event_rules=event_rules,
+        transforms=transforms,
     )
     evolution_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "evolution"
     outputs = {
@@ -9032,57 +8608,19 @@ def write_evolution_artifacts(
         if source_artifacts is not None
         else _evolution_default_sources(root, infer_result_artifacts(root), temporal_manifest=temporal_manifest)
     )
-    periodization_payload = {
-        "unit": "year",
-        "window_years": 1,
-        "step_years": 1,
-        "start_year": int(slices["start_year"].min()),
-        "end_year": int(slices["start_year"].max()),
-        "state_method": "membership_projection",
-        "include_unknown_year": False,
-    }
-    if periodization:
-        periodization_payload.update(dict(periodization))
-        periodization_payload["unit"] = "year"
     manifest = {
         "schema_version": EVOLUTION_MANIFEST_SCHEMA_VERSION,
-        "evolution_id": evolution_id,
-        "title": title or evolution_id.replace("_", " ").title(),
+        "evolution_id": analysis.evolution_id,
+        "title": title or analysis.evolution_id.replace("_", " ").title(),
         "result_id": _matrix_existing_result_id(root),
-        "slice_method": periodization_payload,
-        "matching_method": matching,
-        "event_rules": rules,
-        "entity_scope": {
-            "cluster_level": _temporal_level_from_cluster_column(cluster_column),
-            "cluster_id_namespace": "projected_static_membership",
-            "document_universe": "records_with_valid_pubyear_and_membership",
-            "filter_refs": [],
-        },
-        "metrics": [
-            {
-                "name": str(matching["metric"]),
-                "value_type": "float",
-                "range": [0.0, 1.0],
-                "interpretation": "continuity score between adjacent slice-local cluster states",
-            },
-            {
-                "name": "lineage_stability",
-                "value_type": "float",
-                "range": [0.0, 1.0],
-                "interpretation": "aggregate continuity strength across a lineage",
-            },
-        ],
+        "slice_method": analysis.periodization,
+        "matching_method": analysis.matching_method,
+        "event_rules": analysis.event_rules,
+        "entity_scope": analysis.entity_scope,
+        "metrics": analysis.metrics,
         "source_artifacts": sources,
         "rule_sets": [dict(item) for item in (rule_sets or [])],
-        "transforms": [
-            {"step": "parse_publication_years"},
-            {"step": "build_time_slices"},
-            {"step": "project_static_membership_to_slices", "cluster_column": cluster_column},
-            {"step": "score_adjacent_slice_transitions"},
-            {"step": "build_lineages"},
-            {"step": "assign_evolution_events"},
-            *[dict(item) for item in (transforms or [])],
-        ],
+        "transforms": analysis.transforms,
         "outputs": outputs,
         "created_at_utc": _utc_now(),
         "warnings": [],
@@ -9091,11 +8629,11 @@ def write_evolution_artifacts(
         root,
         evolution_dir,
         manifest=manifest,
-        slices=slices,
-        states=states,
-        transitions=transitions,
-        lineages=lineages,
-        events=events,
+        slices=analysis.slices,
+        states=analysis.states,
+        transitions=analysis.transitions,
+        lineages=analysis.lineages,
+        events=analysis.events,
     )
 
 
