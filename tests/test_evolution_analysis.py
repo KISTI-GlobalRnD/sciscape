@@ -7,6 +7,7 @@ import pytest
 
 import sciscape
 from sciscape.evolution import (
+    build_evidence_backed_evolution,
     build_evolution_state_table,
     build_evolution_transition_table,
     build_membership_projection_evolution,
@@ -17,6 +18,7 @@ from sciscape.evolution import (
 
 
 def test_evolution_is_public_lazy_submodule():
+    assert sciscape.evolution.build_evidence_backed_evolution is build_evidence_backed_evolution
     assert sciscape.evolution.build_evolution_state_table is build_evolution_state_table
     assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
@@ -527,5 +529,79 @@ def test_build_evolution_transition_table_rejects_unknown_or_non_adjacent_states
             evolution_id="bad",
             states=states,
             transition_evidence=non_adjacent,
+            metric="term_overlap",
+        )
+
+
+def test_build_evidence_backed_evolution_returns_complete_analysis_result():
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+            {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+        ]
+    )
+    state_evidence = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 6, "top_terms": ["alpha"]},
+            {"slice_id": "year:2021", "cluster_id": "B1", "doc_count": 3, "top_terms": ["beta"]},
+            {"slice_id": "year:2021", "cluster_id": "B2", "doc_count": 3, "top_terms": ["gamma"]},
+            {"slice_id": "year:2020", "cluster_id": "C1", "doc_count": 3},
+            {"slice_id": "year:2020", "cluster_id": "C2", "doc_count": 3},
+            {"slice_id": "year:2021", "cluster_id": "C", "doc_count": 6},
+            {"slice_id": "year:2020", "cluster_id": "D", "doc_count": 4},
+            {"slice_id": "year:2021", "cluster_id": "D", "doc_count": 4},
+        ]
+    )
+    transition_evidence = pd.DataFrame(
+        [
+            {"source_state_id": "year:2020_cluster:A", "target_state_id": "year:2021_cluster:B1", "score": 0.76, "support_count": 3},
+            {"source_state_id": "year:2020_cluster:A", "target_state_id": "year:2021_cluster:B2", "score": 0.74, "support_count": 3},
+            {"source_state_id": "year:2020_cluster:C1", "target_state_id": "year:2021_cluster:C", "score": 0.81, "support_count": 3},
+            {"source_state_id": "year:2020_cluster:C2", "target_state_id": "year:2021_cluster:C", "score": 0.79, "support_count": 3},
+            {"source_state_id": "year:2020_cluster:D", "target_state_id": "year:2021_cluster:D", "score": 0.91, "support_count": 4},
+        ]
+    )
+
+    result = build_evidence_backed_evolution(
+        evolution_id="evidence demo",
+        slices=slices,
+        state_evidence=state_evidence,
+        transition_evidence=transition_evidence,
+        metric="term_overlap",
+    )
+
+    assert result.evolution_id == "evidence_demo"
+    assert result.slices["active_cluster_count"].tolist() == [4, 4]
+    assert result.slices["doc_count"].tolist() == [16, 16]
+    assert len(result.states) == 8
+    assert len(result.transitions) == 5
+    assert len(result.lineages) == 8
+    assert {"split", "merge", "continuation"} <= set(result.events["event_type"])
+    assert result.matching_method["metric"] == "term_overlap"
+    assert result.periodization["state_method"] == "explicit_state_evidence"
+    assert result.entity_scope["cluster_id_namespace"] == "explicit_state_evidence"
+    assert [item["step"] for item in result.transforms[:3]] == [
+        "normalize_time_slices",
+        "normalize_state_evidence",
+        "normalize_transition_evidence",
+    ]
+
+
+def test_build_evidence_backed_evolution_rejects_non_contiguous_slices():
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+            {"slice_id": "year:2022", "slice_index": 2, "start_year": 2022, "end_year": 2022},
+        ]
+    )
+    state_evidence = pd.DataFrame([{"slice_id": "year:2020", "cluster_id": "A", "doc_count": 1}])
+    transition_evidence = pd.DataFrame(columns=["source_state_id", "target_state_id", "score", "support_count"])
+
+    with pytest.raises(ValueError, match="contiguous from zero"):
+        build_evidence_backed_evolution(
+            evolution_id="bad",
+            slices=slices,
+            state_evidence=state_evidence,
+            transition_evidence=transition_evidence,
             metric="term_overlap",
         )

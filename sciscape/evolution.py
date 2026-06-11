@@ -71,6 +71,17 @@ REQUIRED_EVOLUTION_EVENT_COLUMNS = {
     "support_count",
     "method",
 }
+REQUIRED_EVOLUTION_TIME_SLICE_COLUMNS = {
+    "schema_version",
+    "evolution_id",
+    "slice_id",
+    "slice_index",
+    "slice_label",
+    "start_year",
+    "end_year",
+    "unit",
+    "doc_count",
+}
 
 
 @dataclass(frozen=True)
@@ -290,6 +301,63 @@ def _build_time_slices(evolution_id: str, years: list[int], periodization: Mappi
             }
         )
     return pd.DataFrame(rows)
+
+
+def _normalize_evolution_slices(evolution_id: str, slices: pd.DataFrame) -> pd.DataFrame:
+    required = {"slice_id", "slice_index", "start_year", "end_year"}
+    missing = sorted(required - set(slices.columns))
+    if missing:
+        raise ValueError(f"slices missing required columns for evolution analysis: {', '.join(missing)}")
+    if slices.empty:
+        raise ValueError("slices must not be empty")
+    rows = []
+    seen_ids: set[str] = set()
+    seen_indexes: set[int] = set()
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    for item in slices.to_dict("records"):
+        slice_id = _text_or_default(item.get("slice_id"), "")
+        if not slice_id:
+            raise ValueError("slices slice_id must not be empty")
+        if slice_id in seen_ids:
+            raise ValueError(f"slices contains duplicate slice_id: {slice_id}")
+        seen_ids.add(slice_id)
+        slice_index = _coerce_int(item.get("slice_index"))
+        if slice_index is None or slice_index < 0:
+            raise ValueError("slices slice_index must be a non-negative integer")
+        if slice_index in seen_indexes:
+            raise ValueError(f"slices contains duplicate slice_index: {slice_index}")
+        seen_indexes.add(slice_index)
+        start_year = _coerce_int(item.get("start_year"))
+        end_year = _coerce_int(item.get("end_year"))
+        if start_year is None or end_year is None or start_year <= 0 or end_year <= 0:
+            raise ValueError("slices start_year and end_year must be positive integers")
+        if end_year < start_year:
+            raise ValueError("slices end_year must be greater than or equal to start_year")
+        doc_count = _coerce_int(item.get("doc_count"))
+        if doc_count is None or doc_count < 0:
+            doc_count = 0
+        rows.append(
+            {
+                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "slice_id": slice_id,
+                "slice_index": int(slice_index),
+                "slice_label": _text_or_default(item.get("slice_label"), str(start_year)),
+                "start_year": int(start_year),
+                "end_year": int(end_year),
+                "unit": _text_or_default(item.get("unit"), "year"),
+                "doc_count": int(doc_count),
+                "edge_count": item.get("edge_count") if "edge_count" in item and not _is_missing(item.get("edge_count")) else None,
+                "active_cluster_count": _coerce_int(item.get("active_cluster_count")) or 0,
+                "unknown_year_count": _coerce_int(item.get("unknown_year_count")) or 0,
+                "warning_flags": _text_or_default(item.get("warning_flags"), ""),
+            }
+        )
+    expected = list(range(len(rows)))
+    actual = sorted(seen_indexes)
+    if actual != expected:
+        raise ValueError("slices slice_index must be contiguous from zero")
+    return pd.DataFrame(rows).sort_values("slice_index", kind="stable").reset_index(drop=True)
 
 
 def _state_id(slice_id: str, cluster_key: str) -> str:
@@ -1001,6 +1069,125 @@ def classify_evolution_events(
     )
 
 
+def build_evidence_backed_evolution(
+    *,
+    evolution_id: str,
+    slices: pd.DataFrame,
+    state_evidence: pd.DataFrame,
+    transition_evidence: pd.DataFrame,
+    metric: str,
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    entity_scope: Mapping[str, Any] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    default_level: str = "cluster",
+    allow_skip_slices: bool = False,
+) -> EvolutionAnalysisResult:
+    """Build a complete evolution analysis from explicit state and transition evidence."""
+
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    metric = str(metric or "").strip()
+    if not metric:
+        raise ValueError("evolution transition metric must not be empty")
+    matching = {
+        "metric": metric,
+        "min_transition_score": 0.5,
+        "min_support_count": 1,
+        "tie_policy": "keep_all_above_threshold",
+        "normalization": "explicit_state_transition_evidence",
+        "allow_skip_slices": bool(allow_skip_slices),
+    }
+    if matching_method:
+        matching.update(dict(matching_method))
+    threshold, min_support = _score_support_thresholds(matching)
+    matching["min_transition_score"] = threshold
+    matching["min_support_count"] = min_support
+    rules = _default_event_rules()
+    if event_rules:
+        rules.update(dict(event_rules))
+
+    normalized_slices = _normalize_evolution_slices(evolution_id, slices)
+    states = build_evolution_state_table(
+        evolution_id=evolution_id,
+        slices=normalized_slices,
+        state_evidence=state_evidence,
+        default_level=default_level,
+    )
+    normalized_slices = _update_slice_counts(normalized_slices, states)
+    transitions = build_evolution_transition_table(
+        evolution_id=evolution_id,
+        states=states,
+        transition_evidence=transition_evidence,
+        metric=metric,
+        matching_method=matching,
+        event_rules=rules,
+        allow_skip_slices=allow_skip_slices,
+    )
+    lineages = _lineage_rows(evolution_id, states, transitions)
+    events = classify_evolution_events(
+        evolution_id=evolution_id,
+        slices=normalized_slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+        event_rules=rules,
+    )
+    periodization_payload = {
+        "unit": _text_or_default(normalized_slices.iloc[0].get("unit"), "year"),
+        "start_year": int(normalized_slices["start_year"].min()),
+        "end_year": int(normalized_slices["end_year"].max()),
+        "state_method": "explicit_state_evidence",
+        "include_unknown_year": False,
+    }
+    if periodization:
+        periodization_payload.update(dict(periodization))
+    entity_scope_payload = {
+        "cluster_level": default_level,
+        "cluster_id_namespace": "explicit_state_evidence",
+        "document_universe": "state_evidence_doc_counts",
+        "filter_refs": [],
+    }
+    if entity_scope:
+        entity_scope_payload.update(dict(entity_scope))
+    metrics = [
+        {
+            "name": metric,
+            "value_type": "float",
+            "range": [0.0, 1.0],
+            "interpretation": "continuity score between explicit adjacent slice-local cluster states",
+        },
+        {
+            "name": "lineage_stability",
+            "value_type": "float",
+            "range": [0.0, 1.0],
+            "interpretation": "aggregate continuity strength across a lineage",
+        },
+    ]
+    analysis_transforms = [
+        {"step": "normalize_time_slices"},
+        {"step": "normalize_state_evidence", "default_level": default_level},
+        {"step": "normalize_transition_evidence", "metric": metric},
+        {"step": "build_lineages"},
+        {"step": "assign_evolution_events"},
+        *[dict(item) for item in (transforms or [])],
+    ]
+    return EvolutionAnalysisResult(
+        evolution_id=evolution_id,
+        slices=normalized_slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+        events=events,
+        matching_method=matching,
+        event_rules=rules,
+        periodization=periodization_payload,
+        entity_scope=entity_scope_payload,
+        metrics=metrics,
+        transforms=analysis_transforms,
+    )
+
+
 def build_membership_projection_evolution(
     *,
     evolution_id: str,
@@ -1135,6 +1322,7 @@ def build_membership_projection_evolution(
 
 __all__ = [
     "EvolutionAnalysisResult",
+    "build_evidence_backed_evolution",
     "build_evolution_state_table",
     "build_membership_projection_evolution",
     "build_evolution_transition_table",
