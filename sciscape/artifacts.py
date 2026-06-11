@@ -877,6 +877,10 @@ def infer_result_artifacts(path: str | Path) -> ResultArtifacts:
         else:
             landscape_dir = None
             result_root = input_path.parent
+    elif input_path.is_file() and input_path.name == "evolution_manifest.json" and input_path.parent.name == "evolution":
+        report_data = None
+        landscape_dir = None
+        result_root = input_path.parent.parent
     elif input_path.is_file():
         report_data = input_path if input_path.name.endswith(".json") else None
         landscape_dir = input_path.parent if _looks_like_landscape_dir(input_path.parent) else None

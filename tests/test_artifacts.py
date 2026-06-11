@@ -38,6 +38,7 @@ from sciscape.artifacts import (
     build_report_data_contract,
     CLUSTER_REVIEW_PACKET_QA_SCHEMA_VERSION,
     CLUSTER_REVIEW_PACKET_SCHEMA_VERSION,
+    infer_result_artifacts,
     load_result_manifest,
     register_result_in_workspace,
     validate_cluster_review_packet_artifact,
@@ -1119,6 +1120,20 @@ def test_write_evidence_backed_evolution_artifacts_promotes_stable_feature(tmp_p
     assert manifest["features"]["evolution"]["state"] == "stable"
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["metric"] == "term_overlap"
+
+
+def test_result_artifact_inference_accepts_evolution_manifest_path(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    written = write_evolution_synthetic_smoke_artifact(root)
+
+    artifacts = infer_result_artifacts(written["manifest_path"])
+    assert artifacts.result_root == root
+    assert artifacts.evolution_manifest_paths == (written["manifest_path"],)
+
+    contract = validate_result_root(written["manifest_path"]).to_dict()
+    assert contract["result_root"] == str(root)
+    assert contract["features"]["evolution"] is True
+    assert contract["counts"]["stable_evolution_artifacts"] == 1
 
 
 def test_validate_evolution_artifact_blocks_unknown_transition_state_ref(tmp_path):

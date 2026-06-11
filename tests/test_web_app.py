@@ -561,6 +561,7 @@ def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
     (report_dir / "data.json").write_text("{}", encoding="utf-8")
     (output_dir / "landscape" / "keywords.parquet").write_bytes(b"keyword-data")
     (output_dir / "landscape" / "membership.parquet").write_bytes(b"membership-data")
+    write_evolution_synthetic_smoke_artifact(output_dir)
 
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
@@ -579,6 +580,12 @@ def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
     assert data_rows[0]["has_data_json"] is True
     assert data_rows[0]["has_keywords"] is True
     assert data_rows[0]["has_membership"] is True
+    assert data_rows[0]["has_evolution"] is True
+    evolution_rows = [row for row in payload["artifacts"] if row["path"].endswith("evolution_manifest.json")]
+    assert evolution_rows
+    assert evolution_rows[0]["role"] == "evolution"
+    assert evolution_rows[0]["has_web_result"] is True
+    assert evolution_rows[0]["has_evolution"] is True
 
 
 def test_local_data_endpoint_prefers_workspace_manifest_results(monkeypatch, tmp_path):
@@ -1104,6 +1111,28 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert bundle_exports[0]["path"] == "exports/vosviewer_bundle/vosviewer_bundle.zip"
     assert bundle_exports[0]["selection_summary"]["view_mode"] == "download_bundle"
     assert bundle_exports[0]["selection_summary"]["filter_count"] == 1
+
+
+def test_open_local_data_accepts_evolution_manifest_path(monkeypatch, tmp_path):
+    output_dir = tmp_path / "workspace" / "web_output" / "evolution_demo"
+    (output_dir / "landscape" / "report").mkdir(parents=True)
+    (output_dir / "landscape" / "report" / "data.json").write_text("{}", encoding="utf-8")
+    write_evolution_synthetic_smoke_artifact(output_dir)
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "web_output"],
+    )
+
+    client = TestClient(app)
+    manifest_path = output_dir / "evolution" / "evolution_manifest.json"
+    response = client.post("/api/local-data/open", json={"path": str(manifest_path)})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["result"]["output_dir"] == str(output_dir)
+    assert payload["result"]["features"]["evolution"] is True
+    assert payload["result"]["feature_states"]["evolution"] == "stable"
+    assert payload["result"]["evolution_summary"]["status"] == "passed"
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

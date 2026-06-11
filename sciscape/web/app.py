@@ -1222,9 +1222,13 @@ def _infer_output_dir(path: Path) -> Path | None:
     current = path if path.is_dir() else path.parent
     candidates = [current, *current.parents]
     for candidate in candidates:
+        if candidate.name == "evolution" and (candidate / "evolution_manifest.json").exists():
+            return candidate.parent
         if _looks_like_landscape_dir(candidate):
             return candidate.parent
         if _find_landscape_dirs(candidate):
+            return candidate
+        if (candidate / "evolution" / "evolution_manifest.json").exists():
             return candidate
         if (candidate / "edges.parquet").exists() or (candidate / "abstracts.parquet").exists():
             return candidate
@@ -2126,6 +2130,8 @@ def _artifact_role(path: Path) -> str:
     name = path.name
     if name == "data.json":
         return "viewer_data"
+    if name == "evolution_manifest.json":
+        return "evolution"
     if name == "keywords.parquet":
         return "keywords"
     if name == "membership.parquet":
@@ -2147,6 +2153,7 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
     data_json = landscape_dir / "report" / "data.json" if landscape_dir else None
     keywords = landscape_dir / "keywords.parquet" if landscape_dir else None
     membership = landscape_dir / "membership.parquet" if landscape_dir else None
+    evolution_manifest = output_dir / "evolution" / "evolution_manifest.json" if output_dir else None
     return {
         "id": artifact_id,
         "path": relative_path,
@@ -2161,6 +2168,7 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
         "has_data_json": bool(data_json and data_json.exists()),
         "has_keywords": bool(keywords and keywords.exists()),
         "has_membership": bool(membership and membership.exists()),
+        "has_evolution": bool(evolution_manifest and evolution_manifest.exists()),
     }
 
 
@@ -2173,6 +2181,7 @@ def _discover_legacy_local_artifacts(limit: int = 80) -> list[dict[str, Any]]:
         "**/landscape/report/report.html",
         "**/landscape/keywords.parquet",
         "**/landscape/membership.parquet",
+        "**/evolution/evolution_manifest.json",
         "**/data.json",
     ]
     for root in _local_data_roots():
@@ -2361,6 +2370,7 @@ async def list_local_data(limit: int = 80):
             "workspace/web_output/<job>/landscape/report/data.json",
             "workspace/examples_output/<demo>/landscape/keywords.parquet",
             "workspace/examples_output/<demo>/landscape/membership.parquet",
+            "workspace/examples_output/<demo>/evolution/evolution_manifest.json",
             "viewer/data.json",
         ],
     }

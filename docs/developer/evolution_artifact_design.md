@@ -579,6 +579,8 @@ lineage from raw records.
 - `sciscape evolution <result_root> <slices> <states> <transitions>` exposes the
   evidence-backed writer from the CLI and writes web-loadable artifacts under
   `<result_root>/evolution/` by default.
+- The web app local-data browser recognizes `evolution/evolution_manifest.json`
+  as an evolution artifact and can open it as the containing result root.
 - `sciscape.evolution.build_membership_projection_evolution` builds the
   in-memory slice, state, transition, lineage, and event tables before artifact
   serialization; this keeps analysis logic separate from artifact validation and
