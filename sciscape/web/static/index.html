@@ -5618,13 +5618,26 @@ async function loadLocalData() {
 }
 
 function localDataCard(item) {
+  const evolutionStatus = item.evolution_status || null;
+  const evolutionStatusClass = evolutionStatus === 'passed'
+    ? ' status-available'
+    : evolutionStatus === 'warning'
+      ? ' status-partial'
+      : evolutionStatus === 'blocked'
+        ? ' status-missing'
+        : '';
+  const evolutionCounts = item.evolution_counts || {};
   const badges = [
     item.role,
     item.landscape_name,
     item.has_data_json ? 'data.json' : null,
     item.has_keywords ? 'keywords' : null,
     item.has_membership ? 'membership' : null,
-  ].filter(Boolean).map(v => '<span class="local-data-badge">' + esc(v) + '</span>').join('');
+    item.has_evolution ? 'evolution' : null,
+  ].filter(Boolean).map(v => '<span class="local-data-badge">' + esc(v) + '</span>').join('') +
+    (evolutionStatus ? '<span class="local-data-badge' + evolutionStatusClass + '">evo ' + esc(evolutionStatus) + '</span>' : '') +
+    (evolutionCounts.events ? '<span class="local-data-badge">' + formatAtlasCount(evolutionCounts.events) + ' events</span>' : '') +
+    (evolutionCounts.states ? '<span class="local-data-badge">' + formatAtlasCount(evolutionCounts.states) + ' states</span>' : '');
   const disabled = item.has_web_result ? '' : ' disabled';
   return '<div class="local-data-item">' +
     '<div class="local-data-name">' + esc(item.name || item.role) + '</div>' +

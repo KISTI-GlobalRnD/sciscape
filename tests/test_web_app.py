@@ -407,6 +407,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "fetch('/api/query'" in response.text
     assert "fetch('/api/demo-presets'" in response.text
     assert "fetch('/api/local-data" in response.text
+    assert "evolution_status" in response.text
+    assert "evolutionCounts.events" in response.text
     assert "new URLSearchParams(window.location.search).get('job')" in response.text
     assert 'id="file-input"' not in response.text
 
@@ -581,11 +583,16 @@ def test_local_data_endpoint_lists_workspace_outputs(monkeypatch, tmp_path):
     assert data_rows[0]["has_keywords"] is True
     assert data_rows[0]["has_membership"] is True
     assert data_rows[0]["has_evolution"] is True
+    assert data_rows[0]["evolution_status"] == "passed"
+    assert data_rows[0]["evolution_counts"]["events"] == 8
+    assert data_rows[0]["evolution_counts"]["states"] == 15
+    assert data_rows[0]["evolution_event_counts"]["split"] == 1
     evolution_rows = [row for row in payload["artifacts"] if row["path"].endswith("evolution_manifest.json")]
     assert evolution_rows
     assert evolution_rows[0]["role"] == "evolution"
     assert evolution_rows[0]["has_web_result"] is True
     assert evolution_rows[0]["has_evolution"] is True
+    assert evolution_rows[0]["evolution_status"] == "passed"
 
 
 def test_local_data_endpoint_prefers_workspace_manifest_results(monkeypatch, tmp_path):

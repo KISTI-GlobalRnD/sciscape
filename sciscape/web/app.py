@@ -2145,6 +2145,29 @@ def _artifact_role(path: Path) -> str:
     return "artifact"
 
 
+def _local_evolution_summary(manifest_path: Path | None) -> dict[str, Any]:
+    if manifest_path is None or not manifest_path.exists():
+        return {}
+    try:
+        validation = validate_evolution_artifact(manifest_path).to_dict()
+    except Exception as exc:
+        return {
+            "status": "blocked",
+            "counts": {},
+            "event_counts": {},
+            "warning_count": 0,
+            "blocking_issue_count": 1,
+            "error": str(exc),
+        }
+    return {
+        "status": validation.get("status"),
+        "counts": validation.get("counts", {}),
+        "event_counts": validation.get("event_counts", {}),
+        "warning_count": len(validation.get("warnings", [])),
+        "blocking_issue_count": len(validation.get("blocking_issues", [])),
+    }
+
+
 def _local_artifact_record(path: Path) -> dict[str, Any]:
     output_dir = _infer_output_dir(path)
     relative_path = _display_local_path(path)
@@ -2154,6 +2177,7 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
     keywords = landscape_dir / "keywords.parquet" if landscape_dir else None
     membership = landscape_dir / "membership.parquet" if landscape_dir else None
     evolution_manifest = output_dir / "evolution" / "evolution_manifest.json" if output_dir else None
+    evolution_summary = _local_evolution_summary(evolution_manifest)
     return {
         "id": artifact_id,
         "path": relative_path,
@@ -2169,6 +2193,11 @@ def _local_artifact_record(path: Path) -> dict[str, Any]:
         "has_keywords": bool(keywords and keywords.exists()),
         "has_membership": bool(membership and membership.exists()),
         "has_evolution": bool(evolution_manifest and evolution_manifest.exists()),
+        "evolution_status": evolution_summary.get("status"),
+        "evolution_counts": evolution_summary.get("counts", {}),
+        "evolution_event_counts": evolution_summary.get("event_counts", {}),
+        "evolution_warning_count": evolution_summary.get("warning_count", 0),
+        "evolution_blocking_issue_count": evolution_summary.get("blocking_issue_count", 0),
     }
 
 
