@@ -106,6 +106,50 @@ def _coerce_int(value: Any) -> int | None:
         return None
 
 
+def _is_missing(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, (dict, list, tuple, set)):
+        return False
+    try:
+        missing = pd.isna(value)
+    except (TypeError, ValueError):
+        return False
+    return bool(missing) if isinstance(missing, bool) else False
+
+
+def _normalize_json_list(value: Any, *, field: str) -> tuple[str, int]:
+    if _is_missing(value):
+        return "[]", 0
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return "[]", 0
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{field} must be a JSON list when encoded as a string") from exc
+            if not isinstance(parsed, list):
+                raise ValueError(f"{field} must be a JSON list")
+            values = parsed
+        else:
+            values = [text]
+    elif isinstance(value, (list, tuple, set)):
+        values = list(value)
+    else:
+        values = [value]
+    normalized = [str(item).strip() for item in values if not _is_missing(item) and str(item).strip()]
+    return json.dumps(normalized, ensure_ascii=True), len(normalized)
+
+
+def _text_or_default(value: Any, default: str) -> str:
+    if _is_missing(value):
+        return default
+    text = str(value).strip()
+    return text or default
+
+
 def _config_int(config: Mapping[str, Any] | None, key: str, default: int, *, label: str) -> int:
     raw = config.get(key, default) if config else default
     try:
@@ -354,6 +398,115 @@ def _update_slice_counts(slices: pd.DataFrame, states: pd.DataFrame) -> pd.DataF
             out.at[index, "doc_count"] = int(counts.loc[slice_id, "doc_count"])
             out.at[index, "active_cluster_count"] = int(counts.loc[slice_id, "active_cluster_count"])
     return out
+
+
+def build_evolution_state_table(
+    *,
+    evolution_id: str,
+    slices: pd.DataFrame,
+    state_evidence: pd.DataFrame,
+    default_level: str = "cluster",
+) -> pd.DataFrame:
+    """Normalize raw slice-local state evidence into the evolution state schema."""
+
+    slice_required = {"slice_id", "slice_index"}
+    slice_missing = sorted(slice_required - set(slices.columns))
+    if slice_missing:
+        raise ValueError(f"slices missing required columns for state table: {', '.join(slice_missing)}")
+    evidence_required = {"slice_id", "doc_count"}
+    evidence_missing = sorted(evidence_required - set(state_evidence.columns))
+    if evidence_missing:
+        raise ValueError(f"state_evidence missing required columns: {', '.join(evidence_missing)}")
+    if "cluster_key" not in state_evidence.columns and "cluster_id" not in state_evidence.columns:
+        raise ValueError("state_evidence must include cluster_key or cluster_id")
+    if state_evidence.empty:
+        return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_STATE_COLUMNS))
+
+    slice_index: dict[str, Any] = {}
+    for row in slices.itertuples(index=False):
+        slice_id = str(row.slice_id)
+        if slice_id in slice_index:
+            raise ValueError(f"slices contains duplicate slice_id: {slice_id}")
+        slice_index[slice_id] = row
+
+    rows = []
+    seen_state_ids: set[str] = set()
+    seen_slice_keys: set[tuple[str, str]] = set()
+    optional_columns = [
+        "cluster_uid",
+        "parent_uid",
+        "centroid_x",
+        "centroid_y",
+        "activity_score",
+        "growth_score",
+    ]
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    for evidence in state_evidence.to_dict("records"):
+        slice_id = str(evidence.get("slice_id", "")).strip()
+        if slice_id not in slice_index:
+            raise ValueError(f"state_evidence references unknown slice_id: {slice_id}")
+        raw_level = evidence.get("level", default_level)
+        level = str(raw_level if not _is_missing(raw_level) else default_level).strip() or default_level
+        raw_cluster_key = evidence.get("cluster_key")
+        raw_cluster_id = evidence.get("cluster_id")
+        if _is_missing(raw_cluster_key) or str(raw_cluster_key).strip() == "":
+            if _is_missing(raw_cluster_id) or str(raw_cluster_id).strip() == "":
+                raise ValueError("state_evidence must include non-empty cluster_key or cluster_id")
+            cluster_id = str(raw_cluster_id).strip()
+            cluster_key = f"{level}:{cluster_id}"
+        else:
+            cluster_key = str(raw_cluster_key).strip()
+            cluster_id = str(raw_cluster_id).strip() if not _is_missing(raw_cluster_id) else cluster_key.split(":")[-1]
+        slice_key = (slice_id, cluster_key)
+        if slice_key in seen_slice_keys:
+            raise ValueError(f"state_evidence contains duplicate slice_id/cluster_key: {slice_id} {cluster_key}")
+        seen_slice_keys.add(slice_key)
+        raw_state_id = evidence.get("state_id")
+        state_id = str(raw_state_id).strip() if not _is_missing(raw_state_id) and str(raw_state_id).strip() else _state_id(slice_id, cluster_key)
+        if state_id in seen_state_ids:
+            raise ValueError(f"state_evidence contains duplicate state_id: {state_id}")
+        seen_state_ids.add(state_id)
+        doc_count = _coerce_int(evidence.get("doc_count"))
+        if doc_count is None or doc_count <= 0:
+            raise ValueError("state_evidence doc_count must be a positive integer")
+        top_terms, inferred_term_count = _normalize_json_list(evidence.get("top_terms", []), field="top_terms")
+        raw_term_count = evidence.get("term_count")
+        term_count = _coerce_int(raw_term_count) if not _is_missing(raw_term_count) else inferred_term_count
+        if term_count is None or term_count < 0:
+            raise ValueError("state_evidence term_count must be a non-negative integer")
+        representative_work_ids, _ = _normalize_json_list(
+            evidence.get("representative_work_ids", []),
+            field="representative_work_ids",
+        )
+        raw_label = evidence.get("cluster_label")
+        if _is_missing(raw_label):
+            raw_label = evidence.get("label")
+        cluster_label = str(raw_label if not _is_missing(raw_label) else cluster_key).strip() or cluster_key
+        slice_row = slice_index[slice_id]
+        row: dict[str, Any] = {
+            "schema_version": EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
+            "evolution_id": evolution_id,
+            "state_id": state_id,
+            "slice_id": slice_id,
+            "slice_index": int(slice_row.slice_index),
+            "cluster_key": cluster_key,
+            "cluster_label": cluster_label,
+            "doc_count": int(doc_count),
+            "term_count": int(term_count),
+            "top_terms": top_terms,
+            "cluster_uid": _text_or_default(evidence.get("cluster_uid"), cluster_key),
+            "cluster_id": cluster_id,
+            "level": level,
+            "representative_work_ids": representative_work_ids,
+            "source_cluster_key": _text_or_default(evidence.get("source_cluster_key"), cluster_key),
+            "warning_flags": _text_or_default(evidence.get("warning_flags"), ""),
+        }
+        for column in optional_columns:
+            if column in evidence and column not in row:
+                row[column] = evidence[column]
+        rows.append(row)
+
+    return pd.DataFrame(rows)
 
 
 def _transition_rows(
@@ -982,6 +1135,7 @@ def build_membership_projection_evolution(
 
 __all__ = [
     "EvolutionAnalysisResult",
+    "build_evolution_state_table",
     "build_membership_projection_evolution",
     "build_evolution_transition_table",
     "classify_evolution_events",

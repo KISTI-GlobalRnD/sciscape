@@ -7,6 +7,7 @@ import pytest
 
 import sciscape
 from sciscape.evolution import (
+    build_evolution_state_table,
     build_evolution_transition_table,
     build_membership_projection_evolution,
     classify_evolution_events,
@@ -16,6 +17,7 @@ from sciscape.evolution import (
 
 
 def test_evolution_is_public_lazy_submodule():
+    assert sciscape.evolution.build_evolution_state_table is build_evolution_state_table
     assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
     assert sciscape.evolution.label_evolution_transition_relations is label_evolution_transition_relations
@@ -154,6 +156,74 @@ def test_membership_projection_evolution_rejects_jaccard_doc_overlap_metric():
             membership_df=membership,
             matching_method={"metric": "jaccard_doc_overlap"},
         )
+
+
+def test_build_evolution_state_table_normalizes_raw_state_evidence():
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0},
+            {"slice_id": "year:2021", "slice_index": 1},
+        ]
+    )
+    evidence = pd.DataFrame(
+        [
+            {
+                "slice_id": "year:2020",
+                "cluster_id": "A",
+                "level": "topic",
+                "cluster_label": "Alpha materials",
+                "doc_count": 2,
+                "top_terms": ["alpha", "materials"],
+                "representative_work_ids": ["D0", "D1"],
+                "centroid_x": 0.25,
+            },
+            {
+                "slice_id": "year:2021",
+                "cluster_key": "topic:B",
+                "label": "Beta methods",
+                "doc_count": "3",
+                "top_terms": '["beta"]',
+            },
+        ]
+    )
+
+    states = build_evolution_state_table(
+        evolution_id="state demo",
+        slices=slices,
+        state_evidence=evidence,
+        default_level="topic",
+    )
+
+    by_state = {row.state_id: row for row in states.itertuples(index=False)}
+    assert set(by_state) == {"year:2020_topic:A", "year:2021_topic:B"}
+    assert by_state["year:2020_topic:A"].schema_version == "sciscape_evolution_cluster_states_v1"
+    assert by_state["year:2020_topic:A"].evolution_id == "state_demo"
+    assert by_state["year:2020_topic:A"].cluster_key == "topic:A"
+    assert by_state["year:2020_topic:A"].cluster_id == "A"
+    assert by_state["year:2020_topic:A"].term_count == 2
+    assert by_state["year:2020_topic:A"].top_terms == '["alpha", "materials"]'
+    assert by_state["year:2020_topic:A"].representative_work_ids == '["D0", "D1"]'
+    assert by_state["year:2020_topic:A"].centroid_x == 0.25
+    assert by_state["year:2021_topic:B"].slice_index == 1
+    assert by_state["year:2021_topic:B"].cluster_label == "Beta methods"
+    assert by_state["year:2021_topic:B"].doc_count == 3
+
+
+def test_build_evolution_state_table_rejects_unknown_slice_and_duplicate_state_key():
+    slices = pd.DataFrame([{"slice_id": "year:2020", "slice_index": 0}])
+    unknown = pd.DataFrame([{"slice_id": "year:2021", "cluster_id": "A", "doc_count": 1}])
+
+    with pytest.raises(ValueError, match="unknown slice_id"):
+        build_evolution_state_table(evolution_id="bad", slices=slices, state_evidence=unknown)
+
+    duplicate = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 1},
+            {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 2},
+        ]
+    )
+    with pytest.raises(ValueError, match="duplicate slice_id/cluster_key"):
+        build_evolution_state_table(evolution_id="bad", slices=slices, state_evidence=duplicate)
 
 
 def test_classify_evolution_events_detects_split_merge_and_ambiguous():
