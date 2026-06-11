@@ -160,6 +160,17 @@ def _normalize_matching_method(matching_method: Mapping[str, Any]) -> dict[str, 
     return normalized
 
 
+def _default_event_rules() -> dict[str, Any]:
+    return {
+        "continuation_min_score": 0.5,
+        "split_min_children": 2,
+        "merge_min_parents": 2,
+        "emergence_max_incoming_score": 0.0,
+        "decline_max_outgoing_score": 0.0,
+        "ambiguous_score_margin": 0.05,
+    }
+
+
 def _year_column(records: pd.DataFrame) -> str | None:
     for column in ("pubyear", "year", "publication_year"):
         if column in records.columns:
@@ -455,7 +466,13 @@ def _event_rows_from_graph(
     if states.empty:
         return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_EVENT_COLUMNS))
     continuation_min = float(event_rules.get("continuation_min_score", 0.5))
+    split_min_children = _config_int(event_rules, "split_min_children", 2, label="evolution event_rules")
+    merge_min_parents = _config_int(event_rules, "merge_min_parents", 2, label="evolution event_rules")
     ambiguous_margin = float(event_rules.get("ambiguous_score_margin", 0.05))
+    if split_min_children < 2:
+        raise ValueError("evolution event_rules split_min_children must be at least 2")
+    if merge_min_parents < 2:
+        raise ValueError("evolution event_rules merge_min_parents must be at least 2")
     lineage_lookup = _lineage_by_state(lineages)
     last_slice_index = int(slices["slice_index"].max()) if not slices.empty else 0
     incoming: dict[str, list[Any]] = {}
@@ -495,6 +512,48 @@ def _event_rows_from_graph(
         slice_index = int(state.slice_index)
         in_rows = incoming.get(state_id, [])
         out_rows = outgoing.get(state_id, [])
+        split_rows = [item for item in out_rows if str(item.relation) != "ambiguous"]
+        merge_rows = [item for item in in_rows if str(item.relation) != "ambiguous"]
+        if len(split_rows) >= split_min_children:
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "event_id": _safe_id(f"split_{state_id}", fallback="split_event"),
+                    "event_type": "split",
+                    "slice_id": str(state.slice_id),
+                    "state_id": state_id,
+                    "lineage_id": lineage_lookup.get(state_id),
+                    "transition_refs": json.dumps([str(item.transition_id) for item in split_rows], ensure_ascii=True),
+                    "score": float(max(float(item.score) for item in split_rows)),
+                    "support_count": int(sum(int(item.support_count) for item in split_rows)),
+                    "method": "multi_outgoing_transition_above_threshold",
+                    "source_state_ids": json.dumps([state_id], ensure_ascii=True),
+                    "target_state_ids": json.dumps([str(item.target_state_id) for item in split_rows], ensure_ascii=True),
+                    "event_label": "Split",
+                    "warning_flags": "",
+                }
+            )
+        if len(merge_rows) >= merge_min_parents:
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_EVENTS_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "event_id": _safe_id(f"merge_{state_id}", fallback="merge_event"),
+                    "event_type": "merge",
+                    "slice_id": str(state.slice_id),
+                    "state_id": state_id,
+                    "lineage_id": lineage_lookup.get(state_id),
+                    "transition_refs": json.dumps([str(item.transition_id) for item in merge_rows], ensure_ascii=True),
+                    "score": float(max(float(item.score) for item in merge_rows)),
+                    "support_count": int(sum(int(item.support_count) for item in merge_rows)),
+                    "method": "multi_incoming_transition_above_threshold",
+                    "source_state_ids": json.dumps([str(item.source_state_id) for item in merge_rows], ensure_ascii=True),
+                    "target_state_ids": json.dumps([state_id], ensure_ascii=True),
+                    "event_label": "Merge",
+                    "warning_flags": "",
+                }
+            )
         if slice_index > 0 and not in_rows:
             rows.append(
                 {
@@ -535,8 +594,11 @@ def _event_rows_from_graph(
                     "warning_flags": "",
                 }
             )
-        if len(out_rows) >= 2:
-            scores = sorted((float(item.score) for item in out_rows), reverse=True)
+        ambiguous_rows = [item for item in out_rows if str(item.relation) == "ambiguous"]
+        if not ambiguous_rows and len(split_rows) < split_min_children:
+            ambiguous_rows = out_rows
+        if len(ambiguous_rows) >= 2:
+            scores = sorted((float(item.score) for item in ambiguous_rows), reverse=True)
             if len(scores) >= 2 and abs(scores[0] - scores[1]) <= ambiguous_margin:
                 rows.append(
                     {
@@ -547,17 +609,41 @@ def _event_rows_from_graph(
                         "slice_id": str(state.slice_id),
                         "state_id": state_id,
                         "lineage_id": lineage_lookup.get(state_id),
-                        "transition_refs": json.dumps([str(item.transition_id) for item in out_rows], ensure_ascii=True),
+                        "transition_refs": json.dumps([str(item.transition_id) for item in ambiguous_rows], ensure_ascii=True),
                         "score": float(scores[0]),
-                        "support_count": int(sum(int(item.support_count) for item in out_rows)),
+                        "support_count": int(sum(int(item.support_count) for item in ambiguous_rows)),
                         "method": "near_tie_transition_scores",
                         "source_state_ids": json.dumps([state_id], ensure_ascii=True),
-                        "target_state_ids": json.dumps([str(item.target_state_id) for item in out_rows], ensure_ascii=True),
+                        "target_state_ids": json.dumps([str(item.target_state_id) for item in ambiguous_rows], ensure_ascii=True),
                         "event_label": "Ambiguous transition",
                         "warning_flags": "",
                     }
                 )
     return pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_EVENT_COLUMNS))
+
+
+def classify_evolution_events(
+    *,
+    evolution_id: str,
+    slices: pd.DataFrame,
+    states: pd.DataFrame,
+    transitions: pd.DataFrame,
+    lineages: pd.DataFrame,
+    event_rules: Mapping[str, Any] | None = None,
+) -> pd.DataFrame:
+    """Classify evolution events from explicit state-transition evidence."""
+
+    rules = _default_event_rules()
+    if event_rules:
+        rules.update(dict(event_rules))
+    return _event_rows_from_graph(
+        _safe_id(evolution_id, fallback="cluster_evolution"),
+        slices,
+        states,
+        transitions,
+        lineages,
+        event_rules=rules,
+    )
 
 
 def build_membership_projection_evolution(
@@ -604,14 +690,7 @@ def build_membership_projection_evolution(
     if matching_method:
         matching.update(dict(matching_method))
     matching = _normalize_matching_method(matching)
-    rules = {
-        "continuation_min_score": 0.5,
-        "split_min_children": 2,
-        "merge_min_parents": 2,
-        "emergence_max_incoming_score": 0.0,
-        "decline_max_outgoing_score": 0.0,
-        "ambiguous_score_margin": 0.05,
-    }
+    rules = _default_event_rules()
     if event_rules:
         rules.update(dict(event_rules))
 
@@ -635,12 +714,12 @@ def build_membership_projection_evolution(
         matching_method=matching,
     )
     lineages = _lineage_rows(evolution_id, states, transitions)
-    events = _event_rows_from_graph(
-        evolution_id,
-        slices,
-        states,
-        transitions,
-        lineages,
+    events = classify_evolution_events(
+        evolution_id=evolution_id,
+        slices=slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
         event_rules=rules,
     )
     periodization_payload = {
@@ -702,4 +781,5 @@ def build_membership_projection_evolution(
 __all__ = [
     "EvolutionAnalysisResult",
     "build_membership_projection_evolution",
+    "classify_evolution_events",
 ]

@@ -578,6 +578,9 @@ lineage from raw records.
   in-memory slice, state, transition, lineage, and event tables before artifact
   serialization; this keeps analysis logic separate from artifact validation and
   lets richer matching strategies evolve in the analysis module first.
+- `sciscape.evolution.classify_evolution_events` classifies events from
+  explicit transition evidence, including split and merge events from
+  multi-target or multi-source transition patterns.
 - `validate_evolution_artifact` validates manifests, slices, states,
   transitions, lineages, events, QA, references, adjacent-slice transitions,
   event support, and score ranges.

@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 import sciscape
-from sciscape.evolution import build_membership_projection_evolution
+from sciscape.evolution import build_membership_projection_evolution, classify_evolution_events
 
 
 def test_evolution_is_public_lazy_submodule():
@@ -144,4 +144,128 @@ def test_membership_projection_evolution_rejects_jaccard_doc_overlap_metric():
             records_df=records,
             membership_df=membership,
             matching_method={"metric": "jaccard_doc_overlap"},
+        )
+
+
+def test_classify_evolution_events_detects_split_merge_and_ambiguous():
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0},
+            {"slice_id": "year:2021", "slice_index": 1},
+        ]
+    )
+    states = pd.DataFrame(
+        [
+            {"state_id": "B20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 6},
+            {"state_id": "B21a", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "B21b", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "C20a", "slice_id": "year:2020", "slice_index": 0, "doc_count": 3},
+            {"state_id": "C20b", "slice_id": "year:2020", "slice_index": 0, "doc_count": 3},
+            {"state_id": "C21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 6},
+            {"state_id": "X20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 6},
+            {"state_id": "Y21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "Z21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+        ]
+    )
+    transitions = pd.DataFrame(
+        [
+            {
+                "transition_id": "t_B20_B21a",
+                "source_state_id": "B20",
+                "target_state_id": "B21a",
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "score": 0.76,
+                "support_count": 3,
+                "relation": "split_child",
+            },
+            {
+                "transition_id": "t_B20_B21b",
+                "source_state_id": "B20",
+                "target_state_id": "B21b",
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "score": 0.74,
+                "support_count": 3,
+                "relation": "split_child",
+            },
+            {
+                "transition_id": "t_C20a_C21",
+                "source_state_id": "C20a",
+                "target_state_id": "C21",
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "score": 0.81,
+                "support_count": 3,
+                "relation": "merge_parent",
+            },
+            {
+                "transition_id": "t_C20b_C21",
+                "source_state_id": "C20b",
+                "target_state_id": "C21",
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "score": 0.79,
+                "support_count": 3,
+                "relation": "merge_parent",
+            },
+            {
+                "transition_id": "t_X20_Y21",
+                "source_state_id": "X20",
+                "target_state_id": "Y21",
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "score": 0.61,
+                "support_count": 3,
+                "relation": "ambiguous",
+            },
+            {
+                "transition_id": "t_X20_Z21",
+                "source_state_id": "X20",
+                "target_state_id": "Z21",
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "score": 0.60,
+                "support_count": 3,
+                "relation": "ambiguous",
+            },
+        ]
+    )
+    lineages = pd.DataFrame(
+        {
+            "state_id": states["state_id"],
+            "lineage_id": [f"lineage_{state_id}" for state_id in states["state_id"]],
+        }
+    )
+
+    events = classify_evolution_events(
+        evolution_id="classifier",
+        slices=slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+    )
+
+    assert events["event_type"].value_counts().to_dict() == {"split": 1, "merge": 1, "ambiguous": 1}
+    event_by_type = {row.event_type: row for row in events.itertuples(index=False)}
+    assert event_by_type["split"].source_state_ids == '["B20"]'
+    assert event_by_type["split"].target_state_ids == '["B21a", "B21b"]'
+    assert event_by_type["merge"].source_state_ids == '["C20a", "C20b"]'
+    assert event_by_type["merge"].target_state_ids == '["C21"]'
+    assert event_by_type["ambiguous"].transition_refs == '["t_X20_Y21", "t_X20_Z21"]'
+
+
+def test_classify_evolution_events_rejects_degenerate_split_rule():
+    slices = pd.DataFrame([{"slice_id": "year:2020", "slice_index": 0}])
+    states = pd.DataFrame([{"state_id": "A20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 1}])
+    lineages = pd.DataFrame([{"state_id": "A20", "lineage_id": "lineage_A"}])
+
+    with pytest.raises(ValueError, match="split_min_children"):
+        classify_evolution_events(
+            evolution_id="bad-rule",
+            slices=slices,
+            states=states,
+            transitions=pd.DataFrame(),
+            lineages=lineages,
+            event_rules={"split_min_children": 1},
         )
