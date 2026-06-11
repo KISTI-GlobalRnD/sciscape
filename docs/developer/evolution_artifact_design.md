@@ -574,6 +574,8 @@ lineage from raw records.
 
 - `write_evolution_artifacts` writes yearly membership-projection evolution
   artifacts under `<result_root>/evolution/`.
+- `write_evidence_backed_evolution_artifacts` writes explicit state and
+  transition evidence as the same validated evolution artifact contract.
 - `sciscape.evolution.build_membership_projection_evolution` builds the
   in-memory slice, state, transition, lineage, and event tables before artifact
   serialization; this keeps analysis logic separate from artifact validation and

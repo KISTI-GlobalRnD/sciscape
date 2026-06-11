@@ -16,7 +16,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from . import __version__ as SCISCAPE_VERSION
-from .evolution import build_membership_projection_evolution
+from .evolution import build_evidence_backed_evolution, build_membership_projection_evolution
 
 
 ARTIFACT_CONTRACT_SCHEMA_VERSION = "sciscape_artifact_contract_v1"
@@ -8637,6 +8637,87 @@ def write_evolution_artifacts(
     )
 
 
+def write_evidence_backed_evolution_artifacts(
+    result_root: str | Path,
+    *,
+    evolution_id: str,
+    slices_df: pd.DataFrame,
+    state_evidence_df: pd.DataFrame,
+    transition_evidence_df: pd.DataFrame,
+    metric: str,
+    temporal_manifest: str | Path | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    entity_scope: Mapping[str, Any] | None = None,
+    source_artifacts: list[Mapping[str, Any]] | None = None,
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    output_dir: str | Path | None = None,
+    title: str | None = None,
+    default_level: str = "cluster",
+    allow_skip_slices: bool = False,
+) -> dict[str, Any]:
+    """Write v1 evolution artifacts from explicit state and transition evidence."""
+
+    root = Path(result_root).expanduser().resolve()
+    analysis = build_evidence_backed_evolution(
+        evolution_id=evolution_id,
+        slices=slices_df,
+        state_evidence=state_evidence_df,
+        transition_evidence=transition_evidence_df,
+        metric=metric,
+        matching_method=matching_method,
+        event_rules=event_rules,
+        periodization=periodization,
+        entity_scope=entity_scope,
+        transforms=transforms,
+        default_level=default_level,
+        allow_skip_slices=allow_skip_slices,
+    )
+    evolution_dir = Path(output_dir).expanduser().resolve() if output_dir else root / "evolution"
+    outputs = {
+        "time_slices": "time_slices.parquet",
+        "cluster_states": "cluster_states.parquet",
+        "transitions": "transitions.parquet",
+        "lineages": "lineages.parquet",
+        "events": "evolution_events.parquet",
+        "qa": "evolution_qa.json",
+    }
+    sources = (
+        [dict(item) for item in source_artifacts]
+        if source_artifacts is not None
+        else _evolution_default_sources(root, infer_result_artifacts(root), temporal_manifest=temporal_manifest)
+    )
+    manifest = {
+        "schema_version": EVOLUTION_MANIFEST_SCHEMA_VERSION,
+        "evolution_id": analysis.evolution_id,
+        "title": title or analysis.evolution_id.replace("_", " ").title(),
+        "result_id": _matrix_existing_result_id(root),
+        "slice_method": analysis.periodization,
+        "matching_method": analysis.matching_method,
+        "event_rules": analysis.event_rules,
+        "entity_scope": analysis.entity_scope,
+        "metrics": analysis.metrics,
+        "source_artifacts": sources,
+        "rule_sets": [dict(item) for item in (rule_sets or [])],
+        "transforms": analysis.transforms,
+        "outputs": outputs,
+        "created_at_utc": _utc_now(),
+        "warnings": [],
+    }
+    return _write_evolution_payload(
+        root,
+        evolution_dir,
+        manifest=manifest,
+        slices=analysis.slices,
+        states=analysis.states,
+        transitions=analysis.transitions,
+        lineages=analysis.lineages,
+        events=analysis.events,
+    )
+
+
 def _synthetic_evolution_state(
     evolution_id: str,
     state_id: str,
@@ -12028,6 +12109,7 @@ __all__ = [
     "write_matrix_artifact",
     "write_matrix_from_term_cooccurrence",
     "write_evolution_artifacts",
+    "write_evidence_backed_evolution_artifacts",
     "write_evolution_synthetic_smoke_artifact",
     "write_export_manifest",
     "write_temporal_artifacts",

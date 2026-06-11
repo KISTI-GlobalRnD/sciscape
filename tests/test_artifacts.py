@@ -51,6 +51,7 @@ from sciscape.artifacts import (
     validate_workspace,
     write_cooccurrence_artifacts,
     write_edge_evidence_samples,
+    write_evidence_backed_evolution_artifacts,
     write_evolution_artifacts,
     write_evolution_synthetic_smoke_artifact,
     write_export_manifest,
@@ -1055,6 +1056,69 @@ def test_write_evolution_artifacts_promotes_stable_evolution_feature(tmp_path):
 
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["evolution"]["state"] == "stable"
+
+
+def test_write_evidence_backed_evolution_artifacts_promotes_stable_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+            {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+        ]
+    )
+    state_evidence = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 6, "top_terms": ["alpha"]},
+            {"slice_id": "year:2021", "cluster_id": "B1", "doc_count": 3, "top_terms": ["beta"]},
+            {"slice_id": "year:2021", "cluster_id": "B2", "doc_count": 3, "top_terms": ["gamma"]},
+            {"slice_id": "year:2020", "cluster_id": "C", "doc_count": 4},
+            {"slice_id": "year:2021", "cluster_id": "C", "doc_count": 4},
+        ]
+    )
+    transition_evidence = pd.DataFrame(
+        [
+            {"source_state_id": "year:2020_cluster:A", "target_state_id": "year:2021_cluster:B1", "score": 0.8, "support_count": 3},
+            {"source_state_id": "year:2020_cluster:A", "target_state_id": "year:2021_cluster:B2", "score": 0.7, "support_count": 3},
+            {"source_state_id": "year:2020_cluster:C", "target_state_id": "year:2021_cluster:C", "score": 0.9, "support_count": 4},
+        ]
+    )
+
+    written = write_evidence_backed_evolution_artifacts(
+        root,
+        evolution_id="slice_local_evolution",
+        slices_df=slices,
+        state_evidence_df=state_evidence,
+        transition_evidence_df=transition_evidence,
+        metric="term_overlap",
+    )
+
+    assert written["manifest_path"] == root / "evolution" / "evolution_manifest.json"
+    assert written["qa"]["schema_version"] == EVOLUTION_QA_SCHEMA_VERSION
+    assert written["qa"]["status"] == "passed"
+
+    states = pd.read_parquet(written["cluster_states_path"])
+    transitions = pd.read_parquet(written["transitions_path"])
+    events = pd.read_parquet(written["events_path"])
+    assert len(states) == 5
+    assert len(transitions) == 3
+    assert {"split", "continuation"} <= set(events["event_type"])
+    assert set(transitions["metric"]) == {"term_overlap"}
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["slices"] == 2
+    assert validation["counts"]["states"] == 5
+    assert validation["counts"]["transitions"] == 3
+
+    contract = validate_result_root(root).to_dict()
+    assert contract["features"]["evolution"] is True
+    assert contract["counts"]["stable_evolution_artifacts"] == 1
+    assert contract["counts"]["evolution_event_rows"] == len(events)
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
+    evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert evolution_manifest["matching_method"]["metric"] == "term_overlap"
 
 
 def test_validate_evolution_artifact_blocks_unknown_transition_state_ref(tmp_path):
