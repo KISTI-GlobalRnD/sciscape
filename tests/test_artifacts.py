@@ -589,6 +589,7 @@ def test_write_narrative_evidence_artifacts_creates_claim_graph_from_review_pack
     result_manifest = build_result_manifest(root).to_dict()
     assert result_manifest["features"]["narrative"]["state"] == "beta"
     assert "narrative" in result_manifest["features"]["narrative"]["artifact_refs"]
+    assert result_manifest["features"]["keyword"]["state"] == "stable"
     assert "narrative/narrative_qa.json" in result_manifest["quality"]["gate_paths"]
 
 

@@ -15,8 +15,11 @@ from fastapi.testclient import TestClient
 import sciscape.web.app as web_app
 from sciscape.artifacts import (
     validate_export_manifest,
+    write_cluster_review_packet_artifact,
+    write_cooccurrence_artifacts,
     write_evolution_synthetic_smoke_artifact,
     write_export_manifest,
+    write_narrative_evidence_artifacts,
     write_workspace_manifest,
 )
 from sciscape.web.jobstore import JobStore
@@ -270,6 +273,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasReviewChecklist" in response.text
     assert "atlasReviewPacket" in response.text
     assert "renderAtlasReviewPacket" in response.text
+    assert "renderAtlasNarrativeReview" in response.text
+    assert "atlas-narrative-panel" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -290,6 +295,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Next target" in response.text
     assert "Review checklist" in response.text
     assert "Review queue" in response.text
+    assert "Narrative review" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
@@ -817,6 +823,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         encoding="utf-8",
     )
     write_evolution_synthetic_smoke_artifact(output_dir)
+    write_cooccurrence_artifacts(output_dir)
+    write_cluster_review_packet_artifact(output_dir)
+    write_narrative_evidence_artifacts(output_dir)
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
         [tmp_path / "workspace" / "web_output"],
@@ -886,12 +895,17 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["feature_states"]["evolution"] == "stable"
     assert job_payload["result"]["evolution_summary"]["status"] == "passed"
     assert job_payload["result"]["evolution_summary"]["event_counts"]["continuation"] == 3
+    assert job_payload["result"]["narrative_summary"]["available"] is True
+    assert job_payload["result"]["narrative_summary"]["feature_state"] == "beta"
+    assert job_payload["result"]["narrative_summary"]["cluster_count"] == 1
     assert job_payload["result"]["atlas"]["node_count"] == 1
     assert job_payload["result"]["atlas"]["nodes"][0]["label"] == "perovskite"
     assert job_payload["result"]["atlas"]["nodes"][0]["doc_count"] == 2
     assert job_payload["result"]["atlas"]["nodes"][0]["doc_count_source"] == "membership:cluster"
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_work_count"] == 2
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["title"] == "Stable perovskite device"
+    assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["state"] == "beta"
+    assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["claims"][0]["evidence"]
     assert job_payload["result"]["atlas_render_summary"]["schema_version"] == "sciscape_atlas_render_payload_v1"
     assert job_payload["result"]["atlas_render_summary"]["engine_family"] == "deck.gl"
     assert job_payload["result"]["atlas_render_summary"]["node_count"] == 1
@@ -911,10 +925,14 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert features_payload["api_profile"] == "job_result"
     assert features_payload["features"]["keyword"] is True
     assert features_payload["feature_states"]["keyword"] == "stable"
+    assert features_payload["feature_states"]["narrative"] == "beta"
     assert features_payload["modules"]["keyword"]["ready"] is True
+    assert features_payload["modules"]["narrative"]["ready"] is True
     assert "keywords" in features_payload["modules"]["keyword"]["artifact_refs"]
+    assert "narrative" in features_payload["modules"]["narrative"]["artifact_refs"]
     assert features_payload["quality"]["validation_state"] == "passed_with_warnings"
     assert features_payload["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
+    assert features_payload["artifacts"]["narrative"]["path"] == "narrative/narrative_manifest.json"
 
     readiness_response = client.get(f"/api/jobs/{job_id}/readiness")
     assert readiness_response.status_code == 200
@@ -948,6 +966,26 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     missing_layer_response = client.get(f"/api/jobs/{job_id}/atlas-render/layers/missing")
     assert missing_layer_response.status_code == 200
     assert missing_layer_response.json()["available_layers"] == ["edges", "hierarchy", "labels", "nodes"]
+
+    narrative_response = client.get(f"/api/jobs/{job_id}/narrative")
+    assert narrative_response.status_code == 200
+    narrative = narrative_response.json()
+    assert narrative["schema_version"] == "sciscape_narrative_api_v1"
+    assert narrative["available"] is True
+    assert narrative["feature_state"] == "beta"
+    assert narrative["clusters"][0]["cluster_uid"] == "cluster:0"
+    assert narrative["clusters"][0]["claims"][0]["evidence"][0]["artifact_ref"]
+
+    cluster_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:0/narrative")
+    assert cluster_narrative_response.status_code == 200
+    cluster_narrative = cluster_narrative_response.json()
+    assert cluster_narrative["target_found"] is True
+    assert cluster_narrative["cluster"]["cluster_uid"] == "cluster:0"
+    assert cluster_narrative["cluster"]["claim_count"] >= 3
+
+    missing_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:missing/narrative")
+    assert missing_narrative_response.status_code == 200
+    assert missing_narrative_response.json()["target_found"] is False
 
     evolution_response = client.get(f"/api/jobs/{job_id}/evolution")
     assert evolution_response.status_code == 200

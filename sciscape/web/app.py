@@ -30,6 +30,7 @@ from sciscape.artifacts import (
     infer_result_artifacts,
     load_result_manifest,
     validate_evolution_artifact,
+    validate_narrative_artifact,
     validate_result_root,
     validate_workspace,
     write_result_manifest,
@@ -168,6 +169,26 @@ async def get_job_features(job_id: str):
 async def get_job_readiness(job_id: str):
     """Alias for the job capability map, named for Atlas-style runtime checks."""
     return await get_job_features(job_id)
+
+
+@app.get("/api/jobs/{job_id}/narrative")
+async def get_job_narrative(job_id: str, limit: int = 80):
+    """Get the evidence-backed narrative claim graph for a completed job."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    return _load_narrative_payload_for_result(result, claim_limit=limit)
+
+
+@app.get("/api/jobs/{job_id}/clusters/{cluster_uid}/narrative")
+async def get_cluster_narrative(job_id: str, cluster_uid: str, limit: int = 40):
+    """Get claim/evidence rows for one selected Atlas cluster."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    return _load_narrative_payload_for_result(result, cluster_uid=cluster_uid, claim_limit=limit)
 
 
 @app.get("/api/jobs/{job_id}/stream")
@@ -357,6 +378,280 @@ def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
             },
         }
     )
+
+
+def _result_root_for_result(result: dict[str, Any]) -> Path | None:
+    output_dir = result.get("output_dir")
+    if not output_dir:
+        return None
+    try:
+        return Path(output_dir).expanduser().resolve()
+    except Exception:
+        return None
+
+
+def _path_inside_result_root(root: Path, path: str | Path) -> Path | None:
+    candidate = Path(path)
+    resolved = candidate.resolve() if candidate.is_absolute() else (root / candidate).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return None
+    return resolved
+
+
+def _narrative_manifest_path_for_result(result: dict[str, Any]) -> Path | None:
+    root = _result_root_for_result(result)
+    if root is None:
+        return None
+    manifest = _manifest_for_result(result)
+    artifacts = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
+    for record in artifacts.values():
+        if not isinstance(record, dict):
+            continue
+        if record.get("role") != "narrative" or record.get("status") != "present":
+            continue
+        path = _path_inside_result_root(root, str(record.get("path") or ""))
+        if path is not None and path.exists() and path.is_file():
+            return path
+    fallback = root / "narrative" / "narrative_manifest.json"
+    return fallback if fallback.exists() and fallback.is_file() else None
+
+
+def _narrative_output_path(narrative_dir: Path, manifest: dict[str, Any], key: str, default_name: str) -> Path:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
+    raw = str(outputs.get(key) or default_name)
+    path = Path(raw)
+    return path if path.is_absolute() else narrative_dir / path
+
+
+def _read_narrative_records(path: Path, *, limit: int | None = None) -> list[dict[str, Any]]:
+    import pandas as pd
+
+    if not path.exists():
+        return []
+    df = pd.read_parquet(path)
+    if "sort_order" in df.columns:
+        df = df.sort_values("sort_order", kind="stable")
+    if limit is not None and len(df) > limit:
+        df = df.head(limit)
+    return [_json_safe(row) for row in df.to_dict(orient="records")]
+
+
+def _narrative_target_matches(row: dict[str, Any], cluster_uid: str) -> bool:
+    wanted = str(cluster_uid or "").strip()
+    if not wanted:
+        return True
+    keys = {
+        str(row.get("target_key") or ""),
+        str(row.get("target_id") or ""),
+        str(row.get("cluster_uid") or ""),
+        str(row.get("cluster_id") or ""),
+    }
+    if wanted in keys:
+        return True
+    if ":" in wanted:
+        suffix = wanted.split(":", 1)[1]
+        return suffix in keys
+    return False
+
+
+def _cluster_narrative_view(
+    target: dict[str, Any],
+    *,
+    sections: list[dict[str, Any]],
+    claims: list[dict[str, Any]],
+    refs_by_id: dict[str, dict[str, Any]],
+    links_by_claim: dict[str, list[dict[str, Any]]],
+    sources_by_id: dict[str, dict[str, Any]],
+    claim_limit: int,
+) -> dict[str, Any]:
+    target_id = str(target.get("target_id") or "")
+    target_claims = [
+        claim
+        for claim in claims
+        if str(claim.get("target_id") or "") == target_id
+    ][: max(1, int(claim_limit))]
+    claim_rows: list[dict[str, Any]] = []
+    aggregate_only_refs = 0
+    for claim in target_claims:
+        claim_id = str(claim.get("claim_id") or "")
+        evidence_rows = []
+        for link in links_by_claim.get(claim_id, []):
+            ref_id = str(link.get("evidence_ref_id") or "")
+            ref = dict(refs_by_id.get(ref_id, {}))
+            source_id = str(ref.get("evidence_source_id") or "")
+            source = sources_by_id.get(source_id, {})
+            if ref.get("aggregate_only") is True or ref.get("locator_type") == "aggregate":
+                aggregate_only_refs += 1
+            evidence_rows.append(
+                {
+                    "evidence_ref_id": ref_id,
+                    "evidence_role": link.get("evidence_role"),
+                    "link_strength": link.get("link_strength"),
+                    "required": bool(link.get("required", False)),
+                    "evidence_type": ref.get("evidence_type"),
+                    "evidence_label": ref.get("evidence_label"),
+                    "locator_type": ref.get("locator_type"),
+                    "locator": ref.get("locator"),
+                    "aggregate_only": bool(ref.get("aggregate_only", False) or ref.get("locator_type") == "aggregate"),
+                    "artifact_ref": source.get("artifact_ref"),
+                    "artifact_path": source.get("artifact_path"),
+                }
+            )
+        claim_rows.append(
+            {
+                "claim_id": claim_id,
+                "section_id": claim.get("section_id"),
+                "claim_type": claim.get("claim_type"),
+                "claim_text": claim.get("claim_text"),
+                "support_state": claim.get("support_state"),
+                "confidence": claim.get("confidence"),
+                "evidence_ref_count": claim.get("evidence_ref_count"),
+                "text_origin": claim.get("text_origin"),
+                "review_state": claim.get("review_state"),
+                "warning_flags": claim.get("warning_flags"),
+                "evidence": evidence_rows,
+            }
+        )
+    section_rows = [
+        section
+        for section in sections
+        if str(section.get("target_id") or "") == target_id
+    ]
+    state = "stable"
+    if any(str(claim.get("support_state") or "") in {"weak", "caveat"} for claim in target_claims):
+        state = "beta"
+    if any(str(claim.get("support_state") or "") in {"unsupported", "contradicted"} for claim in target_claims):
+        state = "blocked"
+    return {
+        "cluster_uid": target.get("target_key") or target.get("cluster_uid") or target_id,
+        "target_id": target_id,
+        "target": target,
+        "state": state,
+        "claim_count": len(target_claims),
+        "aggregate_only_ref_count": int(aggregate_only_refs),
+        "sections": section_rows,
+        "claims": claim_rows,
+    }
+
+
+def _load_narrative_payload_for_result(
+    result: dict[str, Any],
+    *,
+    cluster_uid: str | None = None,
+    claim_limit: int = 80,
+) -> dict[str, Any]:
+    manifest_path = _narrative_manifest_path_for_result(result)
+    if manifest_path is None:
+        return {
+            "schema_version": "sciscape_narrative_api_v1",
+            "available": False,
+            "reason": "no narrative claim graph artifact",
+            "clusters": [],
+        }
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "schema_version": "sciscape_narrative_api_v1",
+            "available": False,
+            "reason": f"could not read narrative manifest: {exc}",
+            "clusters": [],
+        }
+    narrative_dir = manifest_path.parent
+    validation = validate_narrative_artifact(manifest_path).to_dict()
+    targets = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "targets", "narrative_targets.parquet")
+    )
+    claims = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet")
+    )
+    refs = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "evidence_refs", "evidence_refs.parquet")
+    )
+    links = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "claim_evidence_links", "claim_evidence_links.parquet")
+    )
+    sections = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "sections", "narrative_sections.parquet")
+    )
+    sources = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "evidence_sources", "evidence_sources.parquet")
+    )
+    refs_by_id = {str(ref.get("evidence_ref_id") or ""): ref for ref in refs}
+    sources_by_id = {str(source.get("evidence_source_id") or ""): source for source in sources}
+    links_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for link in links:
+        links_by_claim.setdefault(str(link.get("claim_id") or ""), []).append(link)
+    matched_targets = [
+        target
+        for target in targets
+        if cluster_uid is None or _narrative_target_matches(target, cluster_uid)
+    ]
+    cluster_views = [
+        _cluster_narrative_view(
+            target,
+            sections=sections,
+            claims=claims,
+            refs_by_id=refs_by_id,
+            links_by_claim=links_by_claim,
+            sources_by_id=sources_by_id,
+            claim_limit=claim_limit,
+        )
+        for target in matched_targets
+    ]
+    payload = {
+        "schema_version": "sciscape_narrative_api_v1",
+        "available": True,
+        "target_found": bool(cluster_views) if cluster_uid is not None else None,
+        "cluster_uid": cluster_uid,
+        "narrative_id": manifest.get("narrative_id"),
+        "title": manifest.get("title"),
+        "status": validation.get("status"),
+        "feature_state": validation.get("feature_state"),
+        "manifest_path": str(manifest_path),
+        "counts": validation.get("counts", {}),
+        "claim_counts": validation.get("claim_counts", {}),
+        "checks": validation.get("checks", {}),
+        "warnings": validation.get("warnings", []),
+        "blocking_issues": validation.get("blocking_issues", []),
+        "clusters": cluster_views,
+    }
+    if cluster_uid is not None:
+        payload["cluster"] = cluster_views[0] if cluster_views else None
+    return _json_safe(payload)
+
+
+def _attach_narrative_summary(result: dict[str, Any]) -> None:
+    payload = _load_narrative_payload_for_result(result, claim_limit=6)
+    if not payload.get("available"):
+        return
+    result["narrative_summary"] = {
+        "available": True,
+        "narrative_id": payload.get("narrative_id"),
+        "status": payload.get("status"),
+        "feature_state": payload.get("feature_state"),
+        "counts": payload.get("counts", {}),
+        "claim_counts": payload.get("claim_counts", {}),
+        "cluster_count": len(payload.get("clusters", [])),
+        "warning_count": len(payload.get("warnings", [])),
+        "blocking_issue_count": len(payload.get("blocking_issues", [])),
+    }
+    atlas = result.get("atlas")
+    if not isinstance(atlas, dict) or not isinstance(atlas.get("nodes"), list):
+        return
+    narratives = {
+        str(cluster.get("cluster_uid") or ""): cluster
+        for cluster in payload.get("clusters", [])
+        if isinstance(cluster, dict)
+    }
+    for node in atlas["nodes"]:
+        if not isinstance(node, dict):
+            continue
+        cluster_uid = str(node.get("cluster_uid") or "")
+        if cluster_uid in narratives:
+            node["narrative"] = narratives[cluster_uid]
 
 
 @app.get("/api/jobs/{job_id}/download/vosviewer-bundle.zip")
@@ -855,6 +1150,7 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     }
     result["result_state"] = contract["result_state"]
     _attach_report_atlas(result)
+    _attach_narrative_summary(result)
     _attach_evolution_summary(result)
     return result
 
@@ -1162,6 +1458,7 @@ def _atlas_render_payload_for_result(result: dict[str, Any]) -> dict[str, Any] |
     atlas = result.get("atlas")
     if not isinstance(atlas, dict) or not atlas.get("nodes"):
         _attach_report_atlas(result)
+        _attach_narrative_summary(result)
         atlas = result.get("atlas")
     if not isinstance(atlas, dict) or not atlas.get("nodes"):
         return None

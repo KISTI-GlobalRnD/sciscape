@@ -10915,6 +10915,8 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
         return "result validation is blocked"
     if state == "hidden":
         return "feature is not backed by available artifacts"
+    if feature == "quality" and state == "beta":
+        return "result validation has warnings"
     if feature == "cooccurrence" and not any(record.get("role") == "cooccurrence" for record in artifacts.values()):
         return "derived from keyword/report term edges; stable co-occurrence artifact not written yet"
     if feature == "matrix" and not _has_general_matrix_artifact(artifacts):
@@ -10932,18 +10934,49 @@ def _feature_reason(feature: str, state: str, validation: ArtifactValidationResu
     return "feature validated"
 
 
+def _feature_warning_payload(feature: str, warnings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    relevant: list[dict[str, Any]] = []
+    candidates = set(_feature_artifact_candidates(feature))
+    candidates.add(feature)
+    aliases = {
+        "keyword_rule": "keyword_rules",
+        "keyword_rules": "keyword_rules",
+        "keywords": "keywords",
+        "report": "report_data",
+        "report_data": "report_data",
+        "qa": "quality",
+        "artifact_contract": "quality",
+    }
+    for warning in warnings:
+        if warning.get("severity") == "info":
+            continue
+        if feature == "quality":
+            relevant.append(warning)
+            continue
+        artifact = str(warning.get("artifact") or "").strip()
+        normalized = aliases.get(artifact, artifact)
+        code = str(warning.get("code") or "").strip()
+        if (
+            normalized in candidates
+            or any(normalized.startswith(f"{candidate}_") for candidate in candidates)
+            or code.startswith(f"{feature}_")
+        ):
+            relevant.append(warning)
+    return relevant
+
+
 def _feature_exposures(
     validation: ArtifactValidationResult,
     artifacts: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, dict[str, Any]]:
     blocking = validation.result_state == "blocked"
     warning_payload = validation.warnings
-    warning_count = sum(1 for warning in warning_payload if warning.get("severity") not in {"info"})
     exposures: dict[str, dict[str, Any]] = {}
     for feature in RESULT_MANIFEST_FEATURE_KEYS:
         available = _manifest_feature_available(feature, validation, artifacts)
+        feature_warnings = _feature_warning_payload(feature, warning_payload)
         if feature == "quality":
-            state = "stable" if validation.ok else "beta"
+            state = "stable" if validation.ok and not feature_warnings else "beta"
         elif blocking:
             state = "hidden"
         elif not available:
@@ -10960,7 +10993,7 @@ def _feature_exposures(
             state = "beta"
         elif feature == "export" and not _has_export_manifest_artifact(artifacts):
             state = "beta"
-        elif warning_count:
+        elif feature_warnings:
             state = "beta"
         else:
             state = "stable"
@@ -10970,7 +11003,7 @@ def _feature_exposures(
                 state=state,
                 reason=_feature_reason(feature, state, validation, artifacts),
                 artifact_refs=refs,
-                warnings=warning_payload if state == "beta" else [],
+                warnings=feature_warnings if state == "beta" else [],
             )
         )
     return exposures

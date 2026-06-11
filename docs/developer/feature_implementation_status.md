@@ -51,8 +51,8 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 64% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens | richer time-slice matching and full evolution map layout |
-| F12 | Evidence-backed narratives | `[~]` | 43% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure | review UI and optional generator |
-| F13 | Validation and QA | `[x]` | 85% | artifact contract, result validation, quality gate, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
+| F12 | Evidence-backed narratives | `[~]` | 50% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block | review writeback and optional generator |
+| F13 | Validation and QA | `[x]` | 86% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | matrix builder export adapter |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
@@ -184,7 +184,7 @@ builder mode, export path, and comparison workflow are implemented.
 
 ### F07. Clustering And Hierarchy
 
-Status: `[x]` Implemented. Rough completeness: 85%.
+Status: `[x]` Implemented. Rough completeness: 86%.
 
 - `[x]` Clustering command exists.
 - `[x]` Rust-backed CPM/Leiden path exists in the core workflow.
@@ -224,7 +224,7 @@ control surface is still incomplete.
 
 ### F09. Atlas Map, Evidence, And Cluster Reading
 
-Status: `[~]` Partial. Rough completeness: 91%.
+Status: `[~]` Partial. Rough completeness: 93%.
 
 - `[x]` Atlas payload can be built from report and membership artifacts.
 - `[x]` Hierarchy lineage, doc counts, labels, representative works, and neighbor
@@ -243,6 +243,11 @@ Status: `[~]` Partial. Rough completeness: 91%.
 - `[x]` The web inspector builds a client-side
   `sciscape_inspector_evidence_view_v1` model and renders section states for
   identity, meaning, relations, hierarchy, works, and QA.
+- `[x]` The web inspector can render artifact-backed narrative claim/evidence
+  rows for selected clusters when a narrative claim graph exists.
+- `[x]` `/api/jobs/{job_id}/narrative` and
+  `/api/jobs/{job_id}/clusters/{cluster_uid}/narrative` expose narrative
+  claim/evidence rows for review surfaces.
 - `[x]` The P1 Atlas smoke gate asserts stable co-occurrence/evidence states and
   payload-backed neighbor rows with aggregate relation fields, shared-term
   fields, and sampled edge evidence.
@@ -354,7 +359,7 @@ membership projection.
 
 ### F12. Evidence-Backed Narratives
 
-Status: `[~]` Partial. Rough completeness: 43%.
+Status: `[~]` Partial. Rough completeness: 50%.
 
 - `[~]` Narrative is named in the feature definition and artifact feature
   inference can detect narrative-like payloads.
@@ -371,20 +376,30 @@ Status: `[~]` Partial. Rough completeness: 43%.
 - `[x]` Result-root validation exposes narrative claim graphs as stable, beta, or
   blocked from artifacts alone; aggregate-only deterministic scaffolds remain
   beta.
+- `[x]` Job and cluster narrative API endpoints expose target, section, claim,
+  evidence-ref, source, warning, and blocking state rows.
+- `[x]` Atlas inspector includes an initial Narrative review block that shows
+  claim support state, evidence refs, aggregate-only caveats, and beta/block
+  status for the selected cluster.
 - `[ ]` There is no stable narrative generation pipeline.
-- `[ ]` There is no final app surface for cluster narrative review.
+- `[ ]` There is no review-decision writeback workflow.
+- `[ ]` There is no final reviewed narrative publication surface.
 
-Review: the evidence-reference contract now has a deterministic writer and
-validator, so narrative can be treated as an artifact-backed beta surface. It
-should remain hidden or beta in the UI until the review workflow and any
-generation hooks preserve evidence refs and write review/generation metadata.
+Review: the evidence-reference contract now has a deterministic writer,
+validator, API surface, and first Atlas review block, so narrative can be
+treated as an artifact-backed beta surface. It should not be presented as a
+complete generation feature until review writeback and any generation hooks
+preserve evidence refs and write review/generation metadata.
 
 ### F13. Validation And QA
 
-Status: `[x]` Implemented. Rough completeness: 80%.
+Status: `[x]` Implemented. Rough completeness: 85%.
 
 - `[x]` Result-root artifact validation exists.
 - `[x]` Feature availability blocks can be inferred from artifacts.
+- `[x]` Feature exposure warnings are scoped by feature/artifact, so beta
+  narrative scaffolds do not demote otherwise stable keyword, evolution, or
+  export features.
 - `[x]` Keyword artifact contamination checks exist.
 - `[x]` Demo quality gate exists.
 - `[x]` Tests cover major validation paths.
@@ -468,15 +483,17 @@ evolution map, and narrative system are stable.
   OpenAlex query for bounded examples, paper-level networks, clustering,
   keyword extraction, term-network evidence, graph export, and artifact QA.
 - Expose as beta: live query jobs, Atlas evidence reading, label review/merge,
-  temporal keyword views, and co-occurrence visualization.
+  temporal keyword views, co-occurrence visualization, and artifact-backed
+  narrative review when a narrative claim graph exists.
 - Do not expose as complete: workspace projects, matrix builder mode, cluster
-  evolution map, evidence-backed narratives, and institutional analytics.
+  evolution map, evidence-backed narrative generation, and institutional
+  analytics.
 
 ## Next Implementation Targets
 
-1. Harden inspector-driven review affordances and Cleaning-mode rule review.
+1. Add review-decision writeback for Atlas narrative and cluster review
+   surfaces.
 2. Implement richer time-slice matching for evolution beyond static membership
    projection, then promote the Evolution lens into a true map layout.
-3. Implement the narrative claim graph writer, validator, and unsupported claim
-   gate from `narrative_artifact_design.md`.
+3. Harden inspector-driven review affordances and Cleaning-mode rule review.
 4. Add a matrix-builder export adapter when its source contract is stable.

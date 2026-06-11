@@ -1373,6 +1373,73 @@ body {
 .atlas-review-packet.blocked {
   border-left-color: var(--coral);
 }
+.atlas-narrative-panel {
+  display: grid;
+  gap: 0.44rem;
+  border: 1px solid rgba(197, 207, 224, 0.84);
+  border-left: 3px solid var(--teal);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.84);
+  margin-top: 0.75rem;
+  padding: 0.52rem;
+}
+.atlas-narrative-panel.beta {
+  border-left-color: var(--amber);
+}
+.atlas-narrative-panel.blocked {
+  border-left-color: var(--coral);
+}
+.atlas-narrative-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.52rem;
+}
+.atlas-narrative-title {
+  color: var(--graphite);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.atlas-narrative-note {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.35;
+  margin-top: 0.1rem;
+}
+.atlas-narrative-claims {
+  display: grid;
+  gap: 0.32rem;
+}
+.atlas-narrative-claim {
+  min-width: 0;
+  border: 1px solid rgba(197, 207, 224, 0.78);
+  border-radius: 4px;
+  background: rgba(248, 249, 252, 0.78);
+  padding: 0.42rem 0.46rem;
+}
+.atlas-narrative-claim-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+  align-items: center;
+  margin-bottom: 0.18rem;
+}
+.atlas-narrative-claim-text {
+  color: var(--graphite);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.32;
+}
+.atlas-narrative-evidence {
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  line-height: 1.35;
+  margin-top: 0.18rem;
+  overflow-wrap: anywhere;
+}
 .atlas-review-packet-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -4277,6 +4344,7 @@ function buildAtlasInspectorEvidenceModel(node) {
       relations: atlasInspectorSection('relations', 'Relation evidence', atlasBestFeatureState(['term_network', 'cooccurrence', 'evidence'])),
       hierarchy: atlasInspectorSection('hierarchy', 'Hierarchy and children', atlasFeatureState('cluster_map')),
       works: atlasInspectorSection('works', 'Representative works', atlasFeatureState('evidence')),
+      narrative: atlasInspectorSection('narrative', 'Narrative review', atlasFeatureState('narrative')),
       qa: atlasInspectorSection('qa', 'QA and limitations', atlasFeatureState('quality')),
     },
   };
@@ -4481,6 +4549,47 @@ function renderAtlasReviewPacket(node, model) {
     '</div>';
 }
 
+function renderAtlasNarrativeReview(node, model) {
+  const section = model.sections && model.sections.narrative || atlasInspectorSection('narrative', 'Narrative review', 'hidden');
+  const narrative = node && node.narrative;
+  if (!narrative && (section.state === 'hidden' || section.state === 'blocked')) {
+    return renderAtlasUnavailableSection('Narrative review', section);
+  }
+  if (!narrative || !Array.isArray(narrative.claims) || !narrative.claims.length) {
+    return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
+      '<div class="atlas-unavailable-row">Narrative artifacts are available, but this cluster has no claim rows in the current Atlas payload.</div>';
+  }
+  const state = narrative.state || section.state || 'beta';
+  const claims = narrative.claims.slice(0, 4).map(claim => {
+    const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
+    const evidenceLabel = evidence.length
+      ? evidence.slice(0, 2).map(ref =>
+          [ref.evidence_role, ref.evidence_label || ref.evidence_ref_id, ref.aggregate_only ? 'aggregate-only' : 'direct'].filter(Boolean).join(' / ')
+        ).join(' | ')
+      : 'no linked evidence refs';
+    return '<div class="atlas-narrative-claim">' +
+      '<div class="atlas-narrative-claim-head">' +
+        '<span class="atlas-mini-pill">' + esc(claim.claim_type || 'claim') + '</span>' +
+        '<span class="atlas-mini-pill">' + esc(claim.support_state || 'unknown') + '</span>' +
+        '<span class="atlas-mini-pill">refs ' + formatAtlasCount(claim.evidence_ref_count || evidence.length) + '</span>' +
+      '</div>' +
+      '<div class="atlas-narrative-claim-text">' + esc(claim.claim_text || '') + '</div>' +
+      '<div class="atlas-narrative-evidence" title="' + escAttr(evidenceLabel) + '">' + esc(evidenceLabel) + '</div>' +
+    '</div>';
+  }).join('');
+  const note = formatAtlasCount(narrative.claim_count || narrative.claims.length) + ' claims / ' +
+    formatAtlasCount(narrative.aggregate_only_ref_count || 0) + ' aggregate-only refs';
+  return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
+    '<div class="atlas-narrative-panel ' + esc(state) + '">' +
+      '<div class="atlas-narrative-head">' +
+        '<div><div class="atlas-narrative-title">Claim graph ' + esc(state) + '</div>' +
+        '<div class="atlas-narrative-note">' + esc(note) + '</div></div>' +
+        '<div class="atlas-review-state">' + esc(state) + '</div>' +
+      '</div>' +
+      '<div class="atlas-narrative-claims">' + claims + '</div>' +
+    '</div>';
+}
+
 function renderAtlasUnavailableSection(title, section) {
   return '<div class="atlas-section-title">' + esc(title) + ' ' + atlasSectionStatePill(section) + '</div>' +
     '<div class="atlas-unavailable-row">' + esc(section.reason || 'not available in this result') + '</div>';
@@ -4575,7 +4684,10 @@ function renderAtlasInspector(node) {
     '</div>';
   const qaHtml = renderAtlasQALimitations(model);
   if (model.result_state === 'blocked') {
-    return headerHtml + qaHtml +
+    return headerHtml +
+      renderAtlasInspectorModelSummary(model) +
+      renderAtlasNarrativeReview(node, model) +
+      qaHtml +
       '<div class="atlas-unavailable-row">Cluster-reading sections are hidden until blocking artifact validation issues are resolved.</div>';
   }
   return headerHtml +
@@ -4584,6 +4696,7 @@ function renderAtlasInspector(node) {
     renderAtlasInspectorModelSummary(model) +
     renderAtlasReviewChecklist(node, model) +
     renderAtlasReviewPacket(node, model) +
+    renderAtlasNarrativeReview(node, model) +
     evidenceHtml +
     renderAtlasMeaningLayer(node, model.sections.meaning) +
     childrenHtml +
