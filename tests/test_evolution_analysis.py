@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 import sciscape
 from sciscape.evolution import build_membership_projection_evolution
@@ -78,3 +79,69 @@ def test_membership_projection_evolution_rejects_missing_cluster_column():
         assert "cluster or cluster_* column" in str(exc)
     else:  # pragma: no cover
         raise AssertionError("expected missing cluster column to fail")
+
+
+def test_membership_projection_evolution_rejects_unsupported_periodization():
+    records = pd.DataFrame({"uid": ["D0", "D1"], "pubyear": [2020, 2021]})
+    membership = pd.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]})
+
+    with pytest.raises(ValueError, match="window_years=1"):
+        build_membership_projection_evolution(
+            evolution_id="bad-period",
+            records_df=records,
+            membership_df=membership,
+            periodization={"window_years": 2},
+        )
+
+
+def test_membership_projection_evolution_counts_unique_docs_after_join():
+    records = pd.DataFrame(
+        {
+            "uid": ["D0", "D0", "D1", "D2"],
+            "pubyear": [2020, 2020, 2020, 2021],
+        }
+    )
+    membership = pd.DataFrame(
+        {
+            "uid": ["D0", "D0", "D1", "D2"],
+            "cluster": [0, 0, 0, 0],
+        }
+    )
+
+    result = build_membership_projection_evolution(
+        evolution_id="dedupe",
+        records_df=records,
+        membership_df=membership,
+    )
+
+    states_by_slice = dict(zip(result.states["slice_id"], result.states["doc_count"]))
+    assert states_by_slice == {"year:2020": 2, "year:2021": 1}
+    assert result.slices["doc_count"].tolist() == [2, 1]
+
+
+def test_membership_projection_evolution_enforces_min_transition_support():
+    records = pd.DataFrame({"uid": ["D0", "D1"], "pubyear": [2020, 2021]})
+    membership = pd.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]})
+
+    result = build_membership_projection_evolution(
+        evolution_id="support",
+        records_df=records,
+        membership_df=membership,
+        matching_method={"min_support_count": 2},
+    )
+
+    assert result.transitions.empty
+    assert set(result.events["event_type"]) == {"decline", "emergence"}
+
+
+def test_membership_projection_evolution_rejects_jaccard_doc_overlap_metric():
+    records = pd.DataFrame({"uid": ["D0", "D1"], "pubyear": [2020, 2021]})
+    membership = pd.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]})
+
+    with pytest.raises(ValueError, match="unsupported evolution matching metric"):
+        build_membership_projection_evolution(
+            evolution_id="bad-metric",
+            records_df=records,
+            membership_df=membership,
+            matching_method={"metric": "jaccard_doc_overlap"},
+        )

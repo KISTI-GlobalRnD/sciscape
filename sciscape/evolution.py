@@ -106,6 +106,60 @@ def _coerce_int(value: Any) -> int | None:
         return None
 
 
+def _config_int(config: Mapping[str, Any] | None, key: str, default: int, *, label: str) -> int:
+    raw = config.get(key, default) if config else default
+    try:
+        number = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} {key} must be an integer") from exc
+    if not math.isfinite(number) or number != int(number):
+        raise ValueError(f"{label} {key} must be an integer")
+    return int(number)
+
+
+def _validate_yearly_periodization(periodization: Mapping[str, Any] | None) -> None:
+    if not periodization:
+        return
+    unit = str(periodization.get("unit", "year")).strip().lower()
+    if unit != "year":
+        raise ValueError("evolution analysis currently supports only unit='year'")
+    window_years = _config_int(periodization, "window_years", 1, label="evolution periodization")
+    step_years = _config_int(periodization, "step_years", 1, label="evolution periodization")
+    if window_years != 1:
+        raise ValueError("evolution analysis currently supports only window_years=1")
+    if step_years != 1:
+        raise ValueError("evolution analysis currently supports only step_years=1")
+    if bool(periodization.get("include_unknown_year", False)):
+        raise ValueError("evolution analysis currently supports only include_unknown_year=False")
+
+
+def _normalize_matching_method(matching_method: Mapping[str, Any]) -> dict[str, Any]:
+    metric = str(matching_method.get("metric") or "projected_cluster_identity").strip()
+    if metric != "projected_cluster_identity":
+        raise ValueError(
+            "unsupported evolution matching metric for membership projection: "
+            f"{metric}. Use projected_cluster_identity."
+        )
+    try:
+        threshold = float(matching_method.get("min_transition_score", 0.5))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("evolution matching min_transition_score must be a number") from exc
+    if not math.isfinite(threshold) or threshold < 0.0 or threshold > 1.0:
+        raise ValueError("evolution matching min_transition_score must be between 0 and 1")
+    min_support = _config_int(matching_method, "min_support_count", 1, label="evolution matching")
+    if min_support < 1:
+        raise ValueError("evolution matching min_support_count must be at least 1")
+    normalized = dict(matching_method)
+    normalized.update(
+        {
+            "metric": metric,
+            "min_transition_score": threshold,
+            "min_support_count": min_support,
+        }
+    )
+    return normalized
+
+
 def _year_column(records: pd.DataFrame) -> str | None:
     for column in ("pubyear", "year", "publication_year"):
         if column in records.columns:
@@ -151,8 +205,9 @@ def _keyword_label_column(columns: list[str]) -> str:
 def _build_time_slices(evolution_id: str, years: list[int], periodization: Mapping[str, Any] | None) -> pd.DataFrame:
     if not years:
         raise ValueError("evolution analysis requires at least one valid publication year")
-    start_year = int(periodization.get("start_year", min(years))) if periodization else min(years)
-    end_year = int(periodization.get("end_year", max(years))) if periodization else max(years)
+    _validate_yearly_periodization(periodization)
+    start_year = _config_int(periodization, "start_year", min(years), label="evolution periodization")
+    end_year = _config_int(periodization, "end_year", max(years), label="evolution periodization")
     if end_year < start_year:
         raise ValueError("evolution end_year must be greater than or equal to start_year")
     rows = []
@@ -214,11 +269,13 @@ def _state_rows(
 ) -> tuple[pd.DataFrame, dict[str, set[str]]]:
     level = _level_from_cluster_column(cluster_column)
     label_map = _cluster_label_map(keywords, cluster_column)
-    work = records[[uid_column, year_column]].copy()
+    work = records[[uid_column, year_column]].dropna(subset=[uid_column]).copy()
     work[uid_column] = work[uid_column].map(str)
     work["_evolution_year"] = pd.to_numeric(work[year_column], errors="coerce")
-    mem = membership[["uid", cluster_column]].copy()
+    work = work.dropna(subset=["_evolution_year"]).drop_duplicates(subset=[uid_column, "_evolution_year"])
+    mem = membership[["uid", cluster_column]].dropna(subset=["uid", cluster_column]).copy()
     mem["uid"] = mem["uid"].map(str)
+    mem = mem.drop_duplicates(subset=["uid", cluster_column])
     joined = work.merge(mem, left_on=uid_column, right_on="uid", how="inner")
     year_to_slice = {
         int(row.start_year): (str(row.slice_id), int(row.slice_index))
@@ -229,7 +286,7 @@ def _state_rows(
     grouped = (
         joined.dropna(subset=["_evolution_year", cluster_column])
         .groupby(["_evolution_year", cluster_column], sort=True)
-        .agg(doc_count=(uid_column, "count"), work_ids=(uid_column, lambda values: sorted(set(map(str, values)))))
+        .agg(work_ids=(uid_column, lambda values: sorted(set(map(str, values)))))
         .reset_index()
     )
     for _, item in grouped.iterrows():
@@ -253,7 +310,7 @@ def _state_rows(
                 "slice_index": int(slice_index),
                 "cluster_key": cluster_key,
                 "cluster_label": str(label_info.get("label") or cluster_key),
-                "doc_count": int(item["doc_count"]),
+                "doc_count": int(len(doc_ids)),
                 "term_count": int(label_info.get("term_count") or len(top_terms)),
                 "top_terms": json.dumps(top_terms, ensure_ascii=True),
                 "cluster_uid": cluster_key,
@@ -293,8 +350,10 @@ def _transition_rows(
 ) -> pd.DataFrame:
     if states.empty or len(slices) < 2:
         return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
-    metric = str(matching_method.get("metric") or "projected_cluster_identity")
-    threshold = float(matching_method.get("min_transition_score", 0.5))
+    matching = _normalize_matching_method(matching_method)
+    metric = str(matching["metric"])
+    threshold = float(matching["min_transition_score"])
+    min_support = int(matching["min_support_count"])
     states_by_slice = {slice_id: group.copy() for slice_id, group in states.groupby("slice_id", sort=False)}
     ordered_slices = slices.sort_values("slice_index", kind="stable")
     rows = []
@@ -305,18 +364,10 @@ def _transition_rows(
             continue
         for source in source_states.itertuples(index=False):
             for target in target_states.itertuples(index=False):
-                if metric == "jaccard_doc_overlap":
-                    source_docs = state_docs.get(str(source.state_id), set())
-                    target_docs = state_docs.get(str(target.state_id), set())
-                    union = source_docs | target_docs
-                    shared = len(source_docs & target_docs)
-                    score = float(shared / len(union)) if union else 0.0
-                    support = shared
-                else:
-                    same_cluster = str(source.cluster_key) == str(target.cluster_key)
-                    score = 1.0 if same_cluster else 0.0
-                    support = min(int(source.doc_count), int(target.doc_count)) if same_cluster else 0
-                if score < threshold:
+                same_cluster = str(source.cluster_key) == str(target.cluster_key)
+                score = 1.0 if same_cluster else 0.0
+                support = min(int(source.doc_count), int(target.doc_count)) if same_cluster else 0
+                if score < threshold or support < min_support:
                     continue
                 transition_id = _safe_id(f"{source.state_id}_to_{target.state_id}_{metric}", fallback="transition")
                 rows.append(
@@ -552,6 +603,7 @@ def build_membership_projection_evolution(
     }
     if matching_method:
         matching.update(dict(matching_method))
+    matching = _normalize_matching_method(matching)
     rules = {
         "continuation_min_score": 0.5,
         "split_min_children": 2,

@@ -76,6 +76,14 @@ workbench outputs and the landscape-local directory for lens-specific outputs.
 `synthetic_smoke_example.json` is not required for user outputs. It is a small
 fixture contract for implementation and release gates.
 
+Current implementation scope:
+
+- time slices are yearly point slices only (`window_years=1`, `step_years=1`);
+- static membership projection supports `projected_cluster_identity` as the
+  transition metric;
+- document-overlap metrics should be added only with slice-local reclustering
+  or another artifact that makes overlap evidence explicit.
+
 ## Schema Versions
 
 Use explicit schema names:
@@ -131,11 +139,11 @@ Example:
     "include_unknown_year": false
   },
   "matching_method": {
-    "metric": "jaccard_doc_overlap",
-    "min_transition_score": 0.2,
-    "min_support_count": 3,
+    "metric": "projected_cluster_identity",
+    "min_transition_score": 0.5,
+    "min_support_count": 1,
     "tie_policy": "keep_all_above_threshold",
-    "normalization": "source_and_target_overlap"
+    "normalization": "static_membership_projection"
   },
   "event_rules": {
     "continuation_min_score": 0.5,
@@ -156,7 +164,7 @@ Example:
       "name": "transition_score",
       "value_type": "float",
       "range": [0.0, 1.0],
-      "interpretation": "document-overlap continuity score between source and target states"
+      "interpretation": "continuity score between adjacent slice-local cluster states"
     },
     {
       "name": "lineage_stability",
@@ -506,9 +514,9 @@ The writer should:
 8. generate `evolution_qa.json`;
 9. return paths, counts, warnings, and QA status.
 
-The first implementation can use membership projection and document-overlap
-matching. Reclustered time-slice states and topic/term matching can be added
-after the v1 validator is stable.
+The first implementation uses yearly membership projection and static cluster
+identity matching. Reclustered time-slice states, document-overlap matching,
+and topic/term matching can be added after the v1 validator is stable.
 
 ## Validator Utility Design
 
