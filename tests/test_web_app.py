@@ -373,6 +373,11 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "evolution-map-panel" in response.text
     assert "selectEvolutionEventFilter" in response.text
     assert "/api/jobs/${currentJobId}/evolution" in response.text
+    assert "evolution/time_slices.parquet" in response.text
+    assert "evolution/cluster_states.parquet" in response.text
+    assert "evolution/transitions.parquet" in response.text
+    assert "evolution/lineages.parquet" in response.text
+    assert "evolution/evolution_qa.json" in response.text
     assert "evolution-shell" in response.text
     assert "selectAtlasLens" in response.text
     assert "atlasEvidenceScore" in response.text
@@ -1076,6 +1081,15 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     bounded_evolution = bounded_evolution_response.json()
     assert bounded_evolution["evolution_map"]["node_count"] == 2
     assert bounded_evolution["evolution_map"]["truncated"]["nodes"] is True
+
+    evolution_qa_download = client.get(f"/api/jobs/{job_id}/download/evolution/evolution_qa.json")
+    assert evolution_qa_download.status_code == 200
+    assert evolution_qa_download.json()["status"] == "passed"
+
+    evolution_states_download = client.get(f"/api/jobs/{job_id}/download/evolution/cluster_states.parquet")
+    assert evolution_states_download.status_code == 200
+    assert "cluster_states.parquet" in evolution_states_download.headers["content-disposition"]
+    assert evolution_states_download.content
 
     export_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_map.txt")
     assert export_download.status_code == 200

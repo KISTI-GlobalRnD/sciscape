@@ -5828,6 +5828,11 @@ function updateDownloads(result) {
   }
   if (featureAvailable('evolution')) {
     addDownload('evolution/evolution_manifest.json', 'Cluster evolution manifest', 'EVO');
+    addDownload('evolution/evolution_qa.json', 'Evolution QA report', 'QA');
+    addDownload('evolution/time_slices.parquet', 'Evolution time slices', 'SLI');
+    addDownload('evolution/cluster_states.parquet', 'Evolution cluster states', 'STA');
+    addDownload('evolution/transitions.parquet', 'Evolution transitions', 'TRN');
+    addDownload('evolution/lineages.parquet', 'Evolution lineages', 'LIN');
     addDownload('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT');
   }
   const manifest = result && result.result_manifest || {};

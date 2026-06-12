@@ -352,6 +352,8 @@ Status: `[~]` Partial. Rough completeness: 70%.
 - `[x]` Web app exposes an artifact-backed Evolution lens and bounded
   `/api/jobs/{job_id}/evolution` payload for slices, states, transitions,
   lineages, and events.
+- `[x]` Evolution artifacts are exposed in the web download panel, including
+  manifest, QA, slices, states, transitions, lineages, and events.
 - `[x]` Evolution API derives a bounded `lineage_time_grid` map payload from
   validated slice, state, transition, lineage, and event rows; the web Evolution
   lens renders a first SVG lineage-time map with transition edges and event
