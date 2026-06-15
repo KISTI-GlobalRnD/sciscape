@@ -1118,6 +1118,15 @@ def test_write_evidence_backed_evolution_artifacts_promotes_stable_feature(tmp_p
 
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["evolution"]["state"] == "stable"
+    assert manifest["artifacts"]["evolution"]["path"] == "evolution/evolution_manifest.json"
+    assert manifest["artifacts"]["evolution_cluster_states"]["path"] == "evolution/cluster_states.parquet"
+    assert manifest["artifacts"]["evolution_cluster_states"]["rows"] == 5
+    assert manifest["artifacts"]["evolution_events"]["path"] == "evolution/evolution_events.parquet"
+    assert manifest["artifacts"]["evolution_events"]["rows"] == len(events)
+    assert manifest["artifacts"]["evolution_qa"]["path"] == "evolution/evolution_qa.json"
+    assert manifest["artifacts"]["evolution_qa"]["role"] == "qa"
+    assert "evolution_cluster_states" in manifest["features"]["evolution"]["artifact_refs"]
+    assert "evolution_qa" in manifest["features"]["evolution"]["artifact_refs"]
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["metric"] == "term_overlap"
 

@@ -10157,6 +10157,88 @@ def _add_optional_artifact(
     )
 
 
+def _unique_artifact_key(records: Mapping[str, Any], base_key: str) -> str:
+    if base_key not in records:
+        return base_key
+    suffix = 2
+    while f"{base_key}_{suffix}" in records:
+        suffix += 1
+    return f"{base_key}_{suffix}"
+
+
+def _add_evolution_output_artifacts(
+    records: dict[str, dict[str, Any]],
+    *,
+    root: Path,
+    manifest_rel_path: str,
+    suffix: str,
+) -> None:
+    try:
+        validation = validate_evolution_artifact(root / manifest_rel_path).to_dict()
+    except Exception:
+        return
+    paths = validation.get("paths") if isinstance(validation.get("paths"), Mapping) else {}
+    counts = validation.get("counts") if isinstance(validation.get("counts"), Mapping) else {}
+    evolution_dir = Path(manifest_rel_path).parent
+    specs = [
+        (
+            "time_slices",
+            "time_slices",
+            "evolution_table",
+            EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+            "Evolution time-slice table.",
+            counts.get("slices"),
+        ),
+        (
+            "cluster_states",
+            "cluster_states",
+            "evolution_table",
+            EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
+            "Evolution slice-local cluster state table.",
+            counts.get("states"),
+        ),
+        (
+            "transitions",
+            "transitions",
+            "evolution_table",
+            EVOLUTION_TRANSITIONS_SCHEMA_VERSION,
+            "Evolution state-transition evidence table.",
+            counts.get("transitions"),
+        ),
+        (
+            "lineages",
+            "lineages",
+            "evolution_table",
+            EVOLUTION_LINEAGES_SCHEMA_VERSION,
+            "Evolution lineage table.",
+            counts.get("lineages"),
+        ),
+        (
+            "events",
+            "events",
+            "evolution_table",
+            EVOLUTION_EVENTS_SCHEMA_VERSION,
+            "Evolution event table.",
+            counts.get("events", counts.get("event_rows")),
+        ),
+        ("qa", "qa", "qa", EVOLUTION_QA_SCHEMA_VERSION, "Evolution artifact QA report.", None),
+    ]
+    for output_key, base_key, role, schema_version, description, rows in specs:
+        rel_output = paths.get(output_key)
+        if not rel_output:
+            continue
+        key = f"evolution_{base_key}" if not suffix else f"evolution_{suffix}_{base_key}"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role=role,
+            path=(evolution_dir / str(rel_output)).as_posix(),
+            required_for=["quality", "evolution"] if role == "qa" else ["evolution"],
+            table_info={"rows": rows} if rows is not None else None,
+            schema_version=schema_version,
+            description=description,
+        )
+
+
 def _run_metadata_artifact_candidates(root: Path, landscape_dir: Path | None) -> list[tuple[str, str, str, str]]:
     bases = [root]
     if landscape_dir is not None:
@@ -10373,6 +10455,12 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             required_for=["evolution"],
             schema_version=EVOLUTION_MANIFEST_SCHEMA_VERSION,
             description="Lineage-backed cluster evolution manifest.",
+        )
+        _add_evolution_output_artifacts(
+            records,
+            root=root,
+            manifest_rel_path=str(rel_path),
+            suffix="" if i == 1 else str(i),
         )
 
     for i, rel_path in enumerate(artifact_info.get("evolution_artifacts", []), start=1):
