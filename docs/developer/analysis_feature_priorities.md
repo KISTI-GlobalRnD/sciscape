@@ -307,8 +307,9 @@ Do not do yet:
    outputs.
 3. Maintain exposure states and manifest-backed feature fields in result-root
    validation.
-4. Extend long-run controls beyond visible progress metadata: cancellation,
-   retry policy, partial-artifact recovery actions, and resume command wiring.
+4. Extend long-run controls beyond visible recovery metadata: cancellation,
+   retry policy, quota handling, in-app resume execution, and shard-aware
+   operator controls.
 5. Maintain the P1 smoke fixture that exercises query/local load, network,
    clustering, keywords, atlas, co-occurrence, export manifest, and quality
    gate.

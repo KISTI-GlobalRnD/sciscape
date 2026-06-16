@@ -1883,6 +1883,9 @@ def test_result_manifest_detects_cluster_sharded_keyword_run_state(tmp_path):
                 "schema_version": "sciscape_keyword_cluster_sharded_preflight_v1",
                 "status": "ok",
                 "shard_count": 3,
+                "abstract_path": str(root / "abstracts.parquet"),
+                "membership_path": str(root / "landscape" / "membership.parquet"),
+                "cluster_level": "cluster",
             }
         ),
         encoding="utf-8",
@@ -1949,6 +1952,10 @@ def test_result_manifest_detects_cluster_sharded_keyword_run_state(tmp_path):
     assert manifest["run_state"]["failure"]["failed_shards"] == [2]
     assert manifest["run_state"]["resume"]["supported"] is True
     assert manifest["run_state"]["resume"]["artifact_dir"] == "landscape/keyword_cluster_sharded/full_run"
+    assert "--keyword-engine cluster_sharded" in manifest["run_state"]["resume"]["command"]
+    assert "--cluster-level cluster" in manifest["run_state"]["resume"]["command"]
+    assert f"-o {output_dir / 'keywords.parquet'}" in manifest["run_state"]["resume"]["command"]
+    assert "--scoring-shard-resume" in manifest["run_state"]["resume"]["command"]
     assert manifest["run_state"]["partial_outputs"][0]["path"] == (
         "landscape/keyword_cluster_sharded/full_run/candidates/candidate_shard_0000.parquet"
     )

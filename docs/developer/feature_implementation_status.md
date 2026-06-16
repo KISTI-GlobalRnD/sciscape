@@ -43,11 +43,11 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 70% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, web/API run-state surface | cancellation, retry policy, partial artifact recovery actions |
+| F04 | Live query and job execution | `[~]` | 73% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, web/API run-state surface, recovery downloads, copyable resume commands | cancellation, retry policy, quota handling, and in-app resume execution |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
-| F08 | Keyword extraction, labels, cleaning | `[~]` | 81% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
+| F08 | Keyword extraction, labels, cleaning | `[~]` | 82% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 70% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens, lineage-time map payload/UI | richer time-slice matching and interaction polish |
@@ -145,8 +145,11 @@ Status: `[~]` Partial. Rough completeness: 70%.
 - `[x]` Job/readiness API payloads and the local web result panel expose
   manifest-backed run state, shard counts, recoverable outputs, and resume
   markers.
-- `[~]` Download/view endpoints expose job outputs.
-- `[ ]` Robust cancel, retry, quota handling, resumable partial artifacts, and
+- `[x]` Recoverable long-run partial outputs and checkpoints are exposed as
+  download cards, and resumable cluster-sharded keyword runs provide copyable
+  CLI resume commands when input paths are known.
+- `[x]` Download/view endpoints expose job outputs.
+- `[ ]` Robust cancel, retry, quota handling, in-app resume execution, and
   shard-aware long-run controls are not complete app features.
 
 Review: usable for small to medium live demos, but not enough for unattended
@@ -223,6 +226,8 @@ Status: `[~]` Partial. Rough completeness: 81%.
 - `[x]` Cluster-sharded keyword output directories expose progress, shard
   failure, partial output, and resume metadata through `result_manifest.json`
   when they live under a result root or landscape directory.
+- `[x]` Cluster-sharded partial outputs and checkpoints are surfaced as web
+  downloads, and preflight-backed runs expose a copyable CLI resume command.
 - `[~]` Label merge and LLM labeling endpoints exist, but the full review loop is
   not yet a polished app workflow.
 - `[ ]` Editable cleaning workflow, workspace-level reusable rule registry,

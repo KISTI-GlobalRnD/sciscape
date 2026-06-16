@@ -76,6 +76,19 @@ def _write_cluster_sharded_run_sidecars(output_dir: Path) -> Path:
         ),
         encoding="utf-8",
     )
+    (run_dir / "preflight_summary.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_cluster_sharded_preflight_v1",
+                "status": "ok",
+                "shard_count": 3,
+                "abstract_path": str(output_dir / "abstracts.parquet"),
+                "membership_path": str(output_dir / "landscape" / "membership.parquet"),
+                "cluster_level": "cluster",
+            }
+        ),
+        encoding="utf-8",
+    )
     candidate_path = candidate_dir / "candidate_shard_0000.parquet"
     candidate_path.write_bytes(b"placeholder")
     (candidate_dir / "candidate_shard_0000.done.json").write_text(
@@ -944,6 +957,13 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["run_state"]["status"] == "failed"
     assert job_payload["result"]["run_state"]["shards"] == {"total": 3, "complete": 1, "failed": 1, "running": 1}
     assert job_payload["result"]["run_state"]["resume"]["supported"] is True
+    assert "--keyword-engine cluster_sharded" in job_payload["result"]["run_state"]["resume"]["command"]
+    partial_response = client.get(
+        f"/api/jobs/{job_id}/download/"
+        "landscape/keyword_cluster_sharded/full_run/candidates/candidate_shard_0000.parquet"
+    )
+    assert partial_response.status_code == 200
+    assert partial_response.content == b"placeholder"
     exports = job_payload["result"]["result_manifest"]["exports"]
     vos_exports = [row for row in exports if row["export_id"] == "vosviewer_map_network"]
     assert len(vos_exports) == 1
@@ -1026,6 +1046,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert features_payload["artifacts"]["narrative"]["path"] == "narrative/narrative_manifest.json"
     assert features_payload["run_state"]["status"] == "failed"
     assert features_payload["run_state"]["shards"]["failed"] == 1
+    assert "--scoring-shard-resume" in features_payload["run_state"]["resume"]["command"]
 
     readiness_response = client.get(f"/api/jobs/{job_id}/readiness")
     assert readiness_response.status_code == 200

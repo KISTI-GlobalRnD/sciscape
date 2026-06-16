@@ -290,7 +290,10 @@ while `progress.json`, `preflight_summary.json`, `run_summary.json`,
 `candidates/*.progress.json`, `candidates/*.done.json`, and
 `final/*.done.json` are reduced into shard counts, failed shard IDs,
 checkpoint paths, partial outputs, and a resume marker pointing back to the
-cluster-sharded artifact directory.
+cluster-sharded artifact directory. When `preflight_summary.json` preserves the
+original abstract and membership paths, `resume.command` is populated with a
+copyable `sciscape keywords --keyword-engine cluster_sharded ...` command that
+reuses the same cluster-sharded output directory.
 
 ## Quality Block
 

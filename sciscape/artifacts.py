@@ -6,6 +6,7 @@ import html
 import json
 import math
 import re
+import shlex
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11006,6 +11007,45 @@ def _run_state_partial_output_from_done(
     return row
 
 
+def _cluster_sharded_resume_command(
+    *,
+    output_dir: Path,
+    manifest_payload: Mapping[str, Any],
+    preflight_payload: Mapping[str, Any],
+) -> str | None:
+    abstract_path = preflight_payload.get("abstract_path") or manifest_payload.get("abstract_path")
+    membership_path = preflight_payload.get("membership_path") or manifest_payload.get("membership_path")
+    if not abstract_path or not membership_path:
+        return None
+
+    cluster_level = preflight_payload.get("cluster_level") or manifest_payload.get("cluster_level")
+    artifact_dir = str(output_dir)
+    output_path = str(output_dir / "keywords.parquet")
+    progress_path = str(output_dir / "progress.json")
+    parts: list[str] = [
+        "sciscape",
+        "keywords",
+        str(abstract_path),
+        str(membership_path),
+        "--keyword-engine",
+        "cluster_sharded",
+    ]
+    if cluster_level:
+        parts.extend(["--cluster-level", str(cluster_level)])
+    parts.extend(
+        [
+            "--cluster-sharded-output-dir",
+            artifact_dir,
+            "--progress-path",
+            progress_path,
+            "-o",
+            output_path,
+            "--scoring-shard-resume",
+        ]
+    )
+    return " ".join(shlex.quote(part) for part in parts)
+
+
 def _run_state_from_cluster_sharded_keyword_dir(
     root: Path,
     output_dir: Path,
@@ -11015,6 +11055,7 @@ def _run_state_from_cluster_sharded_keyword_dir(
     shard_count = _coerce_int(manifest_payload.get("shard_count")) or len(shard_rows)
     run_summary = _read_run_json(output_dir / "run_summary.json") or {}
     progress = _read_run_json(output_dir / "progress.json") or {}
+    preflight = _read_run_json(output_dir / "preflight_summary.json") or {}
     candidate_done = _read_run_json_files(sorted((output_dir / "candidates").glob("candidate_shard_*.done.json")))
     candidate_progress = _read_run_json_files(sorted((output_dir / "candidates").glob("candidate_shard_*.progress.json")))
     final_done = _read_run_json_files(sorted((output_dir / "final").glob("keyword_shard_*.done.json")))
@@ -11111,6 +11152,19 @@ def _run_state_from_cluster_sharded_keyword_dir(
         or manifest_payload.get("updated_at_utc")
         or manifest_payload.get("created_at_utc")
     )
+    resume_command = _cluster_sharded_resume_command(
+        output_dir=output_dir,
+        manifest_payload=manifest_payload,
+        preflight_payload=preflight,
+    )
+    resume = {
+        "supported": status != "complete",
+        "command": resume_command if status != "complete" else None,
+        "mode": "rerun_with_same_cluster_sharded_output_dir",
+        "artifact_dir": _rel(output_dir, root),
+    }
+    if resume_command and status != "complete":
+        resume["command_kind"] = "cli_resume"
 
     return {
         "status": status,
@@ -11125,12 +11179,7 @@ def _run_state_from_cluster_sharded_keyword_dir(
         "checkpoints": checkpoints,
         "partial_outputs": partial_outputs,
         "failure": failure,
-        "resume": {
-            "supported": status != "complete",
-            "command": None,
-            "mode": "rerun_with_same_cluster_sharded_output_dir",
-            "artifact_dir": _rel(output_dir, root),
-        },
+        "resume": resume,
     }
 
 

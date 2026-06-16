@@ -455,6 +455,30 @@ body {
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+.run-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.55rem;
+}
+.run-state-action {
+  border: 1px solid rgba(43, 168, 156, 0.32);
+  border-radius: 4px;
+  background: rgba(43, 168, 156, 0.08);
+  color: var(--teal-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.36rem 0.52rem;
+  cursor: pointer;
+}
+.run-state-action:hover {
+  background: rgba(43, 168, 156, 0.14);
+}
+.run-state-action-status {
+  color: var(--steel);
+  font-size: 0.7rem;
+}
 
 /* ── ATLAS SHELL ───────────────────────────────────────── */
 .atlas-shell {
@@ -3023,6 +3047,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── STATE ─────────────────────────────────────────────── */
 let currentJobId = null;
 let currentResult = null;
+let currentRunStateResumeCommand = '';
 let evtSource = null;
 let currentResultFeatures = {};
 let currentAtlasPayload = null;
@@ -3229,9 +3254,32 @@ function runStatePartialLabel(runState) {
 function runStateResumeLabel(runState) {
   const resume = runState && runState.resume || {};
   if (!resume.supported) return 'not resumable';
+  if (resume.command) return 'resume command available';
   if (resume.artifact_dir) return 'resume marker / ' + String(resume.artifact_dir);
-  if (resume.command) return String(resume.command);
   return 'resume marker available';
+}
+
+async function copyRunStateResumeCommand() {
+  if (!currentRunStateResumeCommand) return;
+  const status = document.getElementById('run-state-action-status');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(currentRunStateResumeCommand);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = currentRunStateResumeCommand;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    if (status) status.textContent = 'Resume command copied.';
+  } catch (e) {
+    if (status) status.textContent = 'Copy failed: ' + e.message;
+  }
 }
 
 function renderRunState(result) {
@@ -3239,11 +3287,14 @@ function renderRunState(result) {
   if (!el) return;
   const runState = resultRunState(result);
   if (!runState) {
+    currentRunStateResumeCommand = '';
     el.style.display = 'none';
     el.innerHTML = '';
     return;
   }
   const status = String(runState.status || 'unknown');
+  const resume = runState.resume && typeof runState.resume === 'object' ? runState.resume : {};
+  currentRunStateResumeCommand = resume.command ? String(resume.command) : '';
   const failure = runState.failure && (runState.failure.reason || runState.failure.error);
   const heartbeat = runState.heartbeat_at_utc || runState.finished_at_utc || runState.started_at_utc || '';
   const cells = [
@@ -3260,6 +3311,12 @@ function renderRunState(result) {
     : heartbeat
       ? 'Last heartbeat: ' + heartbeat
       : '';
+  const actions = currentRunStateResumeCommand
+    ? '<div class="run-state-actions">' +
+        '<button class="run-state-action" type="button" onclick="copyRunStateResumeCommand()">Copy Resume Command</button>' +
+        '<span class="run-state-action-status" id="run-state-action-status"></span>' +
+      '</div>'
+    : '';
   el.className = 'run-state-strip ' + runStateClass(status);
   el.innerHTML =
     '<div class="run-state-head">' +
@@ -3267,7 +3324,8 @@ function renderRunState(result) {
       '<div class="run-state-status">' + esc(status) + '</div>' +
     '</div>' +
     '<div class="run-state-grid">' + cells + '</div>' +
-    (note ? '<div class="run-state-note">' + esc(note) + '</div>' : '');
+    (note ? '<div class="run-state-note">' + esc(note) + '</div>' : '') +
+    actions;
   el.style.display = 'block';
 }
 
@@ -5736,6 +5794,56 @@ function manifestExportCards(result, jobId, seenPaths) {
   return cards.join('');
 }
 
+function runStateRecoverableRows(result) {
+  const runState = resultRunState(result || {});
+  if (!runState) return [];
+  const seen = new Set();
+  const rows = [];
+  const add = (row, family) => {
+    if (!row || !row.path) return;
+    const path = String(row.path);
+    const kind = String(row.kind || row.role || '');
+    if (!path || path.endsWith('/') || kind === 'landscape') return;
+    if (seen.has(path)) return;
+    seen.add(path);
+    rows.push(Object.assign({}, row, {_family: family, path}));
+  };
+  const partials = Array.isArray(runState.partial_outputs) ? runState.partial_outputs : [];
+  const checkpoints = Array.isArray(runState.checkpoints) ? runState.checkpoints : [];
+  partials.forEach(row => {
+    add(row, 'partial');
+    if (row && row.flagged_path) {
+      add(
+        Object.assign({}, row, {
+          path: row.flagged_path,
+          kind: String(row.kind || 'output') + '_flagged',
+        }),
+        'partial'
+      );
+    }
+  });
+  checkpoints.forEach(row => add(row, 'checkpoint'));
+  return rows;
+}
+
+function runStateRecoverableDesc(row) {
+  const family = row && row._family === 'checkpoint' ? 'Run checkpoint' : 'Recoverable output';
+  const kind = String(row && (row.kind || row.role) || 'artifact').replace(/_/g, ' ');
+  return family + ': ' + kind;
+}
+
+function runStateRecoverableMeta(row) {
+  const meta = [];
+  if (row && row.status) meta.push('status: ' + String(row.status));
+  if (row && row.kind) meta.push('kind: ' + String(row.kind).replace(/_/g, ' '));
+  if (row && row.shard_id !== undefined && row.shard_id !== null) meta.push('shard: ' + String(row.shard_id));
+  if (row && row.rows !== undefined && row.rows !== null) meta.push('rows: ' + runStateCount(row.rows));
+  if (row && row.source_rows !== undefined && row.source_rows !== null) {
+    meta.push('source: ' + runStateCount(row.source_rows));
+  }
+  return meta;
+}
+
 /* ── LOCAL DATA BROWSER ───────────────────────────────── */
 async function loadDemoPresets() {
   const list = document.getElementById('demo-data-list');
@@ -6033,6 +6141,14 @@ function updateDownloads(result) {
     );
   }
   grid.innerHTML += manifestExportCards(result || {}, currentJobId, seenDownloads);
+  runStateRecoverableRows(result || {}).forEach(row => {
+    addDownload(
+      row.path,
+      runStateRecoverableDesc(row),
+      row._family === 'checkpoint' ? 'RUN' : 'OUT',
+      runStateRecoverableMeta(row)
+    );
+  });
   if (!grid.innerHTML) {
     grid.innerHTML = '<div class="empty-state">No downloadable artifacts found for this result.</div>';
   }
