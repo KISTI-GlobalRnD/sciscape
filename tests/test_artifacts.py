@@ -1844,6 +1844,117 @@ def test_result_manifest_detects_keyword_progress_and_scoring_shards(tmp_path):
     assert manifest["run_state"]["partial_outputs"][0]["kind"] == "scoring_shard"
 
 
+def test_result_manifest_detects_cluster_sharded_keyword_run_state(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    output_dir = root / "landscape" / "keyword_cluster_sharded" / "full_run"
+    candidate_dir = output_dir / "candidates"
+    candidate_dir.mkdir(parents=True)
+    (output_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_cluster_shards_v1",
+                "created_at_utc": "2026-06-02T01:00:00+00:00",
+                "total_clusters": 30,
+                "total_docs": 3000,
+                "shards": [
+                    {"shard_id": 0, "cluster_ids": [0, 1], "doc_count": 1000},
+                    {"shard_id": 1, "cluster_ids": [2, 3], "doc_count": 1000},
+                    {"shard_id": 2, "cluster_ids": [4, 5], "doc_count": 1000},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (output_dir / "progress.json").write_text(
+        json.dumps(
+            {
+                "updated_at_utc": "2026-06-02T01:05:00+00:00",
+                "stage": "candidate_mining",
+                "processed": 1,
+                "total": 3,
+                "percent": 33.3,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (output_dir / "preflight_summary.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_cluster_sharded_preflight_v1",
+                "status": "ok",
+                "shard_count": 3,
+            }
+        ),
+        encoding="utf-8",
+    )
+    candidate_path = candidate_dir / "candidate_shard_0000.parquet"
+    candidate_path.write_bytes(b"placeholder")
+    (candidate_dir / "candidate_shard_0000.done.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_candidate_shard_done_v1",
+                "status": "complete",
+                "shard_id": 0,
+                "rows": 17,
+                "source_rows": 1000,
+                "elapsed_sec": 12.5,
+                "peak_rss_mb": 256.0,
+                "path": str(candidate_path),
+            }
+        ),
+        encoding="utf-8",
+    )
+    (candidate_dir / "candidate_shard_0001.progress.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_candidate_shard_progress_v1",
+                "status": "running",
+                "shard_id": 1,
+                "rows_processed": 200,
+                "rows_total": 1000,
+                "output_path": str(candidate_dir / "candidate_shard_0001.parquet"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    (candidate_dir / "candidate_shard_0002.progress.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_candidate_shard_progress_v1",
+                "status": "failed",
+                "shard_id": 2,
+                "rows_processed": 75,
+                "rows_total": 1000,
+                "error": "RuntimeError('worker lost')",
+                "output_path": str(candidate_dir / "candidate_shard_0002.parquet"),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = build_result_manifest(root).to_dict()
+
+    assert manifest["artifacts"]["keyword_cluster_shard_manifest"]["path"] == (
+        "landscape/keyword_cluster_sharded/full_run/manifest.json"
+    )
+    assert manifest["artifacts"]["keyword_cluster_sharded_progress"]["path"] == (
+        "landscape/keyword_cluster_sharded/full_run/progress.json"
+    )
+    assert manifest["artifacts"]["keyword_cluster_sharded_preflight"]["path"] == (
+        "landscape/keyword_cluster_sharded/full_run/preflight_summary.json"
+    )
+    assert manifest["run_state"]["status"] == "failed"
+    assert manifest["run_state"]["progress"]["stage"] == "candidate_mining"
+    assert manifest["run_state"]["shards"] == {"total": 3, "complete": 1, "failed": 1, "running": 1}
+    assert manifest["run_state"]["failure"]["failed_shards"] == [2]
+    assert manifest["run_state"]["resume"]["supported"] is True
+    assert manifest["run_state"]["resume"]["artifact_dir"] == "landscape/keyword_cluster_sharded/full_run"
+    assert manifest["run_state"]["partial_outputs"][0]["path"] == (
+        "landscape/keyword_cluster_sharded/full_run/candidates/candidate_shard_0000.parquet"
+    )
+    assert manifest["run_state"]["partial_outputs"][0]["kind"] == "candidate_shard"
+
+
 def test_write_result_manifest_uses_result_root(tmp_path):
     root = _write_valid_result_root(tmp_path / "result")
 

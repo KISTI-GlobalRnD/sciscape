@@ -19,6 +19,10 @@ Implemented safeguards:
 - scoring shard output via `scoring_shard_dir`;
 - shard resume using a fingerprint that includes scoring inputs, config, and
   `METADATA_ARTIFACT_FILTER_VERSION`;
+- result-manifest detection of cluster-sharded `manifest.json`,
+  `progress.json`, preflight/run summaries, candidate shard progress/done
+  sidecars, and final shard done sidecars, including failed shard IDs, partial
+  outputs, and resume markers;
 - metadata artifact filtering for HTML, LaTeX preamble residue, publisher page
   fragments, Crossref/PubMed/Scopus/Google source residue, article metrics
   fragments, and suffix `abstract` fragments;

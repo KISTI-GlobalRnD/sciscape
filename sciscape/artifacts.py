@@ -9,7 +9,7 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 import pandas as pd
 import pyarrow as pa
@@ -10239,6 +10239,33 @@ def _add_evolution_output_artifacts(
         )
 
 
+def _is_cluster_sharded_keyword_manifest(payload: Mapping[str, Any] | None) -> bool:
+    return bool(payload and payload.get("schema_version") == "sciscape_keyword_cluster_shards_v1")
+
+
+def _cluster_sharded_keyword_dirs(root: Path, landscape_dir: Path | None) -> list[Path]:
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    bases = [root]
+    if landscape_dir is not None:
+        bases.append(landscape_dir)
+    for base in bases:
+        if not base.exists() or not base.is_dir():
+            continue
+        manifest_candidates = [base / "manifest.json"]
+        manifest_candidates.extend(base.glob("keyword*/manifest.json"))
+        manifest_candidates.extend(base.glob("keyword*/*/manifest.json"))
+        for manifest_path in manifest_candidates:
+            payload = _read_run_json(manifest_path)
+            if not _is_cluster_sharded_keyword_manifest(payload):
+                continue
+            output_dir = manifest_path.parent
+            if output_dir not in seen:
+                candidates.append(output_dir)
+                seen.add(output_dir)
+    return candidates
+
+
 def _run_metadata_artifact_candidates(root: Path, landscape_dir: Path | None) -> list[tuple[str, str, str, str]]:
     bases = [root]
     if landscape_dir is not None:
@@ -10268,6 +10295,38 @@ def _run_metadata_artifact_candidates(root: Path, landscape_dir: Path | None) ->
                         "Keyword scoring shard manifest for resumable large-cluster extraction.",
                     )
                 )
+    for output_dir in _cluster_sharded_keyword_dirs(root, landscape_dir):
+        for filename, key, role, description in [
+            (
+                "manifest.json",
+                "keyword_cluster_shard_manifest",
+                "shard_manifest",
+                "Cluster-sharded keyword extraction shard and budget manifest.",
+            ),
+            (
+                "progress.json",
+                "keyword_cluster_sharded_progress",
+                "progress",
+                "Cluster-sharded keyword extraction stage progress.",
+            ),
+            (
+                "preflight_summary.json",
+                "keyword_cluster_sharded_preflight",
+                "preflight",
+                "Cluster-sharded keyword extraction preflight and budget summary.",
+            ),
+            (
+                "run_summary.json",
+                "keyword_cluster_sharded_run_summary",
+                "run_summary",
+                "Cluster-sharded keyword extraction completion summary.",
+            ),
+        ]:
+            path = output_dir / filename
+            if path.exists() and path.is_file():
+                rel_path = _rel(path, root)
+                if rel_path:
+                    candidates.append((key, role, rel_path, description))
     return candidates
 
 
@@ -10902,6 +10961,179 @@ def _run_state_from_shard_manifest(root: Path, payload: Mapping[str, Any], path:
     }
 
 
+def _read_run_json_files(paths: Iterable[Path]) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for path in paths:
+        payload = _read_run_json(path)
+        if payload:
+            payload["_sidecar_path"] = path
+            payloads.append(payload)
+    return payloads
+
+
+def _shard_ids_from_payloads(payloads: Iterable[Mapping[str, Any]]) -> set[int]:
+    shard_ids: set[int] = set()
+    for payload in payloads:
+        shard_id = _coerce_int(payload.get("shard_id"))
+        if shard_id is not None:
+            shard_ids.add(shard_id)
+    return shard_ids
+
+
+def _run_state_partial_output_from_done(
+    payload: Mapping[str, Any],
+    *,
+    root: Path,
+    kind: str,
+) -> dict[str, Any] | None:
+    raw_path = payload.get("path") or payload.get("shard_path") or payload.get("output_path")
+    if not raw_path:
+        return None
+    row = _run_state_path_row(
+        Path(str(raw_path)),
+        root,
+        kind,
+        status=str(payload.get("status") or "present"),
+        rows=_coerce_int(payload.get("rows")),
+        shard_id=_coerce_int(payload.get("shard_id")),
+        source_rows=_coerce_int(payload.get("source_rows")),
+        elapsed_sec=payload.get("elapsed_sec"),
+        peak_rss_mb=payload.get("peak_rss_mb"),
+    )
+    flagged_path = payload.get("flagged_path")
+    if flagged_path:
+        row["flagged_path"] = _rel(Path(str(flagged_path)), root)
+    return row
+
+
+def _run_state_from_cluster_sharded_keyword_dir(
+    root: Path,
+    output_dir: Path,
+    manifest_payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    shard_rows = manifest_payload.get("shards") if isinstance(manifest_payload.get("shards"), list) else []
+    shard_count = _coerce_int(manifest_payload.get("shard_count")) or len(shard_rows)
+    run_summary = _read_run_json(output_dir / "run_summary.json") or {}
+    progress = _read_run_json(output_dir / "progress.json") or {}
+    candidate_done = _read_run_json_files(sorted((output_dir / "candidates").glob("candidate_shard_*.done.json")))
+    candidate_progress = _read_run_json_files(sorted((output_dir / "candidates").glob("candidate_shard_*.progress.json")))
+    final_done = _read_run_json_files(sorted((output_dir / "final").glob("keyword_shard_*.done.json")))
+
+    candidate_done_ids = _shard_ids_from_payloads(candidate_done)
+    final_done_ids = _shard_ids_from_payloads(final_done)
+    completed_ids = final_done_ids or candidate_done_ids
+    incomplete_progress = [payload for payload in candidate_progress if _coerce_int(payload.get("shard_id")) not in candidate_done_ids]
+    failed_ids = _shard_ids_from_payloads(
+        payload for payload in incomplete_progress if str(payload.get("status") or "").lower() == "failed"
+    )
+    running_ids = _shard_ids_from_payloads(
+        payload
+        for payload in incomplete_progress
+        if str(payload.get("status") or "").lower() in {"running", "selecting", "writing"}
+    )
+    complete_count = len(completed_ids)
+    failed_count = len(failed_ids)
+    running_count = len(running_ids) if running_ids else max(0, int(shard_count) - complete_count - failed_count)
+
+    if str(run_summary.get("status") or "").lower() == "complete":
+        status = "complete"
+        complete_count = int(shard_count)
+        failed_count = 0
+        running_count = 0
+    elif failed_count:
+        status = "failed"
+    elif complete_count or running_count:
+        status = "running"
+    else:
+        status = "partial"
+
+    checkpoints = [_run_state_path_row(output_dir / "manifest.json", root, "cluster_sharded_manifest")]
+    for filename, kind in [
+        ("progress.json", "progress"),
+        ("preflight_summary.json", "preflight"),
+        ("run_summary.json", "run_summary"),
+    ]:
+        path = output_dir / filename
+        if path.exists() and path.is_file():
+            checkpoints.append(_run_state_path_row(path, root, kind))
+
+    partial_outputs = [
+        row
+        for row in (
+            _run_state_partial_output_from_done(payload, root=root, kind="candidate_shard")
+            for payload in candidate_done
+        )
+        if row is not None
+    ]
+    partial_outputs.extend(
+        row
+        for row in (
+            _run_state_partial_output_from_done(payload, root=root, kind="keyword_shard")
+            for payload in final_done
+        )
+        if row is not None
+    )
+    for filename, kind in [("keywords.parquet", "keywords"), ("keywords_flagged.parquet", "keywords_flagged")]:
+        path = output_dir / filename
+        if path.exists() and path.is_file():
+            partial_outputs.append(_run_state_path_row(path, root, kind, rows=_coerce_int(run_summary.get("final_rows"))))
+
+    progress_payload: dict[str, Any]
+    if progress:
+        processed = _coerce_int(progress.get("processed")) or _coerce_int(progress.get("current")) or complete_count
+        total = _coerce_int(progress.get("total")) or shard_count
+        progress_payload = {
+            "current": int(processed),
+            "total": int(total),
+            "unit": progress.get("unit") or ("shards" if progress.get("stage") in {"candidate_mining", "final_scoring"} else "stage_units"),
+            "stage": progress.get("stage"),
+        }
+        if progress.get("percent") is not None:
+            progress_payload["percent"] = progress.get("percent")
+    else:
+        progress_payload = {
+            "current": complete_count,
+            "total": int(shard_count),
+            "unit": "shards",
+            "stage": "complete" if status == "complete" else "candidate_mining",
+        }
+
+    failure = None
+    if failed_count:
+        failure = {
+            "reason": f"{failed_count} cluster-sharded keyword shard(s) failed",
+            "failed_shards": sorted(failed_ids),
+        }
+
+    heartbeat = (
+        run_summary.get("created_at_utc")
+        or progress.get("updated_at_utc")
+        or manifest_payload.get("updated_at_utc")
+        or manifest_payload.get("created_at_utc")
+    )
+
+    return {
+        "status": status,
+        "heartbeat_at_utc": heartbeat,
+        "progress": progress_payload,
+        "shards": {
+            "total": int(shard_count),
+            "complete": int(complete_count),
+            "failed": int(failed_count),
+            "running": int(running_count),
+        },
+        "checkpoints": checkpoints,
+        "partial_outputs": partial_outputs,
+        "failure": failure,
+        "resume": {
+            "supported": status != "complete",
+            "command": None,
+            "mode": "rerun_with_same_cluster_sharded_output_dir",
+            "artifact_dir": _rel(output_dir, root),
+        },
+    }
+
+
 def _detected_run_state_overrides(validation: ArtifactValidationResult) -> dict[str, Any]:
     root = Path(validation.result_root)
     artifact_info = validation.artifacts
@@ -10926,6 +11158,14 @@ def _detected_run_state_overrides(validation: ArtifactValidationResult) -> dict[
         payload = _read_run_json(path)
         if payload:
             detected = _merge_run_state(detected, _run_state_from_shard_manifest(root, payload, path))
+
+    for output_dir in _cluster_sharded_keyword_dirs(root, landscape_dir):
+        payload = _read_run_json(output_dir / "manifest.json")
+        if payload:
+            detected = _merge_run_state(
+                detected,
+                _run_state_from_cluster_sharded_keyword_dir(root, output_dir, payload),
+            )
 
     job_payload = _read_run_json(root / "job_status.json")
     if job_payload:

@@ -227,6 +227,10 @@ Initial stable artifact refs:
 | `job_status` | live query status JSON |
 | `keyword_progress` / `pipeline_progress` | keyword or pipeline progress JSON |
 | `scoring_shard_manifest` | keyword scoring shard manifest |
+| `keyword_cluster_shard_manifest` | cluster-sharded keyword extraction shard and budget manifest |
+| `keyword_cluster_sharded_progress` | cluster-sharded keyword extraction progress JSON |
+| `keyword_cluster_sharded_preflight` | cluster-sharded keyword extraction budget preflight |
+| `keyword_cluster_sharded_run_summary` | cluster-sharded keyword extraction completion summary |
 
 ## Run State
 
@@ -278,6 +282,15 @@ as job start, completion, and failure. Manifest generation also detects existing
 `keyword_progress.json`, `progress.json`, and `scoring_shards/manifest.json`
 sidecars so reopened result folders retain progress, shard, checkpoint, partial
 output, and resume metadata.
+
+Cluster-sharded keyword extraction output directories are also run-state
+sources when they live under the result root or landscape directory.  A
+`sciscape_keyword_cluster_shards_v1` `manifest.json` registers the shard budget,
+while `progress.json`, `preflight_summary.json`, `run_summary.json`,
+`candidates/*.progress.json`, `candidates/*.done.json`, and
+`final/*.done.json` are reduced into shard counts, failed shard IDs,
+checkpoint paths, partial outputs, and a resume marker pointing back to the
+cluster-sharded artifact directory.
 
 ## Quality Block
 
