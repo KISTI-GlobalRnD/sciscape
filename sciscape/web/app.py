@@ -150,6 +150,52 @@ async def submit_query(req: QueryRequest, bg: BackgroundTasks):
     return {"job_id": job_id}
 
 
+def _job_retry_request(job: dict[str, Any]) -> QueryRequest:
+    request_payload = job.get("request") if isinstance(job.get("request"), dict) else {}
+    query = str(request_payload.get("query") or "")
+    if not query or query.startswith("Local output:"):
+        raise HTTPException(
+            status_code=400,
+            detail="job does not contain a replayable OpenAlex query request",
+        )
+    try:
+        return QueryRequest(**request_payload)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="job does not contain a replayable OpenAlex query request",
+        ) from exc
+
+
+def _enqueue_retry_job(source_job_id: str, source_job: dict[str, Any], bg: BackgroundTasks) -> dict[str, Any]:
+    status = str(source_job.get("status") or "")
+    if status in {"pending", "running"}:
+        raise HTTPException(status_code=409, detail="job is still running")
+
+    req = _job_retry_request(source_job)
+    job_id = str(uuid.uuid4())[:8]
+    request_payload = req.model_dump()
+    request_payload["source_type"] = "openalex_query"
+    request_payload["retry_of"] = source_job_id
+    _jobs.create(job_id, request_payload)
+    retry_job = _jobs[job_id]
+    retry_job["status"] = "pending"
+    retry_job["progress"] = [f"Retry of job {source_job_id}"]
+    retry_job["result"] = None
+    _jobs.persist(job_id)
+    bg.add_task(_run_job, job_id, req)
+    return {"job_id": job_id, "retry_of": source_job_id, "request": request_payload}
+
+
+@app.post("/api/jobs/{job_id}/retry")
+async def retry_job(job_id: str, bg: BackgroundTasks):
+    """Re-run a previous OpenAlex query job as a new job."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    return _enqueue_retry_job(job_id, job, bg)
+
+
 @app.get("/api/jobs/{job_id}")
 async def get_job(job_id: str):
     """Get job status and progress."""

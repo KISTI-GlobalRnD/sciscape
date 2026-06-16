@@ -2602,7 +2602,25 @@ body {
   margin-top: 2px;
   display: flex;
   gap: 0.6rem;
+  align-items: center;
 }
+.job-meta-main {
+  display: flex;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+.job-retry {
+  border: 1px solid rgba(216, 90, 74, 0.22);
+  border-radius: 4px;
+  background: rgba(216, 90, 74, 0.08);
+  color: var(--coral);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  padding: 0.16rem 0.32rem;
+  cursor: pointer;
+}
+.job-retry:hover { background: rgba(216, 90, 74, 0.14); }
 .job-status {
   display: inline-block;
   width: 6px;
@@ -3259,6 +3277,10 @@ function runStateResumeLabel(runState) {
   return 'resume marker available';
 }
 
+function retrySupportedStatus(status) {
+  return ['error', 'failed', 'cancelled', 'stopped_by_qc'].includes(String(status || '').toLowerCase());
+}
+
 async function copyRunStateResumeCommand() {
   if (!currentRunStateResumeCommand) return;
   const status = document.getElementById('run-state-action-status');
@@ -3280,6 +3302,34 @@ async function copyRunStateResumeCommand() {
   } catch (e) {
     if (status) status.textContent = 'Copy failed: ' + e.message;
   }
+}
+
+async function retryJob(jobId) {
+  if (!jobId) return;
+  const term = document.getElementById('terminal');
+  const lines = document.getElementById('term-lines');
+  const results = document.getElementById('results');
+  const status = document.getElementById('run-state-action-status');
+  try {
+    const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/retry', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'retry failed');
+    currentJobId = data.job_id;
+    term.classList.add('active');
+    lines.innerHTML = '';
+    results.classList.remove('active');
+    document.getElementById('term-cursor').style.display = '';
+    addLine('Retry job ' + data.job_id + ' submitted from ' + jobId);
+    streamProgress(data.job_id);
+    refreshHistory();
+  } catch (e) {
+    if (status) status.textContent = 'Retry failed: ' + e.message;
+    else addLine('Retry failed: ' + e.message, 'err');
+  }
+}
+
+function retryCurrentJob() {
+  retryJob(currentJobId);
 }
 
 function renderRunState(result) {
@@ -3311,9 +3361,19 @@ function renderRunState(result) {
     : heartbeat
       ? 'Last heartbeat: ' + heartbeat
       : '';
-  const actions = currentRunStateResumeCommand
-    ? '<div class="run-state-actions">' +
-        '<button class="run-state-action" type="button" onclick="copyRunStateResumeCommand()">Copy Resume Command</button>' +
+  const actionButtons = [];
+  if (currentRunStateResumeCommand) {
+    actionButtons.push(
+      '<button class="run-state-action" type="button" onclick="copyRunStateResumeCommand()">Copy Resume Command</button>'
+    );
+  }
+  if (retrySupportedStatus(status) && currentJobId) {
+    actionButtons.push(
+      '<button class="run-state-action" type="button" onclick="retryCurrentJob()">Retry Query</button>'
+    );
+  }
+  const actions = actionButtons.length
+    ? '<div class="run-state-actions">' + actionButtons.join('') +
         '<span class="run-state-action-status" id="run-state-action-status"></span>' +
       '</div>'
     : '';
@@ -5982,11 +6042,15 @@ async function refreshHistory() {
       list.innerHTML = '<li class="empty-state"><div class="empty-icon">&#9878;</div>No analyses yet.</li>';
       return;
     }
-    list.innerHTML = jobs.map(j =>
-      '<li class="job-item' + (j.job_id === currentJobId ? ' active' : '') + '" onclick="loadJob(\'' + j.job_id + '\')">' +
-      '<div class="job-query"><span class="job-status ' + j.status + '"></span>' + esc(j.query || '(untitled)') + '</div>' +
-      '<div class="job-meta"><span>' + j.job_id + '</span><span>' + j.status + '</span></div></li>'
-    ).join('');
+    list.innerHTML = jobs.map(j => {
+      const retryButton = String(j.status || '').toLowerCase() === 'error'
+        ? '<button class="job-retry" type="button" onclick="event.stopPropagation(); retryJob(\'' + j.job_id + '\')">Retry</button>'
+        : '';
+      return '<li class="job-item' + (j.job_id === currentJobId ? ' active' : '') + '" onclick="loadJob(\'' + j.job_id + '\')">' +
+        '<div class="job-query"><span class="job-status ' + j.status + '"></span>' + esc(j.query || '(untitled)') + '</div>' +
+        '<div class="job-meta"><span class="job-meta-main"><span>' + j.job_id + '</span><span>' + j.status + '</span></span>' +
+        retryButton + '</div></li>';
+    }).join('');
   } catch (e) { /* ignore */ }
 }
 
@@ -6006,6 +6070,10 @@ async function loadJob(jobId) {
       addLine('Pipeline complete.', 'ok');
       document.getElementById('term-cursor').style.display = 'none';
       showResults(job.result);
+    } else if (job.status === 'error') {
+      addLine('Pipeline failed.', 'err');
+      document.getElementById('term-cursor').style.display = 'none';
+      resetBtn();
     }
     refreshHistory();
   } catch (e) { /* ignore */ }

@@ -486,6 +486,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert 'id="q-search"' in response.text
     assert "submitQuery()" in response.text
     assert "fetch('/api/query'" in response.text
+    assert "/api/jobs/' + encodeURIComponent(jobId) + '/retry" in response.text
+    assert "Retry Query" in response.text
     assert "fetch('/api/demo-presets'" in response.text
     assert "fetch('/api/local-data" in response.text
     assert "evolution_status" in response.text
@@ -555,6 +557,75 @@ def test_query_endpoint_enqueues_openalex_analysis(monkeypatch, tmp_path):
     assert payload["status"] == "done"
     assert payload["progress"] == ["fake pipeline: graph neural networks"]
     assert payload["result"]["n_works"] == 12
+
+
+def test_retry_endpoint_enqueues_previous_openalex_request(monkeypatch):
+    def fake_run_job(job_id, req):
+        job = web_app._jobs[job_id]
+        job["status"] = "done"
+        job["progress"].append(f"retried pipeline: {req.query}")
+        job["result"] = {
+            "n_works": req.max_works,
+            "n_edges": {"dc": 0, "bc": 0, "cc": 0},
+            "output_dir": "workspace/web_output/retry",
+            "abstracts_path": None,
+            "edges_path": None,
+            "landscape_dir": None,
+        }
+        web_app._jobs.persist(job_id)
+
+    monkeypatch.setattr("sciscape.web.app._run_job", fake_run_job)
+    source_id = "failedjob"
+    web_app._jobs.create(
+        source_id,
+        {
+            "query": "graph neural networks",
+            "years": "2020-2024",
+            "max_works": 12,
+            "edge_types": "dc,bc",
+            "run_landscape": True,
+        },
+    )
+    source_job = web_app._jobs[source_id]
+    source_job["status"] = "error"
+    source_job["progress"] = ["ERROR: previous failure"]
+    source_job["result"] = {"error": "previous failure"}
+    web_app._jobs.persist(source_id)
+
+    client = TestClient(app)
+    response = client.post(f"/api/jobs/{source_id}/retry")
+
+    assert response.status_code == 200
+    payload = response.json()
+    retry_id = payload["job_id"]
+    assert payload["retry_of"] == source_id
+    assert payload["request"]["retry_of"] == source_id
+    assert payload["request"]["source_type"] == "openalex_query"
+    assert retry_id != source_id
+
+    retry_payload = client.get(f"/api/jobs/{retry_id}").json()
+    assert retry_payload["status"] == "done"
+    assert retry_payload["progress"] == [
+        f"Retry of job {source_id}",
+        "retried pipeline: graph neural networks",
+    ]
+    assert retry_payload["result"]["n_works"] == 12
+
+
+def test_retry_endpoint_rejects_local_result_jobs():
+    source_id = "localresult"
+    web_app._jobs.create(source_id, {"query": "Local output: workspace/examples_output/demo"})
+    source_job = web_app._jobs[source_id]
+    source_job["status"] = "done"
+    source_job["progress"] = ["Loaded local SciScape output"]
+    source_job["result"] = {"output_dir": "workspace/examples_output/demo"}
+    web_app._jobs.persist(source_id)
+
+    client = TestClient(app)
+    response = client.post(f"/api/jobs/{source_id}/retry")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "job does not contain a replayable OpenAlex query request"
 
 
 def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
