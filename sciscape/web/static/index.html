@@ -376,6 +376,85 @@ body {
   line-height: 1.45;
 }
 .contract-warnings span { display: block; }
+.run-state-strip {
+  display: none;
+  background: var(--white);
+  border: 1px solid var(--fog);
+  border-left: 4px solid var(--teal);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.85rem;
+  margin-top: -0.7rem;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+.run-state-strip.partial { border-left-color: var(--amber); }
+.run-state-strip.blocked { border-left-color: var(--coral); }
+.run-state-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.run-state-title {
+  color: var(--steel);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.run-state-status {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.12rem 0.38rem;
+  border-radius: 3px;
+  background: rgba(43, 168, 156, 0.1);
+  color: var(--teal-dim);
+}
+.run-state-strip.partial .run-state-status {
+  background: rgba(232, 168, 56, 0.14);
+  color: var(--amber-dim);
+}
+.run-state-strip.blocked .run-state-status {
+  background: rgba(216, 90, 74, 0.12);
+  color: var(--coral);
+}
+.run-state-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.run-state-cell {
+  min-width: 0;
+  border: 1px solid rgba(197, 207, 224, 0.72);
+  border-radius: 4px;
+  background: var(--paper);
+  padding: 0.42rem 0.5rem;
+}
+.run-state-label {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.run-state-value {
+  margin-top: 0.12rem;
+  color: var(--graphite);
+  font-size: 0.74rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-state-note {
+  margin-top: 0.5rem;
+  color: var(--steel);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 
 /* ── ATLAS SHELL ───────────────────────────────────────── */
 .atlas-shell {
@@ -2289,7 +2368,9 @@ body {
   .evolution-head,
   .evolution-map-head,
   .evolution-grid,
-  .evolution-summary-grid { grid-template-columns: 1fr; }
+  .evolution-summary-grid,
+  .run-state-head,
+  .run-state-grid { grid-template-columns: 1fr; }
   .evolution-map-legend { justify-content: flex-start; }
 }
 
@@ -2748,6 +2829,7 @@ input[type="range"]::-webkit-slider-thumb {
       <div class="section-label">Results</div>
       <div class="stats-row" id="stats-row"></div>
       <div class="result-contract" id="result-contract"></div>
+      <div class="run-state-strip" id="run-state-strip"></div>
       <div class="atlas-shell" id="atlas-shell"></div>
 
       <div class="tab-bar" id="tab-bar">
@@ -3087,6 +3169,105 @@ function renderResultContract(result) {
     '</div>' +
     '<div class="feature-row">' + featureHtml + '</div>' +
     (warningHtml ? '<div class="contract-warnings">' + warningHtml + '</div>' : '');
+  el.style.display = 'block';
+}
+
+function resultRunState(result) {
+  result = result || {};
+  if (result.run_state && typeof result.run_state === 'object') return result.run_state;
+  const manifest = result.result_manifest || {};
+  if (manifest.run_state && typeof manifest.run_state === 'object') return manifest.run_state;
+  return null;
+}
+
+function runStateClass(status) {
+  const value = String(status || '').toLowerCase();
+  if (['failed', 'cancelled', 'stopped_by_qc'].includes(value)) return 'blocked';
+  if (['running', 'queued', 'planned', 'partial', 'imported'].includes(value)) return 'partial';
+  return 'loaded';
+}
+
+function runStateCount(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 'n/a';
+  return number.toLocaleString();
+}
+
+function runStateProgressLabel(runState) {
+  const progress = runState && runState.progress || {};
+  const current = Number(progress.current);
+  const total = progress.total === null || progress.total === undefined ? null : Number(progress.total);
+  const stage = progress.stage ? String(progress.stage) : '';
+  const unit = progress.unit ? String(progress.unit) : 'units';
+  if (Number.isFinite(current) && Number.isFinite(total) && total > 0) {
+    const pct = progress.percent !== undefined && progress.percent !== null
+      ? Number(progress.percent)
+      : (current / total * 100);
+    const pctLabel = Number.isFinite(pct) ? ' / ' + pct.toFixed(pct >= 10 ? 0 : 1) + '%' : '';
+    return (stage ? stage + ' / ' : '') + runStateCount(current) + '/' + runStateCount(total) + ' ' + unit + pctLabel;
+  }
+  if (Number.isFinite(current)) return (stage ? stage + ' / ' : '') + runStateCount(current) + ' ' + unit;
+  return stage || 'not reported';
+}
+
+function runStateShardLabel(runState) {
+  const shards = runState && runState.shards || {};
+  const total = Number(shards.total || 0);
+  if (!Number.isFinite(total) || total <= 0) return 'no shards';
+  return 'done ' + runStateCount(shards.complete || 0) +
+    ' / running ' + runStateCount(shards.running || 0) +
+    ' / failed ' + runStateCount(shards.failed || 0) +
+    ' / total ' + runStateCount(total);
+}
+
+function runStatePartialLabel(runState) {
+  const outputs = Array.isArray(runState && runState.partial_outputs) ? runState.partial_outputs : [];
+  const checkpoints = Array.isArray(runState && runState.checkpoints) ? runState.checkpoints : [];
+  return runStateCount(outputs.length) + ' outputs / ' + runStateCount(checkpoints.length) + ' checkpoints';
+}
+
+function runStateResumeLabel(runState) {
+  const resume = runState && runState.resume || {};
+  if (!resume.supported) return 'not resumable';
+  if (resume.artifact_dir) return 'resume marker / ' + String(resume.artifact_dir);
+  if (resume.command) return String(resume.command);
+  return 'resume marker available';
+}
+
+function renderRunState(result) {
+  const el = document.getElementById('run-state-strip');
+  if (!el) return;
+  const runState = resultRunState(result);
+  if (!runState) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const status = String(runState.status || 'unknown');
+  const failure = runState.failure && (runState.failure.reason || runState.failure.error);
+  const heartbeat = runState.heartbeat_at_utc || runState.finished_at_utc || runState.started_at_utc || '';
+  const cells = [
+    ['progress', runStateProgressLabel(runState)],
+    ['shards', runStateShardLabel(runState)],
+    ['recoverable', runStatePartialLabel(runState)],
+    ['resume', runStateResumeLabel(runState)],
+  ].map(([label, value]) =>
+    '<div class="run-state-cell"><div class="run-state-label">' + esc(label) + '</div>' +
+    '<div class="run-state-value" title="' + escAttr(value) + '">' + esc(value) + '</div></div>'
+  ).join('');
+  const note = failure
+    ? 'Failure: ' + failure
+    : heartbeat
+      ? 'Last heartbeat: ' + heartbeat
+      : '';
+  el.className = 'run-state-strip ' + runStateClass(status);
+  el.innerHTML =
+    '<div class="run-state-head">' +
+      '<div class="run-state-title">Run state</div>' +
+      '<div class="run-state-status">' + esc(status) + '</div>' +
+    '</div>' +
+    '<div class="run-state-grid">' + cells + '</div>' +
+    (note ? '<div class="run-state-note">' + esc(note) + '</div>' : '');
   el.style.display = 'block';
 }
 
@@ -3998,6 +4179,7 @@ function updateAtlasResultMeta(result) {
     featureStates: result.feature_states || {},
     artifactCounts: contract.counts || {},
     resultArtifacts: result.result_manifest && result.result_manifest.artifacts || {},
+    runState: resultRunState(result || {}),
     outputDir: result.output_dir || '',
     atlasReportRelPath: result.atlas_report_rel_path || '',
     renderSummary: result.atlas_render_summary || {},
@@ -5380,6 +5562,7 @@ function showResults(result) {
   panel.classList.add('active');
   applyResultFeatureAvailability(result);
   renderResultContract(result);
+  renderRunState(result);
   renderAtlasShell(result);
 
   // Stats

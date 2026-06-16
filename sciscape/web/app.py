@@ -282,6 +282,7 @@ def _resolve_job_output_file(job_id: str, filename: str) -> Path:
 def _refresh_job_result_manifest(job_id: str, result: dict[str, Any], output_dir: Path, *, mode: str = "live_query") -> None:
     refreshed_manifest = load_result_manifest(output_dir, mode=mode)
     result["result_manifest"] = refreshed_manifest
+    result["run_state"] = _run_state_for_result(result, refreshed_manifest)
     result["feature_states"] = {
         name: feature.get("state", "hidden")
         for name, feature in refreshed_manifest.get("features", {}).items()
@@ -312,9 +313,22 @@ def _manifest_for_result(result: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _run_state_for_result(
+    result: dict[str, Any],
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    manifest_payload = manifest if isinstance(manifest, dict) else _manifest_for_result(result)
+    run_state = manifest_payload.get("run_state") if isinstance(manifest_payload, dict) else None
+    if isinstance(run_state, dict):
+        return run_state
+    result_run_state = result.get("run_state") if isinstance(result.get("run_state"), dict) else None
+    return dict(result_run_state or {})
+
+
 def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     manifest = _manifest_for_result(result)
+    run_state = _run_state_for_result(result, manifest)
     feature_details = manifest.get("features") if isinstance(manifest.get("features"), dict) else {}
     result_feature_states = result.get("feature_states") if isinstance(result.get("feature_states"), dict) else {}
     feature_states: dict[str, str] = {
@@ -388,6 +402,7 @@ def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
             "features": bool_features,
             "feature_states": feature_states,
             "feature_details": feature_details,
+            "run_state": run_state,
             "modules": modules,
             "hidden_features": sorted(
                 feature for feature, state in feature_states.items() if state == "hidden"
@@ -1288,6 +1303,7 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     manifest = load_result_manifest(path)
     result["artifact_contract"] = contract
     result["result_manifest"] = manifest
+    result["run_state"] = _run_state_for_result(result, manifest)
     result["features"] = contract["features"]
     result["feature_states"] = {
         name: feature.get("state", "hidden")
@@ -3388,6 +3404,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
                 )
             job_result["artifact_contract"] = contract
             job_result["result_manifest"] = manifest
+            job_result["run_state"] = _run_state_for_result(job_result, manifest)
             job_result["features"] = contract["features"]
             job_result["feature_states"] = {
                 name: feature.get("state", "hidden")

@@ -44,6 +44,69 @@ def _register_done_job(job_id: str, output_dir: Path) -> None:
     web_app._jobs.persist(job_id)
 
 
+def _write_cluster_sharded_run_sidecars(output_dir: Path) -> Path:
+    run_dir = output_dir / "landscape" / "keyword_cluster_sharded" / "full_run"
+    candidate_dir = run_dir / "candidates"
+    candidate_dir.mkdir(parents=True)
+    (run_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_cluster_shards_v1",
+                "created_at_utc": "2026-06-02T01:00:00+00:00",
+                "total_clusters": 3,
+                "total_docs": 300,
+                "shards": [
+                    {"shard_id": 0, "cluster_ids": [0], "doc_count": 100},
+                    {"shard_id": 1, "cluster_ids": [1], "doc_count": 100},
+                    {"shard_id": 2, "cluster_ids": [2], "doc_count": 100},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "progress.json").write_text(
+        json.dumps(
+            {
+                "updated_at_utc": "2026-06-02T01:05:00+00:00",
+                "stage": "candidate_mining",
+                "processed": 1,
+                "total": 3,
+                "percent": 33.3,
+            }
+        ),
+        encoding="utf-8",
+    )
+    candidate_path = candidate_dir / "candidate_shard_0000.parquet"
+    candidate_path.write_bytes(b"placeholder")
+    (candidate_dir / "candidate_shard_0000.done.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_candidate_shard_done_v1",
+                "status": "complete",
+                "shard_id": 0,
+                "rows": 12,
+                "source_rows": 100,
+                "path": str(candidate_path),
+            }
+        ),
+        encoding="utf-8",
+    )
+    (candidate_dir / "candidate_shard_0002.progress.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "sciscape_keyword_candidate_shard_progress_v1",
+                "status": "failed",
+                "shard_id": 2,
+                "rows_processed": 14,
+                "rows_total": 100,
+                "output_path": str(candidate_dir / "candidate_shard_0002.parquet"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return run_dir
+
+
 def test_download_route_supports_nested_output_artifacts(tmp_path):
     job_id = f"testnested{uuid.uuid4().hex[:8]}"
     artifact = tmp_path / "landscape" / "report" / "index.html"
@@ -538,6 +601,7 @@ def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
     assert job["status"] == "done"
     assert job["progress"] == ["fetched works"]
     assert job["result"]["job_status_path"] == "workspace/web_output/jobstatus1/job_status.json"
+    assert job["result"]["run_state"]["status"] == "complete"
     assert status_payload["schema_version"] == "sciscape_live_job_status_v1"
     assert status_payload["status"] == "done"
     assert status_payload["run_state"]["status"] == "complete"
@@ -849,6 +913,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     write_cooccurrence_artifacts(output_dir)
     write_cluster_review_packet_artifact(output_dir)
     write_narrative_evidence_artifacts(output_dir)
+    _write_cluster_sharded_run_sidecars(output_dir)
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
         [tmp_path / "workspace" / "web_output"],
@@ -876,6 +941,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["result_manifest"]["manifest_state"] == "present"
     assert job_payload["result"]["result_manifest"]["title"] == "Curated Web Result"
     assert job_payload["result"]["result_manifest"]["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
+    assert job_payload["result"]["run_state"]["status"] == "failed"
+    assert job_payload["result"]["run_state"]["shards"] == {"total": 3, "complete": 1, "failed": 1, "running": 1}
+    assert job_payload["result"]["run_state"]["resume"]["supported"] is True
     exports = job_payload["result"]["result_manifest"]["exports"]
     vos_exports = [row for row in exports if row["export_id"] == "vosviewer_map_network"]
     assert len(vos_exports) == 1
@@ -956,6 +1024,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert features_payload["quality"]["validation_state"] == "passed_with_warnings"
     assert features_payload["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
     assert features_payload["artifacts"]["narrative"]["path"] == "narrative/narrative_manifest.json"
+    assert features_payload["run_state"]["status"] == "failed"
+    assert features_payload["run_state"]["shards"]["failed"] == 1
 
     readiness_response = client.get(f"/api/jobs/{job_id}/readiness")
     assert readiness_response.status_code == 200
