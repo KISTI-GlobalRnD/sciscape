@@ -484,6 +484,7 @@ def _refresh_job_result_manifest(job_id: str, result: dict[str, Any], output_dir
     refreshed_manifest = load_result_manifest(output_dir, mode=mode)
     result["result_manifest"] = refreshed_manifest
     result["run_state"] = _run_state_for_result(result, refreshed_manifest)
+    _attach_run_state_summary(result, refreshed_manifest)
     result["feature_states"] = {
         name: feature.get("state", "hidden")
         for name, feature in refreshed_manifest.get("features", {}).items()
@@ -526,10 +527,91 @@ def _run_state_for_result(
     return dict(result_run_state or {})
 
 
+def _count_run_state_kinds(rows: Any) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("kind") or row.get("role") or "artifact")
+        counts[key] = counts.get(key, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _run_state_summary(run_state: dict[str, Any]) -> dict[str, Any]:
+    """Return a compact operational summary for run-state UI/API surfaces."""
+
+    def as_int(value: Any) -> int:
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    progress = run_state.get("progress") if isinstance(run_state.get("progress"), dict) else {}
+    shards = run_state.get("shards") if isinstance(run_state.get("shards"), dict) else {}
+    failure = run_state.get("failure") if isinstance(run_state.get("failure"), dict) else {}
+    resume = run_state.get("resume") if isinstance(run_state.get("resume"), dict) else {}
+    partial_outputs = run_state.get("partial_outputs") if isinstance(run_state.get("partial_outputs"), list) else []
+    checkpoints = run_state.get("checkpoints") if isinstance(run_state.get("checkpoints"), list) else []
+
+    current = progress.get("current")
+    total = progress.get("total")
+    percent = progress.get("percent")
+    try:
+        current_number = float(current)
+        total_number = float(total)
+        if percent is None and total_number > 0:
+            percent = current_number / total_number * 100.0
+    except (TypeError, ValueError):
+        percent = percent if isinstance(percent, (int, float)) else None
+
+    failed_shards = failure.get("failed_shards") if isinstance(failure.get("failed_shards"), list) else []
+    output_kinds = _count_run_state_kinds(partial_outputs)
+    checkpoint_kinds = _count_run_state_kinds(checkpoints)
+    resume_supported = bool(resume.get("supported"))
+    resume_command = str(resume.get("command") or "").strip()
+    if resume_supported and resume_command:
+        resume_state = "command_available"
+    elif resume_supported:
+        resume_state = "metadata_only"
+    else:
+        resume_state = "not_supported"
+
+    return _json_safe(
+        {
+            "schema_version": "sciscape_run_state_summary_v1",
+            "status": str(run_state.get("status") or "unknown"),
+            "stage": progress.get("stage"),
+            "progress_percent": percent,
+            "shards_total": as_int(shards.get("total")),
+            "shards_complete": as_int(shards.get("complete")),
+            "shards_failed": as_int(shards.get("failed")),
+            "shards_running": as_int(shards.get("running")),
+            "failed_shards": failed_shards[:50],
+            "failed_shard_count": len(failed_shards),
+            "recoverable_output_count": len(partial_outputs),
+            "checkpoint_count": len(checkpoints),
+            "recoverable_output_kinds": output_kinds,
+            "checkpoint_kinds": checkpoint_kinds,
+            "resume_state": resume_state,
+            "resume_supported": resume_supported,
+            "resume_command_kind": resume.get("command_kind"),
+            "resume_mode": resume.get("mode"),
+            "resume_artifact_dir": resume.get("artifact_dir"),
+            "failure_reason": failure.get("reason"),
+            "has_recoverable_state": bool(partial_outputs or checkpoints or resume_supported),
+        }
+    )
+
+
+def _attach_run_state_summary(result: dict[str, Any], manifest: dict[str, Any] | None = None) -> None:
+    result["run_state_summary"] = _run_state_summary(_run_state_for_result(result, manifest))
+
+
 def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     manifest = _manifest_for_result(result)
     run_state = _run_state_for_result(result, manifest)
+    run_state_summary = _run_state_summary(run_state)
     feature_details = manifest.get("features") if isinstance(manifest.get("features"), dict) else {}
     result_feature_states = result.get("feature_states") if isinstance(result.get("feature_states"), dict) else {}
     feature_states: dict[str, str] = {
@@ -604,6 +686,7 @@ def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
             "feature_states": feature_states,
             "feature_details": feature_details,
             "run_state": run_state,
+            "run_state_summary": run_state_summary,
             "modules": modules,
             "hidden_features": sorted(
                 feature for feature, state in feature_states.items() if state == "hidden"
@@ -1505,6 +1588,7 @@ def _infer_local_result(path: Path) -> dict[str, Any]:
     result["artifact_contract"] = contract
     result["result_manifest"] = manifest
     result["run_state"] = _run_state_for_result(result, manifest)
+    _attach_run_state_summary(result, manifest)
     result["features"] = contract["features"]
     result["feature_states"] = {
         name: feature.get("state", "hidden")
@@ -3587,6 +3671,7 @@ def _mark_job_cancelled(
         "run_state": (manifest or {}).get("run_state"),
         "result_state": "partial",
     }
+    _attach_run_state_summary(job_result, manifest)
     job["result"] = job_result
     _jobs.persist(job_id)
 
@@ -3732,6 +3817,8 @@ def _run_resume_job(job_id: str, source_job_id: str, command: str, argv: list[st
                 "resume_job_status_path": str(output_dir / "job_status.json"),
             }
         )
+        if isinstance(result.get("run_state"), dict):
+            _attach_run_state_summary(result)
         job["result"] = result
         _write_resume_job_status_artifact(
             job_id=job_id,
@@ -3953,6 +4040,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
                 for name, feature in manifest.get("features", {}).items()
             }
             job_result["result_state"] = contract["result_state"]
+            _attach_run_state_summary(job_result, manifest)
         except Exception as exc:
             job_result["artifact_contract_error"] = str(exc)
         _attach_report_atlas(job_result)

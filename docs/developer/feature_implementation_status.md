@@ -43,7 +43,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 82% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, web/API run-state surface, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | immediate in-flight HTTP interruption and shard-aware operator controls |
+| F04 | Live query and job execution | `[~]` | 83% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | immediate in-flight HTTP interruption and shard-aware operator controls |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
@@ -133,7 +133,7 @@ Review: this is one of the safest near-term app surfaces to expose.
 
 ### F04. Live Query And Job Execution
 
-Status: `[~]` Partial. Rough completeness: 82%.
+Status: `[~]` Partial. Rough completeness: 83%.
 
 - `[x]` Web query submission exists through `/api/query`.
 - `[x]` Job status and job list endpoints exist.
@@ -145,6 +145,9 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` Job/readiness API payloads and the local web result panel expose
   manifest-backed run state, shard counts, recoverable outputs, and resume
   markers.
+- `[x]` Result payloads and job/readiness API payloads include a compact
+  `run_state_summary` for recoverability review: failed shard IDs, partial
+  output kinds, checkpoint kinds, resume state, and progress percentage.
 - `[x]` Recoverable long-run partial outputs and checkpoints are exposed as
   download cards, and resumable cluster-sharded keyword runs provide copyable
   CLI resume commands when input paths are known.

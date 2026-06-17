@@ -311,6 +311,12 @@ command through `/api/jobs/{job_id}/resume`, but only after parsing it without a
 shell and validating that it is the narrow `sciscape keywords
 --keyword-engine cluster_sharded --scoring-shard-resume` resume surface.
 
+Web/API result payloads may add a derived `run_state_summary` object. It is not a
+replacement for `run_state`; it is a compact review surface for failed shard IDs,
+recoverable output kinds, checkpoint kinds, resume state, and progress percent so
+the UI does not have to reinterpret the raw run-state structure differently in
+multiple places.
+
 ## Quality Block
 
 The quality block summarizes validation without replacing detailed QA files.

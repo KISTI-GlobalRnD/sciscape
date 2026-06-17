@@ -469,6 +469,35 @@ body {
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+.run-state-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.52rem;
+}
+.run-state-chip {
+  max-width: 100%;
+  border: 1px solid rgba(197, 207, 224, 0.75);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  padding: 0.2rem 0.35rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-state-chip.warn {
+  border-color: rgba(216, 90, 74, 0.28);
+  background: rgba(216, 90, 74, 0.08);
+  color: var(--coral);
+}
+.run-state-chip.ready {
+  border-color: rgba(43, 168, 156, 0.28);
+  background: rgba(43, 168, 156, 0.08);
+  color: var(--teal-dim);
+}
 .run-state-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3249,6 +3278,64 @@ function resultRunState(result) {
   return null;
 }
 
+function runStateKindCounts(rows) {
+  const counts = {};
+  (Array.isArray(rows) ? rows : []).forEach(row => {
+    if (!row || typeof row !== 'object') return;
+    const key = String(row.kind || row.role || 'artifact');
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
+function summarizeRunState(runState) {
+  runState = runState || {};
+  const progress = runState.progress || {};
+  const shards = runState.shards || {};
+  const failure = runState.failure || {};
+  const resume = runState.resume || {};
+  const partials = Array.isArray(runState.partial_outputs) ? runState.partial_outputs : [];
+  const checkpoints = Array.isArray(runState.checkpoints) ? runState.checkpoints : [];
+  const failedShards = Array.isArray(failure.failed_shards) ? failure.failed_shards : [];
+  const total = Number(progress.total);
+  const current = Number(progress.current);
+  let pct = Number(progress.percent);
+  if (!Number.isFinite(pct) && Number.isFinite(total) && total > 0 && Number.isFinite(current)) {
+    pct = current / total * 100;
+  }
+  const resumeSupported = Boolean(resume.supported);
+  return {
+    schema_version: 'sciscape_run_state_summary_v1',
+    status: String(runState.status || 'unknown'),
+    stage: progress.stage || '',
+    progress_percent: Number.isFinite(pct) ? pct : null,
+    shards_total: Number(shards.total || 0),
+    shards_complete: Number(shards.complete || 0),
+    shards_failed: Number(shards.failed || 0),
+    shards_running: Number(shards.running || 0),
+    failed_shards: failedShards,
+    failed_shard_count: failedShards.length,
+    recoverable_output_count: partials.length,
+    checkpoint_count: checkpoints.length,
+    recoverable_output_kinds: runStateKindCounts(partials),
+    checkpoint_kinds: runStateKindCounts(checkpoints),
+    resume_state: resumeSupported && resume.command ? 'command_available' : resumeSupported ? 'metadata_only' : 'not_supported',
+    resume_supported: resumeSupported,
+    resume_command_kind: resume.command_kind || '',
+    resume_mode: resume.mode || '',
+    resume_artifact_dir: resume.artifact_dir || '',
+    failure_reason: failure.reason || '',
+    has_recoverable_state: Boolean(partials.length || checkpoints.length || resumeSupported),
+  };
+}
+
+function resultRunStateSummary(result) {
+  result = result || {};
+  if (result.run_state_summary && typeof result.run_state_summary === 'object') return result.run_state_summary;
+  const runState = resultRunState(result);
+  return runState ? summarizeRunState(runState) : null;
+}
+
 function runStateClass(status) {
   const value = String(status || '').toLowerCase();
   if (['failed', 'cancelled', 'stopped_by_qc'].includes(value)) return 'blocked';
@@ -3301,6 +3388,44 @@ function runStateResumeLabel(runState) {
   if (resume.command) return 'resume command available';
   if (resume.artifact_dir) return 'resume marker / ' + String(resume.artifact_dir);
   return 'resume marker available';
+}
+
+function runStateKindLabel(counts, limit) {
+  const pairs = Object.entries(counts || {}).filter(([, count]) => Number(count) > 0);
+  if (!pairs.length) return '';
+  pairs.sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+  const max = limit || 3;
+  const shown = pairs.slice(0, max).map(([kind, count]) =>
+    String(kind).replace(/_/g, ' ') + ' ' + runStateCount(count)
+  ).join(', ');
+  return pairs.length > max ? shown + ' +' + String(pairs.length - max) : shown;
+}
+
+function renderRunStateSummary(summary) {
+  if (!summary || !summary.has_recoverable_state) return '';
+  const chips = [];
+  const add = (text, cls) => {
+    if (!text) return;
+    chips.push('<span class="run-state-chip' + (cls ? ' ' + cls : '') + '" title="' + escAttr(text) + '">' + esc(text) + '</span>');
+  };
+  if (Number(summary.failed_shard_count || 0) > 0) {
+    const ids = Array.isArray(summary.failed_shards) ? summary.failed_shards.slice(0, 8).join(', ') : '';
+    const more = Array.isArray(summary.failed_shards) && summary.failed_shards.length > 8
+      ? ' +' + String(summary.failed_shards.length - 8)
+      : '';
+    add('failed shards: ' + runStateCount(summary.failed_shard_count) + (ids ? ' / ' + ids + more : ''), 'warn');
+  }
+  const outputKinds = runStateKindLabel(summary.recoverable_output_kinds, 3);
+  if (outputKinds) add('outputs: ' + outputKinds, 'ready');
+  const checkpointKinds = runStateKindLabel(summary.checkpoint_kinds, 3);
+  if (checkpointKinds) add('checkpoints: ' + checkpointKinds);
+  if (summary.resume_state === 'command_available') {
+    add('resume: in-app command ready', 'ready');
+  } else if (summary.resume_state === 'metadata_only') {
+    add('resume: metadata only');
+  }
+  if (!chips.length) return '';
+  return '<div class="run-state-summary">' + chips.join('') + '</div>';
 }
 
 function retrySupportedStatus(status) {
@@ -3430,6 +3555,7 @@ function renderRunState(result) {
     return;
   }
   const status = String(runState.status || 'unknown');
+  const summary = resultRunStateSummary(result);
   const resume = runState.resume && typeof runState.resume === 'object' ? runState.resume : {};
   currentRunStateResumeCommand = resume.command ? String(resume.command) : '';
   const failure = runState.failure && (runState.failure.reason || runState.failure.error);
@@ -3448,6 +3574,7 @@ function renderRunState(result) {
     : heartbeat
       ? 'Last heartbeat: ' + heartbeat
       : '';
+  const summaryHtml = renderRunStateSummary(summary);
   const actionButtons = [];
   if (currentRunStateResumeCommand) {
     if (currentJobId) {
@@ -3481,6 +3608,7 @@ function renderRunState(result) {
       '<div class="run-state-status">' + esc(status) + '</div>' +
     '</div>' +
     '<div class="run-state-grid">' + cells + '</div>' +
+    summaryHtml +
     (note ? '<div class="run-state-note">' + esc(note) + '</div>' : '') +
     actions;
   el.style.display = 'block';

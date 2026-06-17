@@ -307,9 +307,9 @@ Do not do yet:
    outputs.
 3. Maintain exposure states and manifest-backed feature fields in result-root
    validation.
-4. Extend long-run controls beyond visible recovery metadata and restricted
-   in-app resume: immediate in-flight interruption, shard-aware operator
-   controls, and resumable-job QA summaries.
+4. Extend long-run controls beyond visible recovery metadata, compact
+   recoverability summaries, and restricted in-app resume: immediate in-flight
+   interruption and shard-aware operator controls.
 5. Maintain the P1 smoke fixture that exercises query/local load, network,
    clustering, keywords, atlas, co-occurrence, export manifest, and quality
    gate.
