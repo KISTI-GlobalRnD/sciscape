@@ -17,6 +17,7 @@ from sciscape.artifacts import (
     validate_export_manifest,
     write_cluster_review_packet_artifact,
     write_cooccurrence_artifacts,
+    write_evolution_artifacts,
     write_evolution_synthetic_smoke_artifact,
     write_export_manifest,
     write_narrative_evidence_artifacts,
@@ -455,6 +456,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "/api/jobs/${currentJobId}/evolution" in response.text
     assert "evolution/time_slices.parquet" in response.text
     assert "evolution/cluster_states.parquet" in response.text
+    assert "evolution/state_membership.parquet" in response.text
+    assert "evolutionHasStateMembership" in response.text
+    assert "state_membership_summary" in response.text
+    assert "loaded links" in response.text
     assert "evolution/transitions.parquet" in response.text
     assert "evolution/lineages.parquet" in response.text
     assert "evolution/evolution_qa.json" in response.text
@@ -2039,6 +2044,69 @@ def test_open_local_data_accepts_evolution_manifest_path(monkeypatch, tmp_path):
     assert payload["result"]["features"]["evolution"] is True
     assert payload["result"]["feature_states"]["evolution"] == "stable"
     assert payload["result"]["evolution_summary"]["status"] == "passed"
+
+
+def test_evolution_api_exposes_state_membership_sidecar(monkeypatch, tmp_path):
+    output_dir = tmp_path / "workspace" / "web_output" / "membership_evolution_demo"
+    landscape_dir = output_dir / "landscape"
+    report_dir = landscape_dir / "report"
+    report_dir.mkdir(parents=True)
+    (report_dir / "data.json").write_text("{}", encoding="utf-8")
+    records = pd.DataFrame(
+        {
+            "uid": ["D0", "D1", "D2", "D3"],
+            "title": ["Alpha 2021", "Alpha 2022", "Beta 2021", "Beta 2022"],
+            "abstract": ["alpha topic", "alpha topic", "beta topic", "beta topic"],
+            "pubyear": [2021, 2022, 2021, 2022],
+        }
+    )
+    membership = pd.DataFrame({"uid": ["D0", "D1", "D2", "D3"], "cluster": [0, 0, 1, 1]})
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": [0, 1],
+            "term": ["alpha topic", "beta topic"],
+            "score": [0.9, 0.8],
+        }
+    )
+    records.to_parquet(output_dir / "abstracts.parquet", index=False)
+    membership.to_parquet(landscape_dir / "membership.parquet", index=False)
+    keywords.to_parquet(landscape_dir / "keywords.parquet", index=False)
+    write_evolution_artifacts(
+        output_dir,
+        evolution_id="membership_projection",
+        records_df=records,
+        membership_df=membership,
+        keywords_df=keywords,
+    )
+    monkeypatch.setattr(
+        "sciscape.web.app._LOCAL_DATA_ROOTS",
+        [tmp_path / "workspace" / "web_output"],
+    )
+
+    client = TestClient(app)
+    manifest_path = output_dir / "evolution" / "evolution_manifest.json"
+    response = client.post("/api/local-data/open", json={"path": str(manifest_path)})
+
+    assert response.status_code == 200
+    payload = response.json()
+    job_id = payload["job_id"]
+    assert payload["result"]["evolution_summary"]["counts"]["state_membership_rows"] == 4
+
+    evolution_response = client.get(f"/api/jobs/{job_id}/evolution?state_membership_limit=2")
+    assert evolution_response.status_code == 200
+    evolution = evolution_response.json()
+    assert evolution["available"] is True
+    assert evolution["counts"]["state_membership_rows"] == 4
+    assert len(evolution["state_membership"]) == 2
+    assert evolution["truncated"]["state_membership"] is True
+    assert evolution["state_membership_summary"]["loaded_rows"] == 2
+    assert evolution["state_membership_summary"]["truncated"] is True
+    assert evolution["state_membership_summary"]["by_state"]
+
+    sidecar_download = client.get(f"/api/jobs/{job_id}/download/evolution/state_membership.parquet")
+    assert sidecar_download.status_code == 200
+    assert "state_membership.parquet" in sidecar_download.headers["content-disposition"]
+    assert sidecar_download.content
 
 
 def test_open_local_data_prefers_selected_landscape_variant(monkeypatch, tmp_path):

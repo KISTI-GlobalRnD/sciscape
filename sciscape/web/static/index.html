@@ -6626,6 +6626,9 @@ function updateDownloads(result) {
     addDownload('evolution/evolution_qa.json', 'Evolution QA report', 'QA');
     addDownload('evolution/time_slices.parquet', 'Evolution time slices', 'SLI');
     addDownload('evolution/cluster_states.parquet', 'Evolution cluster states', 'STA');
+    if (evolutionHasStateMembership(result)) {
+      addDownload('evolution/state_membership.parquet', 'Evolution state-document membership', 'MEM');
+    }
     addDownload('evolution/transitions.parquet', 'Evolution transitions', 'TRN');
     addDownload('evolution/lineages.parquet', 'Evolution lineages', 'LIN');
     addDownload('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT');
@@ -6657,6 +6660,15 @@ function updateDownloads(result) {
   if (!grid.innerHTML) {
     grid.innerHTML = '<div class="empty-state">No downloadable artifacts found for this result.</div>';
   }
+}
+
+function evolutionHasStateMembership(result) {
+  result = result || {};
+  const artifacts = result.result_manifest && result.result_manifest.artifacts || {};
+  const record = artifacts.evolution_state_membership || {};
+  if (record.path && record.status !== 'missing' && record.status !== 'blocked') return true;
+  const counts = result.evolution_summary && result.evolution_summary.counts || {};
+  return Number(counts.state_membership_rows || 0) > 0;
 }
 
 /* ── EXPORT ─────────────────────────────────────────────── */
@@ -6769,6 +6781,7 @@ function renderEvolutionSummary(data) {
   const cells = [
     ['slices', counts.slices],
     ['states', counts.states],
+    ['state docs', counts.state_membership_rows],
     ['transitions', counts.transitions],
     ['lineages', counts.lineages],
     ['events', counts.events || counts.event_rows],
@@ -6957,14 +6970,27 @@ function renderEvolutionStates(data) {
     const terms = Array.isArray(state.top_terms) && state.top_terms.length
       ? ' / ' + state.top_terms.slice(0, 3).join(', ')
       : '';
+    const membership = evolutionStateMembershipInfo(data, state.state_id);
+    const membershipText = membership && membership.loaded_count
+      ? ' / loaded links ' + formatAtlasCount(membership.loaded_count) +
+        (membership.uid_samples && membership.uid_samples.length
+          ? ' (' + membership.uid_samples.slice(0, 2).join(', ') + ')'
+          : '')
+      : '';
     return '<div class="evolution-state-row">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' + esc(state.cluster_label || state.cluster_key || state.state_id) + '</div>' +
         '<span class="evolution-mini-tag">' + esc(state.slice_id || '') + '</span>' +
       '</div>' +
-      '<div class="evolution-row-meta">' + formatAtlasCount(state.doc_count) + ' docs' + esc(terms) + '</div>' +
+      '<div class="evolution-row-meta">' + formatAtlasCount(state.doc_count) + ' docs' + esc(terms) + esc(membershipText) + '</div>' +
     '</div>';
   }).join('') + '</div>';
+}
+
+function evolutionStateMembershipInfo(data, stateId) {
+  const summary = data && data.state_membership_summary || {};
+  const byState = summary.by_state || {};
+  return byState[String(stateId || '')] || null;
 }
 
 function renderEvolutionTransitions(data) {

@@ -82,8 +82,8 @@ Current implementation scope:
 - time slices are yearly point slices only (`window_years=1`, `step_years=1`);
 - static membership projection supports `projected_cluster_identity` as the
   transition metric;
-- document-overlap metrics should be added only with slice-local reclustering
-  or another artifact that makes overlap evidence explicit.
+- document-overlap transition derivation is available when slice-local state
+  evidence and complete state-document membership are supplied explicitly.
 - `state_membership.parquet` is optional. It records state-document membership
   when a writer can expose it, and supports downstream document-overlap
   matching or replay without changing the required evolution contract.
@@ -595,6 +595,10 @@ lineage from raw records.
   transition table.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
+- `/api/jobs/{job_id}/evolution` exposes optional `state_membership.parquet`
+  rows with a bounded limit and state-level loaded document-link summaries; the
+  download panel exposes the sidecar only when the result manifest or evolution
+  summary reports that it exists.
 - `sciscape.evolution.build_membership_projection_evolution` builds the
   in-memory slice, state, transition, lineage, and event tables before artifact
   serialization; this keeps analysis logic separate from artifact validation and

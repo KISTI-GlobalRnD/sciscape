@@ -2440,6 +2440,33 @@ def _normalize_evolution_rows(payload: dict[str, Any]) -> None:
         event["target_state_ids"] = _parse_evolution_refs(event.get("target_state_ids"))
 
 
+def _summarize_evolution_state_membership(payload: dict[str, Any]) -> dict[str, Any]:
+    rows = [row for row in payload.get("state_membership", []) if isinstance(row, dict)]
+    by_state: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        state_id = str(row.get("state_id") or "").strip()
+        uid = str(row.get("uid") or "").strip()
+        if not state_id:
+            continue
+        summary = by_state.setdefault(
+            state_id,
+            {
+                "state_id": state_id,
+                "loaded_count": 0,
+                "uid_samples": [],
+            },
+        )
+        summary["loaded_count"] = int(summary.get("loaded_count", 0)) + 1
+        samples = summary.setdefault("uid_samples", [])
+        if uid and len(samples) < 5:
+            samples.append(uid)
+    return {
+        "loaded_rows": len(rows),
+        "truncated": bool((payload.get("truncated") or {}).get("state_membership")),
+        "by_state": by_state,
+    }
+
+
 def _evolution_int(value: Any, default: int = 0) -> int:
     try:
         if value is None:
@@ -2789,6 +2816,7 @@ def _load_evolution_payload(
     transition_limit: int = 180,
     event_limit: int = 180,
     lineage_limit: int = 180,
+    state_membership_limit: int = 2000,
     include_map: bool = True,
     map_node_limit: int = 240,
     map_edge_limit: int = 360,
@@ -2816,6 +2844,7 @@ def _load_evolution_payload(
         "transitions": ("transitions", transition_limit),
         "lineages": ("lineages", lineage_limit),
         "events": ("events", event_limit),
+        "state_membership": ("state_membership", state_membership_limit),
     }
     tables: dict[str, list[dict[str, Any]]] = {}
     truncated: dict[str, bool] = {}
@@ -2856,6 +2885,7 @@ def _load_evolution_payload(
         **tables,
     }
     _normalize_evolution_rows(payload)
+    payload["state_membership_summary"] = _summarize_evolution_state_membership(payload)
     if include_map:
         payload["evolution_map"] = _build_evolution_map_payload(
             payload,
@@ -2873,6 +2903,7 @@ def _attach_evolution_summary(result: dict[str, Any]) -> None:
         transition_limit=0,
         event_limit=0,
         lineage_limit=0,
+        state_membership_limit=0,
         include_map=False,
     )
     if not payload.get("available"):
@@ -3567,6 +3598,7 @@ async def get_evolution_artifact(
     state_limit: int = 120,
     transition_limit: int = 180,
     event_limit: int = 180,
+    state_membership_limit: int = 2000,
     map_node_limit: int = 240,
     map_edge_limit: int = 360,
     map_lineage_limit: int = 80,
@@ -3582,6 +3614,7 @@ async def get_evolution_artifact(
             state_limit=max(0, min(int(state_limit), 500)),
             transition_limit=max(0, min(int(transition_limit), 1000)),
             event_limit=max(0, min(int(event_limit), 1000)),
+            state_membership_limit=max(0, min(int(state_membership_limit), 10000)),
             map_node_limit=max(0, min(int(map_node_limit), 1000)),
             map_edge_limit=max(0, min(int(map_edge_limit), 2000)),
             map_lineage_limit=max(1, min(int(map_lineage_limit), 300)),
