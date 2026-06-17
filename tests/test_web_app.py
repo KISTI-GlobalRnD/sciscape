@@ -489,9 +489,13 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/retry" in response.text
     assert "Retry Query" in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/resume" in response.text
+    assert "jobRunStateUrl" in response.text
+    assert "/run-state" in response.text
     assert "Resume In App" in response.text
+    assert "Resume Failed Shards" in response.text
     assert "sciscape_run_state_summary_v1" in response.text
     assert "renderRunStateSummary" in response.text
+    assert "runStateResumeActionLabel" in response.text
     assert "run-state-chip" in response.text
     assert 'id="btn-cancel"' in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/cancel" in response.text
@@ -1498,6 +1502,29 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert features_payload["run_state_summary"]["has_recoverable_state"] is True
     assert features_payload["run_state_summary"]["failed_shard_count"] == 1
     assert features_payload["run_state_summary"]["resume_command_kind"] == "cli_resume"
+    resume_action = next(row for row in features_payload["operator_actions"] if row["action_id"] == "resume_cli")
+    assert resume_action["enabled"] is True
+    assert resume_action["label"] == "Resume Failed Shards"
+    assert resume_action["failed_shards"] == [2]
+
+    run_state_response = client.get(f"/api/jobs/{job_id}/run-state")
+    assert run_state_response.status_code == 200
+    run_state_payload = run_state_response.json()
+    assert run_state_payload["schema_version"] == "sciscape_job_run_state_v1"
+    assert run_state_payload["recommended_action"] == "resume_cli"
+    assert run_state_payload["run_state_summary"]["resume_state"] == "command_available"
+    assert [row["action_id"] for row in run_state_payload["operator_actions"]] == [
+        "resume_cli",
+        "retry_query",
+        "cancel_job",
+    ]
+    assert run_state_payload["operator_actions"][0]["label"] == "Resume Failed Shards"
+    assert run_state_payload["operator_actions"][0]["enabled"] is True
+    assert run_state_payload["operator_actions"][1]["enabled"] is False
+    assert run_state_payload["recoverable_artifacts"][0]["download_path"] == (
+        "landscape/keyword_cluster_sharded/full_run/candidates/candidate_shard_0000.parquet"
+    )
+    assert {row["family"] for row in run_state_payload["recoverable_artifacts"]} == {"partial", "checkpoint"}
 
     readiness_response = client.get(f"/api/jobs/{job_id}/readiness")
     assert readiness_response.status_code == 200

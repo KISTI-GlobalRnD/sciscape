@@ -3428,6 +3428,31 @@ function renderRunStateSummary(summary) {
   return '<div class="run-state-summary">' + chips.join('') + '</div>';
 }
 
+function runStateResumeActionLabel(summary) {
+  if (summary && Number(summary.shards_failed || summary.failed_shard_count || 0) > 0) {
+    return 'Resume Failed Shards';
+  }
+  return 'Resume In App';
+}
+
+function jobRunStateUrl(jobId) {
+  return '/api/jobs/' + encodeURIComponent(jobId) + '/run-state';
+}
+
+async function refreshRunStatePacket(jobId) {
+  if (!jobId || !currentResult) return;
+  try {
+    const response = await fetch(jobRunStateUrl(jobId));
+    const data = await response.json();
+    if (!response.ok || data.error || data.detail) return;
+    if (data.run_state && typeof data.run_state === 'object') currentResult.run_state = data.run_state;
+    if (data.run_state_summary && typeof data.run_state_summary === 'object') {
+      currentResult.run_state_summary = data.run_state_summary;
+    }
+    renderRunState(currentResult);
+  } catch (_) {}
+}
+
 function retrySupportedStatus(status) {
   return ['error', 'failed', 'cancelled', 'stopped_by_qc'].includes(String(status || '').toLowerCase());
 }
@@ -3579,7 +3604,7 @@ function renderRunState(result) {
   if (currentRunStateResumeCommand) {
     if (currentJobId) {
       actionButtons.push(
-        '<button class="run-state-action" type="button" onclick="resumeCurrentJob()">Resume In App</button>'
+        '<button class="run-state-action" type="button" onclick="resumeCurrentJob()">' + esc(runStateResumeActionLabel(summary)) + '</button>'
       );
     }
     actionButtons.push(
@@ -6321,6 +6346,7 @@ async function loadJob(jobId) {
       addLine('Pipeline complete.', 'ok');
       document.getElementById('term-cursor').style.display = 'none';
       showResults(job.result);
+      refreshRunStatePacket(jobId);
     } else if (job.status === 'error') {
       addLine('Pipeline failed.', 'err');
       document.getElementById('term-cursor').style.display = 'none';
@@ -6328,7 +6354,10 @@ async function loadJob(jobId) {
     } else if (job.status === 'cancelled') {
       addLine('Pipeline cancelled.', 'err');
       document.getElementById('term-cursor').style.display = 'none';
-      if (job.result) showResults(job.result);
+      if (job.result) {
+        showResults(job.result);
+        refreshRunStatePacket(jobId);
+      }
       resetBtn();
     } else if (cancelSupportedStatus(job.status) && jobId === currentJobId) {
       const cancelBtn = document.getElementById('btn-cancel');

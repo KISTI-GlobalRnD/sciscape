@@ -317,6 +317,14 @@ recoverable output kinds, checkpoint kinds, resume state, and progress percent s
 the UI does not have to reinterpret the raw run-state structure differently in
 multiple places.
 
+The web app may also expose `/api/jobs/{job_id}/run-state` as an operational
+packet with schema `sciscape_job_run_state_v1`. That packet is derived from the
+manifest-backed `run_state` plus the live job record; it can include recoverable
+artifact download rows, action availability for resume/retry/cancel operations,
+and a recommended next operator action. It is intentionally not persisted inside
+`result_manifest.json`, because action availability depends on the live job
+store and endpoint-level validation.
+
 ## Quality Block
 
 The quality block summarizes validation without replacing detailed QA files.

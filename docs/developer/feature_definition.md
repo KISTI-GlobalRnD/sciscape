@@ -444,6 +444,9 @@ Success:
   validated internal CLI job when `run_state.resume.command` is present.
 - Failed or partial long runs expose a compact recoverability summary for failed
   shards, checkpoints, partial output kinds, and resume readiness.
+- The job run-state API exposes recoverable artifacts, available resume/retry/
+  cancel actions, and a recommended operator action without requiring users to
+  inspect manifest JSON manually.
 
 Partial:
 
@@ -452,8 +455,8 @@ Partial:
 - user cancellation records `cancelled` state, partial artifacts, and
   checkpoint metadata when available.
 - resume is restricted to known SciScape keyword-shard commands; arbitrary shell
-  commands, query reruns, and shard-level operator controls remain outside this
-  v1 surface.
+  commands, operator-selected shard reruns, and true shard-level scheduling
+  remain outside this v1 surface.
 
 Blocking:
 

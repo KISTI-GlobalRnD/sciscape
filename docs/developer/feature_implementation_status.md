@@ -43,7 +43,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 83% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | immediate in-flight HTTP interruption and shard-aware operator controls |
+| F04 | Live query and job execution | `[~]` | 84% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, dedicated run-state operator packet, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | immediate in-flight HTTP interruption and true shard-level scheduling controls |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
@@ -133,7 +133,7 @@ Review: this is one of the safest near-term app surfaces to expose.
 
 ### F04. Live Query And Job Execution
 
-Status: `[~]` Partial. Rough completeness: 83%.
+Status: `[~]` Partial. Rough completeness: 84%.
 
 - `[x]` Web query submission exists through `/api/query`.
 - `[x]` Job status and job list endpoints exist.
@@ -151,6 +151,9 @@ Status: `[~]` Partial. Rough completeness: 83%.
 - `[x]` Recoverable long-run partial outputs and checkpoints are exposed as
   download cards, and resumable cluster-sharded keyword runs provide copyable
   CLI resume commands when input paths are known.
+- `[x]` `/api/jobs/{job_id}/run-state` exposes a job-level operator packet with
+  raw run state, compact summary, recoverable artifact rows, action availability,
+  and a recommended next action.
 - `[x]` Validated cluster-sharded keyword resume commands can be launched as new
   web jobs through `/api/jobs/{job_id}/resume`; the endpoint parses the command
   without a shell and accepts only the narrow `sciscape keywords
@@ -175,7 +178,7 @@ Status: `[~]` Partial. Rough completeness: 83%.
   explicitly overridden.
 - `[x]` Download/view endpoints expose job outputs.
 - `[ ]` Immediate interruption during a blocking external HTTP call and
-  shard-aware long-run controls are not complete app features.
+  true shard-level scheduling controls are not complete app features.
 
 Review: usable for small to medium live demos, but not enough for unattended
 large-scale jobs without additional run controls.

@@ -374,6 +374,15 @@ async def get_job_features(job_id: str):
     return _job_feature_payload(job_id, job)
 
 
+@app.get("/api/jobs/{job_id}/run-state")
+async def get_job_run_state(job_id: str):
+    """Get run-state, recoverable artifacts, and available operator actions."""
+    job = _jobs.get(job_id)
+    if not job:
+        return {"error": "job not found"}
+    return _job_run_state_payload(job_id, job)
+
+
 @app.get("/api/jobs/{job_id}/readiness")
 async def get_job_readiness(job_id: str):
     """Alias for the job capability map, named for Atlas-style runtime checks."""
@@ -607,6 +616,144 @@ def _attach_run_state_summary(result: dict[str, Any], manifest: dict[str, Any] |
     result["run_state_summary"] = _run_state_summary(_run_state_for_result(result, manifest))
 
 
+def _run_state_recoverable_artifacts(run_state: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(row: Any, family: str) -> None:
+        if not isinstance(row, dict) or not row.get("path"):
+            return
+        path = str(row.get("path") or "")
+        kind = str(row.get("kind") or row.get("role") or "")
+        if not path or path.endswith("/") or kind == "landscape" or path in seen:
+            return
+        seen.add(path)
+        record = {
+            key: value
+            for key, value in row.items()
+            if key in {"path", "kind", "role", "status", "shard_id", "rows", "source_rows", "size_bytes"}
+        }
+        record["family"] = family
+        record["download_path"] = path
+        rows.append(record)
+
+    for row in run_state.get("partial_outputs") if isinstance(run_state.get("partial_outputs"), list) else []:
+        add(row, "partial")
+        if isinstance(row, dict) and row.get("flagged_path"):
+            flagged = dict(row)
+            flagged["path"] = row.get("flagged_path")
+            flagged["kind"] = f"{row.get('kind') or 'output'}_flagged"
+            add(flagged, "partial")
+    for row in run_state.get("checkpoints") if isinstance(run_state.get("checkpoints"), list) else []:
+        add(row, "checkpoint")
+    return rows
+
+
+def _can_retry_job(job: dict[str, Any]) -> tuple[bool, str | None]:
+    try:
+        _job_retry_request(job)
+        return True, None
+    except HTTPException as exc:
+        return False, str(exc.detail)
+
+
+def _can_resume_job(job: dict[str, Any]) -> tuple[bool, str | None]:
+    try:
+        _job_resume_request(job)
+        return True, None
+    except HTTPException as exc:
+        return False, str(exc.detail)
+
+
+def _run_state_operator_actions(
+    *,
+    job_id: str,
+    job: dict[str, Any],
+    run_state: dict[str, Any],
+    summary: dict[str, Any],
+) -> list[dict[str, Any]]:
+    status = str(job.get("status") or "")
+    run_status = str(run_state.get("status") or status)
+    resume = run_state.get("resume") if isinstance(run_state.get("resume"), dict) else {}
+    resume_enabled, resume_reason = _can_resume_job(job)
+    resume_label = (
+        "Resume Failed Shards"
+        if int(summary.get("shards_failed") or summary.get("failed_shard_count") or 0) > 0
+        else "Resume In App"
+    )
+    actions = [
+        {
+            "action_id": "resume_cli",
+            "label": resume_label,
+            "method": "POST",
+            "endpoint": f"/api/jobs/{job_id}/resume",
+            "enabled": resume_enabled,
+            "reason": None if resume_enabled else resume_reason,
+            "scope": "cluster_sharded_keywords",
+            "command_kind": resume.get("command_kind"),
+            "mode": resume.get("mode"),
+            "failed_shards": summary.get("failed_shards") or [],
+        }
+    ]
+
+    retry_enabled, retry_reason = _can_retry_job(job)
+    retry_enabled = retry_enabled and run_status in {"failed", "cancelled", "stopped_by_qc", "error"}
+    actions.append(
+        {
+            "action_id": "retry_query",
+            "label": "Retry Query",
+            "method": "POST",
+            "endpoint": f"/api/jobs/{job_id}/retry",
+            "enabled": retry_enabled,
+            "reason": None if retry_enabled else retry_reason or "run status is not retryable",
+            "scope": "openalex_query",
+        }
+    )
+
+    cancel_enabled = status in {"pending", "running"} and not bool(job.get("cancel_requested_at_utc"))
+    actions.append(
+        {
+            "action_id": "cancel_job",
+            "label": "Cancel Job",
+            "method": "POST",
+            "endpoint": f"/api/jobs/{job_id}/cancel",
+            "enabled": cancel_enabled,
+            "reason": None if cancel_enabled else "job is not cancellable",
+            "scope": "running_job",
+        }
+    )
+    return actions
+
+
+def _job_run_state_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    manifest = _manifest_for_result(result)
+    run_state = _run_state_for_result(result, manifest)
+    summary = _run_state_summary(run_state)
+    actions = _run_state_operator_actions(
+        job_id=job_id,
+        job=job,
+        run_state=run_state,
+        summary=summary,
+    )
+    recommended = next((row["action_id"] for row in actions if row.get("enabled")), None)
+    return _json_safe(
+        {
+            "schema_version": "sciscape_job_run_state_v1",
+            "job_id": job_id,
+            "job_status": job.get("status"),
+            "cancel_requested": bool(job.get("cancel_requested_at_utc")),
+            "cancel_requested_at_utc": job.get("cancel_requested_at_utc"),
+            "available": bool(run_state),
+            "run_state": run_state,
+            "run_state_summary": summary,
+            "recoverable_artifacts": _run_state_recoverable_artifacts(run_state),
+            "operator_actions": actions,
+            "recommended_action": recommended,
+        }
+    )
+
+
 def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     manifest = _manifest_for_result(result)
@@ -687,6 +834,12 @@ def _job_feature_payload(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
             "feature_details": feature_details,
             "run_state": run_state,
             "run_state_summary": run_state_summary,
+            "operator_actions": _run_state_operator_actions(
+                job_id=job_id,
+                job=job,
+                run_state=run_state,
+                summary=run_state_summary,
+            ),
             "modules": modules,
             "hidden_features": sorted(
                 feature for feature, state in feature_states.items() if state == "hidden"
