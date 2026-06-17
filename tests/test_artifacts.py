@@ -951,6 +951,85 @@ def test_export_matrix_artifact_writes_json_summary(tmp_path):
     assert validation["export_kind"] == "matrix_json_summary"
 
 
+def test_export_matrix_artifact_writes_vosviewer_network(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_matrix_from_term_cooccurrence(root)
+
+    written = export_matrix_artifact(
+        root,
+        matrix_id="term_cooccurrence_default",
+        export_format="vosviewer-network",
+    )
+
+    export_dir = root / "exports" / "matrix_term_cooccurrence_default_vosviewer_network"
+    map_path = export_dir / "vosviewer_matrix_map.txt"
+    network_path = export_dir / "vosviewer_matrix_network.txt"
+    assert written["primary_path"] == map_path
+    assert written["map_path"] == map_path
+    assert written["network_path"] == network_path
+    assert map_path.exists()
+    assert network_path.exists()
+
+    map_lines = map_path.read_text(encoding="utf-8").splitlines()
+    assert map_lines[0].split("\t") == [
+        "id",
+        "label",
+        "description",
+        "cluster",
+        "weight<Links>",
+        "weight<Total link strength>",
+        "score<Entity index>",
+    ]
+    assert network_path.read_text(encoding="utf-8").splitlines() == [
+        "1\t4\t1.000000",
+        "2\t3\t1.000000",
+    ]
+
+    validation = validate_export_manifest(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "vosviewer"
+    assert validation["export_kind"] == "matrix_vosviewer_network"
+    assert validation["counts"]["files"] == 2
+    assert validation["counts"]["inputs"] == 5
+
+    export_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "matrix_artifact"
+    assert export_manifest["selection"]["view"]["mode"] == "matrix_vosviewer_network"
+    assert export_manifest["selection"]["thresholds"] == {"min_link_strength": 0}
+    assert export_manifest["selection"]["layer_state"] == {
+        "matrix_id": "term_cooccurrence_default",
+        "matrix_family": "cooccurrence",
+        "matrix_format": "sparse_triplet",
+        "export_format": "vosviewer-network",
+        "row_count": 4,
+        "column_count": 4,
+        "nnz": 2,
+        "map_file": "vosviewer_matrix_map.txt",
+        "network_file": "vosviewer_matrix_network.txt",
+        "term_count": 4,
+        "link_count": 2,
+        "counting_method": "matrix_value_sum",
+    }
+
+    manifest = build_result_manifest(root).to_dict()
+    exports = [
+        export
+        for export in manifest["exports"]
+        if export["export_id"] == "matrix_term_cooccurrence_default_vosviewer_network"
+    ]
+    assert len(exports) == 1
+    assert exports[0]["export_family"] == "vosviewer"
+    assert (
+        exports[0]["path"]
+        == "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt"
+    )
+    assert {row["role"]: row["path"] for row in exports[0]["files"]} == {
+        "map": "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt",
+        "network": "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_network.txt",
+    }
+
+
 def test_write_temporal_artifacts_promotes_stable_temporal_feature(tmp_path):
     root = _write_valid_result_root(tmp_path / "result")
     records = pd.read_parquet(root / "abstracts.parquet")

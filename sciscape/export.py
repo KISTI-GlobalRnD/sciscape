@@ -1365,6 +1365,108 @@ def _matrix_triplet_export_table(
     return table[ordered]
 
 
+def _matrix_entity_label_lookup(rows: Any, columns: Any) -> dict[str, str]:
+    labels: dict[str, str] = {}
+    for table in (rows, columns):
+        if "entity_key" not in table.columns:
+            continue
+        for row in table.to_dict("records"):
+            key = str(row.get("entity_key") or "").strip()
+            if not key:
+                continue
+            label_source = row.get("label") if "label" in table.columns else row.get("term")
+            label = "" if label_source is None else str(label_source).strip()
+            if not label or label.lower() == "nan":
+                label = key
+            labels.setdefault(key, label or key)
+    return labels
+
+
+def _require_vosviewer_matrix_compatibility(matrix_manifest: Mapping[str, Any], rows: Any, columns: Any) -> None:
+    matrix_family = str(matrix_manifest.get("matrix_family") or "")
+    if matrix_family != "cooccurrence":
+        raise ValueError("vosviewer-network matrix export requires matrix_family=cooccurrence")
+    weighting = matrix_manifest.get("weighting") if isinstance(matrix_manifest.get("weighting"), Mapping) else {}
+    if not weighting.get("symmetric"):
+        raise ValueError("vosviewer-network matrix export requires a symmetric matrix")
+    row_type = str(matrix_manifest.get("row_entity_type") or "")
+    column_type = str(matrix_manifest.get("column_entity_type") or "")
+    if row_type != "term" or column_type != "term":
+        raise ValueError("vosviewer-network matrix export currently requires term row/column entities")
+    row_keys = {str(value) for value in rows.get("entity_key", [])}
+    column_keys = {str(value) for value in columns.get("entity_key", [])}
+    if row_keys != column_keys:
+        raise ValueError("vosviewer-network matrix export requires matching row and column entity keys")
+
+
+def _write_vosviewer_matrix_network(
+    *,
+    values: Any,
+    rows: Any,
+    columns: Any,
+    map_path: Path,
+    network_path: Path,
+) -> dict[str, int]:
+    label_by_key = _matrix_entity_label_lookup(rows, columns)
+    positive_links: dict[tuple[str, str], float] = {}
+    for row in values.to_dict("records"):
+        source = str(row.get("row_key") or "").strip()
+        target = str(row.get("column_key") or "").strip()
+        if not source or not target or source == target:
+            continue
+        value = float(row.get("value") or 0.0)
+        if value <= 0:
+            continue
+        left, right = sorted((source, target))
+        positive_links[(left, right)] = positive_links.get((left, right), 0.0) + value
+
+    terms = sorted(
+        {term for pair in positive_links for term in pair},
+        key=lambda term: label_by_key.get(term, term),
+    )
+    term_to_id = {term: index for index, term in enumerate(terms, start=1)}
+    link_counts = {term: 0 for term in terms}
+    link_strength = {term: 0.0 for term in terms}
+    network_rows: list[list[Any]] = []
+    for (source, target), value in sorted(
+        positive_links.items(),
+        key=lambda item: (term_to_id[item[0][0]], term_to_id[item[0][1]]),
+    ):
+        link_counts[source] += 1
+        link_counts[target] += 1
+        link_strength[source] += value
+        link_strength[target] += value
+        network_rows.append([term_to_id[source], term_to_id[target], f"{value:.6f}"])
+
+    map_rows = [
+        [
+            term_to_id[term],
+            label_by_key.get(term, term),
+            term,
+            1,
+            link_counts[term],
+            f"{link_strength[term]:.6f}",
+            term_to_id[term],
+        ]
+        for term in terms
+    ]
+    _write_tab_rows(
+        map_path,
+        map_rows,
+        header=[
+            "id",
+            "label",
+            "description",
+            "cluster",
+            "weight<Links>",
+            "weight<Total link strength>",
+            "score<Entity index>",
+        ],
+    )
+    _write_tab_rows(network_path, network_rows)
+    return {"term_count": len(terms), "link_count": len(network_rows)}
+
+
 def export_matrix_artifact(
     matrix: str | Path,
     output_dir: str | Path | None = None,
@@ -1386,7 +1488,7 @@ def export_matrix_artifact(
     matrix_manifest = json.loads(matrix_manifest_path.read_text(encoding="utf-8"))
     resolved_matrix_id = str(matrix_manifest.get("matrix_id") or matrix_id or matrix_dir.name)
     export_format = export_format.lower().strip()
-    if export_format not in {"csv-triplets", "parquet-triplets", "json-summary"}:
+    if export_format not in {"csv-triplets", "parquet-triplets", "json-summary", "vosviewer-network"}:
         raise ValueError(f"unsupported matrix export format: {export_format}")
 
     export_id = f"matrix_{resolved_matrix_id}_{export_format.replace('-', '_')}"
@@ -1421,7 +1523,7 @@ def export_matrix_artifact(
         triplets.to_parquet(primary_path, index=False)
         primary_format = "parquet"
         export_kind = "matrix_parquet_triplets"
-    else:
+    elif export_format == "json-summary":
         primary_path = export_dir / "matrix_summary.json"
         summary = {
             "schema_version": "sciscape_matrix_export_summary_v1",
@@ -1441,6 +1543,20 @@ def export_matrix_artifact(
         primary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
         primary_format = "json"
         export_kind = "matrix_json_summary"
+    else:
+        _require_vosviewer_matrix_compatibility(matrix_manifest, rows, columns)
+        map_path = export_dir / "vosviewer_matrix_map.txt"
+        network_path = export_dir / "vosviewer_matrix_network.txt"
+        counts = _write_vosviewer_matrix_network(
+            values=values,
+            rows=rows,
+            columns=columns,
+            map_path=map_path,
+            network_path=network_path,
+        )
+        primary_path = map_path
+        primary_format = "txt"
+        export_kind = "matrix_vosviewer_network"
 
     source_artifacts = [
         _source_artifact(
@@ -1482,49 +1598,109 @@ def export_matrix_artifact(
             required=qa_path.exists(),
         )
     )
-    manifest = write_export_manifest(
-        result_root,
-        export_id=export_id,
-        export_family="matrix",
-        export_kind=export_kind,
-        primary_file=primary_path,
-        source_artifacts=source_artifacts,
-        feature_refs=["matrix", "export", "quality"],
-        selection={
-            "scope": "matrix_artifact",
-            "view": {"mode": export_kind, "surface": "matrix_export"},
-            "filters": [],
-            "thresholds": {},
-            "layer_state": {
-                "matrix_id": resolved_matrix_id,
-                "matrix_family": matrix_manifest.get("matrix_family"),
-                "matrix_format": matrix_manifest.get("format"),
-                "export_format": export_format,
-                "row_count": validation.counts.get("rows"),
-                "column_count": validation.counts.get("columns"),
-                "nnz": validation.counts.get("nnz"),
-            },
+    files = None
+    export_family = "matrix"
+    feature_refs = ["matrix", "export", "quality"]
+    compatibility = {
+        "target_tools": ["SciScape", "generic table tools"],
+        "format_version": export_format,
+        "limitations": [
+            "layout coordinates are not included",
+            "matrix semantics are defined by source weighting metadata",
+        ],
+    }
+    transforms = [
+        {"transform_type": "validate_matrix_artifact", "description": "Validate source matrix artifact."},
+        {"transform_type": "load_matrix_triplets", "description": "Load sparse-triplet values and axis metadata."},
+        {
+            "transform_type": f"write_{export_format.replace('-', '_')}",
+            "description": f"Write {export_format} matrix export.",
         },
-        transforms=[
+    ]
+    layer_state = {
+        "matrix_id": resolved_matrix_id,
+        "matrix_family": matrix_manifest.get("matrix_family"),
+        "matrix_format": matrix_manifest.get("format"),
+        "export_format": export_format,
+        "row_count": validation.counts.get("rows"),
+        "column_count": validation.counts.get("columns"),
+        "nnz": validation.counts.get("nnz"),
+    }
+    if export_format == "vosviewer-network":
+        files = [
+            {
+                "file_id": "map",
+                "path": map_path,
+                "role": "map",
+                "format": "txt",
+                "public_share_state": "local",
+            },
+            {
+                "file_id": "network",
+                "path": network_path,
+                "role": "network",
+                "format": "txt",
+                "public_share_state": "local",
+            },
+        ]
+        export_family = "vosviewer"
+        feature_refs = ["matrix", "term_network", "export", "quality"]
+        compatibility = {
+            "target_tools": ["VOSviewer", "VOSviewer Online"],
+            "format_version": "map/network text files",
+            "limitations": [
+                "layout coordinates are not exported",
+                "cluster assignment is not inferred from the matrix; all exported terms use cluster 1",
+                "only symmetric term co-occurrence matrices are supported",
+            ],
+        }
+        transforms = [
             {"transform_type": "validate_matrix_artifact", "description": "Validate source matrix artifact."},
             {"transform_type": "load_matrix_triplets", "description": "Load sparse-triplet values and axis metadata."},
             {
-                "transform_type": f"write_{export_format.replace('-', '_')}",
-                "description": f"Write {export_format} matrix export.",
+                "transform_type": "check_vosviewer_matrix_compatibility",
+                "description": "Require a symmetric term co-occurrence matrix with matching row and column entities.",
             },
-        ],
-        compatibility={
-            "target_tools": ["SciScape", "generic table tools"],
-            "format_version": export_format,
-            "limitations": [
-                "layout coordinates are not included",
-                "matrix semantics are defined by source weighting metadata",
-            ],
+            {
+                "transform_type": "write_matrix_vosviewer_network",
+                "description": "Write VOSviewer-compatible map and network files from matrix triplets.",
+            },
+        ]
+        layer_state.update(
+            {
+                "map_file": map_path.name,
+                "network_file": network_path.name,
+                "term_count": counts["term_count"],
+                "link_count": counts["link_count"],
+                "counting_method": "matrix_value_sum",
+            }
+        )
+    manifest = write_export_manifest(
+        result_root,
+        export_id=export_id,
+        export_family=export_family,
+        export_kind=export_kind,
+        primary_file=primary_path,
+        source_artifacts=source_artifacts,
+        feature_refs=feature_refs,
+        files=files,
+        selection={
+            "scope": "matrix_artifact",
+            "view": {"mode": export_kind, "surface": "matrix_export"},
+            "filters": [
+                {"field": "matrix_value", "op": "gt", "value": 0}
+            ]
+            if export_format == "vosviewer-network"
+            else [],
+            "thresholds": {"min_link_strength": 0} if export_format == "vosviewer-network" else {},
+            "layer_state": layer_state,
         },
+        transforms=transforms,
+        compatibility=compatibility,
         title=f"Matrix export: {resolved_matrix_id}",
         format=primary_format,
     )
-    return {
+    result = {
         "primary_path": primary_path,
         "manifest_path": Path(manifest["manifest_path"]),
         "files_path": Path(manifest["files_path"]),
@@ -1532,6 +1708,10 @@ def export_matrix_artifact(
         "transforms_path": Path(manifest["transforms_path"]),
         "qa_path": Path(manifest["qa_path"]),
     }
+    if export_format == "vosviewer-network":
+        result["map_path"] = map_path
+        result["network_path"] = network_path
+    return result
 
 
 __all__ = [

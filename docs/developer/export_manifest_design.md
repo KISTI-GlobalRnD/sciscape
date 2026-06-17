@@ -359,6 +359,9 @@ Minimum checks:
 - package exports include artifact inventory and checksums when available;
 - VOSviewer-style exports record counting method, field mapping, and
   compatibility limitations.
+- VOSviewer-style matrix network exports require a compatible symmetric term
+  co-occurrence matrix and record the matrix ID, map/network files, counting
+  method, and compatibility limitations.
 
 ## Validation States
 
@@ -445,9 +448,10 @@ Rules:
   mappings, and compatibility limitations into a manifest-backed export.
 - Do not mark matrix exports as stable until their required file formats and
   field mappings are validated against the declared target workflow.
-  Term co-occurrence VOSviewer-style exports can be stable when the source
-  co-occurrence artifact, map/network files, and export manifest validation
-  pass. Keyword-rule thesaurus/rule-set export can be stable when its source
+  Term co-occurrence VOSviewer-style exports and compatible term matrix
+  network exports can be stable when the source artifact, map/network files,
+  and export manifest validation pass. Keyword-rule thesaurus/rule-set export
+  can be stable when its source
   rule artifact and export manifest validation pass.
 - VOSviewer compatibility limitations should be explicit, not implied by file
   names.

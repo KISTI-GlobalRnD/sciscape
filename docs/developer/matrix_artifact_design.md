@@ -340,12 +340,15 @@ normalization and threshold metadata.
 Implementation note:
 
 - CLI `sciscape matrix export <result_or_matrix>` supports
-  `csv-triplets`, `parquet-triplets`, and `json-summary`.
+  `csv-triplets`, `parquet-triplets`, `json-summary`, and
+  `vosviewer-network`.
 - Matrix exports are manifest-backed under `exports/<export_id>/`, retain
   row/column entity labels in triplet table exports, and record matrix manifest,
   values, row entities, column entities, and QA as source artifacts.
-- `vosviewer_network` remains future work because it requires target-specific
-  field mapping and compatibility checks.
+- `vosviewer-network` is currently limited to compatible symmetric term
+  co-occurrence matrices. It writes VOSviewer-style map/network files and
+  records the matrix compatibility checks, field mapping, counting method, and
+  limitations in the export manifest.
 
 ## Implementation Order
 
@@ -370,8 +373,8 @@ Initial implementation note:
   `matrix_values.parquet`, row/column entity tables, and `matrix_qa.json`; the
   web Download tab renders these matrix artifact files.
 - `sciscape matrix export <result_or_matrix>` writes manifest-backed
-  CSV-triplet, Parquet-triplet, or JSON-summary exports from a validated matrix
-  artifact.
+  CSV-triplet, Parquet-triplet, JSON-summary, or VOSviewer-network exports from
+  a validated matrix artifact.
 - The current writer supports sparse-triplet Parquet values, row/column entity
   tables, `matrix_manifest.json`, and `matrix_qa.json`.
 - Validation checks required columns, entity refs, finite numeric values,
@@ -380,8 +383,9 @@ Initial implementation note:
   that manifest-backed artifact for stable general `matrix` exposure. Existing
   P1.5 term co-occurrence artifacts remain separate and continue to expose the
   narrower `cooccurrence` feature.
-- Matrix Builder UI, richer matrix commands/exports, and partitioned
-  large-matrix output remain future work.
+- Matrix Builder UI, richer matrix commands/exports beyond compatible
+  VOSviewer network output, and partitioned large-matrix output remain future
+  work.
 
 ## Acceptance Criteria
 

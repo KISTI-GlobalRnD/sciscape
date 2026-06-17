@@ -320,9 +320,9 @@ Do not do yet:
 8. Implement the Atlas evidence inspector contract from
    `atlas_evidence_inspector_design.md`, consuming only validated payload fields
    and exposure states.
-9. Expand Matrix Builder interaction and target-specific matrix exports beyond
-   the current CLI wrapper, web downloads, and generic CSV/Parquet/summary
-   exports.
+9. Expand Matrix Builder interaction and additional target-specific matrix
+   exports beyond the current CLI wrapper, web downloads, generic
+   CSV/Parquet/summary exports, and compatible VOSviewer network output.
 10. Maintain the temporal trend artifact schema in
     `temporal_artifact_design.md`.
 11. Maintain the cluster evolution artifact schema and synthetic smoke example

@@ -540,17 +540,17 @@ class TestMatrixArgs:
             "--matrix-id",
             "term_matrix",
             "--format",
-            "parquet-triplets",
+            "vosviewer-network",
             "-o",
-            "result/exports/term_matrix_parquet",
+            "result/exports/term_matrix_vosviewer",
             "--json",
         ])
         assert args.command == "matrix"
         assert args.matrix_command == "export"
         assert args.matrix == Path("result")
         assert args.matrix_id == "term_matrix"
-        assert args.export_format == "parquet-triplets"
-        assert args.output_dir == Path("result/exports/term_matrix_parquet")
+        assert args.export_format == "vosviewer-network"
+        assert args.output_dir == Path("result/exports/term_matrix_vosviewer")
         assert args.json is True
 
     def test_run_matrix_wraps_term_cooccurrence(self, parser, tmp_path, capsys):
@@ -601,6 +601,34 @@ class TestMatrixArgs:
         validation = validate_export_manifest(manifest_path).to_dict()
         assert validation["status"] == "passed"
         assert validation["export_kind"] == "matrix_json_summary"
+
+    def test_run_matrix_export_writes_vosviewer_network(self, parser, tmp_path, capsys):
+        root = _write_cli_matrix_result_root(tmp_path / "result")
+        _run_matrix(parser.parse_args(["matrix", "wrap-term-cooccurrence", str(root)]))
+        capsys.readouterr()
+        args = parser.parse_args(["matrix", "export", str(root), "--format", "vosviewer-network"])
+
+        _run_matrix(args)
+
+        out = capsys.readouterr().out
+        assert "Matrix export saved" in out
+        manifest_path = (
+            root
+            / "exports"
+            / "matrix_term_cooccurrence_default_vosviewer_network"
+            / "export_manifest.json"
+        )
+        validation = validate_export_manifest(manifest_path).to_dict()
+        assert validation["status"] == "passed"
+        assert validation["export_family"] == "vosviewer"
+        assert validation["export_kind"] == "matrix_vosviewer_network"
+        network_path = (
+            root
+            / "exports"
+            / "matrix_term_cooccurrence_default_vosviewer_network"
+            / "vosviewer_matrix_network.txt"
+        )
+        assert network_path.exists()
 
 
 # ---------------------------------------------------------------------------

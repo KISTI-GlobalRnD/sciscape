@@ -374,7 +374,7 @@ def _build_parser() -> argparse.ArgumentParser:
     mex.add_argument(
         "--format",
         dest="export_format",
-        choices=["csv-triplets", "parquet-triplets", "json-summary"],
+        choices=["csv-triplets", "parquet-triplets", "json-summary", "vosviewer-network"],
         default="csv-triplets",
         help="Matrix export format (default: csv-triplets)",
     )
