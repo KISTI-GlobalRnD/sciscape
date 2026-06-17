@@ -20,6 +20,7 @@ from sciscape.artifacts import (
     EXPORT_TRANSFORMS_SCHEMA_VERSION,
     KEYWORD_RULE_MANIFEST_SCHEMA_VERSION,
     KEYWORD_RULE_QA_SCHEMA_VERSION,
+    MATRIX_ENTITIES_SCHEMA_VERSION,
     MATRIX_MANIFEST_SCHEMA_VERSION,
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
@@ -809,6 +810,14 @@ def test_write_matrix_artifact_promotes_stable_matrix_feature(tmp_path):
     assert manifest["features"]["matrix"]["state"] == "stable"
     assert "matrix" in manifest["features"]["matrix"]["artifact_refs"]
     assert manifest["artifacts"]["matrix"]["schema_version"] == MATRIX_MANIFEST_SCHEMA_VERSION
+    assert manifest["artifacts"]["matrix_values"]["path"] == "matrices/term_matrix/matrix_values.parquet"
+    assert manifest["artifacts"]["matrix_values"]["schema_version"] == MATRIX_VALUES_SCHEMA_VERSION
+    assert manifest["artifacts"]["matrix_rows"]["path"] == "matrices/term_matrix/row_entities.parquet"
+    assert manifest["artifacts"]["matrix_rows"]["schema_version"] == MATRIX_ENTITIES_SCHEMA_VERSION
+    assert manifest["artifacts"]["matrix_columns"]["path"] == "matrices/term_matrix/column_entities.parquet"
+    assert manifest["artifacts"]["matrix_columns"]["schema_version"] == MATRIX_ENTITIES_SCHEMA_VERSION
+    assert manifest["artifacts"]["matrix_qa"]["path"] == "matrices/term_matrix/matrix_qa.json"
+    assert manifest["artifacts"]["matrix_qa"]["schema_version"] == MATRIX_QA_SCHEMA_VERSION
 
 
 def test_validate_matrix_artifact_blocks_missing_entity_refs(tmp_path):
@@ -885,6 +894,7 @@ def test_write_matrix_from_term_cooccurrence_wraps_existing_sidecar(tmp_path):
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["cooccurrence"]["state"] == "stable"
     assert manifest["features"]["matrix"]["state"] == "stable"
+    assert manifest["artifacts"]["matrix_values"]["path"] == "matrices/term_cooccurrence_default/matrix_values.parquet"
 
 
 def test_write_temporal_artifacts_promotes_stable_temporal_feature(tmp_path):

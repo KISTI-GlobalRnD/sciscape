@@ -361,6 +361,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "manifestExportCards" in response.text
     assert "manifestExportRow" in response.text
     assert "manifestExportSelectionMeta" in response.text
+    assert "manifestMatrixArtifactCards" in response.text
+    assert "matrixArtifactLabel" in response.text
+    assert "matrix_values" in response.text
+    assert "Matrix sparse triplets" in response.text
     assert "cooccurrenceExportConfig" in response.text
     assert "term_cooccurrence_table" in response.text
     assert "cooccurrenceExport" in response.text

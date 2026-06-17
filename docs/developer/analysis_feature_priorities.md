@@ -320,9 +320,8 @@ Do not do yet:
 8. Implement the Atlas evidence inspector contract from
    `atlas_evidence_inspector_design.md`, consuming only validated payload fields
    and exposure states.
-9. Expand user-facing matrix-builder commands and exports beyond the current
-   `matrix wrap-term-cooccurrence` adapter on top of the general matrix artifact
-   writer/validator from `matrix_artifact_design.md`.
+9. Expand matrix-builder interaction and export formats beyond the current
+   `matrix wrap-term-cooccurrence` adapter and manifest-backed web downloads.
 10. Maintain the temporal trend artifact schema in
     `temporal_artifact_design.md`.
 11. Maintain the cluster evolution artifact schema and synthetic smoke example

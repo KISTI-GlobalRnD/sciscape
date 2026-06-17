@@ -10464,6 +10464,62 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             schema_version=MATRIX_MANIFEST_SCHEMA_VERSION,
             description="General sparse-triplet matrix artifact manifest.",
         )
+        matrix_dir = Path(str(rel_path)).parent
+        manifest_path = root / rel_path
+        outputs: Mapping[str, Any] = {}
+        if manifest_path.exists():
+            try:
+                matrix_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if isinstance(matrix_manifest.get("outputs"), Mapping):
+                    outputs = matrix_manifest["outputs"]
+            except Exception:
+                outputs = {}
+        companion_specs = [
+            (
+                "values",
+                "matrix_values",
+                "matrix_values.parquet",
+                MATRIX_VALUES_SCHEMA_VERSION,
+                "Matrix sparse-triplet values.",
+            ),
+            (
+                "rows",
+                "matrix_rows",
+                "row_entities.parquet",
+                MATRIX_ENTITIES_SCHEMA_VERSION,
+                "Matrix row entity metadata.",
+            ),
+            (
+                "columns",
+                "matrix_columns",
+                "column_entities.parquet",
+                MATRIX_ENTITIES_SCHEMA_VERSION,
+                "Matrix column entity metadata.",
+            ),
+            (
+                "qa",
+                "qa",
+                "matrix_qa.json",
+                MATRIX_QA_SCHEMA_VERSION,
+                "Matrix artifact QA report.",
+            ),
+        ]
+        for output_key, role, default_name, schema_version, description in companion_specs:
+            rel_output = Path(str(outputs.get(output_key) or default_name))
+            rel_output_path = rel_output if rel_output.is_absolute() else matrix_dir / rel_output
+            output_key_name = f"{key}_{output_key}"
+            output_suffix = 2
+            while output_key_name in records:
+                output_key_name = f"{key}_{output_key}_{output_suffix}"
+                output_suffix += 1
+            records[output_key_name] = _artifact_record(
+                root=root,
+                role=role,
+                path=rel_output_path.as_posix(),
+                required_for=["matrix"] if role != "qa" else ["matrix", "quality"],
+                schema_version=schema_version,
+                description=description,
+            )
 
     for i, rel_path in enumerate(artifact_info.get("keyword_rule_manifest_artifacts", []), start=1):
         key = "keyword_rules" if i == 1 else f"keyword_rules_{i}"

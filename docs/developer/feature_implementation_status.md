@@ -45,7 +45,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
 | F04 | Live query and job execution | `[~]` | 90% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, dedicated run-state operator packet, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, failed-shard-only and user-selected keyword-shard rerun, bounded resume worker/backend overrides, query retry, checkpointed cooperative query cancellation, interruptible OpenAlex request polling, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | transport-level HTTP cancellation guarantee and full queue pause/prioritization controls |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
-| F06 | Matrix builder | `[~]` | 48% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper, CLI wrapper command | matrix-builder app mode, richer matrix commands, and exports |
+| F06 | Matrix builder | `[~]` | 50% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper, CLI wrapper command, manifest-backed matrix file downloads | matrix-builder app mode, richer matrix commands, and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 85% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
@@ -53,7 +53,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F11 | Temporal and evolution | `[~]` | 70% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens, lineage-time map payload/UI | richer time-slice matching and interaction polish |
 | F12 | Evidence-backed narratives | `[~]` | 56% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback | stable generator and reviewed publication surface |
 | F13 | Validation and QA | `[x]` | 86% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
-| F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, CLI matrix artifact wrapper, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | broader matrix-builder export formats |
+| F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, CLI matrix artifact wrapper, matrix artifact file downloads, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | broader matrix-builder export formats |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
 ## Code Surface Inventory
@@ -217,7 +217,7 @@ network families are still future work.
 
 ### F06. Matrix Builder
 
-Status: `[~]` Partial. Rough completeness: 48%.
+Status: `[~]` Partial. Rough completeness: 50%.
 
 - `[x]` Sparse matrix internals are used by BC/CC and keyword extraction.
 - `[x]` Co-occurrence table construction exists for keyword terms.
@@ -229,6 +229,8 @@ Status: `[~]` Partial. Rough completeness: 48%.
   from co-occurrence-only term-network evidence.
 - `[x]` CLI `matrix wrap-term-cooccurrence` can materialize
   `matrices/term_cooccurrence_default/` from a result root.
+- `[x]` `result_manifest.artifacts` exposes matrix values, row entities, column
+  entities, and QA files; the web Download tab renders those matrix files.
 - `[ ]` There is no interactive matrix-builder app mode or richer export flow.
 - `[ ]` Matrix thresholding, projection choices, and compare-across-cleaning-rule
   metadata are not yet exposed as replayable user workflows.
@@ -540,8 +542,9 @@ Status: `[~]` Partial. Rough completeness: 99%.
 - `[x]` VOSviewer-style term co-occurrence export writes term map/network files,
   records a manifest-backed export artifact, and is included in VOSviewer web
   bundles.
-- `[~]` A minimal CLI matrix artifact adapter exists for term co-occurrence, but
-  richer matrix-builder export modes remain future work.
+- `[~]` A minimal CLI matrix artifact adapter and manifest-backed web downloads
+  exist for term co-occurrence matrices, but richer matrix-builder export modes
+  remain future work.
 
 Review: good enough for graph/report exports, and the manifest contract plus
 writer/validator plus first command adapters now exist, but interoperability

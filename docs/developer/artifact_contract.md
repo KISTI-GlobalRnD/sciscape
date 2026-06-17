@@ -81,6 +81,7 @@ writers should emit `result_manifest.json`.
 | `matrices/<matrix_id>/matrix_manifest.json` | `schema_version`, `matrix_id`, `matrix_family`, `format`, `shape`, `value`, `weighting`, `outputs` | General matrix artifact contract defined in `matrix_artifact_design.md`. |
 | `matrices/<matrix_id>/matrix_values.parquet` | `schema_version`, `matrix_id`, `row_key`, `column_key`, `row_index`, `column_index`, `value`, `relation` | Sparse triplet matrix values. |
 | `matrices/<matrix_id>/row_entities.parquet` and `column_entities.parquet` | `schema_version`, `matrix_id`, `entity_key`, `entity_index`, `entity_type`, `label` | Axis metadata for matrix rows and columns. |
+| `matrices/<matrix_id>/matrix_qa.json` | `schema_version`, `matrix_id`, `status`, `counts`, `checks`, `warnings`, `blocking_issues` | Matrix artifact validation report exposed for Download-tab review. |
 | `temporal/temporal_manifest.json` | `schema_version`, `temporal_id`, `periodization`, `entity_types`, `metrics`, `outputs` | Temporal trend artifact contract defined in `temporal_artifact_design.md`. |
 | `temporal/periods.parquet` | `schema_version`, `temporal_id`, `period_id`, `period_index`, `start_year`, `end_year`, `unit` | Period axis for temporal rows. |
 | `temporal/activity.parquet` | `schema_version`, `temporal_id`, `period_id`, `doc_count`, `unknown_year_count` | Result-level activity per period. |

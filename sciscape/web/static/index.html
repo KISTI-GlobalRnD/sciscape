@@ -6207,6 +6207,67 @@ function manifestExportCards(result, jobId, seenPaths) {
   return cards.join('');
 }
 
+function matrixArtifactIcon(role) {
+  const value = String(role || '').toLowerCase();
+  if (value === 'matrix') return 'MAT';
+  if (value === 'matrix_values') return 'VAL';
+  if (value === 'matrix_rows') return 'ROW';
+  if (value === 'matrix_columns') return 'COL';
+  if (value === 'qa') return 'QA';
+  return 'MTX';
+}
+
+function matrixArtifactLabel(record) {
+  const role = String(record && record.role || '').toLowerCase();
+  if (role === 'matrix') return 'Matrix artifact manifest';
+  if (role === 'matrix_values') return 'Matrix sparse triplets';
+  if (role === 'matrix_rows') return 'Matrix row entities';
+  if (role === 'matrix_columns') return 'Matrix column entities';
+  if (role === 'qa') return 'Matrix QA report';
+  return 'Matrix artifact file';
+}
+
+function matrixArtifactMeta(key, record) {
+  const meta = [];
+  const schema = record && record.schema_version;
+  if (schema) meta.push('schema: ' + String(schema).replace(/^sciscape_/, ''));
+  const rows = Number(record && record.rows);
+  if (Number.isFinite(rows) && rows > 0) meta.push('rows: ' + formatAtlasCount(rows));
+  if (key) meta.push('artifact: ' + String(key).replace(/_/g, ' '));
+  return meta;
+}
+
+function manifestMatrixArtifactCards(result, jobId, seenPaths) {
+  const manifest = result && result.result_manifest || {};
+  const artifacts = manifest.artifacts && typeof manifest.artifacts === 'object' ? manifest.artifacts : {};
+  const cards = [];
+  const seen = seenPaths || new Set();
+  for (const entry of Object.entries(artifacts)) {
+    const key = entry[0];
+    const record = entry[1] || {};
+    if (!record || record.status === 'missing' || record.status === 'blocked') continue;
+    const path = record.path;
+    if (!path || seen.has(path)) continue;
+    const role = String(record.role || '').toLowerCase();
+    const inMatrixTree = String(path).includes('matrices/');
+    const isMatrixArtifact = role === 'matrix'
+      || role === 'matrix_values'
+      || role === 'matrix_rows'
+      || role === 'matrix_columns'
+      || (role === 'qa' && String(key).startsWith('matrix_') && inMatrixTree);
+    if (!isMatrixArtifact || !inMatrixTree) continue;
+    seen.add(path);
+    cards.push(dlCard(
+      path,
+      matrixArtifactLabel(record),
+      matrixArtifactIcon(role),
+      jobId,
+      matrixArtifactMeta(key, record)
+    ));
+  }
+  return cards.join('');
+}
+
 function runStateRecoverableRows(result) {
   const runState = resultRunState(result || {});
   if (!runState) return [];
@@ -6569,6 +6630,7 @@ function updateDownloads(result) {
     addDownload('evolution/lineages.parquet', 'Evolution lineages', 'LIN');
     addDownload('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT');
   }
+  grid.innerHTML += manifestMatrixArtifactCards(result || {}, currentJobId, seenDownloads);
   const manifest = result && result.result_manifest || {};
   const exportRows = Array.isArray(manifest.exports) ? manifest.exports : [];
   const bundleExport = manifestExportRow(exportRows, 'vosviewer_bundle');

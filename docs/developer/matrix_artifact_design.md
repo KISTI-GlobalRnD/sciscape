@@ -356,6 +356,9 @@ Initial implementation note:
 - CLI `sciscape matrix wrap-term-cooccurrence <result_root>` materializes the
   term co-occurrence wrapper under `matrices/term_cooccurrence_default/` by
   default.
+- `result_manifest.artifacts` exposes the matrix manifest plus
+  `matrix_values.parquet`, row/column entity tables, and `matrix_qa.json`; the
+  web Download tab renders these matrix artifact files.
 - The current writer supports sparse-triplet Parquet values, row/column entity
   tables, `matrix_manifest.json`, and `matrix_qa.json`.
 - Validation checks required columns, entity refs, finite numeric values,
