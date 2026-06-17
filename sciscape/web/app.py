@@ -87,6 +87,8 @@ class QueryRequest(BaseModel):
     auto_gamma: bool = True
     auto_gamma_target: float = 3.0
     n_levels: int = 4
+    api_attempt_budget: int | None = None
+    retry_wait_budget_seconds: float | None = None
 
 
 class JobStatus(BaseModel):
@@ -3305,6 +3307,12 @@ def _query_filters(req: QueryRequest) -> dict[str, Any]:
     return filters
 
 
+def _default_openalex_api_attempt_budget(req: QueryRequest) -> int:
+    page_budget = max(1, math.ceil(max(0, int(req.max_works)) / 200))
+    retry_multiplier = 4
+    return max(8, page_budget * retry_multiplier + 4)
+
+
 def _rel_output_path(path: Path, output_dir: Path) -> str:
     try:
         return path.relative_to(output_dir).as_posix()
@@ -3556,6 +3564,12 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             progress=progress_cb,
             checkpoint=cancel_checkpoint,
             api_telemetry=api_telemetry_cb,
+            api_attempt_budget=(
+                req.api_attempt_budget
+                if req.api_attempt_budget is not None
+                else _default_openalex_api_attempt_budget(req)
+            ),
+            retry_wait_budget_seconds=req.retry_wait_budget_seconds,
         )
         result = run_openalex_pipeline(config)
         if _job_cancel_requested(job):

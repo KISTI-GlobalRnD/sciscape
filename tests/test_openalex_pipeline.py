@@ -67,6 +67,8 @@ def test_openalex_pipeline_passes_retry_config_to_client(monkeypatch, tmp_path):
         max_retries=5,
         backoff_base=0.25,
         backoff_max=4,
+        api_attempt_budget=11,
+        retry_wait_budget_seconds=6,
         api_telemetry=api_snapshots.append,
     )
 
@@ -79,3 +81,5 @@ def test_openalex_pipeline_passes_retry_config_to_client(monkeypatch, tmp_path):
     assert captured_kwargs["max_retries"] == 5
     assert captured_kwargs["backoff_base"] == 0.25
     assert captured_kwargs["backoff_max"] == 4
+    assert captured_kwargs["api_attempt_budget"] == 11
+    assert captured_kwargs["retry_wait_budget_seconds"] == 6

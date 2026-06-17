@@ -743,6 +743,111 @@ def test_run_job_honors_cancel_request_at_pipeline_checkpoint(monkeypatch, tmp_p
     assert status_payload["run_state"]["cancellation"]["reason"] == "Cancellation requested"
 
 
+def test_run_job_passes_openalex_budget_controls(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    captured = {}
+
+    def fake_openalex_pipeline(config):
+        captured["api_attempt_budget"] = config.api_attempt_budget
+        captured["retry_wait_budget_seconds"] = config.retry_wait_budget_seconds
+        return SimpleNamespace(
+            n_works=0,
+            n_edges={},
+            abstracts_path=None,
+            edges_path=None,
+            landscape_dir=None,
+            api_telemetry=None,
+        )
+
+    monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_openalex_pipeline)
+
+    req = web_app.QueryRequest(
+        query="graph neural networks",
+        max_works=450,
+        run_landscape=False,
+        retry_wait_budget_seconds=12,
+    )
+    job_id = "budgetjob"
+    web_app._jobs.create(job_id, req.model_dump())
+
+    web_app._run_job(job_id, req)
+
+    assert captured["api_attempt_budget"] == 16
+    assert captured["retry_wait_budget_seconds"] == 12
+
+
+def test_run_job_uses_explicit_openalex_attempt_budget(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    captured = {}
+
+    def fake_openalex_pipeline(config):
+        captured["api_attempt_budget"] = config.api_attempt_budget
+        return SimpleNamespace(
+            n_works=0,
+            n_edges={},
+            abstracts_path=None,
+            edges_path=None,
+            landscape_dir=None,
+            api_telemetry=None,
+        )
+
+    monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_openalex_pipeline)
+
+    req = web_app.QueryRequest(
+        query="graph neural networks",
+        max_works=450,
+        run_landscape=False,
+        api_attempt_budget=9,
+    )
+    job_id = "explicitbudgetjob"
+    web_app._jobs.create(job_id, req.model_dump())
+
+    web_app._run_job(job_id, req)
+
+    assert captured["api_attempt_budget"] == 9
+
+
+def test_run_job_preserves_openalex_budget_abort_telemetry_on_error(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    def fake_openalex_pipeline(config):
+        config.api_telemetry(
+            {
+                "source": "openalex",
+                "attempts_total": 1,
+                "api_attempt_budget": 1,
+                "quota_budget_exceeded": True,
+                "quota_abort_reason": "OpenAlex API attempt budget exceeded: 1/1",
+            }
+        )
+        raise RuntimeError("OpenAlex API attempt budget exceeded: 1/1")
+
+    monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_openalex_pipeline)
+
+    req = web_app.QueryRequest(
+        query="graph neural networks",
+        max_works=450,
+        run_landscape=False,
+        api_attempt_budget=1,
+    )
+    job_id = "budgetabortjob"
+    web_app._jobs.create(job_id, req.model_dump())
+
+    web_app._run_job(job_id, req)
+
+    output_dir = tmp_path / "workspace" / "web_output" / job_id
+    status_payload = json.loads((output_dir / "job_status.json").read_text(encoding="utf-8"))
+    manifest_payload = json.loads((output_dir / "result_manifest.json").read_text(encoding="utf-8"))
+    job = web_app._jobs[job_id]
+
+    assert job["status"] == "error"
+    assert job["result"]["error"] == "OpenAlex API attempt budget exceeded: 1/1"
+    assert status_payload["run_state"]["api_telemetry"]["quota_budget_exceeded"] is True
+    assert "attempt budget exceeded" in status_payload["run_state"]["api_telemetry"]["quota_abort_reason"]
+    assert manifest_payload["run_state"]["api_telemetry"]["api_attempt_budget"] == 1
+    assert manifest_payload["source"]["api_telemetry"]["quota_budget_exceeded"] is True
+
+
 def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     original_write_result_manifest = web_app.write_result_manifest

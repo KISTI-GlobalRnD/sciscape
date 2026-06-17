@@ -67,6 +67,8 @@ class TestQueryArgs:
         assert args.max_retries == 3
         assert args.backoff_base == 1.0
         assert args.backoff_max == 30.0
+        assert args.api_attempt_budget is None
+        assert args.retry_wait_budget_seconds is None
 
     def test_openalex_retry_explicit(self, parser):
         args = parser.parse_args([
@@ -76,11 +78,15 @@ class TestQueryArgs:
             "--max-retries", "5",
             "--backoff-base", "0.25",
             "--backoff-max", "8",
+            "--api-attempt-budget", "11",
+            "--retry-wait-budget-seconds", "6",
         ])
         assert args.request_timeout == 12.0
         assert args.max_retries == 5
         assert args.backoff_base == 0.25
         assert args.backoff_max == 8.0
+        assert args.api_attempt_budget == 11
+        assert args.retry_wait_budget_seconds == 6.0
 
     def test_run_query_passes_retry_config(self, parser, monkeypatch, tmp_path, capsys):
         captured = {}
@@ -104,6 +110,8 @@ class TestQueryArgs:
             "--max-retries", "5",
             "--backoff-base", "0.25",
             "--backoff-max", "8",
+            "--api-attempt-budget", "11",
+            "--retry-wait-budget-seconds", "6",
             "-o", str(tmp_path / "out"),
         ])
 
@@ -114,6 +122,8 @@ class TestQueryArgs:
         assert config.max_retries == 5
         assert config.backoff_base == 0.25
         assert config.backoff_max == 8.0
+        assert config.api_attempt_budget == 11
+        assert config.retry_wait_budget_seconds == 6.0
         assert "Done: 0 works" in capsys.readouterr().out
 
 

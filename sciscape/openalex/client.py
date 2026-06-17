@@ -35,6 +35,10 @@ BACKOFF_MAX = 30.0
 RETRY_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 
+class OpenAlexQuotaBudgetExceeded(RuntimeError):
+    """Raised when an OpenAlex query exceeds configured API budget limits."""
+
+
 def _reconstruct_abstract(inverted_index: dict | None) -> str:
     """Reconstruct plain text from OpenAlex abstract_inverted_index."""
     if not inverted_index:
@@ -85,6 +89,8 @@ class OpenAlexClient:
         max_retries: int = MAX_RETRIES,
         backoff_base: float = BACKOFF_BASE,
         backoff_max: float = BACKOFF_MAX,
+        api_attempt_budget: int | None = None,
+        retry_wait_budget_seconds: float | None = None,
     ) -> None:
         self._session = requests.Session()
         self._email = email
@@ -97,6 +103,12 @@ class OpenAlexClient:
         self._max_retries = max(0, int(max_retries))
         self._backoff_base = max(0.0, float(backoff_base))
         self._backoff_max = max(0.0, float(backoff_max))
+        self._api_attempt_budget = max(1, int(api_attempt_budget)) if api_attempt_budget is not None else None
+        self._retry_wait_budget_seconds = (
+            max(0.0, float(retry_wait_budget_seconds))
+            if retry_wait_budget_seconds is not None
+            else None
+        )
         self._telemetry: dict[str, Any] = {
             "source": "openalex",
             "polite_pool": bool(email),
@@ -105,6 +117,10 @@ class OpenAlexClient:
             "max_retries": self._max_retries,
             "backoff_base_seconds": self._backoff_base,
             "backoff_max_seconds": self._backoff_max,
+            "api_attempt_budget": self._api_attempt_budget,
+            "retry_wait_budget_seconds": self._retry_wait_budget_seconds,
+            "quota_budget_exceeded": False,
+            "quota_abort_reason": None,
             "attempts_total": 0,
             "successful_requests_total": 0,
             "failed_requests_total": 0,
@@ -134,6 +150,32 @@ class OpenAlexClient:
         counters = self._telemetry.setdefault(section, {})
         text_key = str(key)
         counters[text_key] = int(counters.get(text_key, 0)) + 1
+
+    def _abort_for_budget(self, reason: str) -> None:
+        self._telemetry["quota_budget_exceeded"] = True
+        self._telemetry["quota_abort_reason"] = reason
+        self._notify_telemetry()
+        raise OpenAlexQuotaBudgetExceeded(reason)
+
+    def _check_attempt_budget(self) -> None:
+        if self._api_attempt_budget is None:
+            return
+        attempts = int(self._telemetry.get("attempts_total") or 0)
+        if attempts >= self._api_attempt_budget:
+            self._abort_for_budget(
+                f"OpenAlex API attempt budget exceeded: {attempts}/{self._api_attempt_budget}"
+            )
+
+    def _check_retry_wait_budget(self, next_delay: float) -> None:
+        if self._retry_wait_budget_seconds is None:
+            return
+        used = float(self._telemetry.get("retry_wait_seconds_total") or 0.0)
+        projected = used + max(0.0, next_delay)
+        if projected > self._retry_wait_budget_seconds:
+            self._abort_for_budget(
+                "OpenAlex retry wait budget exceeded: "
+                f"{projected:.1f}/{self._retry_wait_budget_seconds:.1f}s"
+            )
 
     def _record_response(self, resp: requests.Response) -> None:
         status_code = int(resp.status_code)
@@ -215,6 +257,7 @@ class OpenAlexClient:
         last_exc: requests.RequestException | None = None
         for attempt in range(1, attempts + 1):
             self._checkpoint_or_continue()
+            self._check_attempt_budget()
             self._sleep_with_checkpoint(self._delay, telemetry_bucket="rate_limit")
             try:
                 self._telemetry["attempts_total"] = int(self._telemetry.get("attempts_total") or 0) + 1
@@ -231,6 +274,7 @@ class OpenAlexClient:
                     self._notify_telemetry()
                     raise
                 delay = self._retry_delay(attempt)
+                self._check_retry_wait_budget(delay)
                 self._telemetry["retry_attempts_total"] = int(
                     self._telemetry.get("retry_attempts_total") or 0
                 ) + 1
@@ -258,6 +302,7 @@ class OpenAlexClient:
                 return resp.json()
 
             delay = self._retry_delay(attempt, resp)
+            self._check_retry_wait_budget(delay)
             self._telemetry["retry_attempts_total"] = int(
                 self._telemetry.get("retry_attempts_total") or 0
             ) + 1
@@ -412,4 +457,4 @@ def _normalize_id(oa_id: str) -> str:
     return oa_id
 
 
-__all__ = ["OpenAlexClient", "WorkRecord"]
+__all__ = ["OpenAlexClient", "OpenAlexQuotaBudgetExceeded", "WorkRecord"]

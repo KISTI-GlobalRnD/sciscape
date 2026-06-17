@@ -328,6 +328,10 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Initial OpenAlex retry backoff in seconds (default: 1)")
     qa.add_argument("--backoff-max", type=float, default=30.0,
                      help="Maximum OpenAlex retry or Retry-After sleep in seconds (default: 30)")
+    qa.add_argument("--api-attempt-budget", type=int, default=None,
+                     help="Abort OpenAlex query after this many HTTP attempts")
+    qa.add_argument("--retry-wait-budget-seconds", type=float, default=None,
+                     help="Abort OpenAlex query after this much accumulated retry sleep")
     qa.add_argument("--edges", type=str, default="dc,bc",
                      help="Edge types to build (default: dc,bc)")
     qa.add_argument("--no-landscape", action="store_true",
@@ -998,6 +1002,8 @@ def _run_query(args: argparse.Namespace) -> None:
         max_retries=args.max_retries,
         backoff_base=args.backoff_base,
         backoff_max=args.backoff_max,
+        api_attempt_budget=args.api_attempt_budget,
+        retry_wait_budget_seconds=args.retry_wait_budget_seconds,
         edge_types=args.edges.split(","),
         output_dir=Path(args.output),
         run_landscape=not args.no_landscape,

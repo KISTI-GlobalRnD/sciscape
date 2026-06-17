@@ -1,7 +1,7 @@
 import pytest
 import requests
 
-from sciscape.openalex.client import OpenAlexClient
+from sciscape.openalex.client import OpenAlexClient, OpenAlexQuotaBudgetExceeded
 
 
 class FakeResponse:
@@ -143,3 +143,50 @@ def test_openalex_client_checkpoint_can_cancel_retry_sleep(monkeypatch):
 
     with pytest.raises(RuntimeError, match="cancelled"):
         client._get("https://api.openalex.org/works")
+
+
+def test_openalex_client_aborts_when_attempt_budget_is_exhausted(monkeypatch):
+    client = OpenAlexClient(api_attempt_budget=1, max_retries=1)
+    calls = 0
+
+    def fake_sleep(delay):
+        pass
+
+    def fake_get(url, params=None, timeout=None):
+        nonlocal calls
+        calls += 1
+        return FakeResponse(429, headers={"Retry-After": "0"})
+
+    monkeypatch.setattr("time.sleep", fake_sleep)
+    monkeypatch.setattr(client._session, "get", fake_get)
+
+    with pytest.raises(OpenAlexQuotaBudgetExceeded, match="attempt budget"):
+        client._get("https://api.openalex.org/works")
+
+    telemetry = client.telemetry()
+    assert calls == 1
+    assert telemetry["attempts_total"] == 1
+    assert telemetry["quota_budget_exceeded"] is True
+    assert "attempt budget" in telemetry["quota_abort_reason"]
+
+
+def test_openalex_client_aborts_when_retry_wait_budget_would_be_exceeded(monkeypatch):
+    client = OpenAlexClient(max_retries=1, retry_wait_budget_seconds=1)
+
+    def fake_sleep(delay):
+        pass
+
+    def fake_get(url, params=None, timeout=None):
+        return FakeResponse(429, headers={"Retry-After": "2"})
+
+    monkeypatch.setattr("time.sleep", fake_sleep)
+    monkeypatch.setattr(client._session, "get", fake_get)
+
+    with pytest.raises(OpenAlexQuotaBudgetExceeded, match="retry wait budget"):
+        client._get("https://api.openalex.org/works")
+
+    telemetry = client.telemetry()
+    assert telemetry["attempts_total"] == 1
+    assert telemetry["retry_attempts_total"] == 0
+    assert telemetry["quota_budget_exceeded"] is True
+    assert "retry wait budget" in telemetry["quota_abort_reason"]

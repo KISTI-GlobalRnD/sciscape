@@ -413,6 +413,7 @@ Inputs:
 - maximum record count
 - edge family choices
 - OpenAlex timeout/retry/backoff settings for operator use
+- optional OpenAlex API attempt and retry-wait budgets
 - clustering/keyword settings appropriate for small jobs
 
 Artifacts:
@@ -437,6 +438,8 @@ Success:
   limits and visible in progress logs.
 - OpenAlex API attempts, retry counts, wait seconds, status codes, and
   exception classes are persisted for operator review.
+- OpenAlex API attempt or retry-wait budget overruns stop the job with
+  inspectable status instead of allowing unbounded retries.
 
 Partial:
 
