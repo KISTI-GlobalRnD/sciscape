@@ -310,7 +310,7 @@ Do not do yet:
 4. Extend long-run controls beyond visible recovery metadata, compact
    recoverability summaries, operator action packets, and restricted in-app
    resume/failed-shard rerun: transport-level cancellation guarantees and
-   queue-level shard scheduling controls.
+   full queue pause/prioritization controls.
 5. Maintain the P1 smoke fixture that exercises query/local load, network,
    clustering, keywords, atlas, co-occurrence, export manifest, and quality
    gate.

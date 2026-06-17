@@ -111,7 +111,16 @@ class NarrativeReviewRequest(BaseModel):
     reason: str | None = None
 
 
-class ShardResumeRequest(BaseModel):
+_RESUME_PARALLEL_BACKENDS = {"auto", "loky", "threading", "sequential"}
+_MAX_RESUME_N_JOBS = 64
+
+
+class ResumeRunRequest(BaseModel):
+    n_jobs: int | None = None
+    parallel_backend: str | None = None
+
+
+class ShardResumeRequest(ResumeRunRequest):
     shard_ids: list[int]
 
 
@@ -179,6 +188,37 @@ def _job_retry_request(job: dict[str, Any]) -> QueryRequest:
         ) from exc
 
 
+def _parse_resume_n_jobs(raw: Any) -> int:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="invalid n_jobs") from exc
+    if value < 1 or value > _MAX_RESUME_N_JOBS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"n_jobs must be between 1 and {_MAX_RESUME_N_JOBS}",
+        )
+    return value
+
+
+def _parse_resume_parallel_backend(raw: Any) -> str:
+    backend = str(raw or "").strip().lower()
+    if backend not in _RESUME_PARALLEL_BACKENDS:
+        raise HTTPException(status_code=400, detail="invalid parallel_backend")
+    return backend
+
+
+def _resume_schedule_options(req: ResumeRunRequest | None) -> dict[str, Any]:
+    if req is None:
+        return {}
+    options: dict[str, Any] = {}
+    if req.n_jobs is not None:
+        options["n_jobs"] = _parse_resume_n_jobs(req.n_jobs)
+    if req.parallel_backend is not None:
+        options["parallel_backend"] = _parse_resume_parallel_backend(req.parallel_backend)
+    return options
+
+
 def _safe_resume_argv(command: str) -> list[str]:
     """Parse and validate the narrow SciScape CLI resume surface."""
 
@@ -199,6 +239,8 @@ def _safe_resume_argv(command: str) -> list[str]:
         "--cluster-sharded-output-dir",
         "--cluster-sharded-shard-ids",
         "--progress-path",
+        "--n-jobs",
+        "--parallel-backend",
         "-o",
         "--output",
     }
@@ -239,6 +281,10 @@ def _safe_resume_argv(command: str) -> list[str]:
         raise HTTPException(status_code=400, detail="unsupported resume command")
     if "--cluster-sharded-shard-ids" in values:
         _parse_resume_shard_ids(values["--cluster-sharded-shard-ids"])
+    if "--n-jobs" in values:
+        _parse_resume_n_jobs(values["--n-jobs"])
+    if "--parallel-backend" in values:
+        _parse_resume_parallel_backend(values["--parallel-backend"])
     return argv
 
 
@@ -280,7 +326,54 @@ def _resume_argv_with_shard_ids(argv: Sequence[str], shard_ids: Sequence[int]) -
     return _safe_resume_argv("sciscape " + shlex.join(out))
 
 
-def _job_resume_request(job: dict[str, Any]) -> tuple[str, list[str]]:
+def _resume_argv_with_schedule_options(
+    argv: Sequence[str],
+    schedule_options: dict[str, Any] | None = None,
+) -> list[str]:
+    options = dict(schedule_options or {})
+    if not options:
+        return list(argv)
+
+    replacement_flags: dict[str, str] = {}
+    if "n_jobs" in options:
+        replacement_flags["--n-jobs"] = str(_parse_resume_n_jobs(options["n_jobs"]))
+    if "parallel_backend" in options:
+        replacement_flags["--parallel-backend"] = _parse_resume_parallel_backend(options["parallel_backend"])
+    if not replacement_flags:
+        return list(argv)
+
+    out: list[str] = []
+    i = 0
+    replaced: set[str] = set()
+    while i < len(argv):
+        token = str(argv[i])
+        if token in replacement_flags:
+            out.extend([token, replacement_flags[token]])
+            replaced.add(token)
+            i += 2
+            continue
+        matched_inline = False
+        for flag, value in replacement_flags.items():
+            if token.startswith(f"{flag}="):
+                out.append(f"{flag}={value}")
+                replaced.add(flag)
+                matched_inline = True
+                break
+        if matched_inline:
+            i += 1
+            continue
+        out.append(token)
+        i += 1
+    for flag, value in replacement_flags.items():
+        if flag not in replaced:
+            out.extend([flag, value])
+    return _safe_resume_argv("sciscape " + shlex.join(out))
+
+
+def _job_resume_request(
+    job: dict[str, Any],
+    schedule_options: dict[str, Any] | None = None,
+) -> tuple[str, list[str]]:
     status = str(job.get("status") or "")
     if status in {"pending", "running"}:
         raise HTTPException(status_code=409, detail="job is still running")
@@ -296,11 +389,15 @@ def _job_resume_request(job: dict[str, Any]) -> tuple[str, list[str]]:
     command = str(resume.get("command") or "").strip()
     if not command:
         raise HTTPException(status_code=400, detail="job has no resume command")
-    return command, _safe_resume_argv(command)
+    argv = _resume_argv_with_schedule_options(_safe_resume_argv(command), schedule_options)
+    return "sciscape " + shlex.join(argv), argv
 
 
-def _job_failed_shard_resume_request(job: dict[str, Any]) -> tuple[str, list[str], list[int]]:
-    command, argv = _job_resume_request(job)
+def _job_failed_shard_resume_request(
+    job: dict[str, Any],
+    schedule_options: dict[str, Any] | None = None,
+) -> tuple[str, list[str], list[int]]:
+    command, argv = _job_resume_request(job, schedule_options)
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     run_state = (
         result.get("run_state")
@@ -317,8 +414,9 @@ def _job_failed_shard_resume_request(job: dict[str, Any]) -> tuple[str, list[str
 def _job_selected_shard_resume_request(
     job: dict[str, Any],
     shard_ids: Sequence[int],
+    schedule_options: dict[str, Any] | None = None,
 ) -> tuple[str, list[str], list[int]]:
-    command, argv = _job_resume_request(job)
+    command, argv = _job_resume_request(job, schedule_options)
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     run_state = (
         result.get("run_state")
@@ -372,19 +470,25 @@ def _enqueue_resume_job(
     *,
     failed_shards_only: bool = False,
     selected_shard_ids: Sequence[int] | None = None,
+    schedule_options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    schedule_options = dict(schedule_options or {})
     if failed_shards_only and selected_shard_ids is not None:
         raise HTTPException(status_code=400, detail="choose either failed shards or selected shards")
     if selected_shard_ids is not None:
-        command, argv, shard_ids = _job_selected_shard_resume_request(source_job, selected_shard_ids)
+        command, argv, shard_ids = _job_selected_shard_resume_request(
+            source_job,
+            selected_shard_ids,
+            schedule_options,
+        )
         resume_scope = "selected_shards"
         progress_message = f"Resume selected shards {shard_ids} of job {source_job_id}"
     elif failed_shards_only:
-        command, argv, shard_ids = _job_failed_shard_resume_request(source_job)
+        command, argv, shard_ids = _job_failed_shard_resume_request(source_job, schedule_options)
         resume_scope = "failed_shards"
         progress_message = f"Resume failed shards {shard_ids} of job {source_job_id}"
     else:
-        command, argv = _job_resume_request(source_job)
+        command, argv = _job_resume_request(source_job, schedule_options)
         shard_ids = []
         resume_scope = "all_resumable_shards"
         progress_message = f"Resume of job {source_job_id}"
@@ -398,6 +502,8 @@ def _enqueue_resume_job(
     }
     if shard_ids:
         request_payload["shard_ids"] = shard_ids
+    if schedule_options:
+        request_payload["schedule_options"] = schedule_options
     _jobs.create(job_id, request_payload)
     resume_job = _jobs[job_id]
     resume_job["status"] = "pending"
@@ -408,6 +514,8 @@ def _enqueue_resume_job(
     payload = {"job_id": job_id, "resume_of": source_job_id, "command": command, "argv": argv}
     if shard_ids:
         payload["shard_ids"] = shard_ids
+    if schedule_options:
+        payload["schedule_options"] = schedule_options
     return payload
 
 
@@ -421,21 +529,27 @@ async def retry_job(job_id: str, bg: BackgroundTasks):
 
 
 @app.post("/api/jobs/{job_id}/resume")
-async def resume_job(job_id: str, bg: BackgroundTasks):
+async def resume_job(job_id: str, bg: BackgroundTasks, req: ResumeRunRequest | None = None):
     """Resume a supported SciScape CLI run as a new web job."""
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    return _enqueue_resume_job(job_id, job, bg)
+    return _enqueue_resume_job(job_id, job, bg, schedule_options=_resume_schedule_options(req))
 
 
 @app.post("/api/jobs/{job_id}/resume-failed-shards")
-async def resume_failed_shards_job(job_id: str, bg: BackgroundTasks):
+async def resume_failed_shards_job(job_id: str, bg: BackgroundTasks, req: ResumeRunRequest | None = None):
     """Resume only failed cluster-sharded keyword shards as a new web job."""
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    return _enqueue_resume_job(job_id, job, bg, failed_shards_only=True)
+    return _enqueue_resume_job(
+        job_id,
+        job,
+        bg,
+        failed_shards_only=True,
+        schedule_options=_resume_schedule_options(req),
+    )
 
 
 @app.post("/api/jobs/{job_id}/resume-shards")
@@ -444,7 +558,13 @@ async def resume_selected_shards_job(job_id: str, req: ShardResumeRequest, bg: B
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    return _enqueue_resume_job(job_id, job, bg, selected_shard_ids=req.shard_ids)
+    return _enqueue_resume_job(
+        job_id,
+        job,
+        bg,
+        selected_shard_ids=req.shard_ids,
+        schedule_options=_resume_schedule_options(req),
+    )
 
 
 @app.post("/api/jobs/{job_id}/cancel")
@@ -817,6 +937,10 @@ def _run_state_operator_actions(
     shards_total = int(summary.get("shards_total") or 0)
     rerun_failed_enabled = bool(resume_enabled and failed_shard_count > 0)
     rerun_selected_enabled = bool(resume_enabled and shards_total > 0)
+    schedule_options_schema = {
+        "n_jobs": f"optional int 1-{_MAX_RESUME_N_JOBS}",
+        "parallel_backend": "optional enum auto|loky|threading|sequential",
+    }
     actions = []
     actions.append(
         {
@@ -830,6 +954,7 @@ def _run_state_operator_actions(
             "command_kind": resume.get("command_kind"),
             "mode": "selected_failed_shards",
             "failed_shards": failed_shards,
+            "schedule_options_schema": schedule_options_schema,
         }
     )
     actions.append(
@@ -844,6 +969,7 @@ def _run_state_operator_actions(
             "command_kind": resume.get("command_kind"),
             "mode": resume.get("mode"),
             "failed_shards": failed_shards,
+            "schedule_options_schema": schedule_options_schema,
         }
     )
     actions.append(
@@ -858,7 +984,7 @@ def _run_state_operator_actions(
             "command_kind": resume.get("command_kind"),
             "mode": "user_selected_shards",
             "requires_input": True,
-            "body_schema": {"shard_ids": "list[int]"},
+            "body_schema": {"shard_ids": "list[int]", **schedule_options_schema},
             "shards_total": shards_total,
             "valid_shard_id_min": 0 if shards_total > 0 else None,
             "valid_shard_id_max": shards_total - 1 if shards_total > 0 else None,
@@ -4037,7 +4163,7 @@ def _write_resume_job_status_artifact(
         "argv": argv,
     }
     stored_request = job.get("request") if isinstance(job.get("request"), dict) else {}
-    for key in ("resume_scope", "shard_ids"):
+    for key in ("resume_scope", "shard_ids", "schedule_options"):
         if key in stored_request:
             request_payload[key] = stored_request[key]
     payload = {

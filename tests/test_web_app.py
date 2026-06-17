@@ -663,6 +663,10 @@ def test_safe_resume_argv_accepts_cluster_sharded_keyword_resume():
     assert "--cluster-sharded-shard-ids" in shard_argv
     assert shard_argv[shard_argv.index("--cluster-sharded-shard-ids") + 1] == "2,4"
 
+    scheduled_argv = web_app._safe_resume_argv(command + " --n-jobs 2 --parallel-backend threading")
+    assert scheduled_argv[scheduled_argv.index("--n-jobs") + 1] == "2"
+    assert scheduled_argv[scheduled_argv.index("--parallel-backend") + 1] == "threading"
+
 
 def test_safe_resume_argv_rejects_non_keyword_commands():
     with pytest.raises(web_app.HTTPException) as exc:
@@ -683,6 +687,32 @@ def test_safe_resume_argv_rejects_non_keyword_commands():
         )
     assert bad_shards.value.status_code == 400
     assert bad_shards.value.detail == "invalid shard ID list"
+
+    with pytest.raises(web_app.HTTPException) as bad_n_jobs:
+        web_app._safe_resume_argv(
+            "sciscape keywords abstracts.parquet membership.parquet "
+            "--keyword-engine cluster_sharded "
+            "--cluster-sharded-output-dir out "
+            "--progress-path out/progress.json "
+            "-o out/keywords.parquet "
+            "--scoring-shard-resume "
+            "--n-jobs 0"
+        )
+    assert bad_n_jobs.value.status_code == 400
+    assert bad_n_jobs.value.detail == "n_jobs must be between 1 and 64"
+
+    with pytest.raises(web_app.HTTPException) as bad_backend:
+        web_app._safe_resume_argv(
+            "sciscape keywords abstracts.parquet membership.parquet "
+            "--keyword-engine cluster_sharded "
+            "--cluster-sharded-output-dir out "
+            "--progress-path out/progress.json "
+            "-o out/keywords.parquet "
+            "--scoring-shard-resume "
+            "--parallel-backend forkbomb"
+        )
+    assert bad_backend.value.status_code == 400
+    assert bad_backend.value.detail == "invalid parallel_backend"
 
 
 def test_resume_endpoint_enqueues_validated_cli_resume_job(monkeypatch, tmp_path):
@@ -854,7 +884,10 @@ def test_resume_shards_endpoint_enqueues_user_selected_shard_resume(monkeypatch,
     monkeypatch.setattr(web_app, "_run_sciscape_resume_command", fake_run_resume)
 
     client = TestClient(app)
-    response = client.post(f"/api/jobs/{source_id}/resume-shards", json={"shard_ids": [5, 1, 5]})
+    response = client.post(
+        f"/api/jobs/{source_id}/resume-shards",
+        json={"shard_ids": [5, 1, 5], "n_jobs": 2, "parallel_backend": "threading"},
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -862,6 +895,9 @@ def test_resume_shards_endpoint_enqueues_user_selected_shard_resume(monkeypatch,
     assert payload["shard_ids"] == [1, 5]
     assert "--cluster-sharded-shard-ids" in payload["argv"]
     assert payload["argv"][payload["argv"].index("--cluster-sharded-shard-ids") + 1] == "1,5"
+    assert payload["argv"][payload["argv"].index("--n-jobs") + 1] == "2"
+    assert payload["argv"][payload["argv"].index("--parallel-backend") + 1] == "threading"
+    assert payload["schedule_options"] == {"n_jobs": 2, "parallel_backend": "threading"}
     assert calls == [payload["argv"]]
 
     resume_payload = client.get(f"/api/jobs/{payload['job_id']}").json()
@@ -869,7 +905,19 @@ def test_resume_shards_endpoint_enqueues_user_selected_shard_resume(monkeypatch,
     stored_request = web_app._jobs[payload["job_id"]]["request"]
     assert stored_request["resume_scope"] == "selected_shards"
     assert stored_request["shard_ids"] == [1, 5]
+    assert stored_request["schedule_options"] == {"n_jobs": 2, "parallel_backend": "threading"}
     assert resume_payload["progress"][0] == f"Resume selected shards [1, 5] of job {source_id}"
+
+    status_payload = json.loads(
+        (
+            tmp_path
+            / "workspace"
+            / "web_output"
+            / payload["job_id"]
+            / "job_status.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert status_payload["request"]["schedule_options"] == {"n_jobs": 2, "parallel_backend": "threading"}
 
 
 def test_resume_shards_endpoint_rejects_out_of_range_shards(tmp_path, monkeypatch):
@@ -906,6 +954,45 @@ def test_resume_shards_endpoint_rejects_out_of_range_shards(tmp_path, monkeypatc
 
     assert response.status_code == 400
     assert response.json()["detail"] == "shard IDs outside available range 0-2: [3]"
+
+
+def test_resume_shards_endpoint_rejects_invalid_schedule_options(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    output_dir = tmp_path / "workspace" / "examples_output" / "resume-result"
+    run_dir = output_dir / "landscape" / "keyword_cluster_sharded" / "full_run"
+    output_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True)
+    command = (
+        f"sciscape keywords {output_dir / 'abstracts.parquet'} "
+        f"{output_dir / 'landscape' / 'membership.parquet'} "
+        "--keyword-engine cluster_sharded "
+        f"--cluster-sharded-output-dir {run_dir} "
+        f"--progress-path {run_dir / 'progress.json'} "
+        f"-o {run_dir / 'keywords.parquet'} "
+        "--scoring-shard-resume"
+    )
+    source_id = "selectedshardsbadschedule"
+    web_app._jobs.create(source_id, {"query": "Local output: resume-result"})
+    source_job = web_app._jobs[source_id]
+    source_job["status"] = "error"
+    source_job["result"] = {
+        "output_dir": str(output_dir),
+        "run_state": {
+            "status": "partial",
+            "shards": {"total": 3, "complete": 1, "failed": 0, "running": 0},
+            "resume": {"supported": True, "command": command},
+        },
+    }
+    web_app._jobs.persist(source_id)
+
+    client = TestClient(app)
+    response = client.post(
+        f"/api/jobs/{source_id}/resume-shards",
+        json={"shard_ids": [1], "n_jobs": 0},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "n_jobs must be between 1 and 64"
 
 
 def test_resume_endpoint_rejects_unsupported_resume_command():
@@ -1683,6 +1770,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert selected_action["enabled"] is True
     assert selected_action["endpoint"] == f"/api/jobs/{job_id}/resume-shards"
     assert selected_action["requires_input"] is True
+    assert selected_action["body_schema"]["n_jobs"] == "optional int 1-64"
+    assert selected_action["body_schema"]["parallel_backend"] == (
+        "optional enum auto|loky|threading|sequential"
+    )
 
     run_state_response = client.get(f"/api/jobs/{job_id}/run-state")
     assert run_state_response.status_code == 200
@@ -1705,6 +1796,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert run_state_payload["operator_actions"][2]["enabled"] is True
     assert run_state_payload["operator_actions"][2]["valid_shard_id_min"] == 0
     assert run_state_payload["operator_actions"][2]["valid_shard_id_max"] == 2
+    assert run_state_payload["operator_actions"][2]["body_schema"]["shard_ids"] == "list[int]"
+    assert run_state_payload["operator_actions"][0]["schedule_options_schema"]["n_jobs"] == "optional int 1-64"
     assert run_state_payload["operator_actions"][3]["enabled"] is False
     assert run_state_payload["recoverable_artifacts"][0]["download_path"] == (
         "landscape/keyword_cluster_sharded/full_run/candidates/candidate_shard_0000.parquet"

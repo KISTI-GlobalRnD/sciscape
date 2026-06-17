@@ -449,6 +449,8 @@ Success:
   validated resume job when failed shard IDs are present.
 - User-selected cluster-sharded keyword shards can be rerun by submitting
   explicit shard IDs to a validated resume endpoint.
+- Cluster-sharded resume jobs can optionally override bounded worker count and
+  parallel backend without accepting arbitrary CLI flags.
 - Failed or partial long runs expose a compact recoverability summary for failed
   shards, checkpoints, partial output kinds, and resume readiness.
 - The job run-state API exposes recoverable artifacts, available resume/retry/
@@ -465,7 +467,8 @@ Partial:
   promise that an already-open HTTP socket is killed at the transport layer
   before the configured request timeout.
 - resume is restricted to known SciScape keyword-shard commands; arbitrary shell
-  commands and queue-level shard scheduling remain outside this v1 surface.
+  commands and full queue pause/prioritization controls remain outside this v1
+  surface.
 
 Blocking:
 

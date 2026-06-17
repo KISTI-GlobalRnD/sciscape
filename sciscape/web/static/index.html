@@ -3523,6 +3523,27 @@ async function resumeSelectedShardsJob(jobId) {
     if (status) status.textContent = 'Enter comma-separated non-negative shard IDs.';
     return;
   }
+  const body = {shard_ids: shardIds};
+  const nJobsRaw = window.prompt('Max parallel jobs for this resume (blank = command default, 1-64)', '');
+  if (nJobsRaw === null) return;
+  if (nJobsRaw.trim()) {
+    const nJobs = Number(nJobsRaw.trim());
+    if (!Number.isInteger(nJobs) || nJobs < 1 || nJobs > 64) {
+      if (status) status.textContent = 'Max parallel jobs must be an integer from 1 to 64.';
+      return;
+    }
+    body.n_jobs = nJobs;
+  }
+  const backendRaw = window.prompt('Parallel backend (blank = command default; auto, loky, threading, sequential)', '');
+  if (backendRaw === null) return;
+  if (backendRaw.trim()) {
+    const backend = backendRaw.trim().toLowerCase();
+    if (!['auto', 'loky', 'threading', 'sequential'].includes(backend)) {
+      if (status) status.textContent = 'Parallel backend must be auto, loky, threading, or sequential.';
+      return;
+    }
+    body.parallel_backend = backend;
+  }
   const term = document.getElementById('terminal');
   const lines = document.getElementById('term-lines');
   const results = document.getElementById('results');
@@ -3530,7 +3551,7 @@ async function resumeSelectedShardsJob(jobId) {
     const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/resume-shards', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({shard_ids: shardIds})
+      body: JSON.stringify(body)
     });
     const data = await response.json();
     if (!response.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'selected shard resume failed');

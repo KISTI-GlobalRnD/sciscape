@@ -322,6 +322,11 @@ The web app may also submit `/api/jobs/{job_id}/resume-shards` with an explicit
 `shard_ids` list. That route uses the same validated resume command, checks the
 requested IDs against the run-state shard bounds, and rewrites only
 `--cluster-sharded-shard-ids`.
+All supported resume routes may also accept bounded scheduling overrides:
+`n_jobs` must be an explicit integer from 1 to 64, and `parallel_backend` must
+be one of `auto`, `loky`, `threading`, or `sequential`. These values are
+recorded in the resume job request/status metadata and rewrite only `--n-jobs`
+and `--parallel-backend` on the already-validated resume argv.
 
 Web/API result payloads may add a derived `run_state_summary` object. It is not a
 replacement for `run_state`; it is a compact review surface for failed shard IDs,

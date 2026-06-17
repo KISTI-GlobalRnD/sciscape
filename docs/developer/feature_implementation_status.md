@@ -43,11 +43,11 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 89% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, dedicated run-state operator packet, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, failed-shard-only and user-selected keyword-shard rerun, query retry, checkpointed cooperative query cancellation, interruptible OpenAlex request polling, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | transport-level HTTP cancellation guarantee and queue-level shard scheduling controls |
+| F04 | Live query and job execution | `[~]` | 90% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, dedicated run-state operator packet, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, failed-shard-only and user-selected keyword-shard rerun, bounded resume worker/backend overrides, query retry, checkpointed cooperative query cancellation, interruptible OpenAlex request polling, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | transport-level HTTP cancellation guarantee and full queue pause/prioritization controls |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
-| F08 | Keyword extraction, labels, cleaning | `[~]` | 84% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
+| F08 | Keyword extraction, labels, cleaning | `[~]` | 85% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 70% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, synthetic evolution smoke, artifact-backed web Evolution lens, lineage-time map payload/UI | richer time-slice matching and interaction polish |
@@ -133,7 +133,7 @@ Review: this is one of the safest near-term app surfaces to expose.
 
 ### F04. Live Query And Job Execution
 
-Status: `[~]` Partial. Rough completeness: 89%.
+Status: `[~]` Partial. Rough completeness: 90%.
 
 - `[x]` Web query submission exists through `/api/query`.
 - `[x]` Job status and job list endpoints exist.
@@ -166,6 +166,10 @@ Status: `[~]` Partial. Rough completeness: 89%.
   `/api/jobs/{job_id}/resume-shards`; the endpoint accepts explicit shard IDs,
   validates them against run-state shard bounds, and rewrites only the
   `--cluster-sharded-shard-ids` argument on the validated resume command.
+- `[x]` Cluster-sharded resume jobs can receive bounded scheduling overrides
+  through validated `n_jobs` and `parallel_backend` request fields; generated
+  CLI argv rewrites only `--n-jobs` and `--parallel-backend` after validating
+  worker count and backend enum values.
 - `[x]` Failed OpenAlex query jobs can be retried as new jobs through
   `/api/jobs/{job_id}/retry`, with History and run-state UI affordances.
 - `[x]` Pending/running OpenAlex query jobs can receive cooperative cancellation
@@ -189,8 +193,8 @@ Status: `[~]` Partial. Rough completeness: 89%.
   explicitly overridden.
 - `[x]` Download/view endpoints expose job outputs.
 - `[ ]` A hard transport-level guarantee that an already-open HTTP socket is
-  killed immediately, plus queue-level shard scheduling controls, are
-  not complete app features.
+  killed immediately, plus full queue pause/prioritization controls, are not
+  complete app features.
 
 Review: usable for small to medium live demos, but not enough for unattended
 large-scale jobs without additional run controls.
@@ -271,8 +275,9 @@ Status: `[~]` Partial. Rough completeness: 81%.
   resume commands.
 - `[x]` The cluster-sharded engine accepts `--cluster-sharded-shard-ids` for
   selected shard reruns, and web jobs can launch bounded selected-shard resume
-  jobs; aggregate global stats and final keyword files are rebuilt from all
-  available shard outputs to avoid partial overwrite.
+  jobs with optional worker/backend overrides; aggregate global stats and final
+  keyword files are rebuilt from all available shard outputs to avoid partial
+  overwrite.
 - `[~]` Label merge and LLM labeling endpoints exist, but the full review loop is
   not yet a polished app workflow.
 - `[ ]` Editable cleaning workflow, workspace-level reusable rule registry,
