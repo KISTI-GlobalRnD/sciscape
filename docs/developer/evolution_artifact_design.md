@@ -57,6 +57,7 @@ Evolution artifacts should live under:
   evolution_manifest.json
   time_slices.parquet
   cluster_states.parquet
+  state_membership.parquet
   transitions.parquet
   lineages.parquet
   evolution_events.parquet
@@ -83,6 +84,9 @@ Current implementation scope:
   transition metric;
 - document-overlap metrics should be added only with slice-local reclustering
   or another artifact that makes overlap evidence explicit.
+- `state_membership.parquet` is optional. It records state-document membership
+  when a writer can expose it, and supports downstream document-overlap
+  matching or replay without changing the required evolution contract.
 
 ## Schema Versions
 
@@ -94,6 +98,7 @@ Use explicit schema names:
 - `sciscape_evolution_transitions_v1`
 - `sciscape_evolution_lineages_v1`
 - `sciscape_evolution_events_v1`
+- `sciscape_evolution_state_membership_v1`
 - `sciscape_evolution_qa_v1`
 - `sciscape_evolution_synthetic_smoke_v1`
 
@@ -573,12 +578,14 @@ lineage from raw records.
 `sciscape.artifacts` now implements the v1 artifact contract:
 
 - `write_evolution_artifacts` writes yearly membership-projection evolution
-  artifacts under `<result_root>/evolution/`.
+  artifacts under `<result_root>/evolution/`, including optional projected
+  `state_membership.parquet` rows.
 - `write_evidence_backed_evolution_artifacts` writes explicit state and
   transition evidence as the same validated evolution artifact contract.
 - `write_document_overlap_evolution_artifacts` writes the same artifact contract
   from explicit slice-local state evidence plus complete state-document
-  membership, deriving adjacent-slice transition evidence internally.
+  membership, deriving adjacent-slice transition evidence internally and
+  preserving normalized `state_membership.parquet` rows.
 - `sciscape evolution <result_root> <slices> <states> <transitions>` exposes the
   evidence-backed writer from the CLI and writes web-loadable artifacts under
   `<result_root>/evolution/` by default.

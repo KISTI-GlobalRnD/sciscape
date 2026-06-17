@@ -60,6 +60,7 @@ EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION = "sciscape_evolution_cluster_states_v1"
 EVOLUTION_TRANSITIONS_SCHEMA_VERSION = "sciscape_evolution_transitions_v1"
 EVOLUTION_LINEAGES_SCHEMA_VERSION = "sciscape_evolution_lineages_v1"
 EVOLUTION_EVENTS_SCHEMA_VERSION = "sciscape_evolution_events_v1"
+EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION = "sciscape_evolution_state_membership_v1"
 EVOLUTION_QA_SCHEMA_VERSION = "sciscape_evolution_qa_v1"
 EVOLUTION_SYNTHETIC_SMOKE_SCHEMA_VERSION = "sciscape_evolution_synthetic_smoke_v1"
 EXPORT_MANIFEST_SCHEMA_VERSION = "sciscape_export_manifest_v1"
@@ -7799,6 +7800,8 @@ def _evolution_output_paths(evolution_dir: Path, manifest: Mapping[str, Any]) ->
         "events": evolution_dir / str(outputs.get("events") or "evolution_events.parquet"),
         "qa": evolution_dir / str(outputs.get("qa") or "evolution_qa.json"),
     }
+    if outputs.get("state_membership"):
+        paths["state_membership"] = evolution_dir / str(outputs.get("state_membership"))
     if outputs.get("synthetic_smoke"):
         paths["synthetic_smoke"] = evolution_dir / str(outputs.get("synthetic_smoke"))
     return paths
@@ -8435,6 +8438,11 @@ def validate_evolution_artifact(path: str | Path) -> EvolutionArtifactValidation
     transitions = _evolution_read_parquet(paths["transitions"], artifact="transitions", required=True, blocking_issues=blocking_issues)
     lineages = _evolution_read_parquet(paths["lineages"], artifact="lineages", required=True, blocking_issues=blocking_issues)
     events = _evolution_read_parquet(paths["events"], artifact="events", required=True, blocking_issues=blocking_issues)
+    state_membership = (
+        _evolution_read_parquet(paths["state_membership"], artifact="state_membership", required=False, blocking_issues=blocking_issues)
+        if "state_membership" in paths
+        else None
+    )
 
     checks["time_slices"] = _evolution_time_slice_checks(
         slices,
@@ -8488,6 +8496,7 @@ def validate_evolution_artifact(path: str | Path) -> EvolutionArtifactValidation
         "slices": int(len(slices)) if slices is not None else 0,
         "states": int(len(states)) if states is not None else 0,
         "transitions": int(len(transitions)) if transitions is not None else 0,
+        "state_membership_rows": int(len(state_membership)) if state_membership is not None else 0,
         "lineages": int(len(lineages)) if lineages is not None else 0,
         "events": int(len(events)) if events is not None else 0,
         "event_rows": int(len(events)) if events is not None else 0,
@@ -8539,6 +8548,7 @@ def _write_evolution_payload(
     transitions: pd.DataFrame,
     lineages: pd.DataFrame,
     events: pd.DataFrame,
+    state_membership: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     evolution_dir.mkdir(parents=True, exist_ok=True)
     outputs = manifest["outputs"]
@@ -8547,6 +8557,8 @@ def _write_evolution_payload(
     transitions.to_parquet(evolution_dir / outputs["transitions"], index=False)
     lineages.to_parquet(evolution_dir / outputs["lineages"], index=False)
     events.to_parquet(evolution_dir / outputs["events"], index=False)
+    if state_membership is not None and outputs.get("state_membership"):
+        state_membership.to_parquet(evolution_dir / outputs["state_membership"], index=False)
     (evolution_dir / "evolution_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     validation = validate_evolution_artifact(evolution_dir)
     qa_payload = validation.to_dict()
@@ -8568,6 +8580,7 @@ def _write_evolution_payload(
         "transitions_path": evolution_dir / outputs["transitions"],
         "lineages_path": evolution_dir / outputs["lineages"],
         "events_path": evolution_dir / outputs["events"],
+        "state_membership_path": evolution_dir / outputs["state_membership"] if outputs.get("state_membership") else None,
         "qa_path": evolution_dir / outputs["qa"],
         "qa": validation.to_dict(),
     }
@@ -8607,6 +8620,7 @@ def write_evolution_artifacts(
     outputs = {
         "time_slices": "time_slices.parquet",
         "cluster_states": "cluster_states.parquet",
+        "state_membership": "state_membership.parquet",
         "transitions": "transitions.parquet",
         "lineages": "lineages.parquet",
         "events": "evolution_events.parquet",
@@ -8643,6 +8657,7 @@ def write_evolution_artifacts(
         transitions=analysis.transitions,
         lineages=analysis.lineages,
         events=analysis.events,
+        state_membership=analysis.state_membership,
     )
 
 
@@ -8724,6 +8739,7 @@ def write_evidence_backed_evolution_artifacts(
         transitions=analysis.transitions,
         lineages=analysis.lineages,
         events=analysis.events,
+        state_membership=analysis.state_membership,
     )
 
 
@@ -8773,6 +8789,7 @@ def write_document_overlap_evolution_artifacts(
     outputs = {
         "time_slices": "time_slices.parquet",
         "cluster_states": "cluster_states.parquet",
+        "state_membership": "state_membership.parquet",
         "transitions": "transitions.parquet",
         "lineages": "lineages.parquet",
         "events": "evolution_events.parquet",
@@ -8809,6 +8826,7 @@ def write_document_overlap_evolution_artifacts(
         transitions=analysis.transitions,
         lineages=analysis.lineages,
         events=analysis.events,
+        state_membership=analysis.state_membership,
     )
 
 
@@ -10286,6 +10304,14 @@ def _add_evolution_output_artifacts(
             EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
             "Evolution slice-local cluster state table.",
             counts.get("states"),
+        ),
+        (
+            "state_membership",
+            "state_membership",
+            "evolution_table",
+            EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION,
+            "Optional evolution state-document membership table.",
+            counts.get("state_membership_rows"),
         ),
         (
             "transitions",

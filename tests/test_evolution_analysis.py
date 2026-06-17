@@ -69,6 +69,9 @@ def test_membership_projection_evolution_builds_in_memory_tables():
     assert len(result.transitions) == 2
     assert set(result.transitions["relation"]) == {"continuation"}
     assert set(result.events["event_type"]) == {"continuation", "emergence", "decline"}
+    assert result.state_membership is not None
+    assert len(result.state_membership) == 6
+    assert set(result.state_membership["uid"]) == set(records["uid"])
     state_terms = dict(zip(result.states["cluster_key"], result.states["top_terms"]))
     assert '"perovskite"' in state_terms["cluster:0"]
     assert '"stability"' in state_terms["cluster:1"]
@@ -667,6 +670,9 @@ def test_build_document_overlap_evolution_derives_transitions_from_cluster_membe
     assert result.matching_method["metric"] == "jaccard_doc_overlap"
     assert result.matching_method["normalization"] == "state_document_membership_overlap"
     assert result.periodization["transition_method"] == "state_document_membership_overlap"
+    assert result.state_membership is not None
+    assert len(result.state_membership) == 14
+    assert set(result.state_membership["schema_version"]) == {"sciscape_evolution_state_membership_v1"}
     assert len(result.transitions) == 3
     assert {"split", "continuation"} <= set(result.events["event_type"])
     assert [item["step"] for item in result.transforms[:4]] == [

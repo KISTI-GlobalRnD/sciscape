@@ -13,6 +13,7 @@ from sciscape.artifacts import (
     EVOLUTION_EVENTS_SCHEMA_VERSION,
     EVOLUTION_MANIFEST_SCHEMA_VERSION,
     EVOLUTION_QA_SCHEMA_VERSION,
+    EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION,
     EXPORT_FILES_SCHEMA_VERSION,
     EXPORT_INPUTS_SCHEMA_VERSION,
     EXPORT_MANIFEST_SCHEMA_VERSION,
@@ -1181,9 +1182,12 @@ def test_write_evolution_artifacts_promotes_stable_evolution_feature(tmp_path):
     assert written["qa"]["status"] == "passed"
 
     states = pd.read_parquet(written["cluster_states_path"])
+    state_membership = pd.read_parquet(written["state_membership_path"])
     transitions = pd.read_parquet(written["transitions_path"])
     events = pd.read_parquet(written["events_path"])
     assert len(states) == 4
+    assert len(state_membership) == 4
+    assert set(state_membership["schema_version"]) == {EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION}
     assert len(transitions) == 2
     assert set(events["event_type"]) == {"continuation"}
 
@@ -1191,6 +1195,7 @@ def test_write_evolution_artifacts_promotes_stable_evolution_feature(tmp_path):
     assert validation["status"] == "passed"
     assert validation["counts"]["slices"] == 2
     assert validation["counts"]["states"] == 4
+    assert validation["counts"]["state_membership_rows"] == 4
     assert validation["counts"]["transitions"] == 2
 
     contract = validate_result_root(root).to_dict()
@@ -1201,6 +1206,8 @@ def test_write_evolution_artifacts_promotes_stable_evolution_feature(tmp_path):
 
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["evolution"]["state"] == "stable"
+    assert manifest["artifacts"]["evolution_state_membership"]["path"] == "evolution/state_membership.parquet"
+    assert manifest["artifacts"]["evolution_state_membership"]["rows"] == 4
 
 
 def test_write_evidence_backed_evolution_artifacts_promotes_stable_feature(tmp_path):
@@ -1315,17 +1322,22 @@ def test_write_document_overlap_evolution_artifacts_promotes_stable_feature(tmp_
     assert written["qa"]["status"] == "passed"
 
     transitions = pd.read_parquet(written["transitions_path"])
+    state_membership = pd.read_parquet(written["state_membership_path"])
     events = pd.read_parquet(written["events_path"])
     assert len(transitions) == 3
+    assert len(state_membership) == 14
+    assert set(state_membership["schema_version"]) == {EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION}
     assert set(transitions["metric"]) == {"jaccard_doc_overlap"}
     assert "split" in set(events["event_type"])
 
     validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
     assert validation["status"] == "passed"
     assert validation["counts"]["transitions"] == 3
+    assert validation["counts"]["state_membership_rows"] == 14
 
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["evolution"]["state"] == "stable"
+    assert manifest["artifacts"]["evolution_state_membership"]["path"] == "evolution/state_membership.parquet"
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["normalization"] == "state_document_membership_overlap"
 

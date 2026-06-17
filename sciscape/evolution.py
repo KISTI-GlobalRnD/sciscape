@@ -20,6 +20,7 @@ EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION = "sciscape_evolution_cluster_states_v1"
 EVOLUTION_TRANSITIONS_SCHEMA_VERSION = "sciscape_evolution_transitions_v1"
 EVOLUTION_LINEAGES_SCHEMA_VERSION = "sciscape_evolution_lineages_v1"
 EVOLUTION_EVENTS_SCHEMA_VERSION = "sciscape_evolution_events_v1"
+EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION = "sciscape_evolution_state_membership_v1"
 
 REQUIRED_EVOLUTION_STATE_COLUMNS = {
     "schema_version",
@@ -100,6 +101,7 @@ class EvolutionAnalysisResult:
     entity_scope: dict[str, Any]
     metrics: list[dict[str, Any]]
     transforms: list[dict[str, Any]]
+    state_membership: pd.DataFrame | None = None
 
 
 def _safe_id(value: object, *, fallback: str = "result") -> str:
@@ -464,6 +466,95 @@ def _state_rows(
     if states.empty:
         states = pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_STATE_COLUMNS))
     return states, state_docs
+
+
+def _state_membership_rows(evolution_id: str, states: pd.DataFrame, state_docs: Mapping[str, set[str]]) -> pd.DataFrame:
+    columns = [
+        "schema_version",
+        "evolution_id",
+        "state_id",
+        "slice_id",
+        "slice_index",
+        "cluster_key",
+        "cluster_id",
+        "level",
+        "uid",
+    ]
+    if states.empty:
+        return pd.DataFrame(columns=columns)
+    rows: list[dict[str, Any]] = []
+    state_lookup = {str(row.state_id): row for row in states.itertuples(index=False)}
+    for state_id in sorted(state_docs):
+        state = state_lookup.get(str(state_id))
+        if state is None:
+            continue
+        for uid in sorted(state_docs[state_id]):
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "state_id": str(state_id),
+                    "slice_id": str(state.slice_id),
+                    "slice_index": int(state.slice_index),
+                    "cluster_key": str(state.cluster_key),
+                    "cluster_id": str(getattr(state, "cluster_id", "")),
+                    "level": str(getattr(state, "level", "")),
+                    "uid": str(uid),
+                }
+            )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _state_membership_sidecar_rows(
+    evolution_id: str,
+    states: pd.DataFrame,
+    state_membership: pd.DataFrame,
+    *,
+    state_id_column: str,
+    uid_column: str | None,
+) -> pd.DataFrame:
+    columns = [
+        "schema_version",
+        "evolution_id",
+        "state_id",
+        "slice_id",
+        "slice_index",
+        "cluster_key",
+        "cluster_id",
+        "level",
+        "uid",
+    ]
+    if states.empty or state_membership.empty:
+        return pd.DataFrame(columns=columns)
+    if state_id_column not in state_membership.columns:
+        raise ValueError(f"state_membership missing state id column for sidecar: {state_id_column}")
+    doc_col = _state_document_column(state_membership, uid_column)
+    state_lookup = {str(row.state_id): row for row in states.itertuples(index=False)}
+    rows: list[dict[str, Any]] = []
+    work = state_membership[[state_id_column, doc_col]].dropna(subset=[state_id_column, doc_col]).copy()
+    work["_state_id"] = work[state_id_column].map(str).str.strip()
+    work["_uid"] = work[doc_col].map(str).str.strip()
+    work = work[(work["_state_id"] != "") & (work["_uid"] != "")]
+    work = work.drop_duplicates(subset=["_state_id", "_uid"])
+    for item in work.sort_values(["_state_id", "_uid"], kind="stable").to_dict("records"):
+        state_id = str(item["_state_id"])
+        state = state_lookup.get(state_id)
+        if state is None:
+            continue
+        rows.append(
+            {
+                "schema_version": EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "state_id": state_id,
+                "slice_id": str(state.slice_id),
+                "slice_index": int(state.slice_index),
+                "cluster_key": str(state.cluster_key),
+                "cluster_id": str(getattr(state, "cluster_id", "")),
+                "level": str(getattr(state, "level", "")),
+                "uid": str(item["_uid"]),
+            }
+        )
+    return pd.DataFrame(rows, columns=columns)
 
 
 def _update_slice_counts(slices: pd.DataFrame, states: pd.DataFrame) -> pd.DataFrame:
@@ -1157,6 +1248,13 @@ def build_document_overlap_evolution(
         state_id_column=state_id_column,
         default_level=default_level,
     )
+    state_membership_sidecar = _state_membership_sidecar_rows(
+        evolution_id,
+        states,
+        membership_with_ids,
+        state_id_column=state_id_column,
+        uid_column=uid_column,
+    )
     transition_evidence = build_document_overlap_transition_evidence(
         states=states,
         state_membership=membership_with_ids,
@@ -1242,6 +1340,7 @@ def build_document_overlap_evolution(
         entity_scope=entity_scope_payload,
         metrics=metrics,
         transforms=analysis_transforms,
+        state_membership=state_membership_sidecar,
     )
 
 
@@ -1665,6 +1764,7 @@ def build_membership_projection_evolution(
         keywords=keywords_df,
     )
     slices = _update_slice_counts(slices, states)
+    state_membership = _state_membership_rows(evolution_id, states, state_docs)
     transitions = _transition_rows(
         evolution_id,
         slices,
@@ -1734,6 +1834,7 @@ def build_membership_projection_evolution(
         },
         metrics=metrics,
         transforms=analysis_transforms,
+        state_membership=state_membership,
     )
 
 
@@ -1744,6 +1845,7 @@ __all__ = [
     "build_evidence_backed_evolution",
     "build_evolution_state_table",
     "build_membership_projection_evolution",
+    "EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION",
     "build_evolution_transition_table",
     "classify_evolution_events",
     "label_evolution_transition_relations",
