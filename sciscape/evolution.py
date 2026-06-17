@@ -245,6 +245,17 @@ def _uid_column(records: pd.DataFrame) -> str | None:
     return None
 
 
+def _state_document_column(state_membership: pd.DataFrame, requested: str | None) -> str:
+    if requested:
+        if requested not in state_membership.columns:
+            raise ValueError(f"state_membership missing requested uid_column: {requested}")
+        return requested
+    for column in ("uid", "work_id", "paper_id", "document_id", "id"):
+        if column in state_membership.columns:
+            return column
+    raise ValueError("state_membership must include uid, work_id, paper_id, document_id, or id")
+
+
 def _cluster_columns(membership: pd.DataFrame | None) -> list[str]:
     if membership is None or membership.empty:
         return []
@@ -770,6 +781,7 @@ def build_evolution_transition_table(
         "jaccard",
         "overlap_source",
         "overlap_target",
+        "overlap_min",
         "evidence_ref",
         "warning_flags",
     ]
@@ -826,6 +838,217 @@ def build_evolution_transition_table(
 
     transitions = pd.DataFrame(rows) if rows else pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_TRANSITION_COLUMNS))
     return label_evolution_transition_relations(transitions, event_rules=event_rules)
+
+
+def build_document_overlap_transition_evidence(
+    *,
+    states: pd.DataFrame,
+    state_membership: pd.DataFrame,
+    uid_column: str | None = None,
+    state_id_column: str = "state_id",
+    metric: str = "jaccard_doc_overlap",
+    min_shared_docs: int = 1,
+    min_score: float = 0.0,
+    require_complete_membership: bool = True,
+) -> pd.DataFrame:
+    """Derive adjacent-slice transition evidence from state-document membership.
+
+    The membership table must contain complete document membership for each
+    state by default. Representative-work samples are not sufficient evidence
+    for split, merge, or continuation claims.
+    """
+
+    supported_metrics = {"jaccard_doc_overlap", "overlap_source", "overlap_target", "overlap_min"}
+    metric = str(metric or "").strip()
+    if metric not in supported_metrics:
+        raise ValueError(f"unsupported document-overlap metric: {metric}")
+    min_shared_docs_int = _config_int(
+        {"min_shared_docs": min_shared_docs},
+        "min_shared_docs",
+        1,
+        label="document-overlap transition evidence",
+    )
+    if min_shared_docs_int < 1:
+        raise ValueError("document-overlap transition evidence min_shared_docs must be at least 1")
+    try:
+        min_score_float = float(min_score)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("document-overlap transition evidence min_score must be a number") from exc
+    if not math.isfinite(min_score_float) or min_score_float < 0.0 or min_score_float > 1.0:
+        raise ValueError("document-overlap transition evidence min_score must be between 0 and 1")
+    if not state_id_column:
+        raise ValueError("state_id_column must not be empty")
+
+    state_required = {"state_id", "slice_id", "slice_index", "doc_count"}
+    state_missing = sorted(state_required - set(states.columns))
+    if state_missing:
+        raise ValueError(f"states missing required columns for document-overlap evidence: {', '.join(state_missing)}")
+    doc_col = _state_document_column(state_membership, uid_column)
+    membership_required = {state_id_column, doc_col}
+    membership_missing = sorted(membership_required - set(state_membership.columns))
+    if membership_missing:
+        raise ValueError(f"state_membership missing required columns: {', '.join(membership_missing)}")
+
+    evidence_columns = [
+        "transition_id",
+        "source_state_id",
+        "target_state_id",
+        "score",
+        "support_count",
+        "shared_doc_count",
+        "jaccard",
+        "overlap_source",
+        "overlap_target",
+        "overlap_min",
+        "metric",
+        "evidence_ref",
+        "warning_flags",
+    ]
+    if states.empty or state_membership.empty:
+        return pd.DataFrame(columns=evidence_columns)
+
+    state_rows = states[["state_id", "slice_id", "slice_index", "doc_count"]].copy()
+    state_rows["state_id"] = state_rows["state_id"].map(str)
+    if state_rows["state_id"].duplicated().any():
+        duplicate = str(state_rows.loc[state_rows["state_id"].duplicated(), "state_id"].iloc[0])
+        raise ValueError(f"states contains duplicate state_id: {duplicate}")
+    state_rows["_doc_count"] = pd.to_numeric(state_rows["doc_count"], errors="coerce")
+    if state_rows["_doc_count"].isna().any() or (state_rows["_doc_count"] < 0).any():
+        raise ValueError("states doc_count must be non-negative for document-overlap evidence")
+    state_info = {
+        str(row["state_id"]): {
+            "slice_id": str(row["slice_id"]),
+            "slice_index": int(row["slice_index"]),
+            "doc_count": int(row["_doc_count"]),
+        }
+        for row in state_rows.to_dict("records")
+    }
+
+    membership = state_membership[[state_id_column, doc_col]].dropna(subset=[state_id_column, doc_col]).copy()
+    membership["_state_id"] = membership[state_id_column].map(str).str.strip()
+    membership["_uid"] = membership[doc_col].map(str).str.strip()
+    membership = membership[(membership["_state_id"] != "") & (membership["_uid"] != "")]
+    membership = membership.drop_duplicates(subset=["_state_id", "_uid"])
+    if membership.empty:
+        return pd.DataFrame(columns=evidence_columns)
+    unknown = sorted(set(membership["_state_id"]) - set(state_info))
+    if unknown:
+        preview = ", ".join(unknown[:5])
+        suffix = "..." if len(unknown) > 5 else ""
+        raise ValueError(f"state_membership references unknown state_id: {preview}{suffix}")
+
+    membership_counts = membership.groupby("_state_id", sort=True)["_uid"].nunique().to_dict()
+    mismatch_states: list[str] = []
+    for state_id, info in state_info.items():
+        observed = int(membership_counts.get(state_id, 0))
+        expected = int(info["doc_count"])
+        if observed != expected:
+            mismatch_states.append(f"{state_id} expected={expected} observed={observed}")
+    if mismatch_states and require_complete_membership:
+        preview = "; ".join(mismatch_states[:5])
+        suffix = "; ..." if len(mismatch_states) > 5 else ""
+        raise ValueError(
+            "state_membership must contain complete state-document rows; "
+            f"mismatched doc_count for {preview}{suffix}"
+        )
+    mismatch_ids = {item.split(" expected=", 1)[0] for item in mismatch_states}
+
+    membership["_slice_id"] = membership["_state_id"].map(lambda value: state_info[value]["slice_id"])
+    membership["_slice_index"] = membership["_state_id"].map(lambda value: state_info[value]["slice_index"])
+    doc_sets = {
+        str(state_id): set(group["_uid"].tolist())
+        for state_id, group in membership.groupby("_state_id", sort=True)
+    }
+    state_order = state_rows.sort_values(["slice_index", "state_id"], kind="stable")
+    states_by_slice = {
+        (str(slice_id), int(slice_index)): group["state_id"].map(str).tolist()
+        for (slice_id, slice_index), group in state_order.groupby(["slice_id", "slice_index"], sort=True)
+    }
+    ordered_slices = (
+        state_order[["slice_id", "slice_index"]]
+        .drop_duplicates()
+        .sort_values(["slice_index", "slice_id"], kind="stable")
+        .reset_index(drop=True)
+    )
+
+    rows: list[dict[str, Any]] = []
+    for source_slice, target_slice in zip(ordered_slices.iloc[:-1].itertuples(index=False), ordered_slices.iloc[1:].itertuples(index=False)):
+        source_slice_index = int(source_slice.slice_index)
+        target_slice_index = int(target_slice.slice_index)
+        if target_slice_index != source_slice_index + 1:
+            continue
+        source_state_ids = states_by_slice.get((str(source_slice.slice_id), source_slice_index), [])
+        target_state_ids = states_by_slice.get((str(target_slice.slice_id), target_slice_index), [])
+        if not source_state_ids or not target_state_ids:
+            continue
+        source_by_doc: dict[str, list[str]] = {}
+        target_by_doc: dict[str, list[str]] = {}
+        for source_state_id in source_state_ids:
+            for uid in doc_sets.get(source_state_id, set()):
+                source_by_doc.setdefault(uid, []).append(source_state_id)
+        for target_state_id in target_state_ids:
+            for uid in doc_sets.get(target_state_id, set()):
+                target_by_doc.setdefault(uid, []).append(target_state_id)
+        pair_counts: dict[tuple[str, str], int] = {}
+        for uid in sorted(set(source_by_doc) & set(target_by_doc)):
+            for source_state_id in sorted(source_by_doc[uid]):
+                for target_state_id in sorted(target_by_doc[uid]):
+                    pair = (source_state_id, target_state_id)
+                    pair_counts[pair] = pair_counts.get(pair, 0) + 1
+        for (source_state_id, target_state_id), shared in sorted(pair_counts.items()):
+            if shared < min_shared_docs_int:
+                continue
+            source_membership_count = len(doc_sets.get(source_state_id, set()))
+            target_membership_count = len(doc_sets.get(target_state_id, set()))
+            source_doc_count = max(int(state_info[source_state_id]["doc_count"]), source_membership_count)
+            target_doc_count = max(int(state_info[target_state_id]["doc_count"]), target_membership_count)
+            union_count = source_doc_count + target_doc_count - shared
+            jaccard = float(shared / union_count) if union_count > 0 else 0.0
+            overlap_source = float(shared / source_doc_count) if source_doc_count > 0 else 0.0
+            overlap_target = float(shared / target_doc_count) if target_doc_count > 0 else 0.0
+            min_denominator = min(source_doc_count, target_doc_count)
+            overlap_min = float(shared / min_denominator) if min_denominator > 0 else 0.0
+            score_by_metric = {
+                "jaccard_doc_overlap": jaccard,
+                "overlap_source": overlap_source,
+                "overlap_target": overlap_target,
+                "overlap_min": overlap_min,
+            }
+            score = float(score_by_metric[metric])
+            if score < min_score_float:
+                continue
+            warnings = []
+            if source_state_id in mismatch_ids or target_state_id in mismatch_ids:
+                warnings.append("membership_doc_count_mismatch")
+            rows.append(
+                {
+                    "transition_id": _safe_id(f"{source_state_id}_to_{target_state_id}_{metric}", fallback="transition"),
+                    "source_state_id": source_state_id,
+                    "target_state_id": target_state_id,
+                    "score": score,
+                    "support_count": int(shared),
+                    "shared_doc_count": int(shared),
+                    "jaccard": jaccard,
+                    "overlap_source": overlap_source,
+                    "overlap_target": overlap_target,
+                    "overlap_min": overlap_min,
+                    "metric": metric,
+                    "evidence_ref": "state_document_membership",
+                    "warning_flags": ",".join(warnings),
+                }
+            )
+
+    if not rows:
+        return pd.DataFrame(columns=evidence_columns)
+    out = pd.DataFrame(rows)
+    out["_source_slice_index"] = out["source_state_id"].map(lambda value: state_info[str(value)]["slice_index"])
+    out["_target_sort"] = out["target_state_id"].map(str)
+    out = out.sort_values(
+        ["_source_slice_index", "source_state_id", "score", "support_count", "_target_sort"],
+        ascending=[True, True, False, False, True],
+        kind="stable",
+    )
+    return out.drop(columns=["_source_slice_index", "_target_sort"]).reset_index(drop=True)
 
 
 def _lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
@@ -1322,6 +1545,7 @@ def build_membership_projection_evolution(
 
 __all__ = [
     "EvolutionAnalysisResult",
+    "build_document_overlap_transition_evidence",
     "build_evidence_backed_evolution",
     "build_evolution_state_table",
     "build_membership_projection_evolution",

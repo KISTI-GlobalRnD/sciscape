@@ -7,6 +7,7 @@ import pytest
 
 import sciscape
 from sciscape.evolution import (
+    build_document_overlap_transition_evidence,
     build_evidence_backed_evolution,
     build_evolution_state_table,
     build_evolution_transition_table,
@@ -18,6 +19,7 @@ from sciscape.evolution import (
 
 
 def test_evolution_is_public_lazy_submodule():
+    assert sciscape.evolution.build_document_overlap_transition_evidence is build_document_overlap_transition_evidence
     assert sciscape.evolution.build_evidence_backed_evolution is build_evidence_backed_evolution
     assert sciscape.evolution.build_evolution_state_table is build_evolution_state_table
     assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
@@ -531,6 +533,98 @@ def test_build_evolution_transition_table_rejects_unknown_or_non_adjacent_states
             transition_evidence=non_adjacent,
             metric="term_overlap",
         )
+
+
+def test_build_document_overlap_transition_evidence_derives_split_merge_candidates():
+    states = pd.DataFrame(
+        [
+            {"state_id": "A20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 6},
+            {"state_id": "C20a", "slice_id": "year:2020", "slice_index": 0, "doc_count": 3},
+            {"state_id": "C20b", "slice_id": "year:2020", "slice_index": 0, "doc_count": 3},
+            {"state_id": "D20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 4},
+            {"state_id": "B21a", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "B21b", "slice_id": "year:2021", "slice_index": 1, "doc_count": 3},
+            {"state_id": "C21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 6},
+            {"state_id": "D21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 4},
+        ]
+    )
+    membership = pd.DataFrame(
+        [
+            *[{"state_id": "A20", "uid": f"A{i}"} for i in range(6)],
+            *[{"state_id": "B21a", "uid": f"A{i}"} for i in range(3)],
+            *[{"state_id": "B21b", "uid": f"A{i}"} for i in range(3, 6)],
+            *[{"state_id": "C20a", "uid": f"C{i}"} for i in range(3)],
+            *[{"state_id": "C20b", "uid": f"C{i}"} for i in range(3, 6)],
+            *[{"state_id": "C21", "uid": f"C{i}"} for i in range(6)],
+            *[{"state_id": "D20", "uid": f"D{i}"} for i in range(4)],
+            *[{"state_id": "D21", "uid": f"D{i}"} for i in range(4)],
+        ]
+    )
+
+    evidence = build_document_overlap_transition_evidence(
+        states=states,
+        state_membership=membership,
+        min_shared_docs=2,
+        min_score=0.5,
+    )
+
+    by_pair = {(row.source_state_id, row.target_state_id): row for row in evidence.itertuples(index=False)}
+    assert set(by_pair) == {
+        ("A20", "B21a"),
+        ("A20", "B21b"),
+        ("C20a", "C21"),
+        ("C20b", "C21"),
+        ("D20", "D21"),
+    }
+    assert by_pair[("A20", "B21a")].support_count == 3
+    assert by_pair[("A20", "B21a")].score == pytest.approx(0.5)
+    assert by_pair[("A20", "B21a")].overlap_source == pytest.approx(0.5)
+    assert by_pair[("A20", "B21a")].overlap_target == pytest.approx(1.0)
+    assert by_pair[("D20", "D21")].score == pytest.approx(1.0)
+    assert by_pair[("D20", "D21")].warning_flags == ""
+
+    transitions = build_evolution_transition_table(
+        evolution_id="overlap evidence",
+        states=states,
+        transition_evidence=evidence,
+        metric="jaccard_doc_overlap",
+        matching_method={"min_transition_score": 0.5, "min_support_count": 2},
+    )
+    transitions_by_pair = {
+        (row.source_state_id, row.target_state_id): row for row in transitions.itertuples(index=False)
+    }
+    assert transitions_by_pair[("A20", "B21a")].relation == "split_child"
+    assert transitions_by_pair[("A20", "B21a")].overlap_min == pytest.approx(1.0)
+    assert transitions_by_pair[("C20a", "C21")].relation == "merge_parent"
+    assert transitions_by_pair[("D20", "D21")].relation == "continuation"
+
+
+def test_build_document_overlap_transition_evidence_requires_complete_membership_by_default():
+    states = pd.DataFrame(
+        [
+            {"state_id": "A20", "slice_id": "year:2020", "slice_index": 0, "doc_count": 2},
+            {"state_id": "A21", "slice_id": "year:2021", "slice_index": 1, "doc_count": 1},
+        ]
+    )
+    membership = pd.DataFrame(
+        [
+            {"state_id": "A20", "uid": "D0"},
+            {"state_id": "A21", "uid": "D0"},
+        ]
+    )
+
+    with pytest.raises(ValueError, match="complete state-document rows"):
+        build_document_overlap_transition_evidence(states=states, state_membership=membership)
+
+    evidence = build_document_overlap_transition_evidence(
+        states=states,
+        state_membership=membership,
+        require_complete_membership=False,
+    )
+
+    assert len(evidence) == 1
+    assert evidence.iloc[0]["score"] == pytest.approx(0.5)
+    assert evidence.iloc[0]["warning_flags"] == "membership_doc_count_mismatch"
 
 
 def test_build_evidence_backed_evolution_returns_complete_analysis_result():

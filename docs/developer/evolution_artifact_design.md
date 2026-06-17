@@ -593,6 +593,11 @@ lineage from raw records.
 - `sciscape.evolution.build_evolution_transition_table` normalizes raw
   source-target state evidence from external or future slice-local matchers into
   ranked, labeled transition rows.
+- `sciscape.evolution.build_document_overlap_transition_evidence` derives
+  adjacent-slice transition evidence from complete state-document membership
+  tables, using conservative document-overlap scores before the existing
+  transition normalizer labels continuation, split, merge, and ambiguous
+  patterns.
 - `sciscape.evolution.classify_evolution_events` classifies events from
   explicit transition evidence, including split and merge events from
   multi-target or multi-source transition patterns.
@@ -614,9 +619,14 @@ lineage from raw records.
 The real-data writer intentionally uses static membership projection in v1. It
 can safely emit continuation, emergence, and decline from projected cluster
 presence, but it should not fabricate split or merge claims without richer
-time-slice-specific clustering or matching evidence. Split, merge, and
-ambiguous validation are covered by the synthetic smoke fixture until a richer
-matching writer is added.
+time-slice-specific clustering or matching evidence. The document-overlap
+transition evidence builder is the first reusable richer-matching primitive: it
+requires complete state-document membership by default, can opt into incomplete
+membership only with warning flags, and still needs an upstream slice-local
+state membership artifact before it should be used in a real-data writer. Split,
+merge, and ambiguous validation are covered by the synthetic smoke fixture and
+the document-overlap evidence unit tests until a richer matching writer is
+added.
 
 ## Open Questions
 
