@@ -1987,8 +1987,12 @@ def _ensure_local_result_table_exports(output_dir: Path) -> None:
     """Create small manifest-backed table exports for local result browsing."""
 
     try:
-        from sciscape.artifacts import write_cooccurrence_artifacts
-        from sciscape.export import export_cooccurrence_table, export_vosviewer_term_cooccurrence
+        from sciscape.artifacts import write_cooccurrence_artifacts, write_matrix_from_term_cooccurrence
+        from sciscape.export import (
+            export_cooccurrence_table,
+            export_matrix_artifact,
+            export_vosviewer_term_cooccurrence,
+        )
 
         written = write_cooccurrence_artifacts(output_dir)
     except Exception as exc:
@@ -2006,6 +2010,16 @@ def _ensure_local_result_table_exports(output_dir: Path) -> None:
             export_fn(output_dir)
         except Exception as exc:
             log.warning("Could not create local result %s export for %s: %s", export_name, output_dir, exc)
+    try:
+        matrix_written = write_matrix_from_term_cooccurrence(output_dir)
+    except Exception as exc:
+        log.warning("Could not create local result term co-occurrence matrix for %s: %s", output_dir, exc)
+        matrix_written = None
+    if matrix_written is not None:
+        try:
+            export_matrix_artifact(output_dir, export_format="vosviewer-network")
+        except Exception as exc:
+            log.warning("Could not create local result matrix VOSviewer export for %s: %s", output_dir, exc)
 
 
 def _infer_local_result(path: Path) -> dict[str, Any]:

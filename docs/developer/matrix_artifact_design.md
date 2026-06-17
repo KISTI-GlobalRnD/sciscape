@@ -375,6 +375,9 @@ Initial implementation note:
 - `sciscape matrix export <result_or_matrix>` writes manifest-backed
   CSV-triplet, Parquet-triplet, JSON-summary, or VOSviewer-network exports from
   a validated matrix artifact.
+- Local web result loading creates the term co-occurrence matrix wrapper and
+  VOSviewer-network export when compatible co-occurrence artifacts are present,
+  so the Download tab and VOSviewer bundle can expose those files.
 - The current writer supports sparse-triplet Parquet values, row/column entity
   tables, `matrix_manifest.json`, and `matrix_qa.json`.
 - Validation checks required columns, entity refs, finite numeric values,

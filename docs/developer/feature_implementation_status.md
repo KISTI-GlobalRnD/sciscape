@@ -391,6 +391,9 @@ Status: `[~]` Partial. Rough completeness: 91%.
   core, and backbone views of the same term network.
 - `[x]` Stable co-occurrence artifacts can be exported as VOSviewer-style term
   map/network files and included in the web VOSviewer bundle.
+- `[x]` Local web result loading materializes the compatible term co-occurrence
+  matrix wrapper and VOSviewer-style matrix network export when the source
+  artifacts support it.
 - `[~]` Visualization controls for thresholding, layout, clustering, and export
   are not yet complete.
 
@@ -527,7 +530,8 @@ Status: `[~]` Partial. Rough completeness: 99%.
 - `[x]` CLI `rule-export` supports VOSviewer thesaurus/rule-set export from a
   keyword rule artifact.
 - `[x]` Web Download tab can build and download one `vosviewer_bundle.zip`
-  from manifest-backed VOSviewer exports.
+  from manifest-backed VOSviewer exports, including compatible matrix network
+  exports.
 - `[x]` Graph, VOSviewer, dashboard, report, static viewer, CLI visualize/viewer,
   `run_landscape` report, GUI viewer, quality-gate smoke, rule-export, and web
   bundle export manifests preserve normalized `sciscape_export_selection_v1`
@@ -549,6 +553,8 @@ Status: `[~]` Partial. Rough completeness: 99%.
   JSON summaries while retaining row/column entity metadata and source refs.
 - `[x]` Compatible term co-occurrence matrix artifacts can be exported as
   VOSviewer-style map/network files with manifest-backed compatibility checks.
+- `[x]` Local web result loading can generate that compatible matrix network
+  export and the VOSviewer bundle includes its map/network and QA files.
 - `[~]` Additional target-specific matrix exports remain future work.
 
 Review: good enough for graph/report exports, and the manifest contract plus

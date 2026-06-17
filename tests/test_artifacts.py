@@ -2684,6 +2684,8 @@ def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
     export_vosviewer_thesaurus(rule_artifact["manifest_path"], result_root / "vosviewer", result_root=result_root)
     write_cooccurrence_artifacts(result_root)
     export_vosviewer_term_cooccurrence(result_root)
+    write_matrix_from_term_cooccurrence(result_root)
+    export_matrix_artifact(result_root, export_format="vosviewer-network")
 
     written = export_vosviewer_bundle(result_root)
 
@@ -2700,7 +2702,7 @@ def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
     ]
     assert export_manifest["selection"]["layer_state"] == {
         "source_inventory": "result_manifest.exports",
-        "bundle_file_count": 12,
+        "bundle_file_count": 16,
     }
 
     with zipfile.ZipFile(written["bundle_path"]) as archive:
@@ -2712,17 +2714,21 @@ def test_vosviewer_bundle_export_uses_manifest_backed_vosviewer_files(tmp_path):
             "vosviewer/vosviewer_term_network.txt",
             "vosviewer/vosviewer_thesaurus.txt",
             "vosviewer/sciscape_keyword_rules.tsv",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_network.txt",
             "exports/vosviewer_map_network/export_manifest.json",
             "exports/vosviewer_map_network/export_qa.json",
             "exports/vosviewer_term_cooccurrence/export_manifest.json",
             "exports/vosviewer_term_cooccurrence/export_qa.json",
             "exports/vosviewer_thesaurus/export_manifest.json",
             "exports/vosviewer_thesaurus/export_qa.json",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/export_manifest.json",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/export_qa.json",
             "vosviewer_bundle_inventory.json",
         }.issubset(names)
         inventory = json.loads(archive.read("vosviewer_bundle_inventory.json").decode("utf-8"))
     assert inventory["source"] == "result_manifest.exports"
-    assert inventory["file_count"] == 12
+    assert inventory["file_count"] == 16
 
     result_manifest = write_result_manifest(result_root).to_dict()
     bundle_exports = [export for export in result_manifest["exports"] if export["export_id"] == "vosviewer_bundle"]

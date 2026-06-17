@@ -553,8 +553,9 @@ commands.
    keyword-rule thesaurus/rule-set exports exist, and the web app can package
    manifest-backed VOSviewer exports into a bundle. Stable term co-occurrence
    artifacts can be exported as a manifest-backed TSV table plus paired map
-   JSON, or as VOSviewer-style term co-occurrence map/network files.
-   Matrix-builder exports remain future work.
+   JSON, as VOSviewer-style term co-occurrence map/network files, or as a
+   compatible VOSviewer-style matrix network. Matrix-builder UI exports remain
+   future work.
 8. `[x]` Normalize export selection/view/filter metadata and surface compact
    selection summaries through `result_manifest.exports`.
 9. `[x]` Preserve dashboard, report, static viewer, CLI visualize/viewer,

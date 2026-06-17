@@ -152,8 +152,9 @@ sciscape export edges.parquet membership.parquet --format vosviewer -o vosviewer
 Manifest-backed exports are discoverable from `result_manifest.json` when a
 result manifest is written for the result root.
 
-In the web app Download tab, manifest-backed VOSviewer exports are also
-available as a single `vosviewer_bundle.zip` download.
+In the web app Download tab, manifest-backed VOSviewer exports, including
+compatible term co-occurrence matrix networks, are also available as a single
+`vosviewer_bundle.zip` download.
 
 Keyword cleaning rule artifacts can also be exported to VOSviewer thesaurus
 format from the CLI:

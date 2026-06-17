@@ -1652,7 +1652,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["result_state"] == "loaded"
     assert job_payload["result"]["features"]["term_network"] is True
     assert job_payload["result"]["features"]["keyword"] is True
+    assert job_payload["result"]["features"]["matrix"] is True
     assert job_payload["result"]["feature_states"]["keyword"] == "stable"
+    assert job_payload["result"]["feature_states"]["matrix"] == "stable"
     assert job_payload["result"]["result_manifest"]["schema_version"] == "sciscape_result_manifest_v1"
     assert job_payload["result"]["result_manifest"]["manifest_state"] == "present"
     assert job_payload["result"]["result_manifest"]["title"] == "Curated Web Result"
@@ -1713,6 +1715,26 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert [row["path"] for row in term_vos_exports[0]["files"]] == [
         "vosviewer/vosviewer_term_map.txt",
         "vosviewer/vosviewer_term_network.txt",
+    ]
+    matrix_vos_exports = [
+        row
+        for row in exports
+        if row["export_id"] == "matrix_term_cooccurrence_default_vosviewer_network"
+    ]
+    assert len(matrix_vos_exports) == 1
+    assert (
+        matrix_vos_exports[0]["path"]
+        == "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt"
+    )
+    assert matrix_vos_exports[0]["export_manifest_ref"] == (
+        "exports/matrix_term_cooccurrence_default_vosviewer_network/export_manifest.json"
+    )
+    assert matrix_vos_exports[0]["selection_summary"]["scope"] == "matrix_artifact"
+    assert matrix_vos_exports[0]["selection_summary"]["view_mode"] == "matrix_vosviewer_network"
+    assert matrix_vos_exports[0]["selection_summary"]["threshold_keys"] == ["min_link_strength"]
+    assert [row["path"] for row in matrix_vos_exports[0]["files"]] == [
+        "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt",
+        "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_network.txt",
     ]
     assert job_payload["result"]["artifact_contract"]["ok"] is True
     assert job_payload["result"]["features"]["evolution"] is True
@@ -1958,6 +1980,14 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert "perovskite" in term_vos_download.text
     assert "passivation" in term_vos_download.text
 
+    matrix_vos_download = client.get(
+        f"/api/jobs/{job_id}/download/"
+        "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt"
+    )
+    assert matrix_vos_download.status_code == 200
+    assert "perovskite" in matrix_vos_download.text
+    assert "passivation" in matrix_vos_download.text
+
     bundle_download = client.get(f"/api/jobs/{job_id}/download/vosviewer-bundle.zip")
     assert bundle_download.status_code == 200
     bundle_path = output_dir / "exports" / "vosviewer_bundle" / "vosviewer_bundle.zip"
@@ -1969,10 +1999,14 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
             "vosviewer/vosviewer_network.txt",
             "vosviewer/vosviewer_term_map.txt",
             "vosviewer/vosviewer_term_network.txt",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_network.txt",
             "exports/vosviewer_map_network/export_manifest.json",
             "exports/vosviewer_map_network/export_qa.json",
             "exports/vosviewer_term_cooccurrence/export_manifest.json",
             "exports/vosviewer_term_cooccurrence/export_qa.json",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/export_manifest.json",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/export_qa.json",
             "vosviewer_bundle_inventory.json",
         }.issubset(names)
 
