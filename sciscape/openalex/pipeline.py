@@ -55,6 +55,8 @@ class OpenAlexPipelineConfig:
     backoff_max: float = BACKOFF_MAX
     api_attempt_budget: int | None = None
     retry_wait_budget_seconds: float | None = None
+    interruptible_requests: bool = False
+    request_poll_interval: float = 0.25
 
     # ── Edge building ──
     edge_types: Sequence[str] = ("dc", "bc")
@@ -138,6 +140,8 @@ def run_openalex_pipeline(
         backoff_max=config.backoff_max,
         api_attempt_budget=config.api_attempt_budget,
         retry_wait_budget_seconds=config.retry_wait_budget_seconds,
+        interruptible_requests=config.interruptible_requests,
+        request_poll_interval=config.request_poll_interval,
         telemetry=_api_telemetry,
     )
     works = client.search_works(

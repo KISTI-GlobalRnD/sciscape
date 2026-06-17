@@ -69,6 +69,8 @@ class TestQueryArgs:
         assert args.backoff_max == 30.0
         assert args.api_attempt_budget is None
         assert args.retry_wait_budget_seconds is None
+        assert args.interruptible_requests is False
+        assert args.request_poll_interval == 0.25
 
     def test_openalex_retry_explicit(self, parser):
         args = parser.parse_args([
@@ -80,6 +82,8 @@ class TestQueryArgs:
             "--backoff-max", "8",
             "--api-attempt-budget", "11",
             "--retry-wait-budget-seconds", "6",
+            "--interruptible-requests",
+            "--request-poll-interval", "0.1",
         ])
         assert args.request_timeout == 12.0
         assert args.max_retries == 5
@@ -87,6 +91,8 @@ class TestQueryArgs:
         assert args.backoff_max == 8.0
         assert args.api_attempt_budget == 11
         assert args.retry_wait_budget_seconds == 6.0
+        assert args.interruptible_requests is True
+        assert args.request_poll_interval == 0.1
 
     def test_run_query_passes_retry_config(self, parser, monkeypatch, tmp_path, capsys):
         captured = {}
@@ -112,6 +118,8 @@ class TestQueryArgs:
             "--backoff-max", "8",
             "--api-attempt-budget", "11",
             "--retry-wait-budget-seconds", "6",
+            "--interruptible-requests",
+            "--request-poll-interval", "0.1",
             "-o", str(tmp_path / "out"),
         ])
 
@@ -124,6 +132,8 @@ class TestQueryArgs:
         assert config.backoff_max == 8.0
         assert config.api_attempt_budget == 11
         assert config.retry_wait_budget_seconds == 6.0
+        assert config.interruptible_requests is True
+        assert config.request_poll_interval == 0.1
         assert "Done: 0 works" in capsys.readouterr().out
 
 

@@ -960,6 +960,8 @@ def test_run_job_passes_openalex_budget_controls(monkeypatch, tmp_path):
     def fake_openalex_pipeline(config):
         captured["api_attempt_budget"] = config.api_attempt_budget
         captured["retry_wait_budget_seconds"] = config.retry_wait_budget_seconds
+        captured["interruptible_requests"] = config.interruptible_requests
+        captured["request_poll_interval"] = config.request_poll_interval
         return SimpleNamespace(
             n_works=0,
             n_edges={},
@@ -984,6 +986,8 @@ def test_run_job_passes_openalex_budget_controls(monkeypatch, tmp_path):
 
     assert captured["api_attempt_budget"] == 16
     assert captured["retry_wait_budget_seconds"] == 12
+    assert captured["interruptible_requests"] is True
+    assert captured["request_poll_interval"] == 0.25
 
 
 def test_run_job_uses_explicit_openalex_attempt_budget(monkeypatch, tmp_path):

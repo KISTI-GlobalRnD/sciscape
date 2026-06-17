@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from dataclasses import dataclass, field
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -91,6 +93,8 @@ class OpenAlexClient:
         backoff_max: float = BACKOFF_MAX,
         api_attempt_budget: int | None = None,
         retry_wait_budget_seconds: float | None = None,
+        interruptible_requests: bool = False,
+        request_poll_interval: float = 0.25,
     ) -> None:
         self._session = requests.Session()
         self._email = email
@@ -109,11 +113,15 @@ class OpenAlexClient:
             if retry_wait_budget_seconds is not None
             else None
         )
+        self._interruptible_requests = bool(interruptible_requests)
+        self._request_poll_interval = max(0.05, float(request_poll_interval))
         self._telemetry: dict[str, Any] = {
             "source": "openalex",
             "polite_pool": bool(email),
             "configured_delay_seconds": self._delay,
             "request_timeout_seconds": self._request_timeout,
+            "interruptible_requests": self._interruptible_requests,
+            "request_poll_interval_seconds": self._request_poll_interval,
             "max_retries": self._max_retries,
             "backoff_base_seconds": self._backoff_base,
             "backoff_max_seconds": self._backoff_max,
@@ -125,6 +133,8 @@ class OpenAlexClient:
             "successful_requests_total": 0,
             "failed_requests_total": 0,
             "retry_attempts_total": 0,
+            "inflight_cancel_checks_total": 0,
+            "inflight_interruptions_total": 0,
             "rate_limit_wait_seconds_total": 0.0,
             "retry_wait_seconds_total": 0.0,
             "status_counts": {},
@@ -251,6 +261,34 @@ class OpenAlexClient:
     def _should_retry_exception(exc: requests.RequestException) -> bool:
         return isinstance(exc, (requests.Timeout, requests.ConnectionError))
 
+    def _request_get(self, url: str, params: dict | None = None) -> requests.Response:
+        if not self._interruptible_requests:
+            return self._session.get(url, params=params, timeout=self._request_timeout)
+
+        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="sciscape-openalex-request")
+        future = executor.submit(self._session.get, url, params=params, timeout=self._request_timeout)
+        try:
+            while True:
+                try:
+                    return future.result(timeout=self._request_poll_interval)
+                except FutureTimeoutError:
+                    self._telemetry["inflight_cancel_checks_total"] = int(
+                        self._telemetry.get("inflight_cancel_checks_total") or 0
+                    ) + 1
+                    self._notify_telemetry()
+                    try:
+                        self._checkpoint_or_continue()
+                    except Exception:
+                        self._telemetry["inflight_interruptions_total"] = int(
+                            self._telemetry.get("inflight_interruptions_total") or 0
+                        ) + 1
+                        self._notify_telemetry()
+                        future.cancel()
+                        self._session.close()
+                        raise
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
     def _get(self, url: str, params: dict | None = None) -> dict:
         """GET with rate limiting and bounded retry for transient failures."""
         attempts = self._max_retries + 1
@@ -262,7 +300,7 @@ class OpenAlexClient:
             try:
                 self._telemetry["attempts_total"] = int(self._telemetry.get("attempts_total") or 0) + 1
                 self._notify_telemetry()
-                resp = self._session.get(url, params=params, timeout=self._request_timeout)
+                resp = self._request_get(url, params=params)
                 self._checkpoint_or_continue()
             except requests.RequestException as exc:
                 last_exc = exc

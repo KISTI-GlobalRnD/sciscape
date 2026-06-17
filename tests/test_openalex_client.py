@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 import requests
 
@@ -143,6 +145,48 @@ def test_openalex_client_checkpoint_can_cancel_retry_sleep(monkeypatch):
 
     with pytest.raises(RuntimeError, match="cancelled"):
         client._get("https://api.openalex.org/works")
+
+
+def test_openalex_client_interruptible_request_polls_checkpoint(monkeypatch):
+    checkpoint_calls = 0
+    request_started = threading.Event()
+    release_request = threading.Event()
+
+    def checkpoint():
+        nonlocal checkpoint_calls
+        checkpoint_calls += 1
+        if checkpoint_calls >= 4 and request_started.is_set():
+            raise RuntimeError("cancelled")
+
+    client = OpenAlexClient(
+        checkpoint=checkpoint,
+        interruptible_requests=True,
+        request_poll_interval=0.01,
+        request_timeout=5,
+    )
+
+    def fake_sleep(delay):
+        pass
+
+    def fake_get(url, params=None, timeout=None):
+        request_started.set()
+        release_request.wait(timeout=2)
+        return FakeResponse(200, payload={"ok": True})
+
+    monkeypatch.setattr("time.sleep", fake_sleep)
+    monkeypatch.setattr(client._session, "get", fake_get)
+
+    try:
+        with pytest.raises(RuntimeError, match="cancelled"):
+            client._get("https://api.openalex.org/works")
+    finally:
+        release_request.set()
+
+    assert request_started.is_set()
+    telemetry = client.telemetry()
+    assert telemetry["interruptible_requests"] is True
+    assert telemetry["inflight_cancel_checks_total"] >= 1
+    assert telemetry["inflight_interruptions_total"] == 1
 
 
 def test_openalex_client_aborts_when_attempt_budget_is_exhausted(monkeypatch):

@@ -69,6 +69,8 @@ def test_openalex_pipeline_passes_retry_config_to_client(monkeypatch, tmp_path):
         backoff_max=4,
         api_attempt_budget=11,
         retry_wait_budget_seconds=6,
+        interruptible_requests=True,
+        request_poll_interval=0.125,
         api_telemetry=api_snapshots.append,
     )
 
@@ -83,3 +85,5 @@ def test_openalex_pipeline_passes_retry_config_to_client(monkeypatch, tmp_path):
     assert captured_kwargs["backoff_max"] == 4
     assert captured_kwargs["api_attempt_budget"] == 11
     assert captured_kwargs["retry_wait_budget_seconds"] == 6
+    assert captured_kwargs["interruptible_requests"] is True
+    assert captured_kwargs["request_poll_interval"] == 0.125

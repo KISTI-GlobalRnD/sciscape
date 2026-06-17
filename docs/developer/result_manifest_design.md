@@ -292,9 +292,13 @@ Live OpenAlex query jobs may also include `api_telemetry` in both `source` and
 it records request attempts, successful and failed request counts, retry counts,
 rate-limit and retry wait seconds, HTTP status-code counts, and retryable
 exception classes so users can diagnose quota pressure and transient API
-failures after a run. When a configured API attempt budget or retry-wait budget
-is exceeded, `quota_budget_exceeded=true` and `quota_abort_reason` record the
-abort policy that stopped the query.
+failures after a run. When interruptible request polling is enabled, the same
+telemetry may include in-flight cancellation check and interruption counters.
+These counters indicate checkpoint responsiveness; they do not guarantee that
+an already-open HTTP transport was killed before its configured timeout. When a
+configured API attempt budget or retry-wait budget is exceeded,
+`quota_budget_exceeded=true` and `quota_abort_reason` record the abort policy
+that stopped the query.
 
 Cluster-sharded keyword extraction output directories are also run-state
 sources when they live under the result root or landscape directory.  A

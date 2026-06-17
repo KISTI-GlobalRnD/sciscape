@@ -43,7 +43,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 85% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, dedicated run-state operator packet, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, failed-shard-only keyword rerun, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | immediate in-flight HTTP interruption and user-selected shard scheduling controls |
+| F04 | Live query and job execution | `[~]` | 87% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, compact run-state summaries, web/API run-state surface, dedicated run-state operator packet, recovery downloads, copyable resume commands, restricted in-app CLI resume jobs, failed-shard-only keyword rerun, query retry, checkpointed cooperative query cancellation, interruptible OpenAlex request polling, bounded OpenAlex retry/backoff, OpenAlex API telemetry and budget limits | transport-level HTTP cancellation guarantee and user-selected shard scheduling controls |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
@@ -133,7 +133,7 @@ Review: this is one of the safest near-term app surfaces to expose.
 
 ### F04. Live Query And Job Execution
 
-Status: `[~]` Partial. Rough completeness: 85%.
+Status: `[~]` Partial. Rough completeness: 87%.
 
 - `[x]` Web query submission exists through `/api/query`.
 - `[x]` Job status and job list endpoints exist.
@@ -171,6 +171,9 @@ Status: `[~]` Partial. Rough completeness: 85%.
 - `[x]` OpenAlex query execution passes cancellation checkpoints into the
   pipeline and HTTP client, so queued page requests and stage transitions stop
   before the next visible progress event.
+- `[x]` Web OpenAlex jobs run HTTP requests through interruptible polling, so
+  cancellation checkpoints are also evaluated while a request is in flight; CLI
+  users can opt into the same behavior with `--interruptible-requests`.
 - `[x]` OpenAlex HTTP requests have bounded retry for 429, 408, 5xx, timeouts,
   and connection errors, respect `Retry-After` within a cap, and surface retry
   waits through job progress.
@@ -181,8 +184,9 @@ Status: `[~]` Partial. Rough completeness: 85%.
   wait budgets; web query jobs apply a max-works-derived attempt budget unless
   explicitly overridden.
 - `[x]` Download/view endpoints expose job outputs.
-- `[ ]` Immediate interruption during a blocking external HTTP call and
-  user-selected shard queue/scheduling controls are not complete app features.
+- `[ ]` A hard transport-level guarantee that an already-open HTTP socket is
+  killed immediately, plus user-selected shard queue/scheduling controls, are
+  not complete app features.
 
 Review: usable for small to medium live demos, but not enough for unattended
 large-scale jobs without additional run controls.

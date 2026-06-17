@@ -350,6 +350,10 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Abort OpenAlex query after this many HTTP attempts")
     qa.add_argument("--retry-wait-budget-seconds", type=float, default=None,
                      help="Abort OpenAlex query after this much accumulated retry sleep")
+    qa.add_argument("--interruptible-requests", action=argparse.BooleanOptionalAction, default=False,
+                     help="Poll cancellation checkpoints while OpenAlex HTTP requests are in flight")
+    qa.add_argument("--request-poll-interval", type=float, default=0.25,
+                     help="OpenAlex in-flight request checkpoint poll interval in seconds (default: 0.25)")
     qa.add_argument("--edges", type=str, default="dc,bc",
                      help="Edge types to build (default: dc,bc)")
     qa.add_argument("--no-landscape", action="store_true",
@@ -1023,6 +1027,8 @@ def _run_query(args: argparse.Namespace) -> None:
         backoff_max=args.backoff_max,
         api_attempt_budget=args.api_attempt_budget,
         retry_wait_budget_seconds=args.retry_wait_budget_seconds,
+        interruptible_requests=args.interruptible_requests,
+        request_poll_interval=args.request_poll_interval,
         edge_types=args.edges.split(","),
         output_dir=Path(args.output),
         run_landscape=not args.no_landscape,

@@ -4245,6 +4245,8 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
                 else _default_openalex_api_attempt_budget(req)
             ),
             retry_wait_budget_seconds=req.retry_wait_budget_seconds,
+            interruptible_requests=True,
+            request_poll_interval=0.25,
         )
         result = run_openalex_pipeline(config)
         if _job_cancel_requested(job):

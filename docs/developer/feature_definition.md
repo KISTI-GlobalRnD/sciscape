@@ -414,6 +414,7 @@ Inputs:
 - edge family choices
 - OpenAlex timeout/retry/backoff settings for operator use
 - optional OpenAlex API attempt and retry-wait budgets
+- optional in-flight OpenAlex request checkpoint polling
 - clustering/keyword settings appropriate for small jobs
 
 Artifacts:
@@ -440,6 +441,8 @@ Success:
   exception classes are persisted for operator review.
 - OpenAlex API attempt or retry-wait budget overruns stop the job with
   inspectable status instead of allowing unbounded retries.
+- Web OpenAlex jobs check cancellation while external HTTP requests are in
+  flight, and CLI users can opt into the same checkpoint polling.
 - Supported cluster-sharded keyword failures can be resumed from the app as a new
   validated internal CLI job when `run_state.resume.command` is present.
 - Failed cluster-sharded keyword shards can be rerun through a shard-scoped
@@ -456,6 +459,9 @@ Partial:
   fails with partial artifacts preserved.
 - user cancellation records `cancelled` state, partial artifacts, and
   checkpoint metadata when available.
+- in-flight request polling improves cancellation responsiveness, but does not
+  promise that an already-open HTTP socket is killed at the transport layer
+  before the configured request timeout.
 - resume is restricted to known SciScape keyword-shard commands; arbitrary shell
   commands, arbitrary user-selected shard reruns, and queue-level shard
   scheduling remain outside this v1 surface.
