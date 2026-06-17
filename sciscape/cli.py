@@ -11,6 +11,7 @@ Usage:
     sciscape evolution <result_root> <slices_table> <state_evidence_table> <transition_evidence_table> [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
+    sciscape matrix    wrap-term-cooccurrence <result_root> [options]
     sciscape web       [options]
     sciscape gui
 
@@ -23,6 +24,7 @@ Examples:
     sciscape visualize keywords.parquet -o workspace/reports/keywords
     sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
+    sciscape matrix wrap-term-cooccurrence result
 """
 
 from __future__ import annotations
@@ -327,6 +329,30 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default="sciscape_keyword_rules.tsv",
         help="Output filename for the companion SciScape rule-set table",
+    )
+
+    # ---- matrix ----
+    mx = sub.add_parser("matrix", help="Build or adapt matrix artifacts")
+    mx_sub = mx.add_subparsers(dest="matrix_command", required=True)
+    mtc = mx_sub.add_parser(
+        "wrap-term-cooccurrence",
+        help="Wrap term co-occurrence sidecars as a general matrix artifact",
+    )
+    mtc.add_argument(
+        "result_root",
+        type=Path,
+        help="SciScape result root with landscape/term_cooccurrence or keywords/report data",
+    )
+    mtc.add_argument(
+        "--matrix-id",
+        type=str,
+        default="term_cooccurrence_default",
+        help="Matrix artifact ID under matrices/ (default: term_cooccurrence_default)",
+    )
+    mtc.add_argument(
+        "--json",
+        action="store_true",
+        help="Print written artifact paths and QA as JSON",
     )
 
     # ---- query (OpenAlex) ----
@@ -1005,6 +1031,57 @@ def _run_rule_export(args: argparse.Namespace) -> None:
         print(f"Manifest → {paths['manifest_path']}")
 
 
+def _run_matrix(args: argparse.Namespace) -> None:
+    from sciscape.artifacts import write_matrix_from_term_cooccurrence
+
+    if args.matrix_command != "wrap-term-cooccurrence":
+        raise SystemExit(f"Unsupported matrix command: {args.matrix_command}")
+
+    try:
+        written = write_matrix_from_term_cooccurrence(
+            args.result_root,
+            matrix_id=args.matrix_id,
+        )
+    except Exception as exc:
+        print(f"Could not write matrix artifact: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if written is None:
+        print(
+            "Could not write matrix artifact: no valid term co-occurrence source was found",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    payload = {
+        "schema_version": written["schema_version"],
+        "matrix_id": written["matrix_id"],
+        "matrix_dir": written["matrix_dir"],
+        "manifest_path": written["manifest_path"],
+        "values_path": written["values_path"],
+        "row_entities_path": written["row_entities_path"],
+        "column_entities_path": written["column_entities_path"],
+        "qa_path": written["qa_path"],
+        "qa": written["qa"],
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+
+    qa = written["qa"]
+    counts = qa.get("counts", {})
+    print(f"Matrix artifact saved: {written['matrix_dir']}")
+    print(f"  manifest={written['manifest_path']}")
+    print(
+        "  status={status}, nnz={nnz}, rows={rows}, columns={columns}".format(
+            status=qa.get("status"),
+            nnz=counts.get("nnz", 0),
+            rows=counts.get("rows", 0),
+            columns=counts.get("columns", 0),
+        )
+    )
+    print(f"  QA → {written['qa_path']}")
+
+
 def _run_query(args: argparse.Namespace) -> None:
     from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
 
@@ -1066,6 +1143,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_export(args)
     elif args.command == "rule-export":
         _run_rule_export(args)
+    elif args.command == "matrix":
+        _run_matrix(args)
     elif args.command == "query":
         _run_query(args)
     elif args.command == "web":

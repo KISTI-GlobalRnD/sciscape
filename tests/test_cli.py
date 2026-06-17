@@ -6,13 +6,33 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sciscape.artifacts import validate_evolution_artifact
-from sciscape.cli import _build_parser, _run_evolution, _run_query, _run_visualize
+from sciscape.artifacts import validate_evolution_artifact, validate_matrix_artifact
+from sciscape.cli import _build_parser, _run_evolution, _run_matrix, _run_query, _run_visualize
 
 
 @pytest.fixture
 def parser():
     return _build_parser()
+
+
+def _write_cli_matrix_result_root(root: Path) -> Path:
+    landscape = root / "landscape"
+    landscape.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {"source": "perovskite solar cells", "target": "interface passivation", "weight": 2.0, "count": 3},
+            {"source": "graph neural networks", "target": "traffic forecasting", "weight": 1.0, "count": 1},
+        ]
+    ).to_parquet(landscape / "term_cooccurrence.parquet", index=False)
+    pd.DataFrame(
+        [
+            {"cluster_id": 0, "term": "perovskite solar cells", "score": 0.9},
+            {"cluster_id": 0, "term": "interface passivation", "score": 0.8},
+            {"cluster_id": 1, "term": "graph neural networks", "score": 0.95},
+            {"cluster_id": 1, "term": "traffic forecasting", "score": 0.75},
+        ]
+    ).to_parquet(landscape / "keywords.parquet", index=False)
+    return root
 
 
 # ---------------------------------------------------------------------------
@@ -23,7 +43,21 @@ class TestBuildParser:
     def test_returns_parser(self, parser):
         assert parser.prog == "sciscape"
 
-    @pytest.mark.parametrize("cmd", ["query", "cluster", "keywords", "convert", "landscape", "visualize", "viewer", "evolution", "gui"])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "query",
+            "cluster",
+            "keywords",
+            "convert",
+            "landscape",
+            "visualize",
+            "viewer",
+            "evolution",
+            "matrix",
+            "gui",
+        ],
+    )
     def test_subcommands_exist(self, parser, cmd):
         # Should not raise
         parser.parse_args([cmd] if cmd in ("gui",) else self._minimal_args(cmd))
@@ -51,6 +85,8 @@ class TestBuildParser:
             return ["viewer"]
         if cmd == "evolution":
             return ["evolution", "result", "slices.parquet", "states.parquet", "transitions.parquet"]
+        if cmd == "matrix":
+            return ["matrix", "wrap-term-cooccurrence", "result"]
         if cmd == "gui":
             return ["gui"]
         raise ValueError(cmd)
@@ -466,6 +502,69 @@ class TestVisualizeArgs:
         assert manifest["selection"]["layer_state"]["command"] == "visualize"
         assert manifest["selection"]["layer_state"]["dashboard_only"] is True
         assert manifest["selection"]["layer_state"]["keyword_table"] == str(keyword_path)
+
+
+# ---------------------------------------------------------------------------
+# Matrix subcommand
+# ---------------------------------------------------------------------------
+
+class TestMatrixArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args(["matrix", "wrap-term-cooccurrence", "result"])
+        assert args.command == "matrix"
+        assert args.matrix_command == "wrap-term-cooccurrence"
+        assert args.result_root == Path("result")
+
+    def test_defaults(self, parser):
+        args = parser.parse_args(["matrix", "wrap-term-cooccurrence", "result"])
+        assert args.matrix_id == "term_cooccurrence_default"
+        assert args.json is False
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "matrix",
+            "wrap-term-cooccurrence",
+            "result",
+            "--matrix-id",
+            "custom_terms",
+            "--json",
+        ])
+        assert args.matrix_id == "custom_terms"
+        assert args.json is True
+
+    def test_run_matrix_wraps_term_cooccurrence(self, parser, tmp_path, capsys):
+        root = _write_cli_matrix_result_root(tmp_path / "result")
+        args = parser.parse_args(["matrix", "wrap-term-cooccurrence", str(root)])
+
+        _run_matrix(args)
+
+        out = capsys.readouterr().out
+        assert "Matrix artifact saved" in out
+        assert "status=passed, nnz=2, rows=4, columns=4" in out
+        matrix_dir = root / "matrices" / "term_cooccurrence_default"
+        validation = validate_matrix_artifact(matrix_dir).to_dict()
+        assert validation["status"] == "passed"
+        values = pd.read_parquet(matrix_dir / "matrix_values.parquet")
+        assert len(values) == 2
+        assert set(values["relation"]) == {"term_cooccurrence"}
+
+    def test_run_matrix_json_output(self, parser, tmp_path, capsys):
+        root = _write_cli_matrix_result_root(tmp_path / "result")
+        args = parser.parse_args([
+            "matrix",
+            "wrap-term-cooccurrence",
+            str(root),
+            "--matrix-id",
+            "custom_terms",
+            "--json",
+        ])
+
+        _run_matrix(args)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["matrix_id"] == "custom_terms"
+        assert payload["qa"]["status"] == "passed"
+        assert payload["manifest_path"].endswith("matrices/custom_terms/matrix_manifest.json")
 
 
 # ---------------------------------------------------------------------------

@@ -353,6 +353,9 @@ Initial implementation note:
 
 - `write_matrix_artifact`, `validate_matrix_artifact`, and
   `write_matrix_from_term_cooccurrence` are available in `sciscape.artifacts`.
+- CLI `sciscape matrix wrap-term-cooccurrence <result_root>` materializes the
+  term co-occurrence wrapper under `matrices/term_cooccurrence_default/` by
+  default.
 - The current writer supports sparse-triplet Parquet values, row/column entity
   tables, `matrix_manifest.json`, and `matrix_qa.json`.
 - Validation checks required columns, entity refs, finite numeric values,
@@ -361,8 +364,8 @@ Initial implementation note:
   that manifest-backed artifact for stable general `matrix` exposure. Existing
   P1.5 term co-occurrence artifacts remain separate and continue to expose the
   narrower `cooccurrence` feature.
-- Matrix Builder UI, matrix exports, and partitioned large-matrix output remain
-  future work.
+- Matrix Builder UI, richer matrix commands/exports, and partitioned
+  large-matrix output remain future work.
 
 ## Acceptance Criteria
 
