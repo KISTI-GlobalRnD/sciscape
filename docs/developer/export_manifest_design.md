@@ -550,12 +550,12 @@ commands.
    file inventory, source refs, and private-path checks.
 7. `[~]` Add matrix and VOSviewer-style export manifests only after their source
    artifact contracts are stable. VOSviewer-style paper-network map/network and
-   keyword-rule thesaurus/rule-set exports exist, and the web app can package
-   manifest-backed VOSviewer exports into a bundle. Stable term co-occurrence
-   artifacts can be exported as a manifest-backed TSV table plus paired map
-   JSON, as VOSviewer-style term co-occurrence map/network files, or as a
-   compatible VOSviewer-style matrix network. Matrix-builder UI exports remain
-   future work.
+   keyword-rule thesaurus/rule-set exports exist, and the web app plus CLI can
+   package manifest-backed VOSviewer exports into a bundle. Stable term
+   co-occurrence artifacts can be exported as a manifest-backed TSV table plus
+   paired map JSON, as VOSviewer-style term co-occurrence map/network files, or
+   as a compatible VOSviewer-style matrix network. Matrix-builder UI exports
+   remain future work.
 8. `[x]` Normalize export selection/view/filter metadata and surface compact
    selection summaries through `result_manifest.exports`.
 9. `[x]` Preserve dashboard, report, static viewer, CLI visualize/viewer,

@@ -189,6 +189,7 @@ Outputs:
 - dashboard data.
 - standalone viewer HTML with hosted `data.json` or drag/drop data loading.
 - GEXF, GraphML, or VOSviewer-style map/network exports.
+- VOSviewer zip bundles from manifest-backed map/network/thesaurus exports.
 - `result_manifest.json` export entries with primary paths and compact file
   inventories for manifest-backed exports.
 

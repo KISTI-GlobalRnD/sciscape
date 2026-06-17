@@ -147,6 +147,7 @@ Download 탭에서 생성된 HTML report/dashboard를 열 수 있습니다.
 sciscape export edges.parquet membership.parquet --format gexf -o network.gexf
 sciscape export edges.parquet membership.parquet --format graphml -o network.graphml
 sciscape export edges.parquet membership.parquet --format vosviewer -o vosviewer_export/
+sciscape bundle vosviewer result --ensure-term-exports
 ```
 
 Manifest-backed exports are discoverable from `result_manifest.json` when a
@@ -154,7 +155,8 @@ result manifest is written for the result root.
 
 In the web app Download tab, manifest-backed VOSviewer exports, including
 compatible term co-occurrence matrix networks, are also available as a single
-`vosviewer_bundle.zip` download.
+`vosviewer_bundle.zip` download. The same package can be created from the CLI
+with `sciscape bundle vosviewer <result_root>`.
 
 Keyword cleaning rule artifacts can also be exported to VOSviewer thesaurus
 format from the CLI:

@@ -13,6 +13,7 @@ Usage:
     sciscape rule-export <rule_manifest> [options]
     sciscape matrix    wrap-term-cooccurrence <result_root> [options]
     sciscape matrix    export <result_or_matrix> [options]
+    sciscape bundle    vosviewer <result_root> [options]
     sciscape web       [options]
     sciscape gui
 
@@ -27,6 +28,7 @@ Examples:
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
     sciscape matrix wrap-term-cooccurrence result
     sciscape matrix export result --matrix-id term_cooccurrence_default --format csv-triplets
+    sciscape bundle vosviewer result --ensure-term-exports
 """
 
 from __future__ import annotations
@@ -389,6 +391,30 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Print written export paths as JSON",
+    )
+
+    # ---- bundle ----
+    bd = sub.add_parser("bundle", help="Package manifest-backed export files")
+    bd_sub = bd.add_subparsers(dest="bundle_command", required=True)
+    bvos = bd_sub.add_parser(
+        "vosviewer",
+        help="Package manifest-backed VOSviewer exports into one zip file",
+    )
+    bvos.add_argument(
+        "result_root",
+        type=Path,
+        help="SciScape result root with manifest-backed VOSviewer exports",
+    )
+    bvos.add_argument(
+        "--ensure-term-exports",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Before bundling, create compatible term co-occurrence VOSviewer exports when possible",
+    )
+    bvos.add_argument(
+        "--json",
+        action="store_true",
+        help="Print written bundle paths as JSON",
     )
 
     # ---- query (OpenAlex) ----
@@ -1139,6 +1165,44 @@ def _run_matrix(args: argparse.Namespace) -> None:
     print(f"  QA → {written['qa_path']}")
 
 
+def _ensure_vosviewer_term_exports_for_bundle(result_root: Path) -> None:
+    from sciscape.artifacts import write_cooccurrence_artifacts, write_matrix_from_term_cooccurrence
+    from sciscape.export import export_matrix_artifact, export_vosviewer_term_cooccurrence
+
+    written = write_cooccurrence_artifacts(result_root)
+    if written is None:
+        return
+    export_vosviewer_term_cooccurrence(result_root)
+    matrix_written = write_matrix_from_term_cooccurrence(result_root)
+    if matrix_written is not None:
+        export_matrix_artifact(result_root, export_format="vosviewer-network")
+
+
+def _run_bundle(args: argparse.Namespace) -> None:
+    if args.bundle_command != "vosviewer":
+        raise SystemExit(f"Unsupported bundle command: {args.bundle_command}")
+
+    from sciscape.export import export_vosviewer_bundle
+
+    root = Path(args.result_root)
+    try:
+        if args.ensure_term_exports:
+            _ensure_vosviewer_term_exports_for_bundle(root)
+        written = export_vosviewer_bundle(root)
+    except Exception as exc:
+        print(f"Could not write VOSviewer bundle: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(written, indent=2, sort_keys=True, default=str))
+        return
+
+    print(f"VOSviewer bundle saved: {written['bundle_path']}")
+    print(f"  Inventory → {written['inventory_path']}")
+    if written.get("manifest_path"):
+        print(f"  Manifest → {written['manifest_path']}")
+
+
 def _run_query(args: argparse.Namespace) -> None:
     from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
 
@@ -1202,6 +1266,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_rule_export(args)
     elif args.command == "matrix":
         _run_matrix(args)
+    elif args.command == "bundle":
+        _run_bundle(args)
     elif args.command == "query":
         _run_query(args)
     elif args.command == "web":

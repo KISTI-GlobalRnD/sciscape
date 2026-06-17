@@ -59,8 +59,8 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 ## Code Surface Inventory
 
 - CLI: `query`, `cluster`, `keywords`, `convert`, `landscape`, `visualize`,
-  `viewer`, `evolution`, `export`, `rule-export`, `matrix`, `web`, and `gui`
-  commands exist in `sciscape/cli.py`.
+  `viewer`, `evolution`, `export`, `rule-export`, `matrix`, `bundle`, `web`,
+  and `gui` commands exist in `sciscape/cli.py`.
 - Web API: query jobs, job status, SSE stream, local data discovery/open,
   labels, temporal, bridge, term network, cluster details, label merges,
   treemap, abbreviations, consensus, what-if, quality, and export endpoints
@@ -532,6 +532,8 @@ Status: `[~]` Partial. Rough completeness: 99%.
 - `[x]` Web Download tab can build and download one `vosviewer_bundle.zip`
   from manifest-backed VOSviewer exports, including compatible matrix network
   exports.
+- `[x]` CLI `bundle vosviewer` packages manifest-backed VOSviewer exports and
+  can optionally generate compatible term co-occurrence VOSviewer exports first.
 - `[x]` Graph, VOSviewer, dashboard, report, static viewer, CLI visualize/viewer,
   `run_landscape` report, GUI viewer, quality-gate smoke, rule-export, and web
   bundle export manifests preserve normalized `sciscape_export_selection_v1`

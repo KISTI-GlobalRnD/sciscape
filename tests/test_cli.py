@@ -1,13 +1,14 @@
 """Tests for sciscape CLI parser construction and argument parsing."""
 
 import json
+import zipfile
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from sciscape.artifacts import validate_evolution_artifact, validate_export_manifest, validate_matrix_artifact
-from sciscape.cli import _build_parser, _run_evolution, _run_matrix, _run_query, _run_visualize
+from sciscape.cli import _build_parser, _run_bundle, _run_evolution, _run_matrix, _run_query, _run_visualize
 
 
 @pytest.fixture
@@ -55,6 +56,7 @@ class TestBuildParser:
             "viewer",
             "evolution",
             "matrix",
+            "bundle",
             "gui",
         ],
     )
@@ -87,6 +89,8 @@ class TestBuildParser:
             return ["evolution", "result", "slices.parquet", "states.parquet", "transitions.parquet"]
         if cmd == "matrix":
             return ["matrix", "wrap-term-cooccurrence", "result"]
+        if cmd == "bundle":
+            return ["bundle", "vosviewer", "result"]
         if cmd == "gui":
             return ["gui"]
         raise ValueError(cmd)
@@ -629,6 +633,62 @@ class TestMatrixArgs:
             / "vosviewer_matrix_network.txt"
         )
         assert network_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# Bundle subcommand
+# ---------------------------------------------------------------------------
+
+class TestBundleArgs:
+    def test_vosviewer_parse(self, parser):
+        args = parser.parse_args([
+            "bundle",
+            "vosviewer",
+            "result",
+            "--ensure-term-exports",
+            "--json",
+        ])
+        assert args.command == "bundle"
+        assert args.bundle_command == "vosviewer"
+        assert args.result_root == Path("result")
+        assert args.ensure_term_exports is True
+        assert args.json is True
+
+    def test_run_bundle_vosviewer_ensures_term_exports(self, parser, tmp_path, capsys):
+        root = _write_cli_matrix_result_root(tmp_path / "result")
+        args = parser.parse_args(["bundle", "vosviewer", str(root), "--ensure-term-exports"])
+
+        _run_bundle(args)
+
+        out = capsys.readouterr().out
+        assert "VOSviewer bundle saved" in out
+        bundle_path = root / "exports" / "vosviewer_bundle" / "vosviewer_bundle.zip"
+        manifest_path = root / "exports" / "vosviewer_bundle" / "export_manifest.json"
+        validation = validate_export_manifest(manifest_path).to_dict()
+        assert validation["status"] == "passed"
+        assert validation["export_kind"] == "vosviewer_bundle"
+        with zipfile.ZipFile(bundle_path) as archive:
+            names = set(archive.namelist())
+        assert {
+            "vosviewer/vosviewer_term_map.txt",
+            "vosviewer/vosviewer_term_network.txt",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_map.txt",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/vosviewer_matrix_network.txt",
+            "exports/vosviewer_term_cooccurrence/export_manifest.json",
+            "exports/matrix_term_cooccurrence_default_vosviewer_network/export_manifest.json",
+            "vosviewer_bundle_inventory.json",
+        }.issubset(names)
+
+    def test_run_bundle_vosviewer_json_output(self, parser, tmp_path, capsys):
+        root = _write_cli_matrix_result_root(tmp_path / "result")
+        args = parser.parse_args(["bundle", "vosviewer", str(root), "--ensure-term-exports", "--json"])
+
+        _run_bundle(args)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["bundle_path"].endswith("exports/vosviewer_bundle/vosviewer_bundle.zip")
+        assert payload["inventory_path"].endswith("exports/vosviewer_bundle/vosviewer_bundle_inventory.json")
+        assert payload["manifest_path"].endswith("exports/vosviewer_bundle/export_manifest.json")
 
 
 # ---------------------------------------------------------------------------
