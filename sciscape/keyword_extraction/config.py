@@ -238,6 +238,7 @@ class KeywordExtractionConfig:
     target_docs_per_shard: int = 500_000
     max_clusters_per_shard: int = 1024
     large_cluster_single_shard: bool = True
+    cluster_sharded_shard_ids: Optional[Tuple[int, ...]] = None
     global_candidate_row_target: int = 50_000_000
     global_candidate_row_warning: int = 80_000_000
     global_candidate_row_hard_stop: int = 100_000_000
@@ -312,6 +313,13 @@ class KeywordExtractionConfig:
             raise ValueError(
                 f"cross_cluster_penalty_min_count must be >= 1, got {self.cross_cluster_penalty_min_count}"
             )
+        if self.cluster_sharded_shard_ids is not None:
+            shard_ids = tuple(sorted({int(value) for value in self.cluster_sharded_shard_ids}))
+            if not shard_ids:
+                raise ValueError("cluster_sharded_shard_ids must not be empty when provided")
+            if any(value < 0 for value in shard_ids):
+                raise ValueError("cluster_sharded_shard_ids must contain non-negative shard IDs")
+            self.cluster_sharded_shard_ids = shard_ids
         if self.cross_cluster_penalty_fn not in ("inverse", "log_inverse"):
             raise ValueError(
                 f"cross_cluster_penalty_fn must be 'inverse' or 'log_inverse', got {self.cross_cluster_penalty_fn!r}"

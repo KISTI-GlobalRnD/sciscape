@@ -309,8 +309,8 @@ Do not do yet:
    validation.
 4. Extend long-run controls beyond visible recovery metadata, compact
    recoverability summaries, operator action packets, and restricted in-app
-   resume: immediate in-flight interruption and true shard-level scheduling
-   controls.
+   resume/failed-shard rerun: immediate in-flight interruption and user-selected
+   shard queue/scheduling controls.
 5. Maintain the P1 smoke fixture that exercises query/local load, network,
    clustering, keywords, atlas, co-occurrence, export manifest, and quality
    gate.

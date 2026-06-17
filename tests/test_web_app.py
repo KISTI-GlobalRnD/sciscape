@@ -488,14 +488,15 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "fetch('/api/query'" in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/retry" in response.text
     assert "Retry Query" in response.text
-    assert "/api/jobs/' + encodeURIComponent(jobId) + '/resume" in response.text
+    assert "/api/jobs/' + encodeURIComponent(jobId) + '/' + endpoint" in response.text
+    assert "resume-failed-shards" in response.text
     assert "jobRunStateUrl" in response.text
     assert "/run-state" in response.text
     assert "Resume In App" in response.text
-    assert "Resume Failed Shards" in response.text
+    assert "Rerun Failed Shards" in response.text
     assert "sciscape_run_state_summary_v1" in response.text
     assert "renderRunStateSummary" in response.text
-    assert "runStateResumeActionLabel" in response.text
+    assert "resumeFailedShardsCurrentJob" in response.text
     assert "run-state-chip" in response.text
     assert 'id="btn-cancel"' in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/cancel" in response.text
@@ -658,6 +659,10 @@ def test_safe_resume_argv_accepts_cluster_sharded_keyword_resume():
     assert "cluster_sharded" in argv
     assert "--scoring-shard-resume" in argv
 
+    shard_argv = web_app._safe_resume_argv(command + " --cluster-sharded-shard-ids 2,4")
+    assert "--cluster-sharded-shard-ids" in shard_argv
+    assert shard_argv[shard_argv.index("--cluster-sharded-shard-ids") + 1] == "2,4"
+
 
 def test_safe_resume_argv_rejects_non_keyword_commands():
     with pytest.raises(web_app.HTTPException) as exc:
@@ -665,6 +670,19 @@ def test_safe_resume_argv_rejects_non_keyword_commands():
 
     assert exc.value.status_code == 400
     assert exc.value.detail == "unsupported resume command"
+
+    with pytest.raises(web_app.HTTPException) as bad_shards:
+        web_app._safe_resume_argv(
+            "sciscape keywords abstracts.parquet membership.parquet "
+            "--keyword-engine cluster_sharded "
+            "--cluster-sharded-output-dir out "
+            "--progress-path out/progress.json "
+            "-o out/keywords.parquet "
+            "--scoring-shard-resume "
+            "--cluster-sharded-shard-ids a,b"
+        )
+    assert bad_shards.value.status_code == 400
+    assert bad_shards.value.detail == "invalid shard ID list"
 
 
 def test_resume_endpoint_enqueues_validated_cli_resume_job(monkeypatch, tmp_path):
@@ -740,6 +758,62 @@ def test_resume_endpoint_enqueues_validated_cli_resume_job(monkeypatch, tmp_path
     assert status_payload["schema_version"] == "sciscape_resume_job_status_v1"
     assert status_payload["request"]["source_type"] == "sciscape_cli_resume"
     assert status_payload["run_state"]["status"] == "complete"
+
+
+def test_resume_failed_shards_endpoint_enqueues_selected_shard_resume(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    output_dir = tmp_path / "workspace" / "examples_output" / "resume-result"
+    run_dir = output_dir / "landscape" / "keyword_cluster_sharded" / "full_run"
+    output_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True)
+    command = (
+        f"sciscape keywords {output_dir / 'abstracts.parquet'} "
+        f"{output_dir / 'landscape' / 'membership.parquet'} "
+        "--keyword-engine cluster_sharded "
+        f"--cluster-sharded-output-dir {run_dir} "
+        f"--progress-path {run_dir / 'progress.json'} "
+        f"-o {run_dir / 'keywords.parquet'} "
+        "--scoring-shard-resume"
+    )
+    source_id = "failedshards"
+    web_app._jobs.create(source_id, {"query": "Local output: resume-result"})
+    source_job = web_app._jobs[source_id]
+    source_job["status"] = "error"
+    source_job["progress"] = ["keyword extraction failed"]
+    source_job["result"] = {
+        "output_dir": str(output_dir),
+        "run_state": {
+            "status": "failed",
+            "failure": {"reason": "2 shards failed", "failed_shards": [4, 2]},
+            "resume": {"supported": True, "command": command},
+        },
+    }
+    web_app._jobs.persist(source_id)
+    calls = []
+
+    def fake_run_resume(argv, progress):
+        calls.append(argv)
+        progress("fake failed-shard resume command ran")
+
+    monkeypatch.setattr(web_app, "_run_sciscape_resume_command", fake_run_resume)
+
+    client = TestClient(app)
+    response = client.post(f"/api/jobs/{source_id}/resume-failed-shards")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["resume_of"] == source_id
+    assert payload["shard_ids"] == [2, 4]
+    assert "--cluster-sharded-shard-ids" in payload["argv"]
+    assert payload["argv"][payload["argv"].index("--cluster-sharded-shard-ids") + 1] == "2,4"
+    assert calls == [payload["argv"]]
+
+    resume_payload = client.get(f"/api/jobs/{payload['job_id']}").json()
+    assert resume_payload["status"] == "done"
+    stored_request = web_app._jobs[payload["job_id"]]["request"]
+    assert stored_request["resume_scope"] == "failed_shards"
+    assert stored_request["shard_ids"] == [2, 4]
+    assert resume_payload["progress"][0] == f"Resume failed shards [2, 4] of job {source_id}"
 
 
 def test_resume_endpoint_rejects_unsupported_resume_command():
@@ -1502,25 +1576,31 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert features_payload["run_state_summary"]["has_recoverable_state"] is True
     assert features_payload["run_state_summary"]["failed_shard_count"] == 1
     assert features_payload["run_state_summary"]["resume_command_kind"] == "cli_resume"
+    shard_action = next(row for row in features_payload["operator_actions"] if row["action_id"] == "rerun_failed_shards")
+    assert shard_action["enabled"] is True
+    assert shard_action["label"] == "Rerun Failed Shards"
+    assert shard_action["failed_shards"] == [2]
     resume_action = next(row for row in features_payload["operator_actions"] if row["action_id"] == "resume_cli")
     assert resume_action["enabled"] is True
-    assert resume_action["label"] == "Resume Failed Shards"
-    assert resume_action["failed_shards"] == [2]
+    assert resume_action["label"] == "Resume In App"
 
     run_state_response = client.get(f"/api/jobs/{job_id}/run-state")
     assert run_state_response.status_code == 200
     run_state_payload = run_state_response.json()
     assert run_state_payload["schema_version"] == "sciscape_job_run_state_v1"
-    assert run_state_payload["recommended_action"] == "resume_cli"
+    assert run_state_payload["recommended_action"] == "rerun_failed_shards"
     assert run_state_payload["run_state_summary"]["resume_state"] == "command_available"
     assert [row["action_id"] for row in run_state_payload["operator_actions"]] == [
+        "rerun_failed_shards",
         "resume_cli",
         "retry_query",
         "cancel_job",
     ]
-    assert run_state_payload["operator_actions"][0]["label"] == "Resume Failed Shards"
+    assert run_state_payload["operator_actions"][0]["label"] == "Rerun Failed Shards"
     assert run_state_payload["operator_actions"][0]["enabled"] is True
-    assert run_state_payload["operator_actions"][1]["enabled"] is False
+    assert run_state_payload["operator_actions"][1]["label"] == "Resume In App"
+    assert run_state_payload["operator_actions"][1]["enabled"] is True
+    assert run_state_payload["operator_actions"][2]["enabled"] is False
     assert run_state_payload["recoverable_artifacts"][0]["download_path"] == (
         "landscape/keyword_cluster_sharded/full_run/candidates/candidate_shard_0000.parquet"
     )

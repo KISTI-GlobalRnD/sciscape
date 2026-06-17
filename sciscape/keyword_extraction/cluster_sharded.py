@@ -325,6 +325,53 @@ def _manifest_shards(manifest: Mapping[str, Any]) -> list[ClusterShard]:
     ]
 
 
+def _requested_shard_ids(config: KeywordExtractionConfig, manifest: Mapping[str, Any]) -> set[int] | None:
+    raw_ids = config.cluster_sharded_shard_ids
+    if raw_ids is None:
+        return None
+    requested = {int(value) for value in raw_ids}
+    available = {
+        int(row["shard_id"])
+        for row in manifest.get("shards", [])
+        if isinstance(row, Mapping) and row.get("shard_id") is not None
+    }
+    unknown = sorted(requested - available)
+    if unknown:
+        raise ValueError(f"unknown cluster-sharded shard IDs: {unknown}")
+    return requested
+
+
+def _candidate_shard_path(output_dir: Path, shard_id: int) -> Path:
+    return output_dir / "candidates" / f"candidate_shard_{int(shard_id):04d}.parquet"
+
+
+def _final_shard_path(output_dir: Path, shard_id: int) -> Path:
+    return output_dir / "final" / f"keyword_shard_{int(shard_id):04d}.parquet"
+
+
+def _candidate_paths_for_manifest(
+    manifest: Mapping[str, Any],
+    output_dir: Path,
+    *,
+    require_existing: bool = False,
+) -> list[Path]:
+    paths = [
+        _candidate_shard_path(output_dir, int(row["shard_id"]))
+        for row in manifest.get("shards", [])
+        if isinstance(row, Mapping) and row.get("shard_id") is not None
+    ]
+    if require_existing:
+        missing = [path for path in paths if not path.exists() or not path.with_suffix(".done.json").exists()]
+        if missing:
+            sample = ", ".join(str(path) for path in missing[:5])
+            suffix = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+            raise RuntimeError(
+                "selected cluster-sharded rerun requires complete candidate files "
+                f"for every shard; missing {sample}{suffix}"
+            )
+    return paths
+
+
 def _cluster_cap_map(manifest: Mapping[str, Any]) -> dict[int, int]:
     return {
         int(row["cluster_id"]): int(row["candidate_cap"])
@@ -960,6 +1007,7 @@ def run_candidate_mining(
     manifest: Mapping[str, Any],
     doc_shard_paths: list[Path],
     output_dir: Path,
+    active_shard_ids: set[int] | None = None,
 ) -> list[Path]:
     shards = manifest.get("shards", [])
     cluster_rows = {
@@ -968,6 +1016,9 @@ def run_candidate_mining(
     }
     enriched_shards = []
     for shard in shards:
+        shard_id = int(shard["shard_id"])
+        if active_shard_ids is not None and shard_id not in active_shard_ids:
+            continue
         shard_copy = dict(shard)
         shard_copy["clusters"] = [cluster_rows[int(cid)] for cid in shard_copy.get("cluster_ids", [])]
         enriched_shards.append(shard_copy)
@@ -1576,6 +1627,7 @@ def run_final_scoring(
     global_stats: pd.DataFrame,
     manifest: Mapping[str, Any],
     output_dir: Path,
+    aggregate_candidate_paths: Optional[list[Path]] = None,
 ) -> pd.DataFrame:
     n_clusters = int(manifest.get("total_clusters", 0))
     abbreviation_lookup, abbreviation_digest = build_cluster_sharded_abbreviation_lookup(
@@ -1612,7 +1664,23 @@ def run_final_scoring(
             )
             for path in candidate_paths
         )
-    frames = [pd.read_parquet(path) for path in final_paths]
+    if aggregate_candidate_paths is None:
+        aggregate_final_paths = final_paths
+    else:
+        aggregate_final_paths = [
+            _final_shard_path(output_dir, _path_shard_id(path))
+            for path in aggregate_candidate_paths
+        ]
+        missing = [path for path in aggregate_final_paths if not path.exists()]
+        if missing:
+            sample = ", ".join(str(path) for path in missing[:5])
+            suffix = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+            raise RuntimeError(
+                "selected cluster-sharded rerun cannot rebuild final keywords "
+                f"because final shard output is missing: {sample}{suffix}"
+            )
+
+    frames = [pd.read_parquet(path) for path in aggregate_final_paths]
     result = (
         pd.concat(frames, ignore_index=True)
         if frames
@@ -1624,7 +1692,7 @@ def run_final_scoring(
     result.to_parquet(result_path, index=False)
     flagged_frames = [
         pd.read_parquet(_flagged_final_path(path))
-        for path in final_paths
+        for path in aggregate_final_paths
         if _flagged_final_path(path).exists()
     ]
     flagged_result = (
@@ -1667,24 +1735,38 @@ def run_cluster_sharded_keyword_pipeline(
     if progress_callback:
         progress_callback("cluster_shard_manifest", 0, 1)
     manifest = build_cluster_shard_manifest(config)
+    active_shard_ids = _requested_shard_ids(config, manifest)
     manifest_path = output_dir / "manifest.json"
     write_json_atomic(manifest_path, manifest)
     if progress_callback:
         progress_callback("cluster_shard_manifest", 1, 1)
         progress_callback("document_sharding", 0, 1)
     doc_shards = materialize_document_shards(config, manifest, output_dir)
+    active_shard_count = len(active_shard_ids) if active_shard_ids is not None else len(doc_shards)
     if progress_callback:
         progress_callback("document_sharding", 1, 1)
-        progress_callback("candidate_mining", 0, len(doc_shards))
-    candidate_paths = run_candidate_mining(config, manifest, doc_shards, output_dir)
+        progress_callback("candidate_mining", 0, active_shard_count)
+    candidate_paths = run_candidate_mining(config, manifest, doc_shards, output_dir, active_shard_ids=active_shard_ids)
+    aggregate_candidate_paths = _candidate_paths_for_manifest(
+        manifest,
+        output_dir,
+        require_existing=active_shard_ids is not None,
+    )
     if progress_callback:
-        progress_callback("candidate_mining", len(candidate_paths), len(doc_shards))
+        progress_callback("candidate_mining", len(candidate_paths), active_shard_count)
         progress_callback("global_term_stats", 0, 1)
-    global_stats = build_global_term_stats(config, candidate_paths, manifest, output_dir)
+    global_stats = build_global_term_stats(config, aggregate_candidate_paths, manifest, output_dir)
     if progress_callback:
         progress_callback("global_term_stats", 1, 1)
         progress_callback("final_scoring", 0, len(candidate_paths))
-    result = run_final_scoring(config, candidate_paths, global_stats, manifest, output_dir)
+    result = run_final_scoring(
+        config,
+        candidate_paths,
+        global_stats,
+        manifest,
+        output_dir,
+        aggregate_candidate_paths=aggregate_candidate_paths if active_shard_ids is not None else None,
+    )
     if progress_callback:
         progress_callback("final_scoring", len(candidate_paths), len(candidate_paths))
     keyword_rule_artifact: dict[str, Any] | None = None
@@ -1716,6 +1798,8 @@ def run_cluster_sharded_keyword_pipeline(
             "output_dir": str(output_dir),
             "manifest_path": str(manifest_path),
             "candidate_shards": len(candidate_paths),
+            "active_shard_ids": sorted(active_shard_ids) if active_shard_ids is not None else None,
+            "aggregate_candidate_shards": len(aggregate_candidate_paths),
             "global_terms": int(len(global_stats)),
             "final_rows": int(len(result)),
             "keyword_rule_manifest_path": (

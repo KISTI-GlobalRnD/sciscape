@@ -16,7 +16,7 @@ import shlex
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Sequence
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
@@ -193,6 +193,7 @@ def _safe_resume_argv(command: str) -> list[str]:
         "--keyword-engine",
         "--cluster-level",
         "--cluster-sharded-output-dir",
+        "--cluster-sharded-shard-ids",
         "--progress-path",
         "-o",
         "--output",
@@ -232,7 +233,47 @@ def _safe_resume_argv(command: str) -> list[str]:
         raise HTTPException(status_code=400, detail="unsupported resume command")
     if "--scoring-shard-resume" not in seen_bools or "--no-scoring-shard-resume" in argv:
         raise HTTPException(status_code=400, detail="unsupported resume command")
+    if "--cluster-sharded-shard-ids" in values:
+        _parse_resume_shard_ids(values["--cluster-sharded-shard-ids"])
     return argv
+
+
+def _parse_resume_shard_ids(raw: Any) -> list[int]:
+    try:
+        ids = sorted({int(part.strip()) for part in str(raw or "").split(",") if part.strip()})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid shard ID list") from exc
+    if not ids:
+        raise HTTPException(status_code=400, detail="missing shard IDs")
+    if any(value < 0 for value in ids):
+        raise HTTPException(status_code=400, detail="invalid shard ID list")
+    return ids
+
+
+def _resume_argv_with_shard_ids(argv: Sequence[str], shard_ids: Sequence[int]) -> list[str]:
+    shard_value = ",".join(str(int(value)) for value in sorted({int(item) for item in shard_ids}))
+    if not shard_value:
+        raise HTTPException(status_code=400, detail="missing shard IDs")
+    out: list[str] = []
+    i = 0
+    replaced = False
+    while i < len(argv):
+        token = str(argv[i])
+        if token == "--cluster-sharded-shard-ids":
+            out.extend([token, shard_value])
+            replaced = True
+            i += 2
+            continue
+        if token.startswith("--cluster-sharded-shard-ids="):
+            out.append(f"--cluster-sharded-shard-ids={shard_value}")
+            replaced = True
+            i += 1
+            continue
+        out.append(token)
+        i += 1
+    if not replaced:
+        out.extend(["--cluster-sharded-shard-ids", shard_value])
+    return _safe_resume_argv("sciscape " + shlex.join(out))
 
 
 def _job_resume_request(job: dict[str, Any]) -> tuple[str, list[str]]:
@@ -252,6 +293,21 @@ def _job_resume_request(job: dict[str, Any]) -> tuple[str, list[str]]:
     if not command:
         raise HTTPException(status_code=400, detail="job has no resume command")
     return command, _safe_resume_argv(command)
+
+
+def _job_failed_shard_resume_request(job: dict[str, Any]) -> tuple[str, list[str], list[int]]:
+    command, argv = _job_resume_request(job)
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    run_state = (
+        result.get("run_state")
+        if isinstance(result.get("run_state"), dict)
+        else _run_state_for_result(result)
+    )
+    failure = run_state.get("failure") if isinstance(run_state.get("failure"), dict) else {}
+    shard_ids = _parse_resume_shard_ids(",".join(str(value) for value in failure.get("failed_shards") or []))
+    shard_argv = _resume_argv_with_shard_ids(argv, shard_ids)
+    shard_command = "sciscape " + shlex.join(shard_argv)
+    return shard_command, shard_argv, shard_ids
 
 
 def _enqueue_retry_job(source_job_id: str, source_job: dict[str, Any], bg: BackgroundTasks) -> dict[str, Any]:
@@ -274,23 +330,41 @@ def _enqueue_retry_job(source_job_id: str, source_job: dict[str, Any], bg: Backg
     return {"job_id": job_id, "retry_of": source_job_id, "request": request_payload}
 
 
-def _enqueue_resume_job(source_job_id: str, source_job: dict[str, Any], bg: BackgroundTasks) -> dict[str, Any]:
-    command, argv = _job_resume_request(source_job)
+def _enqueue_resume_job(
+    source_job_id: str,
+    source_job: dict[str, Any],
+    bg: BackgroundTasks,
+    *,
+    failed_shards_only: bool = False,
+) -> dict[str, Any]:
+    if failed_shards_only:
+        command, argv, shard_ids = _job_failed_shard_resume_request(source_job)
+    else:
+        command, argv = _job_resume_request(source_job)
+        shard_ids = []
     job_id = str(uuid.uuid4())[:8]
     request_payload = {
         "source_type": "sciscape_cli_resume",
         "resume_of": source_job_id,
+        "resume_scope": "failed_shards" if failed_shards_only else "all_resumable_shards",
         "command": command,
         "argv": argv,
     }
+    if shard_ids:
+        request_payload["shard_ids"] = shard_ids
     _jobs.create(job_id, request_payload)
     resume_job = _jobs[job_id]
     resume_job["status"] = "pending"
-    resume_job["progress"] = [f"Resume of job {source_job_id}"]
+    resume_job["progress"] = [
+        f"Resume failed shards {shard_ids} of job {source_job_id}" if failed_shards_only else f"Resume of job {source_job_id}"
+    ]
     resume_job["result"] = None
     _jobs.persist(job_id)
     bg.add_task(_run_resume_job, job_id, source_job_id, command, argv)
-    return {"job_id": job_id, "resume_of": source_job_id, "command": command, "argv": argv}
+    payload = {"job_id": job_id, "resume_of": source_job_id, "command": command, "argv": argv}
+    if shard_ids:
+        payload["shard_ids"] = shard_ids
+    return payload
 
 
 @app.post("/api/jobs/{job_id}/retry")
@@ -309,6 +383,15 @@ async def resume_job(job_id: str, bg: BackgroundTasks):
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return _enqueue_resume_job(job_id, job, bg)
+
+
+@app.post("/api/jobs/{job_id}/resume-failed-shards")
+async def resume_failed_shards_job(job_id: str, bg: BackgroundTasks):
+    """Resume only failed cluster-sharded keyword shards as a new web job."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    return _enqueue_resume_job(job_id, job, bg, failed_shards_only=True)
 
 
 @app.post("/api/jobs/{job_id}/cancel")
@@ -676,15 +759,28 @@ def _run_state_operator_actions(
     run_status = str(run_state.get("status") or status)
     resume = run_state.get("resume") if isinstance(run_state.get("resume"), dict) else {}
     resume_enabled, resume_reason = _can_resume_job(job)
-    resume_label = (
-        "Resume Failed Shards"
-        if int(summary.get("shards_failed") or summary.get("failed_shard_count") or 0) > 0
-        else "Resume In App"
+    failed_shards = summary.get("failed_shards") or []
+    failed_shard_count = int(summary.get("failed_shard_count") or len(failed_shards) or 0)
+    rerun_failed_enabled = bool(resume_enabled and failed_shard_count > 0)
+    actions = []
+    actions.append(
+        {
+            "action_id": "rerun_failed_shards",
+            "label": "Rerun Failed Shards",
+            "method": "POST",
+            "endpoint": f"/api/jobs/{job_id}/resume-failed-shards",
+            "enabled": rerun_failed_enabled,
+            "reason": None if rerun_failed_enabled else resume_reason or "no failed shards",
+            "scope": "cluster_sharded_keyword_shards",
+            "command_kind": resume.get("command_kind"),
+            "mode": "selected_failed_shards",
+            "failed_shards": failed_shards,
+        }
     )
-    actions = [
+    actions.append(
         {
             "action_id": "resume_cli",
-            "label": resume_label,
+            "label": "Resume In App",
             "method": "POST",
             "endpoint": f"/api/jobs/{job_id}/resume",
             "enabled": resume_enabled,
@@ -692,9 +788,9 @@ def _run_state_operator_actions(
             "scope": "cluster_sharded_keywords",
             "command_kind": resume.get("command_kind"),
             "mode": resume.get("mode"),
-            "failed_shards": summary.get("failed_shards") or [],
+            "failed_shards": failed_shards,
         }
-    ]
+    )
 
     retry_enabled, retry_reason = _can_retry_job(job)
     retry_enabled = retry_enabled and run_status in {"failed", "cancelled", "stopped_by_qc", "error"}
@@ -3860,6 +3956,16 @@ def _write_resume_job_status_artifact(
         "failure": {"reason": error} if error else None,
         "resume": {"supported": False, "command": None},
     }
+    request_payload = {
+        "source_type": "sciscape_cli_resume",
+        "resume_of": source_job_id,
+        "command": command,
+        "argv": argv,
+    }
+    stored_request = job.get("request") if isinstance(job.get("request"), dict) else {}
+    for key in ("resume_scope", "shard_ids"):
+        if key in stored_request:
+            request_payload[key] = stored_request[key]
     payload = {
         "schema_version": "sciscape_resume_job_status_v1",
         "job_id": job_id,
@@ -3868,12 +3974,7 @@ def _write_resume_job_status_artifact(
         "started_at_utc": job.get("started_at_utc"),
         "finished_at_utc": job.get("finished_at_utc"),
         "source_job_id": source_job_id,
-        "request": {
-            "source_type": "sciscape_cli_resume",
-            "resume_of": source_job_id,
-            "command": command,
-            "argv": argv,
-        },
+        "request": request_payload,
         "output_dir": str(output_dir),
         "progress": list(job.get("progress") or []),
         "progress_messages_count": len(job.get("progress") or []),

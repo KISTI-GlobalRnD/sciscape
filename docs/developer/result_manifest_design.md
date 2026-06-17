@@ -310,6 +310,10 @@ reuses the same cluster-sharded output directory. The web app may submit that
 command through `/api/jobs/{job_id}/resume`, but only after parsing it without a
 shell and validating that it is the narrow `sciscape keywords
 --keyword-engine cluster_sharded --scoring-shard-resume` resume surface.
+When `failure.failed_shards` is present, the web app may submit
+`/api/jobs/{job_id}/resume-failed-shards`; that route appends
+`--cluster-sharded-shard-ids` to the validated resume argv so only failed shards
+are recomputed while aggregate outputs are rebuilt from all complete shard files.
 
 Web/API result payloads may add a derived `run_state_summary` object. It is not a
 replacement for `run_state`; it is a compact review surface for failed shard IDs,
@@ -321,9 +325,9 @@ The web app may also expose `/api/jobs/{job_id}/run-state` as an operational
 packet with schema `sciscape_job_run_state_v1`. That packet is derived from the
 manifest-backed `run_state` plus the live job record; it can include recoverable
 artifact download rows, action availability for resume/retry/cancel operations,
-and a recommended next operator action. It is intentionally not persisted inside
-`result_manifest.json`, because action availability depends on the live job
-store and endpoint-level validation.
+failed-shard rerun availability, and a recommended next operator action. It is
+intentionally not persisted inside `result_manifest.json`, because action
+availability depends on the live job store and endpoint-level validation.
 
 ## Quality Block
 

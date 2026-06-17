@@ -442,6 +442,8 @@ Success:
   inspectable status instead of allowing unbounded retries.
 - Supported cluster-sharded keyword failures can be resumed from the app as a new
   validated internal CLI job when `run_state.resume.command` is present.
+- Failed cluster-sharded keyword shards can be rerun through a shard-scoped
+  validated resume job when failed shard IDs are present.
 - Failed or partial long runs expose a compact recoverability summary for failed
   shards, checkpoints, partial output kinds, and resume readiness.
 - The job run-state API exposes recoverable artifacts, available resume/retry/
@@ -455,8 +457,8 @@ Partial:
 - user cancellation records `cancelled` state, partial artifacts, and
   checkpoint metadata when available.
 - resume is restricted to known SciScape keyword-shard commands; arbitrary shell
-  commands, operator-selected shard reruns, and true shard-level scheduling
-  remain outside this v1 surface.
+  commands, arbitrary user-selected shard reruns, and queue-level shard
+  scheduling remain outside this v1 surface.
 
 Blocking:
 

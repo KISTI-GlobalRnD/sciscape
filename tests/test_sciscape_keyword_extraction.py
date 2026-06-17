@@ -383,6 +383,88 @@ def test_cluster_sharded_keyword_engine_writes_resume_artifacts(tmp_path):
     assert progress["stage"] == "complete"
 
 
+def test_cluster_sharded_keyword_engine_reruns_selected_shards_without_partial_overwrite(tmp_path):
+    abstracts = pd.DataFrame(
+        {
+            "uid": ["D1", "D2", "D3", "D4", "D5", "D6"],
+            "title": [
+                "Quantum sensor devices",
+                "Quantum magnetic sensing",
+                "Solar cell materials",
+                "Perovskite solar devices",
+                "Graph neural networks",
+                "Traffic graph forecasting",
+            ],
+            "abstract": [
+                "Quantum sensing improves magnetic field measurement.",
+                "Magnetic quantum sensors support precision metrology.",
+                "Solar cell materials improve photovoltaic efficiency.",
+                "Perovskite solar cells improve device efficiency.",
+                "Graph neural networks learn molecular representations.",
+                "Traffic forecasting uses graph neural network models.",
+            ],
+            "pubyear": [2018, 2019, 2020, 2021, 2022, 2023],
+        }
+    )
+    membership = pd.DataFrame(
+        {"uid": ["D1", "D2", "D3", "D4", "D5", "D6"], "cluster": [0, 0, 1, 1, 2, 2]}
+    )
+    abstract_path = Path(tmp_path) / "abstracts.parquet"
+    membership_path = Path(tmp_path) / "membership.parquet"
+    output_dir = Path(tmp_path) / "keyword_v2"
+    abstracts.to_parquet(abstract_path, index=False)
+    membership.to_parquet(membership_path, index=False)
+
+    common = dict(
+        abstract_path=abstract_path,
+        membership_path=membership_path,
+        cluster_level="cluster",
+        keyword_engine="cluster_sharded",
+        cluster_sharded_output_dir=output_dir,
+        include_title=True,
+        ngram_min=2,
+        ngram_max=3,
+        top_n_keywords=4,
+        candidate_pool_floor=8,
+        candidate_pool_target=12,
+        candidate_pool_large=16,
+        candidate_pool_hard_max=24,
+        target_docs_per_shard=3,
+        max_clusters_per_shard=2,
+        min_df_unigram=1,
+        min_df_phrase=1,
+        phrase_min_count_per_cluster=1,
+        n_jobs=1,
+        parallel_backend="sequential",
+        candidate_mining_progress_interval_docs=1,
+        candidate_mining_prune_interval_docs=1,
+        candidate_mining_prune_multiplier=2,
+    )
+    full = run_keyword_pipeline(KeywordExtractionConfig(**common))
+    assert set(full["cluster_id"]) == {0, 1, 2}
+
+    manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+    target_shard = int(manifest["shards"][1]["shard_id"])
+    (output_dir / "candidates" / f"candidate_shard_{target_shard:04d}.parquet").unlink()
+    (output_dir / "candidates" / f"candidate_shard_{target_shard:04d}.done.json").unlink()
+    (output_dir / "final" / f"keyword_shard_{target_shard:04d}.parquet").unlink()
+    (output_dir / "final" / f"keyword_shard_{target_shard:04d}.done.json").unlink()
+
+    rerun = run_keyword_pipeline(
+        KeywordExtractionConfig(
+            **common,
+            cluster_sharded_shard_ids=(target_shard,),
+            scoring_shard_resume=True,
+        )
+    )
+
+    assert set(rerun["cluster_id"]) == {0, 1, 2}
+    assert len(rerun) == len(full)
+    run_summary = json.loads((output_dir / "run_summary.json").read_text(encoding="utf-8"))
+    assert run_summary["active_shard_ids"] == [target_shard]
+    assert run_summary["aggregate_candidate_shards"] == len(manifest["shards"])
+
+
 def test_cluster_sharded_final_scoring_uses_quality_rerank(tmp_path):
     candidate_path = Path(tmp_path) / "candidate_shard_0000.parquet"
     pd.DataFrame(

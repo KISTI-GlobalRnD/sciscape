@@ -300,6 +300,7 @@ class TestKeywordsArgs:
         assert args.year_col == "pubyear"
         assert args.target_docs_per_shard == 500_000
         assert args.max_clusters_per_shard == 1024
+        assert args.cluster_sharded_shard_ids is None
         assert args.candidate_pool_floor == 256
         assert args.candidate_pool_large == 1024
         assert args.candidate_pool_hard_max == 1536
@@ -360,6 +361,8 @@ class TestKeywordsArgs:
             "250000",
             "--max-clusters-per-shard",
             "512",
+            "--cluster-sharded-shard-ids",
+            "3,1,3",
             "--candidate-pool-floor",
             "128",
             "--candidate-pool-large",
@@ -380,6 +383,7 @@ class TestKeywordsArgs:
         assert args.year_col == "publication_year"
         assert args.target_docs_per_shard == 250_000
         assert args.max_clusters_per_shard == 512
+        assert args.cluster_sharded_shard_ids == (1, 3)
         assert args.candidate_pool_floor == 128
         assert args.candidate_pool_large == 768
         assert args.candidate_pool_hard_max == 1024

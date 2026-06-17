@@ -3121,6 +3121,7 @@ input[type="range"]::-webkit-slider-thumb {
 let currentJobId = null;
 let currentResult = null;
 let currentRunStateResumeCommand = '';
+let currentRunStateFailedShardIds = [];
 let evtSource = null;
 let currentResultFeatures = {};
 let currentAtlasPayload = null;
@@ -3428,11 +3429,8 @@ function renderRunStateSummary(summary) {
   return '<div class="run-state-summary">' + chips.join('') + '</div>';
 }
 
-function runStateResumeActionLabel(summary) {
-  if (summary && Number(summary.shards_failed || summary.failed_shard_count || 0) > 0) {
-    return 'Resume Failed Shards';
-  }
-  return 'Resume In App';
+function runStateFailedShardIds(summary) {
+  return summary && Array.isArray(summary.failed_shards) ? summary.failed_shards : [];
 }
 
 function jobRunStateUrl(jobId) {
@@ -3484,14 +3482,15 @@ async function copyRunStateResumeCommand() {
   }
 }
 
-async function resumeJob(jobId) {
+async function resumeJob(jobId, mode) {
   if (!jobId) return;
   const term = document.getElementById('terminal');
   const lines = document.getElementById('term-lines');
   const results = document.getElementById('results');
   const status = document.getElementById('run-state-action-status');
   try {
-    const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/resume', {method: 'POST'});
+    const endpoint = mode === 'failed_shards' ? 'resume-failed-shards' : 'resume';
+    const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/' + endpoint, {method: 'POST'});
     const data = await response.json();
     if (!response.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'resume failed');
     currentJobId = data.job_id;
@@ -3499,7 +3498,7 @@ async function resumeJob(jobId) {
     lines.innerHTML = '';
     results.classList.remove('active');
     document.getElementById('term-cursor').style.display = '';
-    addLine('Resume job ' + data.job_id + ' submitted from ' + jobId);
+    addLine((mode === 'failed_shards' ? 'Failed-shard resume job ' : 'Resume job ') + data.job_id + ' submitted from ' + jobId);
     streamProgress(data.job_id);
     refreshHistory();
   } catch (e) {
@@ -3510,6 +3509,10 @@ async function resumeJob(jobId) {
 
 function resumeCurrentJob() {
   resumeJob(currentJobId);
+}
+
+function resumeFailedShardsCurrentJob() {
+  resumeJob(currentJobId, 'failed_shards');
 }
 
 async function retryJob(jobId) {
@@ -3575,6 +3578,7 @@ function renderRunState(result) {
   const runState = resultRunState(result);
   if (!runState) {
     currentRunStateResumeCommand = '';
+    currentRunStateFailedShardIds = [];
     el.style.display = 'none';
     el.innerHTML = '';
     return;
@@ -3583,6 +3587,7 @@ function renderRunState(result) {
   const summary = resultRunStateSummary(result);
   const resume = runState.resume && typeof runState.resume === 'object' ? runState.resume : {};
   currentRunStateResumeCommand = resume.command ? String(resume.command) : '';
+  currentRunStateFailedShardIds = runStateFailedShardIds(summary);
   const failure = runState.failure && (runState.failure.reason || runState.failure.error);
   const heartbeat = runState.heartbeat_at_utc || runState.finished_at_utc || runState.started_at_utc || '';
   const cells = [
@@ -3602,9 +3607,14 @@ function renderRunState(result) {
   const summaryHtml = renderRunStateSummary(summary);
   const actionButtons = [];
   if (currentRunStateResumeCommand) {
+    if (currentJobId && currentRunStateFailedShardIds.length) {
+      actionButtons.push(
+        '<button class="run-state-action" type="button" onclick="resumeFailedShardsCurrentJob()">Rerun Failed Shards</button>'
+      );
+    }
     if (currentJobId) {
       actionButtons.push(
-        '<button class="run-state-action" type="button" onclick="resumeCurrentJob()">' + esc(runStateResumeActionLabel(summary)) + '</button>'
+        '<button class="run-state-action" type="button" onclick="resumeCurrentJob()">Resume In App</button>'
       );
     }
     actionButtons.push(

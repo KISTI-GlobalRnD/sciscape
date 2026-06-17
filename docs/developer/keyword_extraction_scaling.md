@@ -205,6 +205,24 @@ and records elapsed time, throughput, memory, tracked terms, and pruned term
 counts in `candidate_shard_XXXX.done.json`.  Treat a stale progress file with
 no matching `.done.json` as an interrupted shard that must be resumed or rerun.
 
+For a failed subset, rerun only the affected cluster shards:
+
+```bash
+sciscape keywords abstracts.parquet membership.parquet \
+  --keyword-engine cluster_sharded \
+  --cluster-sharded-output-dir workspace/artifacts/keyword_cluster_sharded/full_run \
+  --progress-path workspace/artifacts/keyword_cluster_sharded/full_run/progress.json \
+  --cluster-sharded-shard-ids 17,23 \
+  --scoring-shard-resume \
+  -o workspace/artifacts/keyword_cluster_sharded/full_run/keywords.parquet
+```
+
+Selected-shard rerun recomputes only the requested candidate/final shard files,
+but global term statistics and aggregate `keywords.parquet` /
+`keywords_flagged.parquet` are rebuilt from all complete shard outputs.  If a
+non-selected candidate shard is missing, the run stops rather than writing a
+partial aggregate keyword file.
+
 ## Remaining TODO
 
 Before claiming full large-scale support, add a benchmark matrix that records:

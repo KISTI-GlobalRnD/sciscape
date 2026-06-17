@@ -35,6 +35,18 @@ from pathlib import Path
 import pandas as pd
 
 
+def _parse_int_csv(value: str) -> tuple[int, ...]:
+    try:
+        ids = tuple(sorted({int(part.strip()) for part in str(value).split(",") if part.strip()}))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected comma-separated integer IDs") from exc
+    if not ids:
+        raise argparse.ArgumentTypeError("expected at least one shard ID")
+    if any(item < 0 for item in ids):
+        raise argparse.ArgumentTypeError("shard IDs must be non-negative")
+    return ids
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sciscape",
@@ -90,6 +102,12 @@ def _build_parser() -> argparse.ArgumentParser:
     kw.add_argument("--year-col", type=str, default="pubyear", help="Publication year column (default: pubyear)")
     kw.add_argument("--target-docs-per-shard", type=int, default=500_000)
     kw.add_argument("--max-clusters-per-shard", type=int, default=1024)
+    kw.add_argument(
+        "--cluster-sharded-shard-ids",
+        type=_parse_int_csv,
+        default=None,
+        help="For --keyword-engine cluster_sharded, rerun only these comma-separated shard IDs",
+    )
     kw.add_argument("--candidate-pool-floor", type=int, default=256)
     kw.add_argument("--candidate-pool-large", type=int, default=1024)
     kw.add_argument("--candidate-pool-hard-max", type=int, default=1536)
@@ -468,6 +486,7 @@ def _run_keywords(args: argparse.Namespace) -> None:
         year_col=args.year_col,
         target_docs_per_shard=args.target_docs_per_shard,
         max_clusters_per_shard=args.max_clusters_per_shard,
+        cluster_sharded_shard_ids=args.cluster_sharded_shard_ids,
         candidate_pool_floor=args.candidate_pool_floor,
         candidate_pool_large=args.candidate_pool_large,
         candidate_pool_hard_max=args.candidate_pool_hard_max,
