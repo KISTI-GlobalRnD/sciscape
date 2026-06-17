@@ -111,6 +111,10 @@ class NarrativeReviewRequest(BaseModel):
     reason: str | None = None
 
 
+class ShardResumeRequest(BaseModel):
+    shard_ids: list[int]
+
+
 class JobCancelled(RuntimeError):
     """Raised when a web job observes a cooperative cancellation request."""
 
@@ -310,6 +314,37 @@ def _job_failed_shard_resume_request(job: dict[str, Any]) -> tuple[str, list[str
     return shard_command, shard_argv, shard_ids
 
 
+def _job_selected_shard_resume_request(
+    job: dict[str, Any],
+    shard_ids: Sequence[int],
+) -> tuple[str, list[str], list[int]]:
+    command, argv = _job_resume_request(job)
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    run_state = (
+        result.get("run_state")
+        if isinstance(result.get("run_state"), dict)
+        else _run_state_for_result(result)
+    )
+    shards = run_state.get("shards") if isinstance(run_state.get("shards"), dict) else {}
+    try:
+        total = int(shards.get("total") or 0)
+    except (TypeError, ValueError):
+        total = 0
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="job has no shard schedule metadata")
+
+    requested = _parse_resume_shard_ids(",".join(str(value) for value in shard_ids))
+    invalid = [value for value in requested if value >= total]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"shard IDs outside available range 0-{total - 1}: {invalid}",
+        )
+    shard_argv = _resume_argv_with_shard_ids(argv, requested)
+    shard_command = "sciscape " + shlex.join(shard_argv)
+    return shard_command, shard_argv, requested
+
+
 def _enqueue_retry_job(source_job_id: str, source_job: dict[str, Any], bg: BackgroundTasks) -> dict[str, Any]:
     status = str(source_job.get("status") or "")
     if status in {"pending", "running"}:
@@ -336,17 +371,28 @@ def _enqueue_resume_job(
     bg: BackgroundTasks,
     *,
     failed_shards_only: bool = False,
+    selected_shard_ids: Sequence[int] | None = None,
 ) -> dict[str, Any]:
-    if failed_shards_only:
+    if failed_shards_only and selected_shard_ids is not None:
+        raise HTTPException(status_code=400, detail="choose either failed shards or selected shards")
+    if selected_shard_ids is not None:
+        command, argv, shard_ids = _job_selected_shard_resume_request(source_job, selected_shard_ids)
+        resume_scope = "selected_shards"
+        progress_message = f"Resume selected shards {shard_ids} of job {source_job_id}"
+    elif failed_shards_only:
         command, argv, shard_ids = _job_failed_shard_resume_request(source_job)
+        resume_scope = "failed_shards"
+        progress_message = f"Resume failed shards {shard_ids} of job {source_job_id}"
     else:
         command, argv = _job_resume_request(source_job)
         shard_ids = []
+        resume_scope = "all_resumable_shards"
+        progress_message = f"Resume of job {source_job_id}"
     job_id = str(uuid.uuid4())[:8]
     request_payload = {
         "source_type": "sciscape_cli_resume",
         "resume_of": source_job_id,
-        "resume_scope": "failed_shards" if failed_shards_only else "all_resumable_shards",
+        "resume_scope": resume_scope,
         "command": command,
         "argv": argv,
     }
@@ -355,9 +401,7 @@ def _enqueue_resume_job(
     _jobs.create(job_id, request_payload)
     resume_job = _jobs[job_id]
     resume_job["status"] = "pending"
-    resume_job["progress"] = [
-        f"Resume failed shards {shard_ids} of job {source_job_id}" if failed_shards_only else f"Resume of job {source_job_id}"
-    ]
+    resume_job["progress"] = [progress_message]
     resume_job["result"] = None
     _jobs.persist(job_id)
     bg.add_task(_run_resume_job, job_id, source_job_id, command, argv)
@@ -392,6 +436,15 @@ async def resume_failed_shards_job(job_id: str, bg: BackgroundTasks):
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return _enqueue_resume_job(job_id, job, bg, failed_shards_only=True)
+
+
+@app.post("/api/jobs/{job_id}/resume-shards")
+async def resume_selected_shards_job(job_id: str, req: ShardResumeRequest, bg: BackgroundTasks):
+    """Resume user-selected cluster-sharded keyword shards as a new web job."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    return _enqueue_resume_job(job_id, job, bg, selected_shard_ids=req.shard_ids)
 
 
 @app.post("/api/jobs/{job_id}/cancel")
@@ -761,7 +814,9 @@ def _run_state_operator_actions(
     resume_enabled, resume_reason = _can_resume_job(job)
     failed_shards = summary.get("failed_shards") or []
     failed_shard_count = int(summary.get("failed_shard_count") or len(failed_shards) or 0)
+    shards_total = int(summary.get("shards_total") or 0)
     rerun_failed_enabled = bool(resume_enabled and failed_shard_count > 0)
+    rerun_selected_enabled = bool(resume_enabled and shards_total > 0)
     actions = []
     actions.append(
         {
@@ -788,6 +843,25 @@ def _run_state_operator_actions(
             "scope": "cluster_sharded_keywords",
             "command_kind": resume.get("command_kind"),
             "mode": resume.get("mode"),
+            "failed_shards": failed_shards,
+        }
+    )
+    actions.append(
+        {
+            "action_id": "rerun_selected_shards",
+            "label": "Rerun Selected Shards",
+            "method": "POST",
+            "endpoint": f"/api/jobs/{job_id}/resume-shards",
+            "enabled": rerun_selected_enabled,
+            "reason": None if rerun_selected_enabled else resume_reason or "no shard schedule metadata",
+            "scope": "cluster_sharded_keyword_shards",
+            "command_kind": resume.get("command_kind"),
+            "mode": "user_selected_shards",
+            "requires_input": True,
+            "body_schema": {"shard_ids": "list[int]"},
+            "shards_total": shards_total,
+            "valid_shard_id_min": 0 if shards_total > 0 else None,
+            "valid_shard_id_max": shards_total - 1 if shards_total > 0 else None,
             "failed_shards": failed_shards,
         }
     )

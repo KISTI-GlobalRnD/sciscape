@@ -318,6 +318,10 @@ When `failure.failed_shards` is present, the web app may submit
 `/api/jobs/{job_id}/resume-failed-shards`; that route appends
 `--cluster-sharded-shard-ids` to the validated resume argv so only failed shards
 are recomputed while aggregate outputs are rebuilt from all complete shard files.
+The web app may also submit `/api/jobs/{job_id}/resume-shards` with an explicit
+`shard_ids` list. That route uses the same validated resume command, checks the
+requested IDs against the run-state shard bounds, and rewrites only
+`--cluster-sharded-shard-ids`.
 
 Web/API result payloads may add a derived `run_state_summary` object. It is not a
 replacement for `run_state`; it is a compact review surface for failed shard IDs,

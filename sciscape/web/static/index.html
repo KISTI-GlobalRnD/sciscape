@@ -3122,6 +3122,7 @@ let currentJobId = null;
 let currentResult = null;
 let currentRunStateResumeCommand = '';
 let currentRunStateFailedShardIds = [];
+let currentRunStateShardTotal = 0;
 let evtSource = null;
 let currentResultFeatures = {};
 let currentAtlasPayload = null;
@@ -3507,12 +3508,56 @@ async function resumeJob(jobId, mode) {
   }
 }
 
+async function resumeSelectedShardsJob(jobId) {
+  if (!jobId) return;
+  const status = document.getElementById('run-state-action-status');
+  const maxLabel = currentRunStateShardTotal > 0 ? '0-' + String(currentRunStateShardTotal - 1) : 'non-negative';
+  const fallback = currentRunStateFailedShardIds.length ? currentRunStateFailedShardIds.join(',') : '';
+  const raw = window.prompt('Shard IDs to rerun (' + maxLabel + ', comma-separated)', fallback);
+  if (raw === null) return;
+  const shardIds = raw.split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+    .map(value => Number(value));
+  if (!shardIds.length || shardIds.some(value => !Number.isInteger(value) || value < 0)) {
+    if (status) status.textContent = 'Enter comma-separated non-negative shard IDs.';
+    return;
+  }
+  const term = document.getElementById('terminal');
+  const lines = document.getElementById('term-lines');
+  const results = document.getElementById('results');
+  try {
+    const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/resume-shards', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({shard_ids: shardIds})
+    });
+    const data = await response.json();
+    if (!response.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'selected shard resume failed');
+    currentJobId = data.job_id;
+    term.classList.add('active');
+    lines.innerHTML = '';
+    results.classList.remove('active');
+    document.getElementById('term-cursor').style.display = '';
+    addLine('Selected-shard resume job ' + data.job_id + ' submitted from ' + jobId + ' for shards ' + data.shard_ids.join(', '));
+    streamProgress(data.job_id);
+    refreshHistory();
+  } catch (e) {
+    if (status) status.textContent = 'Selected shard resume failed: ' + e.message;
+    else addLine('Selected shard resume failed: ' + e.message, 'err');
+  }
+}
+
 function resumeCurrentJob() {
   resumeJob(currentJobId);
 }
 
 function resumeFailedShardsCurrentJob() {
   resumeJob(currentJobId, 'failed_shards');
+}
+
+function resumeSelectedShardsCurrentJob() {
+  resumeSelectedShardsJob(currentJobId);
 }
 
 async function retryJob(jobId) {
@@ -3579,6 +3624,7 @@ function renderRunState(result) {
   if (!runState) {
     currentRunStateResumeCommand = '';
     currentRunStateFailedShardIds = [];
+    currentRunStateShardTotal = 0;
     el.style.display = 'none';
     el.innerHTML = '';
     return;
@@ -3588,6 +3634,7 @@ function renderRunState(result) {
   const resume = runState.resume && typeof runState.resume === 'object' ? runState.resume : {};
   currentRunStateResumeCommand = resume.command ? String(resume.command) : '';
   currentRunStateFailedShardIds = runStateFailedShardIds(summary);
+  currentRunStateShardTotal = Number(summary && summary.shards_total || 0);
   const failure = runState.failure && (runState.failure.reason || runState.failure.error);
   const heartbeat = runState.heartbeat_at_utc || runState.finished_at_utc || runState.started_at_utc || '';
   const cells = [
@@ -3615,6 +3662,11 @@ function renderRunState(result) {
     if (currentJobId) {
       actionButtons.push(
         '<button class="run-state-action" type="button" onclick="resumeCurrentJob()">Resume In App</button>'
+      );
+    }
+    if (currentJobId && currentRunStateShardTotal > 0) {
+      actionButtons.push(
+        '<button class="run-state-action" type="button" onclick="resumeSelectedShardsCurrentJob()">Rerun Shards...</button>'
       );
     }
     actionButtons.push(
