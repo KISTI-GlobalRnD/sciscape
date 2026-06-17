@@ -488,6 +488,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "fetch('/api/query'" in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/retry" in response.text
     assert "Retry Query" in response.text
+    assert 'id="btn-cancel"' in response.text
+    assert "/api/jobs/' + encodeURIComponent(jobId) + '/cancel" in response.text
+    assert "Cancel Query" in response.text
     assert "fetch('/api/demo-presets'" in response.text
     assert "fetch('/api/local-data" in response.text
     assert "evolution_status" in response.text
@@ -626,6 +629,85 @@ def test_retry_endpoint_rejects_local_result_jobs():
 
     assert response.status_code == 400
     assert response.json()["detail"] == "job does not contain a replayable OpenAlex query request"
+
+
+def test_cancel_endpoint_records_cancel_request(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    source_id = "runningjob"
+    request_payload = {
+        "query": "graph neural networks",
+        "years": "2020-2024",
+        "max_works": 12,
+        "edge_types": "dc,bc",
+        "run_landscape": True,
+    }
+    web_app._jobs.create(source_id, request_payload)
+    job = web_app._jobs[source_id]
+    job["status"] = "running"
+    job["started_at_utc"] = "2026-06-02T00:00:00+00:00"
+    job["progress"] = ["Querying OpenAlex"]
+    web_app._jobs.persist(source_id)
+
+    client = TestClient(app)
+    response = client.post(f"/api/jobs/{source_id}/cancel")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["cancel_requested"] is True
+    assert payload["cancel_requested_at_utc"]
+    updated = web_app._jobs[source_id]
+    assert updated["status"] == "running"
+    assert updated["cancel_requested_at_utc"] == payload["cancel_requested_at_utc"]
+    assert updated["progress"][-1] == "Cancellation requested."
+
+    output_dir = tmp_path / "workspace" / "web_output" / source_id
+    status_payload = json.loads((output_dir / "job_status.json").read_text(encoding="utf-8"))
+    assert status_payload["status"] == "running"
+    assert status_payload["cancel_requested_at_utc"] == payload["cancel_requested_at_utc"]
+    assert status_payload["run_state"]["cancel_requested_at_utc"] == payload["cancel_requested_at_utc"]
+
+    list_payload = client.get("/api/jobs").json()
+    row = next(item for item in list_payload if item["job_id"] == source_id)
+    assert row["cancel_requested"] is True
+
+
+def test_run_job_honors_cancel_request_at_progress_boundary(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    def fake_openalex_pipeline(config):
+        config.progress("fetched first page")
+        job = web_app._jobs[job_id]
+        job["cancel_requested_at_utc"] = web_app._utc_now()
+        config.progress("this should not be recorded")
+        raise AssertionError("pipeline should stop at cancellation boundary")
+
+    monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_openalex_pipeline)
+
+    req = web_app.QueryRequest(
+        query="graph neural networks",
+        years="2020-2024",
+        max_works=12,
+        run_landscape=False,
+    )
+    job_id = "canceljob"
+    web_app._jobs.create(job_id, req.model_dump())
+
+    web_app._run_job(job_id, req)
+
+    job = web_app._jobs[job_id]
+    output_dir = tmp_path / "workspace" / "web_output" / job_id
+    status_payload = json.loads((output_dir / "job_status.json").read_text(encoding="utf-8"))
+    manifest_payload = json.loads((output_dir / "result_manifest.json").read_text(encoding="utf-8"))
+
+    assert job["status"] == "cancelled"
+    assert job["result"]["cancelled"] is True
+    assert job["result"]["run_state"]["status"] == "cancelled"
+    assert job["progress"] == ["fetched first page", "Job cancelled."]
+    assert status_payload["status"] == "cancelled"
+    assert status_payload["run_state"]["status"] == "cancelled"
+    assert status_payload["run_state"]["failure"] is None
+    assert status_payload["run_state"]["cancellation"]["reason"] == "Cancellation requested"
+    assert manifest_payload["run_state"]["status"] == "cancelled"
 
 
 def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):

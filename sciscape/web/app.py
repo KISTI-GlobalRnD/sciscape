@@ -91,9 +91,10 @@ class QueryRequest(BaseModel):
 
 class JobStatus(BaseModel):
     job_id: str
-    status: str  # "pending", "running", "done", "error"
+    status: str  # "pending", "running", "done", "error", "cancelled"
     progress: list[str]
     result: dict | None = None
+    cancel_requested_at_utc: str | None = None
 
 
 class LocalDataOpenRequest(BaseModel):
@@ -105,6 +106,10 @@ class NarrativeReviewRequest(BaseModel):
     decision_type: str
     reviewer: str | None = "web"
     reason: str | None = None
+
+
+class JobCancelled(RuntimeError):
+    """Raised when a web job observes a cooperative cancellation request."""
 
 
 _LOCAL_DATA_ROOTS = [
@@ -196,6 +201,45 @@ async def retry_job(job_id: str, bg: BackgroundTasks):
     return _enqueue_retry_job(job_id, job, bg)
 
 
+@app.post("/api/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str):
+    """Request cooperative cancellation for a queued or running query job."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    status = str(job.get("status") or "")
+    if status in {"done", "error", "cancelled"}:
+        raise HTTPException(status_code=409, detail="job is already finished")
+    if status not in {"pending", "running"}:
+        raise HTTPException(status_code=409, detail="job cannot be cancelled")
+
+    now = _utc_now()
+    job["cancel_requested_at_utc"] = job.get("cancel_requested_at_utc") or now
+    _append_progress_once(job, "Cancellation requested.")
+    _jobs.persist(job_id)
+
+    try:
+        req = _job_retry_request(job)
+        output_dir = Path("workspace/web_output") / job_id
+        _write_live_job_status_artifacts(
+            job_id=job_id,
+            job=job,
+            output_dir=output_dir,
+            req=req,
+            filters=_query_filters(req),
+            status=status,
+        )
+        _jobs.persist(job_id)
+    except HTTPException:
+        pass
+    return {
+        "job_id": job_id,
+        "status": job.get("status"),
+        "cancel_requested": True,
+        "cancel_requested_at_utc": job["cancel_requested_at_utc"],
+    }
+
+
 @app.get("/api/jobs/{job_id}")
 async def get_job(job_id: str):
     """Get job status and progress."""
@@ -207,6 +251,7 @@ async def get_job(job_id: str):
         status=job["status"],
         progress=job["progress"],
         result=job["result"],
+        cancel_requested_at_utc=job.get("cancel_requested_at_utc"),
     )
 
 
@@ -289,7 +334,7 @@ async def stream_progress(job_id: str):
                 yield f"data: {data}\n\n"
                 last_idx += 1
 
-            if job.get("status") in ("done", "error"):
+            if job.get("status") in ("done", "error", "cancelled"):
                 result = job.get("result")
                 data = json.dumps({"status": job["status"], "result": result})
                 yield f"data: {data}\n\n"
@@ -305,10 +350,10 @@ async def stream_progress(job_id: str):
 
 
 def _resolve_job_output_file(job_id: str, filename: str) -> Path:
-    """Resolve an output artifact path inside a completed job directory."""
+    """Resolve an output artifact path inside a terminal job directory."""
     job = _jobs.get(job_id)
-    if not job or job["status"] != "done":
-        raise HTTPException(status_code=400, detail="job not done")
+    if not job or job["status"] not in {"done", "error", "cancelled"}:
+        raise HTTPException(status_code=400, detail="job not in terminal state")
     result = job.get("result", {})
     output_dir = result.get("output_dir")
     if not output_dir:
@@ -2986,7 +3031,13 @@ async def get_consensus(job_id: str):
 async def list_jobs():
     """List all jobs."""
     return [
-        {"job_id": jid, "status": j["status"], "query": j["request"].get("query", "")}
+        {
+            "job_id": jid,
+            "status": j["status"],
+            "query": j["request"].get("query", ""),
+            "cancel_requested": bool(j.get("cancel_requested_at_utc")),
+            "cancel_requested_at_utc": j.get("cancel_requested_at_utc"),
+        }
         for jid, j in _jobs.items()
     ]
 
@@ -3233,7 +3284,18 @@ def _job_status_for_manifest(status: str) -> str:
         "running": "running",
         "done": "complete",
         "error": "failed",
+        "cancelled": "cancelled",
     }.get(status, status)
+
+
+def _job_cancel_requested(job: dict[str, Any]) -> bool:
+    return bool(job.get("cancel_requested_at_utc"))
+
+
+def _append_progress_once(job: dict[str, Any], message: str) -> None:
+    progress = job.setdefault("progress", [])
+    if not any(str(msg) == message for msg in progress):
+        progress.append(message)
 
 
 def _query_filters(req: QueryRequest) -> dict[str, Any]:
@@ -3307,7 +3369,7 @@ def _write_live_job_status_artifacts(
     now = _utc_now()
     job["updated_at_utc"] = now
     progress_messages = list(job.get("progress") or [])
-    if status in {"done", "error"}:
+    if status in {"done", "error", "cancelled"}:
         job.setdefault("finished_at_utc", now)
     partial_outputs = _live_job_partial_outputs(output_dir, result)
     run_state = {
@@ -3317,15 +3379,22 @@ def _write_live_job_status_artifacts(
         "heartbeat_at_utc": now,
         "progress": {
             "current": len(progress_messages),
-            "total": len(progress_messages) if status in {"done", "error"} else None,
+            "total": len(progress_messages) if status in {"done", "error", "cancelled"} else None,
             "unit": "messages",
         },
         "shards": {"total": 0, "complete": 0, "failed": 0, "running": 0},
         "checkpoints": [{"path": "job_status.json", "kind": "job_status", "status": "present"}],
         "partial_outputs": partial_outputs,
-        "failure": {"reason": error} if error else None,
+        "failure": {"reason": error} if error and status != "cancelled" else None,
         "resume": {"supported": False, "command": None},
     }
+    if job.get("cancel_requested_at_utc"):
+        run_state["cancel_requested_at_utc"] = job.get("cancel_requested_at_utc")
+    if status == "cancelled":
+        run_state["cancellation"] = {
+            "reason": error or "Cancellation requested",
+            "requested_at_utc": job.get("cancel_requested_at_utc"),
+        }
     record_count = getattr(result, "n_works", None) if result is not None else None
     source_overrides = {
         "source_type": "openalex_query",
@@ -3340,6 +3409,7 @@ def _write_live_job_status_artifacts(
         "updated_at_utc": now,
         "started_at_utc": job.get("started_at_utc"),
         "finished_at_utc": job.get("finished_at_utc"),
+        "cancel_requested_at_utc": job.get("cancel_requested_at_utc"),
         "request": req.model_dump(),
         "output_dir": str(output_dir),
         "progress": progress_messages,
@@ -3365,15 +3435,58 @@ def _write_live_job_status_artifacts(
     return payload, manifest_payload
 
 
+def _mark_job_cancelled(
+    *,
+    job_id: str,
+    job: dict[str, Any],
+    output_dir: Path,
+    req: QueryRequest,
+    filters: dict[str, Any],
+    reason: str = "Cancellation requested",
+) -> None:
+    job["status"] = "cancelled"
+    job["finished_at_utc"] = _utc_now()
+    _append_progress_once(job, "Job cancelled.")
+    _, manifest = _write_live_job_status_artifacts(
+        job_id=job_id,
+        job=job,
+        output_dir=output_dir,
+        req=req,
+        filters=filters,
+        status="cancelled",
+        error=reason,
+    )
+    job_result = {
+        "cancelled": True,
+        "output_dir": str(output_dir),
+        "job_status_path": str(output_dir / "job_status.json"),
+        "result_manifest": manifest,
+        "run_state": (manifest or {}).get("run_state"),
+        "result_state": "partial",
+    }
+    job["result"] = job_result
+    _jobs.persist(job_id)
+
+
 def _run_job(job_id: str, req: QueryRequest) -> None:
     """Execute the OpenAlex pipeline in background."""
     from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
 
     job = _jobs[job_id]
-    job["status"] = "running"
-    job["started_at_utc"] = _utc_now()
+    if not job.get("started_at_utc"):
+        job["started_at_utc"] = _utc_now()
     output_dir = Path("workspace/web_output") / job_id
     filters = _query_filters(req)
+    if _job_cancel_requested(job):
+        _mark_job_cancelled(
+            job_id=job_id,
+            job=job,
+            output_dir=output_dir,
+            req=req,
+            filters=filters,
+        )
+        return
+    job["status"] = "running"
     _write_live_job_status_artifacts(
         job_id=job_id,
         job=job,
@@ -3385,6 +3498,8 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
     _jobs.persist(job_id)
 
     def progress_cb(msg: str) -> None:
+        if _job_cancel_requested(job):
+            raise JobCancelled("Cancellation requested")
         job["progress"].append(msg)
         _write_live_job_status_artifacts(
             job_id=job_id,
@@ -3396,6 +3511,8 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             write_manifest=False,
         )
         _jobs.persist(job_id)
+        if _job_cancel_requested(job):
+            raise JobCancelled("Cancellation requested")
 
     try:
         config = OpenAlexPipelineConfig(
@@ -3413,6 +3530,8 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             progress=progress_cb,
         )
         result = run_openalex_pipeline(config)
+        if _job_cancel_requested(job):
+            raise JobCancelled("Cancellation requested")
 
         job["status"] = "done"
         job_result = {
@@ -3463,6 +3582,15 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
         _attach_evolution_summary(job_result)
         job["result"] = job_result
         _jobs.persist(job_id)
+    except JobCancelled as e:
+        _mark_job_cancelled(
+            job_id=job_id,
+            job=job,
+            output_dir=output_dir,
+            req=req,
+            filters=filters,
+            reason=str(e) or "Cancellation requested",
+        )
     except Exception as e:
         job["status"] = "error"
         job["progress"].append(f"ERROR: {e}")

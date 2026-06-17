@@ -224,6 +224,20 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
   animation: shimmer 1.5s infinite;
 }
+.btn-cancel {
+  display: none;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.5rem 0.78rem;
+  background: rgba(216, 90, 74, 0.08);
+  color: var(--coral);
+  border: 1px solid rgba(216, 90, 74, 0.28);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-cancel.active { display: inline-flex; }
+.btn-cancel:disabled { opacity: 0.55; cursor: not-allowed; }
 @keyframes shimmer { to { left: 100%; } }
 
 .query-hint {
@@ -2621,6 +2635,17 @@ body {
   cursor: pointer;
 }
 .job-retry:hover { background: rgba(216, 90, 74, 0.14); }
+.job-cancel {
+  border-color: rgba(232, 168, 56, 0.28);
+  background: rgba(232, 168, 56, 0.1);
+  color: var(--amber-dim);
+}
+.job-cancel:hover { background: rgba(232, 168, 56, 0.16); }
+.job-cancelling {
+  color: var(--amber-dim);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+}
 .job-status {
   display: inline-block;
   width: 6px;
@@ -2856,6 +2881,7 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
       <div class="query-actions">
         <button class="btn-analyze" id="btn-go" onclick="submitQuery()">Analyze</button>
+        <button class="btn-cancel" id="btn-cancel" onclick="cancelCurrentJob()" disabled>Cancel</button>
         <span class="query-hint" id="hint"></span>
       </div>
     </div>
@@ -3281,6 +3307,10 @@ function retrySupportedStatus(status) {
   return ['error', 'failed', 'cancelled', 'stopped_by_qc'].includes(String(status || '').toLowerCase());
 }
 
+function cancelSupportedStatus(status) {
+  return ['pending', 'queued', 'running'].includes(String(status || '').toLowerCase());
+}
+
 async function copyRunStateResumeCommand() {
   if (!currentRunStateResumeCommand) return;
   const status = document.getElementById('run-state-action-status');
@@ -3332,6 +3362,35 @@ function retryCurrentJob() {
   retryJob(currentJobId);
 }
 
+async function cancelJob(jobId) {
+  if (!jobId) return;
+  const cancelBtn = document.getElementById('btn-cancel');
+  const status = document.getElementById('run-state-action-status');
+  try {
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.textContent = 'Cancelling...';
+    }
+    const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/cancel', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'cancel failed');
+    addLine('Cancellation requested.');
+    if (status) status.textContent = 'Cancellation requested.';
+    refreshHistory();
+  } catch (e) {
+    if (cancelBtn) {
+      cancelBtn.disabled = false;
+      cancelBtn.textContent = 'Cancel';
+    }
+    if (status) status.textContent = 'Cancel failed: ' + e.message;
+    else addLine('Cancel failed: ' + e.message, 'err');
+  }
+}
+
+function cancelCurrentJob() {
+  cancelJob(currentJobId);
+}
+
 function renderRunState(result) {
   const el = document.getElementById('run-state-strip');
   if (!el) return;
@@ -3370,6 +3429,11 @@ function renderRunState(result) {
   if (retrySupportedStatus(status) && currentJobId) {
     actionButtons.push(
       '<button class="run-state-action" type="button" onclick="retryCurrentJob()">Retry Query</button>'
+    );
+  }
+  if (cancelSupportedStatus(status) && currentJobId) {
+    actionButtons.push(
+      '<button class="run-state-action" type="button" onclick="cancelCurrentJob()">Cancel Query</button>'
     );
   }
   const actions = actionButtons.length
@@ -5618,6 +5682,12 @@ async function submitQuery() {
     });
     const data = await r.json();
     currentJobId = data.job_id;
+    const cancelBtn = document.getElementById('btn-cancel');
+    if (cancelBtn) {
+      cancelBtn.disabled = false;
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.classList.add('active');
+    }
     addLine('Job ' + data.job_id + ' submitted');
     streamProgress(data.job_id);
     refreshHistory();
@@ -5650,6 +5720,14 @@ function streamProgress(jobId) {
       resetBtn();
       refreshHistory();
     }
+    if (d.status === 'cancelled') {
+      evtSource.close();
+      addLine('Pipeline cancelled.', 'err');
+      document.getElementById('term-cursor').style.display = 'none';
+      if (d.result) showResults(d.result);
+      resetBtn();
+      refreshHistory();
+    }
   };
   evtSource.onerror = function() { evtSource.close(); resetBtn(); };
 }
@@ -5666,9 +5744,15 @@ function addLine(text, cls) {
 
 function resetBtn() {
   const btn = document.getElementById('btn-go');
+  const cancelBtn = document.getElementById('btn-cancel');
   btn.disabled = false;
   btn.textContent = 'Analyze';
   btn.classList.remove('running');
+  if (cancelBtn) {
+    cancelBtn.disabled = true;
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.classList.remove('active');
+  }
 }
 
 /* ── RESULTS ───────────────────────────────────────────── */
@@ -6046,10 +6130,16 @@ async function refreshHistory() {
       const retryButton = String(j.status || '').toLowerCase() === 'error'
         ? '<button class="job-retry" type="button" onclick="event.stopPropagation(); retryJob(\'' + j.job_id + '\')">Retry</button>'
         : '';
+      const canCancel = cancelSupportedStatus(j.status) && !j.cancel_requested;
+      const cancelControl = canCancel
+        ? '<button class="job-retry job-cancel" type="button" onclick="event.stopPropagation(); cancelJob(\'' + j.job_id + '\')">Cancel</button>'
+        : j.cancel_requested
+          ? '<span class="job-cancelling">Cancelling</span>'
+          : '';
       return '<li class="job-item' + (j.job_id === currentJobId ? ' active' : '') + '" onclick="loadJob(\'' + j.job_id + '\')">' +
         '<div class="job-query"><span class="job-status ' + j.status + '"></span>' + esc(j.query || '(untitled)') + '</div>' +
         '<div class="job-meta"><span class="job-meta-main"><span>' + j.job_id + '</span><span>' + j.status + '</span></span>' +
-        retryButton + '</div></li>';
+        retryButton + cancelControl + '</div></li>';
     }).join('');
   } catch (e) { /* ignore */ }
 }
@@ -6074,6 +6164,18 @@ async function loadJob(jobId) {
       addLine('Pipeline failed.', 'err');
       document.getElementById('term-cursor').style.display = 'none';
       resetBtn();
+    } else if (job.status === 'cancelled') {
+      addLine('Pipeline cancelled.', 'err');
+      document.getElementById('term-cursor').style.display = 'none';
+      if (job.result) showResults(job.result);
+      resetBtn();
+    } else if (cancelSupportedStatus(job.status) && jobId === currentJobId) {
+      const cancelBtn = document.getElementById('btn-cancel');
+      if (cancelBtn) {
+        cancelBtn.disabled = Boolean(job.cancel_requested_at_utc);
+        cancelBtn.textContent = job.cancel_requested_at_utc ? 'Cancelling...' : 'Cancel';
+        cancelBtn.classList.add('active');
+      }
     }
     refreshHistory();
   } catch (e) { /* ignore */ }

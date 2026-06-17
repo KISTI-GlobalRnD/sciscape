@@ -47,6 +47,7 @@ class JobStore:
                     started_at_utc TEXT DEFAULT NULL,
                     finished_at_utc TEXT DEFAULT NULL,
                     updated_at_utc TEXT DEFAULT NULL,
+                    cancel_requested_at_utc TEXT DEFAULT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -68,7 +69,7 @@ class JobStore:
             row[1]
             for row in self._conn.execute("PRAGMA table_info(jobs)").fetchall()
         }
-        for column in ("started_at_utc", "finished_at_utc", "updated_at_utc"):
+        for column in ("started_at_utc", "finished_at_utc", "updated_at_utc", "cancel_requested_at_utc"):
             if column not in existing:
                 self._conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} TEXT DEFAULT NULL")
 
@@ -93,7 +94,7 @@ class JobStore:
                 row = self._conn.execute(
                     (
                         "SELECT status, request, result, progress, "
-                        "started_at_utc, finished_at_utc, updated_at_utc "
+                        "started_at_utc, finished_at_utc, updated_at_utc, cancel_requested_at_utc "
                         "FROM jobs WHERE job_id = ?"
                     ),
                     (job_id,),
@@ -107,6 +108,7 @@ class JobStore:
                         "started_at_utc": row[4],
                         "finished_at_utc": row[5],
                         "updated_at_utc": row[6],
+                        "cancel_requested_at_utc": row[7],
                     }
                     self._cache[job_id] = job
                     return job
@@ -118,7 +120,7 @@ class JobStore:
                 sets = []
                 vals = []
                 for k, v in kwargs.items():
-                    if k in ("status", "started_at_utc", "finished_at_utc", "updated_at_utc"):
+                    if k in ("status", "started_at_utc", "finished_at_utc", "updated_at_utc", "cancel_requested_at_utc"):
                         sets.append(f"{k} = ?")
                         vals.append(v)
                     elif k in ("result", "request"):
@@ -146,7 +148,7 @@ class JobStore:
                 self._conn.execute(
                     (
                         "UPDATE jobs SET status=?, result=?, progress=?, "
-                        "started_at_utc=?, finished_at_utc=?, updated_at_utc=? "
+                        "started_at_utc=?, finished_at_utc=?, updated_at_utc=?, cancel_requested_at_utc=? "
                         "WHERE job_id=?"
                     ),
                     (job["status"],
@@ -155,6 +157,7 @@ class JobStore:
                      job.get("started_at_utc"),
                      job.get("finished_at_utc"),
                      job.get("updated_at_utc"),
+                     job.get("cancel_requested_at_utc"),
                      job_id),
                 )
                 self._conn.commit()
@@ -200,7 +203,7 @@ class JobStore:
                 rows = self._conn.execute(
                     (
                         "SELECT job_id, status, request, result, progress, "
-                        "started_at_utc, finished_at_utc, updated_at_utc FROM jobs"
+                        "started_at_utc, finished_at_utc, updated_at_utc, cancel_requested_at_utc FROM jobs"
                     )
                 ).fetchall()
                 return [
@@ -209,7 +212,8 @@ class JobStore:
                             "progress": json.loads(r[4] or "[]"),
                             "started_at_utc": r[5],
                             "finished_at_utc": r[6],
-                            "updated_at_utc": r[7]})
+                            "updated_at_utc": r[7],
+                            "cancel_requested_at_utc": r[8]})
                     for r in rows
                 ]
             else:
@@ -221,7 +225,7 @@ class JobStore:
                 rows = self._conn.execute(
                     (
                         "SELECT job_id, status, request, started_at_utc, "
-                        "finished_at_utc, updated_at_utc FROM jobs ORDER BY created_at DESC"
+                        "finished_at_utc, updated_at_utc, cancel_requested_at_utc FROM jobs ORDER BY created_at DESC"
                     )
                 ).fetchall()
                 return [
@@ -232,6 +236,7 @@ class JobStore:
                         "started_at_utc": r[3],
                         "finished_at_utc": r[4],
                         "updated_at_utc": r[5],
+                        "cancel_requested_at_utc": r[6],
                     }
                     for r in rows
                 ]

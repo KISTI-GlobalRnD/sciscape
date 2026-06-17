@@ -278,7 +278,10 @@ Allowed run statuses:
 Live OpenAlex query jobs write `job_status.json` in the result root and mirror
 that state into `run_state`. Progress callbacks refresh the lightweight status
 sidecar, while `result_manifest.json` is refreshed at lifecycle boundaries such
-as job start, completion, and failure. Manifest generation also detects existing
+as job start, completion, cancellation, and failure. Cooperative cancellation
+records `cancel_requested_at_utc` while the job is still running, then finalizes
+the run as `status="cancelled"` with a `cancellation` reason block at the next
+safe progress boundary. Manifest generation also detects existing
 `keyword_progress.json`, `progress.json`, and `scoring_shards/manifest.json`
 sidecars so reopened result folders retain progress, shard, checkpoint, partial
 output, and resume metadata.
