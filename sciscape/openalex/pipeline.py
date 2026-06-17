@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence
 
 import polars as pl
 
@@ -73,6 +73,7 @@ class OpenAlexPipelineConfig:
     # ── Callbacks ──
     progress: Callable[[str], None] | None = None
     checkpoint: Callable[[], None] | None = None
+    api_telemetry: Callable[[dict[str, Any]], None] | None = None
 
 
 @dataclass
@@ -84,6 +85,7 @@ class OpenAlexPipelineResult:
     abstracts_path: Path | None
     edges_path: Path | None
     landscape_dir: Path | None
+    api_telemetry: dict[str, Any] | None = None
 
 
 def run_openalex_pipeline(
@@ -113,6 +115,14 @@ def run_openalex_pipeline(
         if config.checkpoint is not None:
             config.checkpoint()
 
+    latest_api_telemetry: dict[str, Any] | None = None
+
+    def _api_telemetry(snapshot: dict[str, Any]) -> None:
+        nonlocal latest_api_telemetry
+        latest_api_telemetry = dict(snapshot)
+        if config.api_telemetry is not None:
+            config.api_telemetry(dict(snapshot))
+
     # ── Step 1: Query OpenAlex ──
     _checkpoint()
     _log(f"Querying OpenAlex: '{config.query}' (max {config.max_works} works)")
@@ -124,6 +134,7 @@ def run_openalex_pipeline(
         max_retries=config.max_retries,
         backoff_base=config.backoff_base,
         backoff_max=config.backoff_max,
+        telemetry=_api_telemetry,
     )
     works = client.search_works(
         config.query,
@@ -138,6 +149,7 @@ def run_openalex_pipeline(
         return OpenAlexPipelineResult(
             n_works=0, n_edges={}, works=[],
             abstracts_path=None, edges_path=None, landscape_dir=None,
+            api_telemetry=latest_api_telemetry,
         )
 
     # ── Step 2: Save abstracts ──
@@ -241,6 +253,7 @@ def run_openalex_pipeline(
                 "query": config.query,
                 "filters": dict(config.filters),
                 "record_count": len(works),
+                "api_telemetry": latest_api_telemetry,
             },
         )
         _log(f"Saved result manifest → {output_dir / 'result_manifest.json'}")
@@ -261,6 +274,7 @@ def run_openalex_pipeline(
         abstracts_path=abstracts_path,
         edges_path=edges_path,
         landscape_dir=landscape_dir,
+        api_telemetry=latest_api_telemetry,
     )
 
 

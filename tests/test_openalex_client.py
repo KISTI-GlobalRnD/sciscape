@@ -42,7 +42,13 @@ def test_openalex_client_checkpoint_runs_before_http(monkeypatch):
 
 def test_openalex_client_retries_429_with_retry_after(monkeypatch):
     progress: list[str] = []
-    client = OpenAlexClient(progress=progress.append, max_retries=1, request_timeout=7)
+    snapshots: list[dict] = []
+    client = OpenAlexClient(
+        progress=progress.append,
+        telemetry=snapshots.append,
+        max_retries=1,
+        request_timeout=7,
+    )
     responses = [
         FakeResponse(429, headers={"Retry-After": "2"}),
         FakeResponse(200, payload={"results": [{"id": "https://openalex.org/W1"}]}),
@@ -66,6 +72,15 @@ def test_openalex_client_retries_429_with_retry_after(monkeypatch):
     assert [call["timeout"] for call in calls] == [7, 7]
     assert sleeps == [1.0, 1.0, 1.0, 1.0]
     assert any("OpenAlex HTTP 429" in msg for msg in progress)
+    telemetry = client.telemetry()
+    assert telemetry["attempts_total"] == 2
+    assert telemetry["successful_requests_total"] == 1
+    assert telemetry["failed_requests_total"] == 0
+    assert telemetry["retry_attempts_total"] == 1
+    assert telemetry["rate_limit_wait_seconds_total"] == 2.0
+    assert telemetry["retry_wait_seconds_total"] == 2.0
+    assert telemetry["status_counts"] == {"429": 1, "200": 1}
+    assert snapshots[-1]["status_counts"] == {"429": 1, "200": 1}
 
 
 def test_openalex_client_retries_timeout_then_succeeds(monkeypatch):
@@ -96,6 +111,14 @@ def test_openalex_client_retries_timeout_then_succeeds(monkeypatch):
     assert calls == 2
     assert sleeps == [1.0, 0.5, 1.0]
     assert any("Timeout" in msg for msg in progress)
+    telemetry = client.telemetry()
+    assert telemetry["attempts_total"] == 2
+    assert telemetry["successful_requests_total"] == 1
+    assert telemetry["retry_attempts_total"] == 1
+    assert telemetry["rate_limit_wait_seconds_total"] == 2.0
+    assert telemetry["retry_wait_seconds_total"] == 0.5
+    assert telemetry["exception_counts"] == {"Timeout": 1}
+    assert telemetry["status_counts"] == {"200": 1}
 
 
 def test_openalex_client_checkpoint_can_cancel_retry_sleep(monkeypatch):

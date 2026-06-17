@@ -80,6 +80,7 @@ class OpenAlexClient:
         cache_dir: Path | None = None,
         progress: Callable[[str], None] | None = None,
         checkpoint: Callable[[], None] | None = None,
+        telemetry: Callable[[dict[str, Any]], None] | None = None,
         request_timeout: float = REQUEST_TIMEOUT,
         max_retries: int = MAX_RETRIES,
         backoff_base: float = BACKOFF_BASE,
@@ -91,12 +92,60 @@ class OpenAlexClient:
         self._cache_dir = Path(cache_dir) if cache_dir else None
         self._progress = progress
         self._checkpoint = checkpoint
+        self._telemetry_callback = telemetry
         self._request_timeout = max(0.1, float(request_timeout))
         self._max_retries = max(0, int(max_retries))
         self._backoff_base = max(0.0, float(backoff_base))
         self._backoff_max = max(0.0, float(backoff_max))
+        self._telemetry: dict[str, Any] = {
+            "source": "openalex",
+            "polite_pool": bool(email),
+            "configured_delay_seconds": self._delay,
+            "request_timeout_seconds": self._request_timeout,
+            "max_retries": self._max_retries,
+            "backoff_base_seconds": self._backoff_base,
+            "backoff_max_seconds": self._backoff_max,
+            "attempts_total": 0,
+            "successful_requests_total": 0,
+            "failed_requests_total": 0,
+            "retry_attempts_total": 0,
+            "rate_limit_wait_seconds_total": 0.0,
+            "retry_wait_seconds_total": 0.0,
+            "status_counts": {},
+            "exception_counts": {},
+            "last_status_code": None,
+            "last_exception": None,
+            "last_retry_wait_seconds": None,
+        }
         if email:
             self._session.params = {"mailto": email}  # type: ignore[assignment]
+
+    def telemetry(self) -> dict[str, Any]:
+        data = dict(self._telemetry)
+        data["status_counts"] = dict(data.get("status_counts") or {})
+        data["exception_counts"] = dict(data.get("exception_counts") or {})
+        return data
+
+    def _notify_telemetry(self) -> None:
+        if self._telemetry_callback is not None:
+            self._telemetry_callback(self.telemetry())
+
+    def _increment_telemetry_counter(self, section: str, key: str | int) -> None:
+        counters = self._telemetry.setdefault(section, {})
+        text_key = str(key)
+        counters[text_key] = int(counters.get(text_key, 0)) + 1
+
+    def _record_response(self, resp: requests.Response) -> None:
+        status_code = int(resp.status_code)
+        self._telemetry["last_status_code"] = status_code
+        self._increment_telemetry_counter("status_counts", status_code)
+        self._notify_telemetry()
+
+    def _record_exception(self, exc: requests.RequestException) -> None:
+        name = exc.__class__.__name__
+        self._telemetry["last_exception"] = name
+        self._increment_telemetry_counter("exception_counts", name)
+        self._notify_telemetry()
 
     def _checkpoint_or_continue(self) -> None:
         if self._checkpoint is not None:
@@ -107,8 +156,21 @@ class OpenAlexClient:
         if self._progress:
             self._progress(msg)
 
-    def _sleep_with_checkpoint(self, delay: float) -> None:
+    def _sleep_with_checkpoint(self, delay: float, *, telemetry_bucket: str | None = None) -> None:
         remaining = max(0.0, delay)
+        if telemetry_bucket == "rate_limit":
+            self._telemetry["rate_limit_wait_seconds_total"] = round(
+                float(self._telemetry.get("rate_limit_wait_seconds_total") or 0.0) + remaining,
+                6,
+            )
+            self._notify_telemetry()
+        elif telemetry_bucket == "retry":
+            self._telemetry["retry_wait_seconds_total"] = round(
+                float(self._telemetry.get("retry_wait_seconds_total") or 0.0) + remaining,
+                6,
+            )
+            self._telemetry["last_retry_wait_seconds"] = remaining
+            self._notify_telemetry()
         while remaining > 0:
             self._checkpoint_or_continue()
             step = min(remaining, 1.0)
@@ -153,32 +215,58 @@ class OpenAlexClient:
         last_exc: requests.RequestException | None = None
         for attempt in range(1, attempts + 1):
             self._checkpoint_or_continue()
-            self._sleep_with_checkpoint(self._delay)
+            self._sleep_with_checkpoint(self._delay, telemetry_bucket="rate_limit")
             try:
+                self._telemetry["attempts_total"] = int(self._telemetry.get("attempts_total") or 0) + 1
+                self._notify_telemetry()
                 resp = self._session.get(url, params=params, timeout=self._request_timeout)
                 self._checkpoint_or_continue()
             except requests.RequestException as exc:
                 last_exc = exc
+                self._record_exception(exc)
                 if attempt >= attempts or not self._should_retry_exception(exc):
+                    self._telemetry["failed_requests_total"] = int(
+                        self._telemetry.get("failed_requests_total") or 0
+                    ) + 1
+                    self._notify_telemetry()
                     raise
                 delay = self._retry_delay(attempt)
+                self._telemetry["retry_attempts_total"] = int(
+                    self._telemetry.get("retry_attempts_total") or 0
+                ) + 1
+                self._notify_telemetry()
                 self._log(
                     f"OpenAlex request failed ({exc.__class__.__name__}); "
                     f"retrying in {delay:.1f}s ({attempt}/{self._max_retries})"
                 )
-                self._sleep_with_checkpoint(delay)
+                self._sleep_with_checkpoint(delay, telemetry_bucket="retry")
                 continue
 
+            self._record_response(resp)
             if not self._should_retry_response(resp) or attempt >= attempts:
+                if resp.status_code >= 400:
+                    self._telemetry["failed_requests_total"] = int(
+                        self._telemetry.get("failed_requests_total") or 0
+                    ) + 1
+                    self._notify_telemetry()
+                else:
+                    self._telemetry["successful_requests_total"] = int(
+                        self._telemetry.get("successful_requests_total") or 0
+                    ) + 1
+                    self._notify_telemetry()
                 resp.raise_for_status()
                 return resp.json()
 
             delay = self._retry_delay(attempt, resp)
+            self._telemetry["retry_attempts_total"] = int(
+                self._telemetry.get("retry_attempts_total") or 0
+            ) + 1
+            self._notify_telemetry()
             self._log(
                 f"OpenAlex HTTP {resp.status_code}; retrying in {delay:.1f}s "
                 f"({attempt}/{self._max_retries})"
             )
-            self._sleep_with_checkpoint(delay)
+            self._sleep_with_checkpoint(delay, telemetry_bucket="retry")
 
         if last_exc is not None:
             raise last_exc

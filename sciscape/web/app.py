@@ -3372,6 +3372,9 @@ def _write_live_job_status_artifacts(
     if status in {"done", "error", "cancelled"}:
         job.setdefault("finished_at_utc", now)
     partial_outputs = _live_job_partial_outputs(output_dir, result)
+    api_telemetry = getattr(result, "api_telemetry", None) if result is not None else None
+    if api_telemetry is None:
+        api_telemetry = job.get("openalex_api_telemetry")
     run_state = {
         "status": _job_status_for_manifest(status),
         "started_at_utc": job.get("started_at_utc"),
@@ -3388,6 +3391,8 @@ def _write_live_job_status_artifacts(
         "failure": {"reason": error} if error and status != "cancelled" else None,
         "resume": {"supported": False, "command": None},
     }
+    if api_telemetry:
+        run_state["api_telemetry"] = api_telemetry
     if job.get("cancel_requested_at_utc"):
         run_state["cancel_requested_at_utc"] = job.get("cancel_requested_at_utc")
     if status == "cancelled":
@@ -3401,6 +3406,7 @@ def _write_live_job_status_artifacts(
         "query": req.query,
         "filters": filters,
         "record_count": record_count,
+        "api_telemetry": api_telemetry,
     }
     payload = {
         "schema_version": "sciscape_live_job_status_v1",
@@ -3415,6 +3421,7 @@ def _write_live_job_status_artifacts(
         "progress": progress_messages,
         "progress_messages_count": len(progress_messages),
         "partial_outputs": partial_outputs,
+        "api_telemetry": api_telemetry,
         "run_state": run_state,
         "error": error,
     }
@@ -3518,6 +3525,21 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
         if _job_cancel_requested(job):
             raise JobCancelled("Cancellation requested")
 
+    def api_telemetry_cb(snapshot: dict[str, Any]) -> None:
+        job["openalex_api_telemetry"] = snapshot
+        _write_live_job_status_artifacts(
+            job_id=job_id,
+            job=job,
+            output_dir=output_dir,
+            req=req,
+            filters=filters,
+            status="running",
+            write_manifest=False,
+        )
+        _jobs.persist(job_id)
+        if _job_cancel_requested(job):
+            raise JobCancelled("Cancellation requested")
+
     try:
         config = OpenAlexPipelineConfig(
             query=req.query,
@@ -3533,6 +3555,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             auto_gamma_target=req.auto_gamma_target,
             progress=progress_cb,
             checkpoint=cancel_checkpoint,
+            api_telemetry=api_telemetry_cb,
         )
         result = run_openalex_pipeline(config)
         if _job_cancel_requested(job):
@@ -3547,6 +3570,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             "edges_path": str(result.edges_path) if result.edges_path else None,
             "landscape_dir": str(result.landscape_dir) if result.landscape_dir else None,
             "job_status_path": str(output_dir / "job_status.json"),
+            "api_telemetry": getattr(result, "api_telemetry", None),
         }
         try:
             validation_path = result.landscape_dir or output_dir

@@ -756,6 +756,13 @@ def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
         output_dir = Path(config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         abstracts_path = output_dir / "abstracts.parquet"
+        api_telemetry = {
+            "source": "openalex",
+            "attempts_total": 2,
+            "successful_requests_total": 1,
+            "retry_attempts_total": 1,
+            "status_counts": {"429": 1, "200": 1},
+        }
         pd.DataFrame(
             {
                 "uid": ["W1"],
@@ -764,6 +771,7 @@ def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
                 "pubyear": [2024],
             }
         ).to_parquet(abstracts_path, index=False)
+        config.api_telemetry(api_telemetry)
         config.progress("fetched works")
         return SimpleNamespace(
             n_works=1,
@@ -771,6 +779,7 @@ def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
             abstracts_path=abstracts_path,
             edges_path=None,
             landscape_dir=None,
+            api_telemetry=api_telemetry,
         )
 
     monkeypatch.setattr(web_app, "write_result_manifest", counted_write_result_manifest)
@@ -800,10 +809,14 @@ def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
     assert job["status"] == "done"
     assert job["progress"] == ["fetched works"]
     assert job["result"]["job_status_path"] == "workspace/web_output/jobstatus1/job_status.json"
+    assert job["result"]["api_telemetry"]["attempts_total"] == 2
     assert job["result"]["run_state"]["status"] == "complete"
+    assert job["result"]["run_state"]["api_telemetry"]["retry_attempts_total"] == 1
     assert status_payload["schema_version"] == "sciscape_live_job_status_v1"
     assert status_payload["status"] == "done"
+    assert status_payload["api_telemetry"]["status_counts"] == {"429": 1, "200": 1}
     assert status_payload["run_state"]["status"] == "complete"
+    assert status_payload["run_state"]["api_telemetry"]["attempts_total"] == 2
     assert status_payload["started_at_utc"]
     assert status_payload["finished_at_utc"]
     assert status_payload["updated_at_utc"]
@@ -811,7 +824,9 @@ def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
     assert manifest_payload["schema_version"] == "sciscape_result_manifest_v1"
     assert manifest_payload["source"]["query"] == "graph neural networks"
     assert manifest_payload["source"]["filters"] == {"publication_year": "2020-2024"}
+    assert manifest_payload["source"]["api_telemetry"]["attempts_total"] == 2
     assert manifest_payload["run_state"]["status"] == "complete"
+    assert manifest_payload["run_state"]["api_telemetry"]["retry_attempts_total"] == 1
     assert manifest_payload["run_state"]["progress"]["unit"] == "messages"
     assert manifest_payload["artifacts"]["job_status"]["path"] == "job_status.json"
     assert len(manifest_calls) == 2

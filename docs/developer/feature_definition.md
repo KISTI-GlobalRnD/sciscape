@@ -421,6 +421,7 @@ Artifacts:
 - job status/logs
 - result root under workspace output
 - report bundle
+- OpenAlex API telemetry in job status/run state for live queries
 - artifact contract
 
 Feature flag rule:
@@ -434,6 +435,8 @@ Success:
 - Report data and validation report exist.
 - Transient OpenAlex 429, timeout, and 5xx failures are retried within bounded
   limits and visible in progress logs.
+- OpenAlex API attempts, retry counts, wait seconds, status codes, and
+  exception classes are persisted for operator review.
 
 Partial:
 
@@ -450,8 +453,8 @@ Blocking:
 
 UI/UX placement:
 
-- `Run` shows progress, logs, transient OpenAlex retry waits, partial artifacts,
-  retry/cancel state.
+- `Run` shows progress, logs, transient OpenAlex retry waits, API telemetry,
+  partial artifacts, retry/cancel state.
 - Query limits should be visible before execution.
 
 ### F05. Network Construction

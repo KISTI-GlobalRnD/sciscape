@@ -43,7 +43,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F01 | Workspace and project management | `[~]` | 53% | local result discovery, job store, demo presets, workspace manifest design, writer/validator, legacy result registration, workspace-first local data API | durable browser and Home workspace UX |
 | F02 | Ingest and normalize | `[~]` | 55% | WoS, Scopus, OpenAlex, BibTeX adapters; OpenAlex query pipeline | broader source coverage and normalized entity model |
 | F03 | Demo, static viewer, local result loading | `[x]` | 80% | demo manifest, local result open, report/atlas attach, quality gate | workspace-level browsing and UX polish |
-| F04 | Live query and job execution | `[~]` | 79% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, web/API run-state surface, recovery downloads, copyable resume commands, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff | in-flight HTTP interruption, quota budgeting/telemetry, and in-app resume execution |
+| F04 | Live query and job execution | `[~]` | 80% | `/api/query`, job status, SSE, job-scoped feature/readiness endpoint, OpenAlex pipeline output, manifest-backed long-run run-state sidecars, web/API run-state surface, recovery downloads, copyable resume commands, query retry, checkpointed cooperative query cancellation, bounded OpenAlex retry/backoff, OpenAlex API telemetry | in-flight HTTP interruption, quota budget limits, and in-app resume execution |
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 43% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper | explicit matrix-builder mode and exports |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
@@ -133,7 +133,7 @@ Review: this is one of the safest near-term app surfaces to expose.
 
 ### F04. Live Query And Job Execution
 
-Status: `[~]` Partial. Rough completeness: 79%.
+Status: `[~]` Partial. Rough completeness: 80%.
 
 - `[x]` Web query submission exists through `/api/query`.
 - `[x]` Job status and job list endpoints exist.
@@ -160,9 +160,12 @@ Status: `[~]` Partial. Rough completeness: 79%.
 - `[x]` OpenAlex HTTP requests have bounded retry for 429, 408, 5xx, timeouts,
   and connection errors, respect `Retry-After` within a cap, and surface retry
   waits through job progress.
+- `[x]` OpenAlex jobs persist structured API telemetry in job status, result
+  manifest source metadata, and run state: attempts, retry counts, wait seconds,
+  status codes, and exception classes.
 - `[x]` Download/view endpoints expose job outputs.
 - `[ ]` Immediate interruption during a blocking external HTTP call, quota
-  budgeting/telemetry, in-app resume execution, and shard-aware long-run
+  budget limits/abort policy, in-app resume execution, and shard-aware long-run
   controls are not complete app features.
 
 Review: usable for small to medium live demos, but not enough for unattended

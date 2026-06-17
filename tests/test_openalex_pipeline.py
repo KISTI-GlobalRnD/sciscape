@@ -47,12 +47,14 @@ def test_openalex_pipeline_does_not_swallow_cancellation_in_manifest_guard(monke
 
 def test_openalex_pipeline_passes_retry_config_to_client(monkeypatch, tmp_path):
     captured_kwargs = {}
+    api_snapshots = []
 
     class FakeClient:
         def __init__(self, **kwargs):
             captured_kwargs.update(kwargs)
 
         def search_works(self, query, *, filters=None, max_results=10000, per_page=200):
+            captured_kwargs["telemetry"]({"attempts_total": 2, "retry_attempts_total": 1})
             return []
 
     monkeypatch.setattr(pipeline, "OpenAlexClient", FakeClient)
@@ -65,11 +67,14 @@ def test_openalex_pipeline_passes_retry_config_to_client(monkeypatch, tmp_path):
         max_retries=5,
         backoff_base=0.25,
         backoff_max=4,
+        api_telemetry=api_snapshots.append,
     )
 
     result = pipeline.run_openalex_pipeline(config)
 
     assert result.n_works == 0
+    assert result.api_telemetry == {"attempts_total": 2, "retry_attempts_total": 1}
+    assert api_snapshots == [{"attempts_total": 2, "retry_attempts_total": 1}]
     assert captured_kwargs["request_timeout"] == 9
     assert captured_kwargs["max_retries"] == 5
     assert captured_kwargs["backoff_base"] == 0.25

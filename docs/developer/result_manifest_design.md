@@ -287,6 +287,13 @@ detects existing
 sidecars so reopened result folders retain progress, shard, checkpoint, partial
 output, and resume metadata.
 
+Live OpenAlex query jobs may also include `api_telemetry` in both `source` and
+`run_state`. This telemetry is intentionally operational rather than analytical:
+it records request attempts, successful and failed request counts, retry counts,
+rate-limit and retry wait seconds, HTTP status-code counts, and retryable
+exception classes so users can diagnose quota pressure and transient API
+failures after a run.
+
 Cluster-sharded keyword extraction output directories are also run-state
 sources when they live under the result root or landscape directory.  A
 `sciscape_keyword_cluster_shards_v1` `manifest.json` registers the shard budget,
