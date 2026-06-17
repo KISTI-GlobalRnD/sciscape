@@ -21,6 +21,16 @@ from .edges import build_citation_edges, works_to_abstracts
 log = logging.getLogger(__name__)
 
 
+def _is_control_flow_exception(exc: Exception) -> bool:
+    """Return true for caller-raised control-flow exceptions.
+
+    The web app passes a cancellation checkpoint/progress callback that raises
+    its own JobCancelled type. OpenAlex keeps landscape/report failures
+    non-fatal, but cancellation must not be swallowed by those broad guards.
+    """
+    return exc.__class__.__name__ in {"JobCancelled", "OpenAlexPipelineCancelled"}
+
+
 @dataclass
 class OpenAlexPipelineConfig:
     """Configuration for the query → analyze pipeline."""
@@ -51,6 +61,7 @@ class OpenAlexPipelineConfig:
 
     # ── Callbacks ──
     progress: Callable[[str], None] | None = None
+    checkpoint: Callable[[], None] | None = None
 
 
 @dataclass
@@ -87,17 +98,24 @@ def run_openalex_pipeline(
         if config.progress:
             config.progress(msg)
 
+    def _checkpoint() -> None:
+        if config.checkpoint is not None:
+            config.checkpoint()
+
     # ── Step 1: Query OpenAlex ──
+    _checkpoint()
     _log(f"Querying OpenAlex: '{config.query}' (max {config.max_works} works)")
     client = OpenAlexClient(
         email=config.email,
         progress=config.progress,
+        checkpoint=_checkpoint,
     )
     works = client.search_works(
         config.query,
         filters=config.filters,
         max_results=config.max_works,
     )
+    _checkpoint()
     _log(f"Fetched {len(works)} works in {time.perf_counter() - t0:.1f}s")
 
     if not works:
@@ -108,12 +126,15 @@ def run_openalex_pipeline(
         )
 
     # ── Step 2: Save abstracts ──
+    _checkpoint()
     abstracts_df = works_to_abstracts(works)
     abstracts_path = output_dir / "abstracts.parquet"
     abstracts_df.write_parquet(abstracts_path)
+    _checkpoint()
     _log(f"Saved {abstracts_df.height} abstracts → {abstracts_path}")
 
     # ── Step 3: Build citation edges ──
+    _checkpoint()
     t_edges = time.perf_counter()
     edge_tables = build_citation_edges(
         works,
@@ -136,6 +157,7 @@ def run_openalex_pipeline(
             layer_path = output_dir / f"edges_{etype}.parquet"
             df.write_parquet(layer_path)
 
+    _checkpoint()
     if edge_dfs:
         combined = pl.concat(edge_dfs).group_by(["uid1", "uid2"]).agg(
             pl.col("rel_sum2").sum()
@@ -153,6 +175,7 @@ def run_openalex_pipeline(
     # ── Step 4: Run landscape pipeline (optional) ──
     landscape_dir = None
     if config.run_landscape and edges_path is not None:
+        _checkpoint()
         try:
             from ..landscape import run_landscape, LandscapeConfig
 
@@ -186,8 +209,12 @@ def run_openalex_pipeline(
         except ImportError as e:
             _log(f"Landscape skipped (missing dependency: {e})")
         except Exception as e:
+            if _is_control_flow_exception(e):
+                raise
             _log(f"Landscape failed: {e}")
+        _checkpoint()
 
+    _checkpoint()
     try:
         from ..artifacts import write_result_manifest
 
@@ -203,8 +230,11 @@ def run_openalex_pipeline(
         )
         _log(f"Saved result manifest → {output_dir / 'result_manifest.json'}")
     except Exception as e:
+        if _is_control_flow_exception(e):
+            raise
         _log(f"Result manifest skipped: {e}")
 
+    _checkpoint()
     total_time = time.perf_counter() - t0
     _log(f"Pipeline complete in {total_time:.1f}s: "
          f"{len(works)} works, {sum(n_edges.values())} edges")

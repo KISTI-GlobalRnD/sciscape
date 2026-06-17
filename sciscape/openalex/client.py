@@ -73,14 +73,20 @@ class OpenAlexClient:
         email: str | None = None,
         cache_dir: Path | None = None,
         progress: Callable[[str], None] | None = None,
+        checkpoint: Callable[[], None] | None = None,
     ) -> None:
         self._session = requests.Session()
         self._email = email
         self._delay = POLITE_DELAY if email else DEFAULT_DELAY
         self._cache_dir = Path(cache_dir) if cache_dir else None
         self._progress = progress
+        self._checkpoint = checkpoint
         if email:
             self._session.params = {"mailto": email}  # type: ignore[assignment]
+
+    def _checkpoint_or_continue(self) -> None:
+        if self._checkpoint is not None:
+            self._checkpoint()
 
     def _log(self, msg: str) -> None:
         log.info(msg)
@@ -89,8 +95,11 @@ class OpenAlexClient:
 
     def _get(self, url: str, params: dict | None = None) -> dict:
         """GET with rate limiting."""
+        self._checkpoint_or_continue()
         time.sleep(self._delay)
+        self._checkpoint_or_continue()
         resp = self._session.get(url, params=params, timeout=30)
+        self._checkpoint_or_continue()
         resp.raise_for_status()
         return resp.json()
 
@@ -136,6 +145,7 @@ class OpenAlexClient:
         page = 0
 
         while len(works) < max_results:
+            self._checkpoint_or_continue()
             params["cursor"] = cursor
             data = self._get(f"{API_BASE}/works", params)
             results = data.get("results", [])
@@ -155,6 +165,7 @@ class OpenAlexClient:
             total = data.get("meta", {}).get("count", "?")
             self._log(f"fetched {len(works)}/{total} works (page {page})")
 
+        self._checkpoint_or_continue()
         self._log(f"search complete: {len(works)} works for '{query}'")
         return works
 
@@ -170,6 +181,7 @@ class OpenAlexClient:
         works: List[WorkRecord] = []
 
         for i in range(0, len(ids), BATCH_SIZE):
+            self._checkpoint_or_continue()
             batch = ids[i:i + BATCH_SIZE]
             pipe_filter = "|".join(batch)
             params = {
@@ -184,6 +196,7 @@ class OpenAlexClient:
             if (i // BATCH_SIZE) % 10 == 0 and i > 0:
                 self._log(f"fetched {len(works)}/{len(ids)} works by ID")
 
+        self._checkpoint_or_continue()
         return works
 
     # ── Fetch referenced works (for citation edges) ──────────

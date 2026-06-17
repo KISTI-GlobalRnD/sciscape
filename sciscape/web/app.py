@@ -3514,6 +3514,10 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
         if _job_cancel_requested(job):
             raise JobCancelled("Cancellation requested")
 
+    def cancel_checkpoint() -> None:
+        if _job_cancel_requested(job):
+            raise JobCancelled("Cancellation requested")
+
     try:
         config = OpenAlexPipelineConfig(
             query=req.query,
@@ -3528,6 +3532,7 @@ def _run_job(job_id: str, req: QueryRequest) -> None:
             auto_gamma=req.auto_gamma,
             auto_gamma_target=req.auto_gamma_target,
             progress=progress_cb,
+            checkpoint=cancel_checkpoint,
         )
         result = run_openalex_pipeline(config)
         if _job_cancel_requested(job):

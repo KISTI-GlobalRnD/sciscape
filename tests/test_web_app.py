@@ -710,6 +710,39 @@ def test_run_job_honors_cancel_request_at_progress_boundary(monkeypatch, tmp_pat
     assert manifest_payload["run_state"]["status"] == "cancelled"
 
 
+def test_run_job_honors_cancel_request_at_pipeline_checkpoint(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    def fake_openalex_pipeline(config):
+        job = web_app._jobs[job_id]
+        job["cancel_requested_at_utc"] = web_app._utc_now()
+        config.checkpoint()
+        raise AssertionError("pipeline should stop at cancellation checkpoint")
+
+    monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_openalex_pipeline)
+
+    req = web_app.QueryRequest(
+        query="graph neural networks",
+        years="2020-2024",
+        max_works=12,
+        run_landscape=False,
+    )
+    job_id = "checkpointcanceljob"
+    web_app._jobs.create(job_id, req.model_dump())
+
+    web_app._run_job(job_id, req)
+
+    job = web_app._jobs[job_id]
+    output_dir = tmp_path / "workspace" / "web_output" / job_id
+    status_payload = json.loads((output_dir / "job_status.json").read_text(encoding="utf-8"))
+
+    assert job["status"] == "cancelled"
+    assert job["result"]["cancelled"] is True
+    assert job["progress"] == ["Job cancelled."]
+    assert status_payload["run_state"]["status"] == "cancelled"
+    assert status_payload["run_state"]["cancellation"]["reason"] == "Cancellation requested"
+
+
 def test_run_job_writes_live_status_and_manifest(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     original_write_result_manifest = web_app.write_result_manifest

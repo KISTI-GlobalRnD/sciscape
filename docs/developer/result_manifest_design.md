@@ -281,7 +281,8 @@ sidecar, while `result_manifest.json` is refreshed at lifecycle boundaries such
 as job start, completion, cancellation, and failure. Cooperative cancellation
 records `cancel_requested_at_utc` while the job is still running, then finalizes
 the run as `status="cancelled"` with a `cancellation` reason block at the next
-safe progress boundary. Manifest generation also detects existing
+safe pipeline, HTTP-client, or progress checkpoint. Manifest generation also
+detects existing
 `keyword_progress.json`, `progress.json`, and `scoring_shards/manifest.json`
 sidecars so reopened result folders retain progress, shard, checkpoint, partial
 output, and resume metadata.
