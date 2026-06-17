@@ -12,6 +12,7 @@ import hashlib
 import json
 import logging
 import math
+import shlex
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -174,6 +175,85 @@ def _job_retry_request(job: dict[str, Any]) -> QueryRequest:
         ) from exc
 
 
+def _safe_resume_argv(command: str) -> list[str]:
+    """Parse and validate the narrow SciScape CLI resume surface."""
+
+    try:
+        parts = shlex.split(str(command or ""))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid resume command") from exc
+    if len(parts) < 4 or parts[0] != "sciscape" or parts[1] != "keywords":
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+
+    argv = parts[1:]
+    if len(argv) < 3 or any(str(value).startswith("-") for value in argv[1:3]):
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+
+    value_flags = {
+        "--keyword-engine",
+        "--cluster-level",
+        "--cluster-sharded-output-dir",
+        "--progress-path",
+        "-o",
+        "--output",
+    }
+    bool_flags = {"--scoring-shard-resume"}
+    values: dict[str, str] = {}
+    seen_bools: set[str] = set()
+    i = 3
+    while i < len(argv):
+        token = argv[i]
+        if token in bool_flags:
+            seen_bools.add(token)
+            i += 1
+            continue
+        if token in value_flags:
+            if i + 1 >= len(argv) or argv[i + 1].startswith("-"):
+                raise HTTPException(status_code=400, detail="unsupported resume command")
+            values[token] = argv[i + 1]
+            i += 2
+            continue
+        if token.startswith("--") and "=" in token:
+            flag, value = token.split("=", 1)
+            if flag not in value_flags or not value:
+                raise HTTPException(status_code=400, detail="unsupported resume command")
+            values[flag] = value
+            i += 1
+            continue
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+
+    if values.get("--keyword-engine") != "cluster_sharded":
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+    if "--cluster-sharded-output-dir" not in values:
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+    if "--progress-path" not in values:
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+    if "-o" not in values and "--output" not in values:
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+    if "--scoring-shard-resume" not in seen_bools or "--no-scoring-shard-resume" in argv:
+        raise HTTPException(status_code=400, detail="unsupported resume command")
+    return argv
+
+
+def _job_resume_request(job: dict[str, Any]) -> tuple[str, list[str]]:
+    status = str(job.get("status") or "")
+    if status in {"pending", "running"}:
+        raise HTTPException(status_code=409, detail="job is still running")
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    run_state = (
+        result.get("run_state")
+        if isinstance(result.get("run_state"), dict)
+        else _run_state_for_result(result)
+    )
+    resume = run_state.get("resume") if isinstance(run_state.get("resume"), dict) else {}
+    if not resume.get("supported"):
+        raise HTTPException(status_code=400, detail="job has no supported resume action")
+    command = str(resume.get("command") or "").strip()
+    if not command:
+        raise HTTPException(status_code=400, detail="job has no resume command")
+    return command, _safe_resume_argv(command)
+
+
 def _enqueue_retry_job(source_job_id: str, source_job: dict[str, Any], bg: BackgroundTasks) -> dict[str, Any]:
     status = str(source_job.get("status") or "")
     if status in {"pending", "running"}:
@@ -194,6 +274,25 @@ def _enqueue_retry_job(source_job_id: str, source_job: dict[str, Any], bg: Backg
     return {"job_id": job_id, "retry_of": source_job_id, "request": request_payload}
 
 
+def _enqueue_resume_job(source_job_id: str, source_job: dict[str, Any], bg: BackgroundTasks) -> dict[str, Any]:
+    command, argv = _job_resume_request(source_job)
+    job_id = str(uuid.uuid4())[:8]
+    request_payload = {
+        "source_type": "sciscape_cli_resume",
+        "resume_of": source_job_id,
+        "command": command,
+        "argv": argv,
+    }
+    _jobs.create(job_id, request_payload)
+    resume_job = _jobs[job_id]
+    resume_job["status"] = "pending"
+    resume_job["progress"] = [f"Resume of job {source_job_id}"]
+    resume_job["result"] = None
+    _jobs.persist(job_id)
+    bg.add_task(_run_resume_job, job_id, source_job_id, command, argv)
+    return {"job_id": job_id, "resume_of": source_job_id, "command": command, "argv": argv}
+
+
 @app.post("/api/jobs/{job_id}/retry")
 async def retry_job(job_id: str, bg: BackgroundTasks):
     """Re-run a previous OpenAlex query job as a new job."""
@@ -201,6 +300,15 @@ async def retry_job(job_id: str, bg: BackgroundTasks):
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return _enqueue_retry_job(job_id, job, bg)
+
+
+@app.post("/api/jobs/{job_id}/resume")
+async def resume_job(job_id: str, bg: BackgroundTasks):
+    """Resume a supported SciScape CLI run as a new web job."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    return _enqueue_resume_job(job_id, job, bg)
 
 
 @app.post("/api/jobs/{job_id}/cancel")
@@ -3481,6 +3589,232 @@ def _mark_job_cancelled(
     }
     job["result"] = job_result
     _jobs.persist(job_id)
+
+
+def _write_resume_job_status_artifact(
+    *,
+    job_id: str,
+    source_job_id: str,
+    job: dict[str, Any],
+    output_dir: Path,
+    command: str,
+    argv: list[str],
+    status: str,
+    error: str | None = None,
+) -> dict[str, Any]:
+    now = _utc_now()
+    job["updated_at_utc"] = now
+    if status in {"done", "error", "cancelled"}:
+        job.setdefault("finished_at_utc", now)
+    run_state = {
+        "status": _job_status_for_manifest(status),
+        "started_at_utc": job.get("started_at_utc"),
+        "finished_at_utc": job.get("finished_at_utc"),
+        "heartbeat_at_utc": now,
+        "progress": {
+            "current": len(job.get("progress") or []),
+            "total": len(job.get("progress") or []) if status in {"done", "error", "cancelled"} else None,
+            "unit": "messages",
+        },
+        "shards": {"total": 0, "complete": 0, "failed": 0, "running": 0},
+        "checkpoints": [{"path": "job_status.json", "kind": "job_status", "status": "present"}],
+        "partial_outputs": _live_job_partial_outputs(output_dir),
+        "failure": {"reason": error} if error else None,
+        "resume": {"supported": False, "command": None},
+    }
+    payload = {
+        "schema_version": "sciscape_resume_job_status_v1",
+        "job_id": job_id,
+        "status": status,
+        "updated_at_utc": now,
+        "started_at_utc": job.get("started_at_utc"),
+        "finished_at_utc": job.get("finished_at_utc"),
+        "source_job_id": source_job_id,
+        "request": {
+            "source_type": "sciscape_cli_resume",
+            "resume_of": source_job_id,
+            "command": command,
+            "argv": argv,
+        },
+        "output_dir": str(output_dir),
+        "progress": list(job.get("progress") or []),
+        "progress_messages_count": len(job.get("progress") or []),
+        "run_state": run_state,
+        "error": error,
+    }
+    _write_json_atomic(output_dir / "job_status.json", payload)
+    return payload
+
+
+def _run_sciscape_resume_command(argv: list[str], progress: Any) -> None:
+    """Run a validated SciScape resume argv without invoking a shell."""
+
+    from sciscape.cli import main as sciscape_cli_main
+
+    progress("Executing: sciscape " + shlex.join(argv))
+    sciscape_cli_main(list(argv))
+
+
+def _source_result_after_resume(source_job_id: str) -> dict[str, Any]:
+    source_job = _jobs.get(source_job_id)
+    if not source_job or not isinstance(source_job.get("result"), dict):
+        return {}
+    source_result = dict(source_job["result"])
+    root = _result_root_for_result(source_result)
+    if root is not None:
+        try:
+            _refresh_job_result_manifest(source_job_id, source_result, root, mode="local_result")
+            refreshed_job = _jobs.get(source_job_id)
+            if refreshed_job and isinstance(refreshed_job.get("result"), dict):
+                source_result = dict(refreshed_job["result"])
+        except Exception as exc:
+            log.warning("Resume job could not refresh source result %s: %s", source_job_id, exc)
+    try:
+        _attach_report_atlas(source_result)
+        _attach_narrative_summary(source_result)
+        _attach_evolution_summary(source_result)
+    except Exception as exc:
+        log.warning("Resume job could not refresh source result summaries %s: %s", source_job_id, exc)
+    source_job = _jobs.get(source_job_id)
+    if source_job is not None:
+        source_job["result"] = source_result
+        _jobs.persist(source_job_id)
+    return source_result
+
+
+def _run_resume_job(job_id: str, source_job_id: str, command: str, argv: list[str]) -> None:
+    """Execute a validated CLI resume command as a background web job."""
+
+    job = _jobs[job_id]
+    if not job.get("started_at_utc"):
+        job["started_at_utc"] = _utc_now()
+    output_dir = Path("workspace/web_output") / job_id
+    job["status"] = "running"
+    _append_progress_once(job, "Resume job started.")
+    _write_resume_job_status_artifact(
+        job_id=job_id,
+        source_job_id=source_job_id,
+        job=job,
+        output_dir=output_dir,
+        command=command,
+        argv=argv,
+        status="running",
+    )
+    _jobs.persist(job_id)
+
+    def progress_cb(message: str) -> None:
+        job["progress"].append(str(message))
+        _write_resume_job_status_artifact(
+            job_id=job_id,
+            source_job_id=source_job_id,
+            job=job,
+            output_dir=output_dir,
+            command=command,
+            argv=argv,
+            status=str(job.get("status") or "running"),
+        )
+        _jobs.persist(job_id)
+
+    try:
+        _run_sciscape_resume_command(argv, progress_cb)
+        source_result = _source_result_after_resume(source_job_id)
+        job["status"] = "done"
+        job["finished_at_utc"] = _utc_now()
+        _append_progress_once(job, "Resume command complete.")
+        result = dict(_json_safe(source_result))
+        if "output_dir" not in result:
+            result["output_dir"] = str(output_dir)
+        result.update(
+            {
+                "resume_of": source_job_id,
+                "resume_command": command,
+                "resume_argv": argv,
+                "resume_job_status_path": str(output_dir / "job_status.json"),
+            }
+        )
+        job["result"] = result
+        _write_resume_job_status_artifact(
+            job_id=job_id,
+            source_job_id=source_job_id,
+            job=job,
+            output_dir=output_dir,
+            command=command,
+            argv=argv,
+            status="done",
+        )
+        _jobs.persist(job_id)
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 1
+        if code in {0, None}:  # pragma: no cover - CLI main normally returns
+            job["status"] = "done"
+            job["finished_at_utc"] = _utc_now()
+            _append_progress_once(job, "Resume command complete.")
+            job["result"] = {
+                "resume_of": source_job_id,
+                "resume_command": command,
+                "resume_argv": argv,
+                "output_dir": str(output_dir),
+                "resume_job_status_path": str(output_dir / "job_status.json"),
+            }
+            _write_resume_job_status_artifact(
+                job_id=job_id,
+                source_job_id=source_job_id,
+                job=job,
+                output_dir=output_dir,
+                command=command,
+                argv=argv,
+                status="done",
+            )
+            _jobs.persist(job_id)
+            return
+        error = f"resume command exited with status {exc.code}"
+        job["status"] = "error"
+        job["finished_at_utc"] = _utc_now()
+        job["progress"].append(f"ERROR: {error}")
+        job["result"] = {
+            "error": error,
+            "resume_of": source_job_id,
+            "resume_command": command,
+            "resume_argv": argv,
+            "output_dir": str(output_dir),
+            "resume_job_status_path": str(output_dir / "job_status.json"),
+        }
+        _write_resume_job_status_artifact(
+            job_id=job_id,
+            source_job_id=source_job_id,
+            job=job,
+            output_dir=output_dir,
+            command=command,
+            argv=argv,
+            status="error",
+            error=error,
+        )
+        _jobs.persist(job_id)
+        log.error("Resume job %s failed: %s", job_id, error)
+    except Exception as exc:
+        job["status"] = "error"
+        job["finished_at_utc"] = _utc_now()
+        job["progress"].append(f"ERROR: {exc}")
+        job["result"] = {
+            "error": str(exc),
+            "resume_of": source_job_id,
+            "resume_command": command,
+            "resume_argv": argv,
+            "output_dir": str(output_dir),
+            "resume_job_status_path": str(output_dir / "job_status.json"),
+        }
+        _write_resume_job_status_artifact(
+            job_id=job_id,
+            source_job_id=source_job_id,
+            job=job,
+            output_dir=output_dir,
+            command=command,
+            argv=argv,
+            status="error",
+            error=str(exc),
+        )
+        _jobs.persist(job_id)
+        log.exception("Resume job %s failed", job_id)
 
 
 def _run_job(job_id: str, req: QueryRequest) -> None:

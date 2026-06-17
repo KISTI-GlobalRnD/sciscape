@@ -306,7 +306,10 @@ checkpoint paths, partial outputs, and a resume marker pointing back to the
 cluster-sharded artifact directory. When `preflight_summary.json` preserves the
 original abstract and membership paths, `resume.command` is populated with a
 copyable `sciscape keywords --keyword-engine cluster_sharded ...` command that
-reuses the same cluster-sharded output directory.
+reuses the same cluster-sharded output directory. The web app may submit that
+command through `/api/jobs/{job_id}/resume`, but only after parsing it without a
+shell and validating that it is the narrow `sciscape keywords
+--keyword-engine cluster_sharded --scoring-shard-resume` resume surface.
 
 ## Quality Block
 

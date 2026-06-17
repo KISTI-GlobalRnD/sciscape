@@ -440,6 +440,8 @@ Success:
   exception classes are persisted for operator review.
 - OpenAlex API attempt or retry-wait budget overruns stop the job with
   inspectable status instead of allowing unbounded retries.
+- Supported cluster-sharded keyword failures can be resumed from the app as a new
+  validated internal CLI job when `run_state.resume.command` is present.
 
 Partial:
 
@@ -447,6 +449,9 @@ Partial:
   fails with partial artifacts preserved.
 - user cancellation records `cancelled` state, partial artifacts, and
   checkpoint metadata when available.
+- resume is restricted to known SciScape keyword-shard commands; arbitrary shell
+  commands, query reruns, and shard-level operator controls remain outside this
+  v1 surface.
 
 Blocking:
 
@@ -457,7 +462,7 @@ Blocking:
 UI/UX placement:
 
 - `Run` shows progress, logs, transient OpenAlex retry waits, API telemetry,
-  partial artifacts, retry/cancel state.
+  partial artifacts, retry/cancel/resume state.
 - Query limits should be visible before execution.
 
 ### F05. Network Construction

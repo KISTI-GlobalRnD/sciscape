@@ -488,6 +488,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "fetch('/api/query'" in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/retry" in response.text
     assert "Retry Query" in response.text
+    assert "/api/jobs/' + encodeURIComponent(jobId) + '/resume" in response.text
+    assert "Resume In App" in response.text
     assert 'id="btn-cancel"' in response.text
     assert "/api/jobs/' + encodeURIComponent(jobId) + '/cancel" in response.text
     assert "Cancel Query" in response.text
@@ -629,6 +631,133 @@ def test_retry_endpoint_rejects_local_result_jobs():
 
     assert response.status_code == 400
     assert response.json()["detail"] == "job does not contain a replayable OpenAlex query request"
+
+
+def test_safe_resume_argv_accepts_cluster_sharded_keyword_resume():
+    command = (
+        "sciscape keywords abstracts.parquet landscape/membership.parquet "
+        "--keyword-engine cluster_sharded "
+        "--cluster-level cluster "
+        "--cluster-sharded-output-dir landscape/keyword_cluster_sharded/full_run "
+        "--progress-path landscape/keyword_cluster_sharded/full_run/progress.json "
+        "-o landscape/keyword_cluster_sharded/full_run/keywords.parquet "
+        "--scoring-shard-resume"
+    )
+
+    argv = web_app._safe_resume_argv(command)
+
+    assert argv[:3] == ["keywords", "abstracts.parquet", "landscape/membership.parquet"]
+    assert "--keyword-engine" in argv
+    assert "cluster_sharded" in argv
+    assert "--scoring-shard-resume" in argv
+
+
+def test_safe_resume_argv_rejects_non_keyword_commands():
+    with pytest.raises(web_app.HTTPException) as exc:
+        web_app._safe_resume_argv("sciscape query graphene --max-works 10")
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "unsupported resume command"
+
+
+def test_resume_endpoint_enqueues_validated_cli_resume_job(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    output_dir = tmp_path / "workspace" / "examples_output" / "resume-result"
+    run_dir = output_dir / "landscape" / "keyword_cluster_sharded" / "full_run"
+    output_dir.mkdir(parents=True)
+    run_dir.mkdir(parents=True)
+    command = (
+        f"sciscape keywords {output_dir / 'abstracts.parquet'} "
+        f"{output_dir / 'landscape' / 'membership.parquet'} "
+        "--keyword-engine cluster_sharded "
+        f"--cluster-sharded-output-dir {run_dir} "
+        f"--progress-path {run_dir / 'progress.json'} "
+        f"-o {run_dir / 'keywords.parquet'} "
+        "--scoring-shard-resume"
+    )
+    source_id = "resumejob"
+    web_app._jobs.create(source_id, {"query": "Local output: resume-result"})
+    source_job = web_app._jobs[source_id]
+    source_job["status"] = "error"
+    source_job["progress"] = ["keyword extraction failed"]
+    source_job["result"] = {
+        "output_dir": str(output_dir),
+        "run_state": {
+            "status": "failed",
+            "resume": {"supported": True, "command": command},
+        },
+    }
+    web_app._jobs.persist(source_id)
+    calls = []
+
+    def fake_run_resume(argv, progress):
+        calls.append(argv)
+        progress("fake resume command ran")
+
+    def fake_refresh(job_id, result, root, *, mode="local_result"):
+        result["result_manifest"] = {"schema_version": "test_manifest"}
+        result["run_state"] = {"status": "complete", "resume": {"supported": False, "command": None}}
+        result["feature_states"] = {"keyword": "stable"}
+        result["features"] = {"keyword": True}
+        result["result_state"] = "loaded"
+        job = web_app._jobs[job_id]
+        job["result"] = result
+        web_app._jobs.persist(job_id)
+
+    monkeypatch.setattr(web_app, "_run_sciscape_resume_command", fake_run_resume)
+    monkeypatch.setattr(web_app, "_refresh_job_result_manifest", fake_refresh)
+
+    client = TestClient(app)
+    response = client.post(f"/api/jobs/{source_id}/resume")
+
+    assert response.status_code == 200
+    payload = response.json()
+    resume_id = payload["job_id"]
+    assert payload["resume_of"] == source_id
+    assert payload["argv"][0] == "keywords"
+    assert calls == [payload["argv"]]
+
+    resume_payload = client.get(f"/api/jobs/{resume_id}").json()
+    assert resume_payload["status"] == "done"
+    assert resume_payload["progress"] == [
+        f"Resume of job {source_id}",
+        "Resume job started.",
+        "fake resume command ran",
+        "Resume command complete.",
+    ]
+    assert resume_payload["result"]["resume_of"] == source_id
+    assert resume_payload["result"]["result_manifest"]["schema_version"] == "test_manifest"
+    assert resume_payload["result"]["run_state"]["status"] == "complete"
+    status_path = tmp_path / "workspace" / "web_output" / resume_id / "job_status.json"
+    status_payload = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_payload["schema_version"] == "sciscape_resume_job_status_v1"
+    assert status_payload["request"]["source_type"] == "sciscape_cli_resume"
+    assert status_payload["run_state"]["status"] == "complete"
+
+
+def test_resume_endpoint_rejects_unsupported_resume_command():
+    source_id = "badresume"
+    web_app._jobs.create(source_id, {"query": "Local output: bad"})
+    source_job = web_app._jobs[source_id]
+    source_job["status"] = "error"
+    source_job["progress"] = ["failed"]
+    source_job["result"] = {
+        "output_dir": "workspace/examples_output/bad",
+        "run_state": {
+            "status": "failed",
+            "resume": {
+                "supported": True,
+                "command": "sciscape query graphene --max-works 10",
+            },
+        },
+    }
+    web_app._jobs.persist(source_id)
+
+    client = TestClient(app)
+    response = client.post(f"/api/jobs/{source_id}/resume")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "unsupported resume command"
 
 
 def test_cancel_endpoint_records_cancel_request(monkeypatch, tmp_path):

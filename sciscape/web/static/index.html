@@ -3334,6 +3334,34 @@ async function copyRunStateResumeCommand() {
   }
 }
 
+async function resumeJob(jobId) {
+  if (!jobId) return;
+  const term = document.getElementById('terminal');
+  const lines = document.getElementById('term-lines');
+  const results = document.getElementById('results');
+  const status = document.getElementById('run-state-action-status');
+  try {
+    const response = await fetch('/api/jobs/' + encodeURIComponent(jobId) + '/resume', {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok || data.error || data.detail) throw new Error(data.error || data.detail || 'resume failed');
+    currentJobId = data.job_id;
+    term.classList.add('active');
+    lines.innerHTML = '';
+    results.classList.remove('active');
+    document.getElementById('term-cursor').style.display = '';
+    addLine('Resume job ' + data.job_id + ' submitted from ' + jobId);
+    streamProgress(data.job_id);
+    refreshHistory();
+  } catch (e) {
+    if (status) status.textContent = 'Resume failed: ' + e.message;
+    else addLine('Resume failed: ' + e.message, 'err');
+  }
+}
+
+function resumeCurrentJob() {
+  resumeJob(currentJobId);
+}
+
 async function retryJob(jobId) {
   if (!jobId) return;
   const term = document.getElementById('terminal');
@@ -3422,6 +3450,11 @@ function renderRunState(result) {
       : '';
   const actionButtons = [];
   if (currentRunStateResumeCommand) {
+    if (currentJobId) {
+      actionButtons.push(
+        '<button class="run-state-action" type="button" onclick="resumeCurrentJob()">Resume In App</button>'
+      );
+    }
     actionButtons.push(
       '<button class="run-state-action" type="button" onclick="copyRunStateResumeCommand()">Copy Resume Command</button>'
     );
