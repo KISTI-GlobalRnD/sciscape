@@ -15,7 +15,14 @@ from typing import Callable, Dict, Optional, Sequence
 
 import polars as pl
 
-from .client import OpenAlexClient, WorkRecord
+from .client import (
+    BACKOFF_BASE,
+    BACKOFF_MAX,
+    MAX_RETRIES,
+    REQUEST_TIMEOUT,
+    OpenAlexClient,
+    WorkRecord,
+)
 from .edges import build_citation_edges, works_to_abstracts
 
 log = logging.getLogger(__name__)
@@ -42,6 +49,10 @@ class OpenAlexPipelineConfig:
 
     # ── API ──
     email: str | None = None
+    request_timeout: float = REQUEST_TIMEOUT
+    max_retries: int = MAX_RETRIES
+    backoff_base: float = BACKOFF_BASE
+    backoff_max: float = BACKOFF_MAX
 
     # ── Edge building ──
     edge_types: Sequence[str] = ("dc", "bc")
@@ -109,6 +120,10 @@ def run_openalex_pipeline(
         email=config.email,
         progress=config.progress,
         checkpoint=_checkpoint,
+        request_timeout=config.request_timeout,
+        max_retries=config.max_retries,
+        backoff_base=config.backoff_base,
+        backoff_max=config.backoff_max,
     )
     works = client.search_works(
         config.query,

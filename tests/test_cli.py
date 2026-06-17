@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from sciscape.artifacts import validate_evolution_artifact
-from sciscape.cli import _build_parser, _run_evolution, _run_visualize
+from sciscape.cli import _build_parser, _run_evolution, _run_query, _run_visualize
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ class TestBuildParser:
     def test_returns_parser(self, parser):
         assert parser.prog == "sciscape"
 
-    @pytest.mark.parametrize("cmd", ["cluster", "keywords", "convert", "landscape", "visualize", "viewer", "evolution", "gui"])
+    @pytest.mark.parametrize("cmd", ["query", "cluster", "keywords", "convert", "landscape", "visualize", "viewer", "evolution", "gui"])
     def test_subcommands_exist(self, parser, cmd):
         # Should not raise
         parser.parse_args([cmd] if cmd in ("gui",) else self._minimal_args(cmd))
@@ -37,6 +37,8 @@ class TestBuildParser:
         """Return minimal valid args for each subcommand."""
         if cmd == "cluster":
             return ["cluster", "edges.zip", "edges.txt"]
+        if cmd == "query":
+            return ["query", "graph neural networks"]
         if cmd == "keywords":
             return ["keywords", "abs.parquet", "mem.parquet"]
         if cmd == "convert":
@@ -52,6 +54,67 @@ class TestBuildParser:
         if cmd == "gui":
             return ["gui"]
         raise ValueError(cmd)
+
+
+# ---------------------------------------------------------------------------
+# Query subcommand
+# ---------------------------------------------------------------------------
+
+class TestQueryArgs:
+    def test_openalex_retry_defaults(self, parser):
+        args = parser.parse_args(["query", "graph neural networks"])
+        assert args.request_timeout == 30.0
+        assert args.max_retries == 3
+        assert args.backoff_base == 1.0
+        assert args.backoff_max == 30.0
+
+    def test_openalex_retry_explicit(self, parser):
+        args = parser.parse_args([
+            "query",
+            "graph neural networks",
+            "--request-timeout", "12",
+            "--max-retries", "5",
+            "--backoff-base", "0.25",
+            "--backoff-max", "8",
+        ])
+        assert args.request_timeout == 12.0
+        assert args.max_retries == 5
+        assert args.backoff_base == 0.25
+        assert args.backoff_max == 8.0
+
+    def test_run_query_passes_retry_config(self, parser, monkeypatch, tmp_path, capsys):
+        captured = {}
+
+        class FakeResult:
+            n_works = 0
+            n_edges = {}
+            abstracts_path = None
+            edges_path = None
+            landscape_dir = None
+
+        def fake_run(config):
+            captured["config"] = config
+            return FakeResult()
+
+        monkeypatch.setattr("sciscape.openalex.run_openalex_pipeline", fake_run)
+        args = parser.parse_args([
+            "query",
+            "graph neural networks",
+            "--request-timeout", "12",
+            "--max-retries", "5",
+            "--backoff-base", "0.25",
+            "--backoff-max", "8",
+            "-o", str(tmp_path / "out"),
+        ])
+
+        _run_query(args)
+
+        config = captured["config"]
+        assert config.request_timeout == 12.0
+        assert config.max_retries == 5
+        assert config.backoff_base == 0.25
+        assert config.backoff_max == 8.0
+        assert "Done: 0 works" in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------

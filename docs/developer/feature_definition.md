@@ -412,6 +412,7 @@ Inputs:
 - filters
 - maximum record count
 - edge family choices
+- OpenAlex timeout/retry/backoff settings for operator use
 - clustering/keyword settings appropriate for small jobs
 
 Artifacts:
@@ -431,11 +432,15 @@ Success:
 - Query fetch completes.
 - Result root is saved.
 - Report data and validation report exist.
+- Transient OpenAlex 429, timeout, and 5xx failures are retried within bounded
+  limits and visible in progress logs.
 
 Partial:
 
 - fetch succeeds but downstream network, clustering, keyword, or report step
   fails with partial artifacts preserved.
+- user cancellation records `cancelled` state, partial artifacts, and
+  checkpoint metadata when available.
 
 Blocking:
 
@@ -445,7 +450,8 @@ Blocking:
 
 UI/UX placement:
 
-- `Run` shows progress, logs, partial artifacts, retry/cancel state.
+- `Run` shows progress, logs, transient OpenAlex retry waits, partial artifacts,
+  retry/cancel state.
 - Query limits should be visible before execution.
 
 ### F05. Network Construction

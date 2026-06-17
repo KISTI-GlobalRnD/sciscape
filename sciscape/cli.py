@@ -320,6 +320,14 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="Maximum works to fetch (default: 5000)")
     qa.add_argument("--email", type=str, default=None,
                      help="Email for OpenAlex polite pool (10x rate limit)")
+    qa.add_argument("--request-timeout", type=float, default=30.0,
+                     help="OpenAlex HTTP request timeout in seconds (default: 30)")
+    qa.add_argument("--max-retries", type=int, default=3,
+                     help="Maximum OpenAlex retry attempts for 429/5xx/timeouts (default: 3)")
+    qa.add_argument("--backoff-base", type=float, default=1.0,
+                     help="Initial OpenAlex retry backoff in seconds (default: 1)")
+    qa.add_argument("--backoff-max", type=float, default=30.0,
+                     help="Maximum OpenAlex retry or Retry-After sleep in seconds (default: 30)")
     qa.add_argument("--edges", type=str, default="dc,bc",
                      help="Edge types to build (default: dc,bc)")
     qa.add_argument("--no-landscape", action="store_true",
@@ -986,6 +994,10 @@ def _run_query(args: argparse.Namespace) -> None:
         filters=filters,
         max_works=args.max_works,
         email=args.email,
+        request_timeout=args.request_timeout,
+        max_retries=args.max_retries,
+        backoff_base=args.backoff_base,
+        backoff_max=args.backoff_max,
         edge_types=args.edges.split(","),
         output_dir=Path(args.output),
         run_landscape=not args.no_landscape,

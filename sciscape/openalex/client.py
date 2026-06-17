@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence
 
@@ -27,6 +28,11 @@ BATCH_SIZE = 50
 # Rate limit: polite pool = 10 req/s, default = 1 req/s
 POLITE_DELAY = 0.1
 DEFAULT_DELAY = 1.0
+REQUEST_TIMEOUT = 30.0
+MAX_RETRIES = 3
+BACKOFF_BASE = 1.0
+BACKOFF_MAX = 30.0
+RETRY_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 
 def _reconstruct_abstract(inverted_index: dict | None) -> str:
@@ -74,6 +80,10 @@ class OpenAlexClient:
         cache_dir: Path | None = None,
         progress: Callable[[str], None] | None = None,
         checkpoint: Callable[[], None] | None = None,
+        request_timeout: float = REQUEST_TIMEOUT,
+        max_retries: int = MAX_RETRIES,
+        backoff_base: float = BACKOFF_BASE,
+        backoff_max: float = BACKOFF_MAX,
     ) -> None:
         self._session = requests.Session()
         self._email = email
@@ -81,6 +91,10 @@ class OpenAlexClient:
         self._cache_dir = Path(cache_dir) if cache_dir else None
         self._progress = progress
         self._checkpoint = checkpoint
+        self._request_timeout = max(0.1, float(request_timeout))
+        self._max_retries = max(0, int(max_retries))
+        self._backoff_base = max(0.0, float(backoff_base))
+        self._backoff_max = max(0.0, float(backoff_max))
         if email:
             self._session.params = {"mailto": email}  # type: ignore[assignment]
 
@@ -93,15 +107,82 @@ class OpenAlexClient:
         if self._progress:
             self._progress(msg)
 
+    def _sleep_with_checkpoint(self, delay: float) -> None:
+        remaining = max(0.0, delay)
+        while remaining > 0:
+            self._checkpoint_or_continue()
+            step = min(remaining, 1.0)
+            time.sleep(step)
+            remaining -= step
+        self._checkpoint_or_continue()
+
+    @staticmethod
+    def _retry_after_delay(value: str | None) -> float | None:
+        if not value:
+            return None
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            pass
+        try:
+            dt = parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return None
+        now = parsedate_to_datetime(time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime()))
+        return max(0.0, (dt - now).total_seconds())
+
+    def _retry_delay(self, attempt: int, resp: requests.Response | None = None) -> float:
+        retry_after = self._retry_after_delay(resp.headers.get("Retry-After") if resp is not None else None)
+        if retry_after is not None:
+            return min(retry_after, self._backoff_max)
+        if self._backoff_base <= 0:
+            return 0.0
+        return min(self._backoff_base * (2 ** max(0, attempt - 1)), self._backoff_max)
+
+    @staticmethod
+    def _should_retry_response(resp: requests.Response) -> bool:
+        return int(resp.status_code) in RETRY_STATUS_CODES
+
+    @staticmethod
+    def _should_retry_exception(exc: requests.RequestException) -> bool:
+        return isinstance(exc, (requests.Timeout, requests.ConnectionError))
+
     def _get(self, url: str, params: dict | None = None) -> dict:
-        """GET with rate limiting."""
-        self._checkpoint_or_continue()
-        time.sleep(self._delay)
-        self._checkpoint_or_continue()
-        resp = self._session.get(url, params=params, timeout=30)
-        self._checkpoint_or_continue()
-        resp.raise_for_status()
-        return resp.json()
+        """GET with rate limiting and bounded retry for transient failures."""
+        attempts = self._max_retries + 1
+        last_exc: requests.RequestException | None = None
+        for attempt in range(1, attempts + 1):
+            self._checkpoint_or_continue()
+            self._sleep_with_checkpoint(self._delay)
+            try:
+                resp = self._session.get(url, params=params, timeout=self._request_timeout)
+                self._checkpoint_or_continue()
+            except requests.RequestException as exc:
+                last_exc = exc
+                if attempt >= attempts or not self._should_retry_exception(exc):
+                    raise
+                delay = self._retry_delay(attempt)
+                self._log(
+                    f"OpenAlex request failed ({exc.__class__.__name__}); "
+                    f"retrying in {delay:.1f}s ({attempt}/{self._max_retries})"
+                )
+                self._sleep_with_checkpoint(delay)
+                continue
+
+            if not self._should_retry_response(resp) or attempt >= attempts:
+                resp.raise_for_status()
+                return resp.json()
+
+            delay = self._retry_delay(attempt, resp)
+            self._log(
+                f"OpenAlex HTTP {resp.status_code}; retrying in {delay:.1f}s "
+                f"({attempt}/{self._max_retries})"
+            )
+            self._sleep_with_checkpoint(delay)
+
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("OpenAlex retry loop exited without a response")
 
     # ── Search works ─────────────────────────────────────────
 
