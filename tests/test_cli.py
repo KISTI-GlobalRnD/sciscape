@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sciscape.artifacts import validate_evolution_artifact, validate_matrix_artifact
+from sciscape.artifacts import validate_evolution_artifact, validate_export_manifest, validate_matrix_artifact
 from sciscape.cli import _build_parser, _run_evolution, _run_matrix, _run_query, _run_visualize
 
 
@@ -532,6 +532,27 @@ class TestMatrixArgs:
         assert args.matrix_id == "custom_terms"
         assert args.json is True
 
+    def test_export_parse(self, parser):
+        args = parser.parse_args([
+            "matrix",
+            "export",
+            "result",
+            "--matrix-id",
+            "term_matrix",
+            "--format",
+            "parquet-triplets",
+            "-o",
+            "result/exports/term_matrix_parquet",
+            "--json",
+        ])
+        assert args.command == "matrix"
+        assert args.matrix_command == "export"
+        assert args.matrix == Path("result")
+        assert args.matrix_id == "term_matrix"
+        assert args.export_format == "parquet-triplets"
+        assert args.output_dir == Path("result/exports/term_matrix_parquet")
+        assert args.json is True
+
     def test_run_matrix_wraps_term_cooccurrence(self, parser, tmp_path, capsys):
         root = _write_cli_matrix_result_root(tmp_path / "result")
         args = parser.parse_args(["matrix", "wrap-term-cooccurrence", str(root)])
@@ -565,6 +586,21 @@ class TestMatrixArgs:
         assert payload["matrix_id"] == "custom_terms"
         assert payload["qa"]["status"] == "passed"
         assert payload["manifest_path"].endswith("matrices/custom_terms/matrix_manifest.json")
+
+    def test_run_matrix_export_writes_manifest_backed_export(self, parser, tmp_path, capsys):
+        root = _write_cli_matrix_result_root(tmp_path / "result")
+        _run_matrix(parser.parse_args(["matrix", "wrap-term-cooccurrence", str(root)]))
+        capsys.readouterr()
+        args = parser.parse_args(["matrix", "export", str(root), "--format", "json-summary"])
+
+        _run_matrix(args)
+
+        out = capsys.readouterr().out
+        assert "Matrix export saved" in out
+        manifest_path = root / "exports" / "matrix_term_cooccurrence_default_json_summary" / "export_manifest.json"
+        validation = validate_export_manifest(manifest_path).to_dict()
+        assert validation["status"] == "passed"
+        assert validation["export_kind"] == "matrix_json_summary"
 
 
 # ---------------------------------------------------------------------------

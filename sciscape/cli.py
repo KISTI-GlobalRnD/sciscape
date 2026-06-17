@@ -12,6 +12,7 @@ Usage:
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
     sciscape matrix    wrap-term-cooccurrence <result_root> [options]
+    sciscape matrix    export <result_or_matrix> [options]
     sciscape web       [options]
     sciscape gui
 
@@ -25,6 +26,7 @@ Examples:
     sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
     sciscape matrix wrap-term-cooccurrence result
+    sciscape matrix export result --matrix-id term_cooccurrence_default --format csv-triplets
 """
 
 from __future__ import annotations
@@ -353,6 +355,40 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Print written artifact paths and QA as JSON",
+    )
+    mex = mx_sub.add_parser(
+        "export",
+        help="Export a matrix artifact as manifest-backed table or summary files",
+    )
+    mex.add_argument(
+        "matrix",
+        type=Path,
+        help="Result root, matrix directory, or matrix_manifest.json path",
+    )
+    mex.add_argument(
+        "--matrix-id",
+        type=str,
+        default="term_cooccurrence_default",
+        help="Matrix ID when the input is a result root (default: term_cooccurrence_default)",
+    )
+    mex.add_argument(
+        "--format",
+        dest="export_format",
+        choices=["csv-triplets", "parquet-triplets", "json-summary"],
+        default="csv-triplets",
+        help="Matrix export format (default: csv-triplets)",
+    )
+    mex.add_argument(
+        "-o",
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory inside the result root (default: exports/<matrix_id>_<format>)",
+    )
+    mex.add_argument(
+        "--json",
+        action="store_true",
+        help="Print written export paths as JSON",
     )
 
     # ---- query (OpenAlex) ----
@@ -1032,10 +1068,31 @@ def _run_rule_export(args: argparse.Namespace) -> None:
 
 
 def _run_matrix(args: argparse.Namespace) -> None:
-    from sciscape.artifacts import write_matrix_from_term_cooccurrence
+    if args.matrix_command == "export":
+        from sciscape.export import export_matrix_artifact
+
+        try:
+            written = export_matrix_artifact(
+                args.matrix,
+                output_dir=args.output_dir,
+                matrix_id=args.matrix_id,
+                export_format=args.export_format,
+            )
+        except Exception as exc:
+            print(f"Could not export matrix artifact: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if args.json:
+            print(json.dumps(written, indent=2, sort_keys=True, default=str))
+            return
+        print(f"Matrix export saved: {written['primary_path']}")
+        print(f"  Manifest → {written['manifest_path']}")
+        print(f"  QA → {written['qa_path']}")
+        return
 
     if args.matrix_command != "wrap-term-cooccurrence":
         raise SystemExit(f"Unsupported matrix command: {args.matrix_command}")
+
+    from sciscape.artifacts import write_matrix_from_term_cooccurrence
 
     try:
         written = write_matrix_from_term_cooccurrence(

@@ -337,6 +337,16 @@ Supported v1 export targets:
 Exports should reference the source `matrix_id` and include the same
 normalization and threshold metadata.
 
+Implementation note:
+
+- CLI `sciscape matrix export <result_or_matrix>` supports
+  `csv-triplets`, `parquet-triplets`, and `json-summary`.
+- Matrix exports are manifest-backed under `exports/<export_id>/`, retain
+  row/column entity labels in triplet table exports, and record matrix manifest,
+  values, row entities, column entities, and QA as source artifacts.
+- `vosviewer_network` remains future work because it requires target-specific
+  field mapping and compatibility checks.
+
 ## Implementation Order
 
 1. Add schema constants and dataclasses for matrix manifests, values, entities,
@@ -359,6 +369,9 @@ Initial implementation note:
 - `result_manifest.artifacts` exposes the matrix manifest plus
   `matrix_values.parquet`, row/column entity tables, and `matrix_qa.json`; the
   web Download tab renders these matrix artifact files.
+- `sciscape matrix export <result_or_matrix>` writes manifest-backed
+  CSV-triplet, Parquet-triplet, or JSON-summary exports from a validated matrix
+  artifact.
 - The current writer supports sparse-triplet Parquet values, row/column entity
   tables, `matrix_manifest.json`, and `matrix_qa.json`.
 - Validation checks required columns, entity refs, finite numeric values,

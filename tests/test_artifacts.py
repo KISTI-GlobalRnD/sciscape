@@ -71,6 +71,7 @@ from sciscape.export import (
     export_cooccurrence_table,
     export_graphml,
     export_vosviewer_bundle,
+    export_matrix_artifact,
     export_vosviewer_network,
     export_vosviewer_term_cooccurrence,
     export_vosviewer_thesaurus,
@@ -895,6 +896,59 @@ def test_write_matrix_from_term_cooccurrence_wraps_existing_sidecar(tmp_path):
     assert manifest["features"]["cooccurrence"]["state"] == "stable"
     assert manifest["features"]["matrix"]["state"] == "stable"
     assert manifest["artifacts"]["matrix_values"]["path"] == "matrices/term_cooccurrence_default/matrix_values.parquet"
+
+
+def test_export_matrix_artifact_writes_manifest_backed_csv_triplets(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_matrix_from_term_cooccurrence(root)
+
+    written = export_matrix_artifact(root, matrix_id="term_cooccurrence_default", export_format="csv-triplets")
+
+    assert written["primary_path"] == (
+        root / "exports" / "matrix_term_cooccurrence_default_csv_triplets" / "matrix_triplets.csv"
+    )
+    table = pd.read_csv(written["primary_path"])
+    assert {"row_key", "column_key", "row_label", "column_label", "value", "relation"}.issubset(table.columns)
+    assert set(table["relation"]) == {"term_cooccurrence"}
+    validation = validate_export_manifest(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_family"] == "matrix"
+    assert validation["export_kind"] == "matrix_csv_triplets"
+    assert validation["counts"]["files"] == 1
+    assert validation["counts"]["inputs"] == 5
+
+    export_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert export_manifest["selection"]["scope"] == "matrix_artifact"
+    assert export_manifest["selection"]["view"]["mode"] == "matrix_csv_triplets"
+    assert export_manifest["selection"]["layer_state"]["matrix_id"] == "term_cooccurrence_default"
+    assert export_manifest["selection"]["layer_state"]["nnz"] == 2
+
+    manifest = build_result_manifest(root).to_dict()
+    exports = [
+        export
+        for export in manifest["exports"]
+        if export["export_id"] == "matrix_term_cooccurrence_default_csv_triplets"
+    ]
+    assert len(exports) == 1
+    assert exports[0]["export_family"] == "matrix"
+    assert exports[0]["path"] == "exports/matrix_term_cooccurrence_default_csv_triplets/matrix_triplets.csv"
+
+
+def test_export_matrix_artifact_writes_json_summary(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    matrix = write_matrix_from_term_cooccurrence(root)
+
+    written = export_matrix_artifact(matrix["manifest_path"], export_format="json-summary")
+
+    payload = json.loads(written["primary_path"].read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "sciscape_matrix_export_summary_v1"
+    assert payload["matrix_id"] == "term_cooccurrence_default"
+    assert payload["counts"]["nnz"] == 2
+    validation = validate_export_manifest(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["export_kind"] == "matrix_json_summary"
 
 
 def test_write_temporal_artifacts_promotes_stable_temporal_feature(tmp_path):

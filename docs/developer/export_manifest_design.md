@@ -424,6 +424,11 @@ Rules:
 - Table exports must record columns, row count, and filters.
 - Co-occurrence table exports should point back to the stable co-occurrence or
   matrix artifact that produced them.
+- CLI matrix CSV/Parquet triplet exports include row/column labels beside
+  row/column keys and record matrix manifest, values, entity tables, and QA as
+  source artifacts.
+- Matrix JSON summary exports record matrix shape, value, weighting, source
+  artifact paths, and validation counts.
 
 ### VOSviewer-Style Exports
 

@@ -1307,10 +1307,238 @@ def export_vosviewer_network(
     return result
 
 
+def _matrix_dir_manifest_and_root(path: str | Path, matrix_id: str | None = None) -> tuple[Path, Path, Path]:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        matrix_manifest = candidate
+        matrix_dir = candidate.parent
+        result_root = matrix_dir.parent.parent if matrix_dir.parent.name == "matrices" else matrix_dir.parent
+        return matrix_dir, matrix_manifest, result_root
+    if (candidate / "matrix_manifest.json").exists():
+        matrix_dir = candidate
+        result_root = matrix_dir.parent.parent if matrix_dir.parent.name == "matrices" else matrix_dir.parent
+        return matrix_dir, matrix_dir / "matrix_manifest.json", result_root
+
+    resolved_matrix_id = matrix_id or "term_cooccurrence_default"
+    matrix_dir = candidate / "matrices" / resolved_matrix_id
+    return matrix_dir, matrix_dir / "matrix_manifest.json", candidate.resolve()
+
+
+def _matrix_output_path(matrix_dir: Path, manifest: Mapping[str, Any], key: str, default: str) -> Path:
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    raw = Path(str(outputs.get(key) or default))
+    return raw if raw.is_absolute() else matrix_dir / raw
+
+
+def _matrix_triplet_export_table(
+    values: Any,
+    rows: Any,
+    columns: Any,
+) -> Any:
+    row_labels = rows[["entity_key", "label"]].rename(
+        columns={"entity_key": "row_key", "label": "row_label"}
+    )
+    column_labels = columns[["entity_key", "label"]].rename(
+        columns={"entity_key": "column_key", "label": "column_label"}
+    )
+    table = values.merge(row_labels, on="row_key", how="left")
+    table = table.merge(column_labels, on="column_key", how="left")
+    preferred = [
+        "schema_version",
+        "matrix_id",
+        "row_key",
+        "column_key",
+        "row_label",
+        "column_label",
+        "row_index",
+        "column_index",
+        "value",
+        "raw_value",
+        "support_count",
+        "relation",
+        "rank",
+    ]
+    ordered = [column for column in preferred if column in table.columns]
+    ordered.extend(column for column in table.columns if column not in ordered)
+    return table[ordered]
+
+
+def export_matrix_artifact(
+    matrix: str | Path,
+    output_dir: str | Path | None = None,
+    *,
+    matrix_id: str | None = None,
+    export_format: str = "csv-triplets",
+) -> dict[str, Path]:
+    """Export a validated matrix artifact as manifest-backed table/summary files."""
+
+    import pandas as pd
+    from sciscape.artifacts import validate_matrix_artifact, write_export_manifest
+
+    matrix_dir, matrix_manifest_path, result_root = _matrix_dir_manifest_and_root(matrix, matrix_id)
+    validation = validate_matrix_artifact(matrix_manifest_path)
+    if validation.status == "blocked":
+        issues = ", ".join(issue.get("code", "blocked") for issue in validation.blocking_issues[:3])
+        raise ValueError(f"matrix artifact is blocked: {issues or 'validation failed'}")
+
+    matrix_manifest = json.loads(matrix_manifest_path.read_text(encoding="utf-8"))
+    resolved_matrix_id = str(matrix_manifest.get("matrix_id") or matrix_id or matrix_dir.name)
+    export_format = export_format.lower().strip()
+    if export_format not in {"csv-triplets", "parquet-triplets", "json-summary"}:
+        raise ValueError(f"unsupported matrix export format: {export_format}")
+
+    export_id = f"matrix_{resolved_matrix_id}_{export_format.replace('-', '_')}"
+    export_dir = (
+        Path(output_dir).expanduser().resolve()
+        if output_dir is not None
+        else result_root / "exports" / export_id
+    )
+    try:
+        export_dir.relative_to(result_root)
+    except ValueError as exc:
+        raise ValueError("matrix export output_dir must be inside the result root") from exc
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    values_path = _matrix_output_path(matrix_dir, matrix_manifest, "values", "matrix_values.parquet")
+    rows_path = _matrix_output_path(matrix_dir, matrix_manifest, "rows", "row_entities.parquet")
+    columns_path = _matrix_output_path(matrix_dir, matrix_manifest, "columns", "column_entities.parquet")
+    qa_path = _matrix_output_path(matrix_dir, matrix_manifest, "qa", "matrix_qa.json")
+
+    values = pd.read_parquet(values_path)
+    rows = pd.read_parquet(rows_path)
+    columns = pd.read_parquet(columns_path)
+    triplets = _matrix_triplet_export_table(values, rows, columns)
+
+    if export_format == "csv-triplets":
+        primary_path = export_dir / "matrix_triplets.csv"
+        triplets.to_csv(primary_path, index=False)
+        primary_format = "csv"
+        export_kind = "matrix_csv_triplets"
+    elif export_format == "parquet-triplets":
+        primary_path = export_dir / "matrix_triplets.parquet"
+        triplets.to_parquet(primary_path, index=False)
+        primary_format = "parquet"
+        export_kind = "matrix_parquet_triplets"
+    else:
+        primary_path = export_dir / "matrix_summary.json"
+        summary = {
+            "schema_version": "sciscape_matrix_export_summary_v1",
+            "matrix_id": resolved_matrix_id,
+            "matrix_family": matrix_manifest.get("matrix_family"),
+            "format": matrix_manifest.get("format"),
+            "shape": matrix_manifest.get("shape"),
+            "value": matrix_manifest.get("value"),
+            "weighting": matrix_manifest.get("weighting"),
+            "counts": validation.counts,
+            "source_matrix_manifest": matrix_manifest_path.relative_to(result_root).as_posix(),
+            "source_values": values_path.relative_to(result_root).as_posix(),
+            "source_rows": rows_path.relative_to(result_root).as_posix(),
+            "source_columns": columns_path.relative_to(result_root).as_posix(),
+            "source_qa": qa_path.relative_to(result_root).as_posix() if qa_path.exists() else None,
+        }
+        primary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+        primary_format = "json"
+        export_kind = "matrix_json_summary"
+
+    source_artifacts = [
+        _source_artifact(
+            "matrix",
+            matrix_manifest_path,
+            result_root=result_root,
+            artifact_ref="matrix",
+            feature_ref="matrix",
+        ),
+        _source_artifact(
+            "matrix_values",
+            values_path,
+            result_root=result_root,
+            artifact_ref="matrix_values",
+            feature_ref="matrix",
+        ),
+        _source_artifact(
+            "matrix_rows",
+            rows_path,
+            result_root=result_root,
+            artifact_ref="matrix_rows",
+            feature_ref="matrix",
+        ),
+        _source_artifact(
+            "matrix_columns",
+            columns_path,
+            result_root=result_root,
+            artifact_ref="matrix_columns",
+            feature_ref="matrix",
+        ),
+    ]
+    source_artifacts.append(
+        _source_artifact(
+            "matrix_qa",
+            qa_path if qa_path.exists() else None,
+            result_root=result_root,
+            artifact_ref="matrix_qa",
+            feature_ref="quality",
+            required=qa_path.exists(),
+        )
+    )
+    manifest = write_export_manifest(
+        result_root,
+        export_id=export_id,
+        export_family="matrix",
+        export_kind=export_kind,
+        primary_file=primary_path,
+        source_artifacts=source_artifacts,
+        feature_refs=["matrix", "export", "quality"],
+        selection={
+            "scope": "matrix_artifact",
+            "view": {"mode": export_kind, "surface": "matrix_export"},
+            "filters": [],
+            "thresholds": {},
+            "layer_state": {
+                "matrix_id": resolved_matrix_id,
+                "matrix_family": matrix_manifest.get("matrix_family"),
+                "matrix_format": matrix_manifest.get("format"),
+                "export_format": export_format,
+                "row_count": validation.counts.get("rows"),
+                "column_count": validation.counts.get("columns"),
+                "nnz": validation.counts.get("nnz"),
+            },
+        },
+        transforms=[
+            {"transform_type": "validate_matrix_artifact", "description": "Validate source matrix artifact."},
+            {"transform_type": "load_matrix_triplets", "description": "Load sparse-triplet values and axis metadata."},
+            {
+                "transform_type": f"write_{export_format.replace('-', '_')}",
+                "description": f"Write {export_format} matrix export.",
+            },
+        ],
+        compatibility={
+            "target_tools": ["SciScape", "generic table tools"],
+            "format_version": export_format,
+            "limitations": [
+                "layout coordinates are not included",
+                "matrix semantics are defined by source weighting metadata",
+            ],
+        },
+        title=f"Matrix export: {resolved_matrix_id}",
+        format=primary_format,
+    )
+    return {
+        "primary_path": primary_path,
+        "manifest_path": Path(manifest["manifest_path"]),
+        "files_path": Path(manifest["files_path"]),
+        "inputs_path": Path(manifest["inputs_path"]),
+        "transforms_path": Path(manifest["transforms_path"]),
+        "qa_path": Path(manifest["qa_path"]),
+    }
+
+
 __all__ = [
     "export_cooccurrence_table",
     "export_gexf",
     "export_graphml",
+    "export_matrix_artifact",
     "export_vosviewer_bundle",
     "export_vosviewer_network",
     "export_vosviewer_term_cooccurrence",
