@@ -709,6 +709,7 @@ class TestEvolutionArgs:
         assert args.slices_table == Path("slices.parquet")
         assert args.state_evidence_table == Path("states.parquet")
         assert args.transition_evidence_table == Path("transitions.parquet")
+        assert args.derive_transitions == "explicit"
 
     def test_defaults(self, parser):
         args = parser.parse_args([
@@ -726,6 +727,25 @@ class TestEvolutionArgs:
         assert args.allow_skip_slices is False
         assert args.min_transition_score == 0.5
         assert args.min_support_count == 1
+        assert args.state_membership_table is None
+        assert args.state_membership_uid_column is None
+        assert args.state_membership_state_id_column == "state_id"
+        assert args.allow_incomplete_state_membership is False
+
+    def test_document_overlap_parse_without_transition_table(self, parser):
+        args = parser.parse_args([
+            "evolution",
+            "result",
+            "slices.parquet",
+            "states.parquet",
+            "--derive-transitions",
+            "document-overlap",
+            "--state-membership-table",
+            "state_membership.parquet",
+        ])
+        assert args.transition_evidence_table is None
+        assert args.derive_transitions == "document-overlap"
+        assert args.state_membership_table == Path("state_membership.parquet")
 
     def test_explicit_options(self, parser):
         args = parser.parse_args([
@@ -759,6 +779,11 @@ class TestEvolutionArgs:
             '{"unit":"year"}',
             "--entity-scope",
             '{"cluster_level":"micro"}',
+            "--state-membership-uid-column",
+            "work_id",
+            "--state-membership-state-id-column",
+            "state",
+            "--allow-incomplete-state-membership",
         ])
         assert args.evolution_id == "term_evolution"
         assert args.metric == "term_overlap"
@@ -770,6 +795,9 @@ class TestEvolutionArgs:
         assert args.min_transition_score == pytest.approx(0.25)
         assert args.min_support_count == 2
         assert args.matching_method == '{"tie_policy":"keep_all"}'
+        assert args.state_membership_uid_column == "work_id"
+        assert args.state_membership_state_id_column == "state"
+        assert args.allow_incomplete_state_membership is True
 
     def test_run_evolution_writes_valid_artifact_from_csv(self, parser, tmp_path):
         root = tmp_path / "result"
@@ -822,6 +850,60 @@ class TestEvolutionArgs:
         assert validation["counts"]["states"] == 2
         assert validation["counts"]["transitions"] == 1
         assert validation["event_counts"]["continuation"] == 1
+
+    def test_run_evolution_derives_document_overlap_transitions_from_csv(self, parser, tmp_path):
+        root = tmp_path / "result"
+        root.mkdir()
+        pd.DataFrame({"uid": ["D0"]}).to_parquet(root / "abstracts.parquet", index=False)
+
+        slices_path = tmp_path / "slices.csv"
+        states_path = tmp_path / "states.csv"
+        membership_path = tmp_path / "state_membership.csv"
+        pd.DataFrame(
+            [
+                {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+            ]
+        ).to_csv(slices_path, index=False)
+        pd.DataFrame(
+            [
+                {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 4, "top_terms": '["alpha"]'},
+                {"slice_id": "year:2021", "cluster_id": "B1", "doc_count": 2, "top_terms": '["beta"]'},
+                {"slice_id": "year:2021", "cluster_id": "B2", "doc_count": 2, "top_terms": '["gamma"]'},
+            ]
+        ).to_csv(states_path, index=False)
+        pd.DataFrame(
+            [
+                *[{"slice_id": "year:2020", "cluster_id": "A", "uid": f"A{i}"} for i in range(4)],
+                *[{"slice_id": "year:2021", "cluster_id": "B1", "uid": f"A{i}"} for i in range(2)],
+                *[{"slice_id": "year:2021", "cluster_id": "B2", "uid": f"A{i}"} for i in range(2, 4)],
+            ]
+        ).to_csv(membership_path, index=False)
+
+        args = parser.parse_args([
+            "evolution",
+            str(root),
+            str(slices_path),
+            str(states_path),
+            "--derive-transitions",
+            "document-overlap",
+            "--state-membership-table",
+            str(membership_path),
+            "--evolution-id",
+            "overlap_cli_evolution",
+            "--min-transition-score",
+            "0.5",
+            "--min-support-count",
+            "2",
+        ])
+        _run_evolution(args)
+
+        manifest_path = root / "evolution" / "evolution_manifest.json"
+        validation = validate_evolution_artifact(manifest_path).to_dict()
+        assert validation["status"] == "passed"
+        assert validation["counts"]["states"] == 3
+        assert validation["counts"]["transitions"] == 2
+        assert validation["event_counts"]["split"] == 1
 
 
 # ---------------------------------------------------------------------------

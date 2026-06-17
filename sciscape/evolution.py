@@ -1051,6 +1051,200 @@ def build_document_overlap_transition_evidence(
     return out.drop(columns=["_source_slice_index", "_target_sort"]).reset_index(drop=True)
 
 
+def _state_membership_with_state_ids(
+    *,
+    state_membership: pd.DataFrame,
+    states: pd.DataFrame,
+    state_id_column: str,
+    default_level: str,
+) -> pd.DataFrame:
+    if state_id_column in state_membership.columns:
+        return state_membership
+    required = {"slice_id"}
+    missing = sorted(required - set(state_membership.columns))
+    if missing:
+        raise ValueError(
+            "state_membership must include state_id or slice_id plus cluster_key/cluster_id; "
+            f"missing: {', '.join(missing)}"
+        )
+    if "cluster_key" not in state_membership.columns and "cluster_id" not in state_membership.columns:
+        raise ValueError("state_membership must include state_id, cluster_key, or cluster_id")
+    state_required = {"slice_id", "cluster_key", "state_id"}
+    state_missing = sorted(state_required - set(states.columns))
+    if state_missing:
+        raise ValueError(f"states missing required columns for state membership lookup: {', '.join(state_missing)}")
+    lookup: dict[tuple[str, str], str] = {}
+    for row in states.itertuples(index=False):
+        key = (str(row.slice_id), str(row.cluster_key))
+        if key in lookup:
+            raise ValueError(f"states contains duplicate slice_id/cluster_key: {key[0]} {key[1]}")
+        lookup[key] = str(row.state_id)
+
+    work = state_membership.copy()
+    derived_state_ids: list[str] = []
+    for item in work.to_dict("records"):
+        slice_id = str(item.get("slice_id", "")).strip()
+        if not slice_id:
+            raise ValueError("state_membership slice_id must not be empty when deriving state ids")
+        raw_cluster_key = item.get("cluster_key")
+        if _is_missing(raw_cluster_key) or str(raw_cluster_key).strip() == "":
+            raw_cluster_id = item.get("cluster_id")
+            if _is_missing(raw_cluster_id) or str(raw_cluster_id).strip() == "":
+                raise ValueError("state_membership must include non-empty cluster_key or cluster_id when deriving state ids")
+            raw_level = item.get("level", default_level)
+            level = str(raw_level if not _is_missing(raw_level) else default_level).strip() or default_level
+            cluster_key = f"{level}:{str(raw_cluster_id).strip()}"
+        else:
+            cluster_key = str(raw_cluster_key).strip()
+        state_id = lookup.get((slice_id, cluster_key))
+        if state_id is None:
+            raise ValueError(f"state_membership references unknown slice_id/cluster_key: {slice_id} {cluster_key}")
+        derived_state_ids.append(state_id)
+    work[state_id_column] = derived_state_ids
+    return work
+
+
+def build_document_overlap_evolution(
+    *,
+    evolution_id: str,
+    slices: pd.DataFrame,
+    state_evidence: pd.DataFrame,
+    state_membership: pd.DataFrame,
+    metric: str = "jaccard_doc_overlap",
+    uid_column: str | None = None,
+    state_id_column: str = "state_id",
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    entity_scope: Mapping[str, Any] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
+    default_level: str = "cluster",
+    require_complete_membership: bool = True,
+) -> EvolutionAnalysisResult:
+    """Build evolution tables by deriving transitions from state-document overlap."""
+
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    metric = str(metric or "").strip() or "jaccard_doc_overlap"
+    matching = {
+        "metric": metric,
+        "min_transition_score": 0.5,
+        "min_support_count": 1,
+        "tie_policy": "keep_all_above_threshold",
+        "normalization": "state_document_membership_overlap",
+        "require_complete_membership": bool(require_complete_membership),
+    }
+    if matching_method:
+        matching.update(dict(matching_method))
+    matching["metric"] = metric
+    threshold, min_support = _score_support_thresholds(matching)
+    matching["min_transition_score"] = threshold
+    matching["min_support_count"] = min_support
+    rules = _default_event_rules()
+    if event_rules:
+        rules.update(dict(event_rules))
+
+    normalized_slices = _normalize_evolution_slices(evolution_id, slices)
+    states = build_evolution_state_table(
+        evolution_id=evolution_id,
+        slices=normalized_slices,
+        state_evidence=state_evidence,
+        default_level=default_level,
+    )
+    normalized_slices = _update_slice_counts(normalized_slices, states)
+    membership_with_ids = _state_membership_with_state_ids(
+        state_membership=state_membership,
+        states=states,
+        state_id_column=state_id_column,
+        default_level=default_level,
+    )
+    transition_evidence = build_document_overlap_transition_evidence(
+        states=states,
+        state_membership=membership_with_ids,
+        uid_column=uid_column,
+        state_id_column=state_id_column,
+        metric=metric,
+        min_shared_docs=min_support,
+        min_score=threshold,
+        require_complete_membership=require_complete_membership,
+    )
+    transitions = build_evolution_transition_table(
+        evolution_id=evolution_id,
+        states=states,
+        transition_evidence=transition_evidence,
+        metric=metric,
+        matching_method=matching,
+        event_rules=rules,
+    )
+    lineages = _lineage_rows(evolution_id, states, transitions)
+    events = classify_evolution_events(
+        evolution_id=evolution_id,
+        slices=normalized_slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+        event_rules=rules,
+    )
+    periodization_payload = {
+        "unit": _text_or_default(normalized_slices.iloc[0].get("unit"), "year"),
+        "start_year": int(normalized_slices["start_year"].min()),
+        "end_year": int(normalized_slices["end_year"].max()),
+        "state_method": "explicit_state_evidence",
+        "transition_method": "state_document_membership_overlap",
+        "include_unknown_year": False,
+    }
+    if periodization:
+        periodization_payload.update(dict(periodization))
+    entity_scope_payload = {
+        "cluster_level": default_level,
+        "cluster_id_namespace": "explicit_state_evidence",
+        "document_universe": "state_document_membership",
+        "filter_refs": [],
+    }
+    if entity_scope:
+        entity_scope_payload.update(dict(entity_scope))
+    metrics = [
+        {
+            "name": metric,
+            "value_type": "float",
+            "range": [0.0, 1.0],
+            "interpretation": "document-overlap continuity score between adjacent slice-local cluster states",
+        },
+        {
+            "name": "lineage_stability",
+            "value_type": "float",
+            "range": [0.0, 1.0],
+            "interpretation": "aggregate continuity strength across a lineage",
+        },
+    ]
+    analysis_transforms = [
+        {"step": "normalize_time_slices"},
+        {"step": "normalize_state_evidence", "default_level": default_level},
+        {
+            "step": "derive_transition_evidence_from_state_document_membership",
+            "metric": metric,
+            "require_complete_membership": bool(require_complete_membership),
+        },
+        {"step": "normalize_transition_evidence", "metric": metric},
+        {"step": "build_lineages"},
+        {"step": "assign_evolution_events"},
+        *[dict(item) for item in (transforms or [])],
+    ]
+    return EvolutionAnalysisResult(
+        evolution_id=evolution_id,
+        slices=normalized_slices,
+        states=states,
+        transitions=transitions,
+        lineages=lineages,
+        events=events,
+        matching_method=matching,
+        event_rules=rules,
+        periodization=periodization_payload,
+        entity_scope=entity_scope_payload,
+        metrics=metrics,
+        transforms=analysis_transforms,
+    )
+
+
 def _lineage_rows(evolution_id: str, states: pd.DataFrame, transitions: pd.DataFrame) -> pd.DataFrame:
     if states.empty:
         return pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_LINEAGE_COLUMNS))
@@ -1545,6 +1739,7 @@ def build_membership_projection_evolution(
 
 __all__ = [
     "EvolutionAnalysisResult",
+    "build_document_overlap_evolution",
     "build_document_overlap_transition_evidence",
     "build_evidence_backed_evolution",
     "build_evolution_state_table",

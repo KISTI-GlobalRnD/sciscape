@@ -576,9 +576,16 @@ lineage from raw records.
   artifacts under `<result_root>/evolution/`.
 - `write_evidence_backed_evolution_artifacts` writes explicit state and
   transition evidence as the same validated evolution artifact contract.
+- `write_document_overlap_evolution_artifacts` writes the same artifact contract
+  from explicit slice-local state evidence plus complete state-document
+  membership, deriving adjacent-slice transition evidence internally.
 - `sciscape evolution <result_root> <slices> <states> <transitions>` exposes the
   evidence-backed writer from the CLI and writes web-loadable artifacts under
   `<result_root>/evolution/` by default.
+- `sciscape evolution <result_root> <slices> <states> --derive-transitions
+  document-overlap --state-membership-table <membership>` exposes the
+  document-overlap writer from the CLI without requiring a precomputed
+  transition table.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
 - `sciscape.evolution.build_membership_projection_evolution` builds the
@@ -587,6 +594,9 @@ lineage from raw records.
   lets richer matching strategies evolve in the analysis module first.
 - `sciscape.evolution.build_evidence_backed_evolution` builds a full
   `EvolutionAnalysisResult` from explicit slice, state, and transition evidence.
+- `sciscape.evolution.build_document_overlap_evolution` builds a full
+  `EvolutionAnalysisResult` by deriving transition evidence from complete
+  state-document membership rows.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.
@@ -620,13 +630,13 @@ The real-data writer intentionally uses static membership projection in v1. It
 can safely emit continuation, emergence, and decline from projected cluster
 presence, but it should not fabricate split or merge claims without richer
 time-slice-specific clustering or matching evidence. The document-overlap
-transition evidence builder is the first reusable richer-matching primitive: it
-requires complete state-document membership by default, can opt into incomplete
-membership only with warning flags, and still needs an upstream slice-local
-state membership artifact before it should be used in a real-data writer. Split,
-merge, and ambiguous validation are covered by the synthetic smoke fixture and
-the document-overlap evidence unit tests until a richer matching writer is
-added.
+transition evidence builder and writer are the first reusable richer-matching
+path: they require complete state-document membership by default and can opt
+into incomplete membership only with warning flags. This is still opt-in because
+the default real-data writer does not yet create slice-local state membership
+artifacts automatically. Split, merge, and ambiguous validation are covered by
+the synthetic smoke fixture, document-overlap unit tests, and the
+document-overlap writer test.
 
 ## Open Questions
 

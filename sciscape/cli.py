@@ -8,7 +8,7 @@ Usage:
     sciscape landscape <edge_file> <abstract_parquet> [options]
     sciscape visualize <keyword_table> [options]
     sciscape viewer    [options]
-    sciscape evolution <result_root> <slices_table> <state_evidence_table> <transition_evidence_table> [options]
+    sciscape evolution <result_root> <slices_table> <state_evidence_table> [transition_evidence_table] [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
     sciscape matrix    wrap-term-cooccurrence <result_root> [options]
@@ -25,6 +25,7 @@ Examples:
     sciscape landscape edges.parquet abstracts.parquet -o workspace/output/landscape
     sciscape visualize keywords.parquet -o workspace/reports/keywords
     sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
+    sciscape evolution result slices.parquet states.parquet --derive-transitions document-overlap --state-membership-table state_membership.parquet
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
     sciscape matrix wrap-term-cooccurrence result
     sciscape matrix export result --matrix-id term_cooccurrence_default --format csv-triplets
@@ -263,7 +264,37 @@ def _build_parser() -> argparse.ArgumentParser:
     ev.add_argument("result_root", type=Path, help="SciScape result root to receive evolution/")
     ev.add_argument("slices_table", type=Path, help="Time-slice table (.parquet, .csv, .tsv, .json, .jsonl)")
     ev.add_argument("state_evidence_table", type=Path, help="Slice-local cluster state evidence table")
-    ev.add_argument("transition_evidence_table", type=Path, help="State transition evidence table")
+    ev.add_argument("transition_evidence_table", type=Path, nargs="?", help="State transition evidence table")
+    ev.add_argument(
+        "--derive-transitions",
+        choices=["explicit", "document-overlap"],
+        default="explicit",
+        help="Transition source (default: explicit transition evidence table)",
+    )
+    ev.add_argument(
+        "--state-membership-table",
+        type=Path,
+        default=None,
+        help="State-document membership table for --derive-transitions document-overlap",
+    )
+    ev.add_argument(
+        "--state-membership-uid-column",
+        type=str,
+        default=None,
+        help="Document ID column in --state-membership-table (default: auto-detect)",
+    )
+    ev.add_argument(
+        "--state-membership-state-id-column",
+        type=str,
+        default="state_id",
+        help="State ID column in --state-membership-table (default: state_id)",
+    )
+    ev.add_argument(
+        "--allow-incomplete-state-membership",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Allow state membership doc_count mismatches and flag affected transitions",
+    )
     ev.add_argument("--evolution-id", type=str, default="cluster_evolution", help="Evolution artifact ID")
     ev.add_argument("--metric", type=str, default="transition_score", help="Transition metric name")
     ev.add_argument("--title", type=str, default=None, help="Evolution artifact title")
@@ -962,12 +993,23 @@ def _read_json_object_arg(value: str | None, *, label: str) -> dict | None:
 
 
 def _run_evolution(args: argparse.Namespace) -> None:
-    from sciscape.artifacts import write_evidence_backed_evolution_artifacts
+    from sciscape.artifacts import write_document_overlap_evolution_artifacts, write_evidence_backed_evolution_artifacts
 
     try:
         slices = _read_table(args.slices_table)
         state_evidence = _read_table(args.state_evidence_table)
-        transition_evidence = _read_table(args.transition_evidence_table)
+        transition_evidence = None
+        state_membership = None
+        if args.derive_transitions == "explicit":
+            if args.transition_evidence_table is None:
+                raise ValueError("transition_evidence_table is required unless --derive-transitions document-overlap is used")
+            transition_evidence = _read_table(args.transition_evidence_table)
+        elif args.derive_transitions == "document-overlap":
+            if args.state_membership_table is None:
+                raise ValueError("--state-membership-table is required for --derive-transitions document-overlap")
+            state_membership = _read_table(args.state_membership_table)
+        else:  # pragma: no cover
+            raise ValueError(f"unsupported --derive-transitions value: {args.derive_transitions}")
         matching_method = _read_json_object_arg(args.matching_method, label="--matching-method") or {}
         event_rules = _read_json_object_arg(args.event_rules, label="--event-rules")
         periodization = _read_json_object_arg(args.periodization, label="--periodization")
@@ -984,23 +1026,48 @@ def _run_evolution(args: argparse.Namespace) -> None:
         }
     )
     try:
-        written = write_evidence_backed_evolution_artifacts(
-            args.result_root,
-            evolution_id=args.evolution_id,
-            slices_df=slices,
-            state_evidence_df=state_evidence,
-            transition_evidence_df=transition_evidence,
-            metric=args.metric,
-            temporal_manifest=args.temporal_manifest,
-            periodization=periodization,
-            matching_method=matching_method,
-            event_rules=event_rules,
-            entity_scope=entity_scope,
-            output_dir=args.output_dir,
-            title=args.title,
-            default_level=args.default_level,
-            allow_skip_slices=args.allow_skip_slices,
-        )
+        if args.derive_transitions == "document-overlap":
+            metric = args.metric
+            if metric == "transition_score":
+                metric = "jaccard_doc_overlap"
+                matching_method["metric"] = metric
+            written = write_document_overlap_evolution_artifacts(
+                args.result_root,
+                evolution_id=args.evolution_id,
+                slices_df=slices,
+                state_evidence_df=state_evidence,
+                state_membership_df=state_membership,
+                metric=metric,
+                temporal_manifest=args.temporal_manifest,
+                uid_column=args.state_membership_uid_column,
+                state_id_column=args.state_membership_state_id_column,
+                periodization=periodization,
+                matching_method=matching_method,
+                event_rules=event_rules,
+                entity_scope=entity_scope,
+                output_dir=args.output_dir,
+                title=args.title,
+                default_level=args.default_level,
+                require_complete_membership=not args.allow_incomplete_state_membership,
+            )
+        else:
+            written = write_evidence_backed_evolution_artifacts(
+                args.result_root,
+                evolution_id=args.evolution_id,
+                slices_df=slices,
+                state_evidence_df=state_evidence,
+                transition_evidence_df=transition_evidence,
+                metric=args.metric,
+                temporal_manifest=args.temporal_manifest,
+                periodization=periodization,
+                matching_method=matching_method,
+                event_rules=event_rules,
+                entity_scope=entity_scope,
+                output_dir=args.output_dir,
+                title=args.title,
+                default_level=args.default_level,
+                allow_skip_slices=args.allow_skip_slices,
+            )
     except Exception as exc:
         print(f"Could not write evolution artifact: {exc}", file=sys.stderr)
         sys.exit(1)

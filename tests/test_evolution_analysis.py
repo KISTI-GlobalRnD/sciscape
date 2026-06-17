@@ -7,6 +7,7 @@ import pytest
 
 import sciscape
 from sciscape.evolution import (
+    build_document_overlap_evolution,
     build_document_overlap_transition_evidence,
     build_evidence_backed_evolution,
     build_evolution_state_table,
@@ -19,6 +20,7 @@ from sciscape.evolution import (
 
 
 def test_evolution_is_public_lazy_submodule():
+    assert sciscape.evolution.build_document_overlap_evolution is build_document_overlap_evolution
     assert sciscape.evolution.build_document_overlap_transition_evidence is build_document_overlap_transition_evidence
     assert sciscape.evolution.build_evidence_backed_evolution is build_evidence_backed_evolution
     assert sciscape.evolution.build_evolution_state_table is build_evolution_state_table
@@ -625,6 +627,54 @@ def test_build_document_overlap_transition_evidence_requires_complete_membership
     assert len(evidence) == 1
     assert evidence.iloc[0]["score"] == pytest.approx(0.5)
     assert evidence.iloc[0]["warning_flags"] == "membership_doc_count_mismatch"
+
+
+def test_build_document_overlap_evolution_derives_transitions_from_cluster_membership():
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+            {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+        ]
+    )
+    state_evidence = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 4, "top_terms": ["alpha"]},
+            {"slice_id": "year:2021", "cluster_id": "B1", "doc_count": 2, "top_terms": ["beta"]},
+            {"slice_id": "year:2021", "cluster_id": "B2", "doc_count": 2, "top_terms": ["gamma"]},
+            {"slice_id": "year:2020", "cluster_id": "C", "doc_count": 3, "top_terms": ["delta"]},
+            {"slice_id": "year:2021", "cluster_id": "C", "doc_count": 3, "top_terms": ["delta"]},
+        ]
+    )
+    state_membership = pd.DataFrame(
+        [
+            *[{"slice_id": "year:2020", "cluster_id": "A", "uid": f"A{i}"} for i in range(4)],
+            *[{"slice_id": "year:2021", "cluster_id": "B1", "uid": f"A{i}"} for i in range(2)],
+            *[{"slice_id": "year:2021", "cluster_id": "B2", "uid": f"A{i}"} for i in range(2, 4)],
+            *[{"slice_id": "year:2020", "cluster_id": "C", "uid": f"C{i}"} for i in range(3)],
+            *[{"slice_id": "year:2021", "cluster_id": "C", "uid": f"C{i}"} for i in range(3)],
+        ]
+    )
+
+    result = build_document_overlap_evolution(
+        evolution_id="overlap evolution",
+        slices=slices,
+        state_evidence=state_evidence,
+        state_membership=state_membership,
+        matching_method={"min_transition_score": 0.5, "min_support_count": 2},
+    )
+
+    assert result.evolution_id == "overlap_evolution"
+    assert result.matching_method["metric"] == "jaccard_doc_overlap"
+    assert result.matching_method["normalization"] == "state_document_membership_overlap"
+    assert result.periodization["transition_method"] == "state_document_membership_overlap"
+    assert len(result.transitions) == 3
+    assert {"split", "continuation"} <= set(result.events["event_type"])
+    assert [item["step"] for item in result.transforms[:4]] == [
+        "normalize_time_slices",
+        "normalize_state_evidence",
+        "derive_transition_evidence_from_state_document_membership",
+        "normalize_transition_evidence",
+    ]
 
 
 def test_build_evidence_backed_evolution_returns_complete_analysis_result():

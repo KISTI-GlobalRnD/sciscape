@@ -52,6 +52,7 @@ from sciscape.artifacts import (
     validate_temporal_artifact,
     validate_workspace,
     write_cooccurrence_artifacts,
+    write_document_overlap_evolution_artifacts,
     write_edge_evidence_samples,
     write_evidence_backed_evolution_artifacts,
     write_evolution_artifacts,
@@ -1272,6 +1273,61 @@ def test_write_evidence_backed_evolution_artifacts_promotes_stable_feature(tmp_p
     assert "evolution_qa" in manifest["features"]["evolution"]["artifact_refs"]
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["metric"] == "term_overlap"
+
+
+def test_write_document_overlap_evolution_artifacts_promotes_stable_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    slices = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020},
+            {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021},
+        ]
+    )
+    state_evidence = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "cluster_id": "A", "doc_count": 4, "top_terms": ["alpha"]},
+            {"slice_id": "year:2021", "cluster_id": "B1", "doc_count": 2, "top_terms": ["beta"]},
+            {"slice_id": "year:2021", "cluster_id": "B2", "doc_count": 2, "top_terms": ["gamma"]},
+            {"slice_id": "year:2020", "cluster_id": "C", "doc_count": 3},
+            {"slice_id": "year:2021", "cluster_id": "C", "doc_count": 3},
+        ]
+    )
+    state_membership = pd.DataFrame(
+        [
+            *[{"slice_id": "year:2020", "cluster_id": "A", "uid": f"A{i}"} for i in range(4)],
+            *[{"slice_id": "year:2021", "cluster_id": "B1", "uid": f"A{i}"} for i in range(2)],
+            *[{"slice_id": "year:2021", "cluster_id": "B2", "uid": f"A{i}"} for i in range(2, 4)],
+            *[{"slice_id": "year:2020", "cluster_id": "C", "uid": f"C{i}"} for i in range(3)],
+            *[{"slice_id": "year:2021", "cluster_id": "C", "uid": f"C{i}"} for i in range(3)],
+        ]
+    )
+
+    written = write_document_overlap_evolution_artifacts(
+        root,
+        evolution_id="overlap_evolution",
+        slices_df=slices,
+        state_evidence_df=state_evidence,
+        state_membership_df=state_membership,
+        matching_method={"min_transition_score": 0.5, "min_support_count": 2},
+    )
+
+    assert written["manifest_path"] == root / "evolution" / "evolution_manifest.json"
+    assert written["qa"]["status"] == "passed"
+
+    transitions = pd.read_parquet(written["transitions_path"])
+    events = pd.read_parquet(written["events_path"])
+    assert len(transitions) == 3
+    assert set(transitions["metric"]) == {"jaccard_doc_overlap"}
+    assert "split" in set(events["event_type"])
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["transitions"] == 3
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
+    evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert evolution_manifest["matching_method"]["normalization"] == "state_document_membership_overlap"
 
 
 def test_result_artifact_inference_accepts_evolution_manifest_path(tmp_path):
