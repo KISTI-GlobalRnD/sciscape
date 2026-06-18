@@ -454,6 +454,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderEvolutionStateDetail" in response.text
     assert "selectEvolutionState" in response.text
     assert "currentEvolutionSelectedStateId" in response.text
+    assert "applyEvolutionUrlState" in response.text
+    assert "syncEvolutionUrlState" in response.text
+    assert "evolution_state" in response.text
+    assert "evolution_event" in response.text
     assert "evolution-map-panel" in response.text
     assert "evolution-detail-grid" in response.text
     assert "Select a state node" in response.text
@@ -520,6 +524,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "evolution_status" in response.text
     assert "evolutionCounts.events" in response.text
     assert "new URLSearchParams(window.location.search).get('job')" in response.text
+    assert "currentShareUrl" in response.text
     assert 'id="file-input"' not in response.text
 
 

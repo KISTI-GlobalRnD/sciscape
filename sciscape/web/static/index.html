@@ -3189,6 +3189,7 @@ let currentAtlasDeckSettings = {edges: true, hierarchy: true, labels: true, minW
 let currentEvolutionPayload = null;
 let currentEvolutionEventFilter = 'all';
 let currentEvolutionSelectedStateId = '';
+let evolutionUrlStateApplied = false;
 const ATLAS_SESSION_LIMIT = 6;
 const RESULT_FEATURE_LABELS = {
   overview: 'Overview',
@@ -6078,6 +6079,7 @@ function showResults(result) {
   renderResultContract(result);
   renderRunState(result);
   renderAtlasShell(result);
+  evolutionUrlStateApplied = false;
 
   // Stats
   const row = document.getElementById('stats-row');
@@ -6104,7 +6106,7 @@ function showResults(result) {
 
   // Tabs: activate overview
   const firstTab = ['overview', 'keywords', 'downloads'].find(tabAvailable) || 'downloads';
-  switchTab(firstTab);
+  switchTab(initialEvolutionTabRequested() && tabAvailable('evolution') ? 'evolution' : firstTab);
 }
 
 function pill(text, accent) {
@@ -6733,10 +6735,16 @@ async function exportAllJSON() {
 
 function copyShareLink() {
   if (!currentJobId) return;
-  const url = `${window.location.origin}/?job=${currentJobId}`;
+  const url = currentShareUrl();
   navigator.clipboard.writeText(url).then(() => {
     document.getElementById('export-status').textContent = 'Link copied!';
   });
+}
+
+function currentShareUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('job', currentJobId);
+  return url.toString();
 }
 
 /* ── TEMPORAL TRACKING ──────────────────────────────────── */
@@ -6774,8 +6782,10 @@ async function loadEvolution() {
       return;
     }
     currentEvolutionPayload = data;
+    applyEvolutionUrlState(data);
     if (currentEvolutionSelectedStateId && !evolutionStateById(data, currentEvolutionSelectedStateId)) {
       currentEvolutionSelectedStateId = '';
+      syncEvolutionUrlState();
     }
     renderEvolutionLens();
   } catch(e) {
@@ -6990,16 +7000,48 @@ function renderEvolutionEventFilter(data) {
 function selectEvolutionEventFilter(type) {
   currentEvolutionEventFilter = type || 'all';
   renderEvolutionLens();
+  syncEvolutionUrlState();
 }
 
 function selectEvolutionState(stateId) {
   if (!String(stateId || '').trim()) return;
   currentEvolutionSelectedStateId = String(stateId || '');
   renderEvolutionLens();
+  syncEvolutionUrlState();
 }
 
 function evolutionSelectHandler(stateId) {
   return 'selectEvolutionState(decodeURIComponent(\'' + encodeURIComponent(String(stateId || '')) + '\'))';
+}
+
+function initialEvolutionTabRequested() {
+  const params = new URLSearchParams(window.location.search);
+  return Boolean(params.get('evolution_state') || params.get('evolution_event'));
+}
+
+function applyEvolutionUrlState(data) {
+  if (evolutionUrlStateApplied) return;
+  evolutionUrlStateApplied = true;
+  const params = new URLSearchParams(window.location.search);
+  const eventParam = params.get('evolution_event');
+  if (['all', 'continuation', 'split', 'merge', 'emergence', 'decline', 'ambiguous'].includes(eventParam)) {
+    currentEvolutionEventFilter = eventParam;
+  }
+  const stateParam = params.get('evolution_state');
+  if (stateParam && evolutionStateById(data, stateParam)) {
+    currentEvolutionSelectedStateId = String(stateParam);
+  }
+}
+
+function syncEvolutionUrlState() {
+  try {
+    const url = new URL(window.location.href);
+    if (currentEvolutionSelectedStateId) url.searchParams.set('evolution_state', currentEvolutionSelectedStateId);
+    else url.searchParams.delete('evolution_state');
+    if (currentEvolutionEventFilter && currentEvolutionEventFilter !== 'all') url.searchParams.set('evolution_event', currentEvolutionEventFilter);
+    else url.searchParams.delete('evolution_event');
+    window.history.replaceState(null, '', url.toString());
+  } catch (_) {}
 }
 
 function renderEvolutionStateDetail(data) {
