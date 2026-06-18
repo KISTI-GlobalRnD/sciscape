@@ -357,6 +357,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
+    assert "atlas-review-queue-reasons" in response.text
+    assert "no review blockers" in response.text
+    assert "hiddenSections" in response.text
+    assert "missing ' + key" in response.text
     assert "selectAtlasReviewFilter" in response.text
     assert "openNextAtlasReviewTarget" in response.text
     assert "manifestExportCards" in response.text

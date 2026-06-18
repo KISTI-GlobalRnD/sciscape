@@ -264,6 +264,8 @@ Current status:
   ready/review/blocked clusters, syncs the `atlas_review` URL state, and
   provides direct and next-target navigation to clusters that need analyst
   review.
+- The review checklist and queue expose explicit readiness reasons, such as
+  missing terms, missing works, hidden sections, QA warnings, or blocking states.
 - The Narrative review block writes claim decisions, displays pending/saved/failed
   feedback, and reads back the latest persisted decision for the selected claim.
 

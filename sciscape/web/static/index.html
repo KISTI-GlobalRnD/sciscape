@@ -1503,6 +1503,15 @@ body {
   flex-wrap: wrap;
   gap: 0.24rem;
 }
+.atlas-review-reasons,
+.atlas-review-queue-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.atlas-review-queue-reasons {
+  margin-top: 0.18rem;
+}
 .atlas-review-packet {
   display: grid;
   gap: 0.4rem;
@@ -4583,10 +4592,17 @@ function renderAtlasReviewQueueRow(row, selectedUid) {
   const review = row.review || {state: 'review', note: 'partial evidence'};
   const uid = String(node.cluster_uid || '');
   const selected = uid === String(selectedUid || '') ? ' selected' : '';
+  const reasons = Array.isArray(review.reasons) ? review.reasons.slice(0, 3) : [];
+  const reasonHtml = reasons.length
+    ? '<div class="atlas-review-queue-reasons">' + reasons.map(reason =>
+        '<span class="atlas-mini-pill">' + esc(reason) + '</span>'
+      ).join('') + '</div>'
+    : '';
   return '<button class="atlas-review-queue-row ' + esc(review.state) + selected + '" onclick="selectAtlasNode(decodeURIComponent(\'' +
     encodeURIComponent(uid) + '\'))">' +
       '<div><div class="atlas-review-queue-label">' + esc(node.short_label || node.label || uid) + '</div>' +
-      '<div class="atlas-review-queue-meta">' + esc(review.note || 'review evidence') + ' / evidence ' + atlasEvidenceScore(node) + '/6</div></div>' +
+      '<div class="atlas-review-queue-meta">' + esc(review.note || 'review evidence') + ' / evidence ' + atlasEvidenceScore(node) + '/6</div>' +
+      reasonHtml + '</div>' +
       '<div class="atlas-review-state">' + esc(review.state) + '</div>' +
     '</button>';
 }
@@ -5270,6 +5286,7 @@ function renderAtlasInspectorModelSummary(model) {
 
 function atlasReviewReadiness(node, model) {
   const sections = model.sections || {};
+  const coreSectionKeys = ['meaning', 'relations', 'works', 'qa'];
   const keywords = Array.isArray(node && node.keywords) ? node.keywords : [];
   const keywordCount = atlasNumeric(node && (node.keyword_count || keywords.length));
   const works = Array.isArray(node && node.representative_works) ? node.representative_works : [];
@@ -5278,20 +5295,28 @@ function atlasReviewReadiness(node, model) {
   const sampleRelations = neighbors.filter(neighbor => atlasNeighborSamples(neighbor).length).length;
   const aggregateRelations = neighbors.filter(neighbor => !atlasNeighborSamples(neighbor).length).length;
   const warnings = Array.isArray(model.warnings) ? model.warnings : [];
-  const sectionStates = ['meaning', 'relations', 'works', 'qa'].map(key =>
+  const sectionStates = coreSectionKeys.map(key =>
     sections[key] && sections[key].state || 'hidden'
   );
+  const hiddenSections = coreSectionKeys.filter(key => (sections[key] && sections[key].state || 'hidden') === 'hidden');
+  const blockedSections = coreSectionKeys.filter(key => (sections[key] && sections[key].state || 'hidden') === 'blocked');
   const blocked = model.result_state === 'blocked' || sectionStates.includes('blocked');
   const missing = [];
   if (!keywordCount && !keywords.length) missing.push('terms');
   if (!works.length) missing.push('works');
   if (!neighbors.length) missing.push('relations');
   const needsReview = missing.length > 0 || warnings.length > 0 || sectionStates.includes('hidden');
+  const reasons = [];
+  if (model.result_state === 'blocked') reasons.push('result blocked');
+  blockedSections.forEach(key => reasons.push(key + ' blocked'));
+  missing.forEach(key => reasons.push('missing ' + key));
+  if (warnings.length) reasons.push(formatAtlasCount(warnings.length) + ' QA warnings');
+  if (hiddenSections.length) reasons.push('hidden ' + hiddenSections.join('/'));
   const state = blocked ? 'blocked' : needsReview ? 'review' : 'ready';
   const note = blocked
-    ? 'blocking validation issue'
+    ? reasons.join(' / ') || 'blocking validation issue'
     : needsReview
-      ? [missing.length ? 'missing ' + missing.join('/') : '', warnings.length ? formatAtlasCount(warnings.length) + ' warnings' : ''].filter(Boolean).join(' / ') || 'partial evidence'
+      ? reasons.join(' / ') || 'partial evidence'
       : 'terms, works, relations, and QA are backed';
   const rows = [
     ['terms', keywords.length ? formatAtlasCount(keywords.length) + ' embedded / ' + formatAtlasCount(keywordCount || keywords.length) + ' counted' : formatAtlasCount(keywordCount) + ' counted'],
@@ -5303,7 +5328,7 @@ function atlasReviewReadiness(node, model) {
   if (sampleRelations) flags.push(formatAtlasCount(sampleRelations) + ' sample-backed');
   if (aggregateRelations) flags.push(formatAtlasCount(aggregateRelations) + ' aggregate-only');
   if (!flags.length) flags.push('no relation evidence');
-  return {state, note, rows, flags};
+  return {state, note, rows, flags, reasons};
 }
 
 function renderAtlasReviewChecklist(node, model) {
@@ -5318,6 +5343,9 @@ function renderAtlasReviewChecklist(node, model) {
       '<div class="atlas-review-grid">' + review.rows.map(([label, value]) =>
         '<div class="atlas-review-item"><div class="atlas-review-label">' + esc(label) + '</div>' +
         '<div class="atlas-review-value" title="' + escAttr(value) + '">' + esc(value) + '</div></div>'
+      ).join('') + '</div>' +
+      '<div class="atlas-review-reasons">' + (review.reasons.length ? review.reasons : ['no review blockers']).map(reason =>
+        '<span class="atlas-mini-pill">' + esc(reason) + '</span>'
       ).join('') + '</div>' +
       '<div class="atlas-review-flags">' + review.flags.map(flag =>
         '<span class="atlas-mini-pill">' + esc(flag) + '</span>'
