@@ -456,6 +456,11 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Matching Diagnostics" in response.text
     assert "candidate transitions" in response.text
     assert "slice pair diagnostics" in response.text
+    assert "renderEvolutionLoadControls" in response.text
+    assert "selectEvolutionLoadProfile" in response.text
+    assert "evolutionLoadProfileQuery" in response.text
+    assert "evolution_profile" in response.text
+    assert "loaded within limits" in response.text
     assert "selectEvolutionState" in response.text
     assert "currentEvolutionSelectedStateId" in response.text
     assert "applyEvolutionUrlState" in response.text

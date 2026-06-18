@@ -2244,7 +2244,8 @@ body {
 }
 .evolution-slice-rail,
 .evolution-event-filter,
-.evolution-focus-controls {
+.evolution-focus-controls,
+.evolution-load-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -3191,6 +3192,7 @@ let currentEvolutionPayload = null;
 let currentEvolutionEventFilter = 'all';
 let currentEvolutionSelectedStateId = '';
 let currentEvolutionFocusMode = 'all';
+let currentEvolutionLoadProfile = 'compact';
 let evolutionUrlStateApplied = false;
 const ATLAS_SESSION_LIMIT = 6;
 const RESULT_FEATURE_LABELS = {
@@ -6085,6 +6087,7 @@ function showResults(result) {
   currentEvolutionSelectedStateId = '';
   currentEvolutionEventFilter = 'all';
   currentEvolutionFocusMode = 'all';
+  currentEvolutionLoadProfile = 'compact';
 
   // Stats
   const row = document.getElementById('stats-row');
@@ -6776,10 +6779,11 @@ async function loadEvolution() {
   if (!currentJobId) return;
   const el = document.getElementById('evolution-content');
   if (!el) return;
+  applyEvolutionProfileUrlState();
   el.className = 'evolution-empty';
   el.innerHTML = 'Loading cluster evolution artifact...';
   try {
-    const r = await fetch(`/api/jobs/${currentJobId}/evolution`);
+    const r = await fetch(`/api/jobs/${currentJobId}/evolution${evolutionLoadProfileQuery()}`);
     const data = await r.json();
     if (!r.ok || data.error) {
       currentEvolutionPayload = null;
@@ -6797,6 +6801,20 @@ async function loadEvolution() {
     currentEvolutionPayload = null;
     el.innerHTML = 'Evolution load failed: ' + esc(e.message);
   }
+}
+
+function evolutionLoadProfileQuery() {
+  if (currentEvolutionLoadProfile !== 'full') return '';
+  const params = new URLSearchParams({
+    state_limit: '500',
+    transition_limit: '1000',
+    event_limit: '1000',
+    state_membership_limit: '10000',
+    map_node_limit: '1000',
+    map_edge_limit: '2000',
+    map_lineage_limit: '300',
+  });
+  return '?' + params.toString();
 }
 
 function renderEvolutionLens() {
@@ -6821,6 +6839,7 @@ function renderEvolutionLens() {
     '<div class="evolution-body">' +
       renderEvolutionSummary(data) +
       renderEvolutionMethodNote(data) +
+      renderEvolutionLoadControls(data) +
       renderEvolutionMatchingDiagnostics(data) +
       renderEvolutionSliceRail(data) +
       renderEvolutionFocusControls(data) +
@@ -6871,6 +6890,49 @@ function renderEvolutionMethodNote(data) {
     'slice: ' + (slice.unit || 'year') + (slice.start_year ? ' ' + slice.start_year + '-' + slice.end_year : ''),
   ];
   return '<div class="evolution-row-meta">' + esc(parts.join(' / ')) + '</div>';
+}
+
+function renderEvolutionLoadControls(data) {
+  const profiles = [
+    ['compact', 'Compact'],
+    ['full', 'Full'],
+  ];
+  const truncated = evolutionTruncationLabels(data);
+  const profileText = 'profile ' + currentEvolutionLoadProfile;
+  const truncatedText = truncated.length
+    ? 'truncated ' + truncated.slice(0, 5).join(', ') + (truncated.length > 5 ? ', +' + (truncated.length - 5) : '')
+    : 'loaded within limits';
+  return '<div class="evolution-load-controls">' +
+    profiles.map(([profile, label]) => {
+      const active = currentEvolutionLoadProfile === profile ? ' active' : '';
+      return '<button class="net-chip' + active + '" onclick="selectEvolutionLoadProfile(decodeURIComponent(\'' +
+        encodeURIComponent(profile) + '\'))">' + esc(label) + '</button>';
+    }).join('') +
+    '<span class="evolution-mini-tag">' + esc(profileText) + '</span>' +
+    '<span class="evolution-mini-tag">' + esc(truncatedText) + '</span>' +
+  '</div>';
+}
+
+function evolutionTruncationLabels(data) {
+  const labels = [];
+  const tableTruncated = data && data.truncated && typeof data.truncated === 'object' ? data.truncated : {};
+  for (const [key, value] of Object.entries(tableTruncated)) {
+    if (value) labels.push(key);
+  }
+  const map = data && data.evolution_map && typeof data.evolution_map === 'object' ? data.evolution_map : {};
+  const mapTruncated = map.truncated && typeof map.truncated === 'object' ? map.truncated : {};
+  for (const [key, value] of Object.entries(mapTruncated)) {
+    if (value) labels.push('map ' + key);
+  }
+  return Array.from(new Set(labels)).sort();
+}
+
+function selectEvolutionLoadProfile(profile) {
+  const next = profile === 'full' ? 'full' : 'compact';
+  if (currentEvolutionLoadProfile === next) return;
+  currentEvolutionLoadProfile = next;
+  syncEvolutionUrlState();
+  loadEvolution();
 }
 
 function renderEvolutionMatchingDiagnostics(data) {
@@ -7171,7 +7233,15 @@ function evolutionSelectHandler(stateId) {
 
 function initialEvolutionTabRequested() {
   const params = new URLSearchParams(window.location.search);
-  return Boolean(params.get('evolution_state') || params.get('evolution_event') || params.get('evolution_focus'));
+  return Boolean(params.get('evolution_state') || params.get('evolution_event') || params.get('evolution_focus') || params.get('evolution_profile'));
+}
+
+function applyEvolutionProfileUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const profileParam = params.get('evolution_profile');
+  if (['compact', 'full'].includes(profileParam)) {
+    currentEvolutionLoadProfile = profileParam;
+  }
 }
 
 function applyEvolutionUrlState(data) {
@@ -7190,6 +7260,10 @@ function applyEvolutionUrlState(data) {
   if (['all', 'lineage', 'neighborhood'].includes(focusParam)) {
     currentEvolutionFocusMode = focusParam;
   }
+  const profileParam = params.get('evolution_profile');
+  if (['compact', 'full'].includes(profileParam)) {
+    currentEvolutionLoadProfile = profileParam;
+  }
   if (currentEvolutionFocusMode !== 'all' && !currentEvolutionSelectedStateId) {
     currentEvolutionFocusMode = 'all';
   } else if (currentEvolutionFocusMode !== 'all' && !evolutionMapNodeById(data, currentEvolutionSelectedStateId)) {
@@ -7206,6 +7280,8 @@ function syncEvolutionUrlState() {
     else url.searchParams.delete('evolution_event');
     if (currentEvolutionFocusMode && currentEvolutionFocusMode !== 'all') url.searchParams.set('evolution_focus', currentEvolutionFocusMode);
     else url.searchParams.delete('evolution_focus');
+    if (currentEvolutionLoadProfile && currentEvolutionLoadProfile !== 'compact') url.searchParams.set('evolution_profile', currentEvolutionLoadProfile);
+    else url.searchParams.delete('evolution_profile');
     window.history.replaceState(null, '', url.toString());
   } catch (_) {}
 }
