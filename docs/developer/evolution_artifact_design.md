@@ -673,7 +673,9 @@ lineage from raw records.
 - The reclustering runner can write `sciscape_slice_reclustering_progress_v1`
   JSON with running/completed/failed status, processed/completed/skipped slice
   counts, last-slice diagnostics, membership row counts, and optional
-  membership part counts.
+  membership part counts. Failed slice runs also record bounded failure
+  diagnostics with slice id, year span, document/edge counts, requested backend,
+  and error message.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.

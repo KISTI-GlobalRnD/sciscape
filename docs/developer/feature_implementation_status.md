@@ -50,7 +50,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 85% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
-| F11 | Temporal and evolution | `[~]` | 89% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, slice-local membership-to-evolution builder/writer/CLI bridge, default slice-local reclustering runner/writer/CLI bridge, optional materialized reclustering membership checkpoint, slice-reclustering progress sidecar, bounded slice-reclustering workers, incremental slice-membership part checkpoints, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus | richer diagnostics and larger-scale layout polish |
+| F11 | Temporal and evolution | `[~]` | 90% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, slice-local membership-to-evolution builder/writer/CLI bridge, default slice-local reclustering runner/writer/CLI bridge, optional materialized reclustering membership checkpoint, slice-reclustering progress sidecar, bounded slice-reclustering workers, incremental slice-membership part checkpoints, slice-level reclustering failure diagnostics, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus | richer matching diagnostics and larger-scale layout polish |
 | F12 | Evidence-backed narratives | `[~]` | 56% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback | stable generator and reviewed publication surface |
 | F13 | Validation and QA | `[x]` | 86% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, CLI matrix artifact wrapper, matrix artifact file downloads, manifest-backed matrix CSV/Parquet/summary exports, VOSviewer-compatible term matrix network export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | additional target-specific matrix exports and UI polish |
@@ -406,7 +406,7 @@ exist; the remaining gap is map polish and more complete layout UX.
 
 ### F11. Temporal And Evolution
 
-Status: `[~]` Partial. Rough completeness: 89%.
+Status: `[~]` Partial. Rough completeness: 90%.
 
 - `[x]` Temporal keyword utilities and visualization helpers exist.
 - `[x]` Burst and trend helpers exist.
@@ -487,6 +487,10 @@ Status: `[~]` Partial. Rough completeness: 89%.
   checkpoints through `membership_parts_dir` or
   `--slice-membership-parts-dir`, with part counts persisted in the progress
   sidecar and the parts directory recorded in the evolution manifest transform.
+- `[x]` Slice-local reclustering progress now records failed slice diagnostics,
+  including slice id, year span, document/edge counts, requested backend, and
+  error message. Parallel runs keep recording completed slice outputs before
+  surfacing the first failure.
 - `[~]` Membership-projection evolution writer intentionally emits only events
   that are supported by static membership continuity; split/merge are covered
   by the validator smoke, document-overlap writer, periodized membership
@@ -500,7 +504,8 @@ Review: temporal/evolution artifacts are now inspectable and independently
 validated, and the membership-projection plus slice-local reclustering analysis
 paths are no longer buried in artifact serialization. The web app can inspect
 evolution rows plus a first lineage-time map, but the promised cluster evolution
-map remains gated on richer diagnostics and stronger interaction polish.
+map remains gated on richer matching diagnostics and stronger interaction
+polish.
 
 ### F12. Evidence-Backed Narratives
 
@@ -647,8 +652,8 @@ evolution map, and narrative system are stable.
 
 ## Next Implementation Targets
 
-1. Harden slice-local reclustering for large runs with richer failure
-   diagnostics, then promote the Evolution lens into a true map layout.
+1. Add richer transition/matching diagnostics, then promote the Evolution lens
+   into a true map layout.
 2. Harden inspector-driven review affordances and Cleaning-mode rule review.
 3. Define the reviewed narrative publication surface and generation metadata
    contract.

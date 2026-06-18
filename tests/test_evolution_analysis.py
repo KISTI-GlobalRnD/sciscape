@@ -272,8 +272,19 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path)
 
 
 def test_build_slice_reclustering_membership_marks_failed_progress(tmp_path):
-    records = pd.DataFrame({"uid": ["A", "B"], "pubyear": [2020, 2020]})
-    edges = pd.DataFrame({"uid1": ["A"], "uid2": ["B"], "rel_sum2": [1.0]})
+    records = pd.DataFrame(
+        {
+            "uid": ["A20", "A21", "A22", "C20", "C21", "C22"],
+            "pubyear": [2020, 2021, 2022, 2020, 2021, 2022],
+        }
+    )
+    edges = pd.DataFrame(
+        {
+            "uid1": ["A20", "A21", "C20", "C21"],
+            "uid2": ["A21", "A22", "C21", "C22"],
+            "rel_sum2": [2.0, 2.0, 2.0, 2.0],
+        }
+    )
     progress_path = tmp_path / "failed_progress.json"
 
     with pytest.raises(ValueError, match="backend"):
@@ -282,16 +293,27 @@ def test_build_slice_reclustering_membership_marks_failed_progress(tmp_path):
             records_df=records,
             edges_df=edges,
             backend="unknown",
+            periodization={"window_years": 2, "step_years": 1},
+            max_workers=2,
             progress_path=progress_path,
         )
 
     progress = json.loads(progress_path.read_text(encoding="utf-8"))
     assert progress["status"] == "failed"
-    assert progress["processed_slices"] == 0
+    assert progress["processed_slices"] == 2
+    assert progress["completed_slices"] == 0
+    assert progress["failed_slice_count"] == 2
     assert progress["membership_part_count"] == 0
     assert progress["membership_part_rows"] == 0
     assert progress["error"]["type"] == "ValueError"
     assert "backend" in progress["error"]["message"]
+    diagnostics = progress["failure_diagnostics"]
+    assert {item["slice_id"] for item in diagnostics} == {"year:2020-2021", "year:2021-2022"}
+    assert {item["doc_count"] for item in diagnostics} == {4}
+    assert {item["edge_count"] for item in diagnostics} == {2}
+    assert all(item["backend"] == "unknown" for item in diagnostics)
+    assert progress["last_failed_slice"]["status"] == "failed"
+    assert "backend" in progress["last_failed_slice"]["error"]["message"]
 
 
 def test_membership_projection_evolution_builds_in_memory_tables():

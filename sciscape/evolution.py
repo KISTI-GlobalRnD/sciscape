@@ -1287,6 +1287,7 @@ def build_slice_reclustering_membership(
         "processed_slices": 0,
         "completed_slices": 0,
         "skipped_slices": 0,
+        "failed_slice_count": 0,
         "membership_rows": 0,
         "membership_part_count": 0,
         "membership_part_rows": 0,
@@ -1301,6 +1302,8 @@ def build_slice_reclustering_membership(
             "membership_parts_dir": str(Path(membership_parts_dir).expanduser()) if membership_parts_dir is not None else None,
         },
         "last_slice": None,
+        "last_failed_slice": None,
+        "failure_diagnostics": [],
     }
     _write_progress_json(progress_path, progress)
 
@@ -1401,14 +1404,58 @@ def build_slice_reclustering_membership(
             progress["last_slice"] = last_slice
             _write_progress_json(progress_path, progress)
 
+        def _record_failed(
+            job: tuple[dict[str, Any], list[str], pd.DataFrame],
+            exc: Exception,
+        ) -> None:
+            slice_row, uids, slice_edges = job
+            diagnostic = {
+                "slice_id": str(slice_row["slice_id"]),
+                "slice_index": int(slice_row["slice_index"]),
+                "slice_label": str(slice_row["slice_label"]),
+                "start_year": int(slice_row["start_year"]),
+                "end_year": int(slice_row["end_year"]),
+                "status": "failed",
+                "doc_count": int(len(uids)),
+                "edge_count": int(len(slice_edges)),
+                "backend": str(backend),
+                "objective": objective_norm,
+                "resolution": resolution_float,
+                "seed": int(seed),
+                "n_iterations": int(iterations),
+                "error": {"type": type(exc).__name__, "message": str(exc)},
+            }
+            progress["processed_slices"] = int(progress["processed_slices"]) + 1
+            progress["failed_slice_count"] = int(progress["failed_slice_count"]) + 1
+            progress["updated_at_utc"] = _utc_now()
+            progress["last_slice"] = diagnostic
+            progress["last_failed_slice"] = diagnostic
+            failures = list(progress.get("failure_diagnostics") or [])
+            failures.append(diagnostic)
+            progress["failure_diagnostics"] = failures[-20:]
+            _write_progress_json(progress_path, progress)
+
         if workers == 1 or len(jobs) <= 1:
             for job in jobs:
-                _record_completed(*_slice_job(*job))
+                try:
+                    _record_completed(*_slice_job(*job))
+                except Exception as exc:
+                    _record_failed(job, exc)
+                    raise
         else:
             with ThreadPoolExecutor(max_workers=workers) as executor:
-                futures = [executor.submit(_slice_job, *job) for job in jobs]
+                futures = {executor.submit(_slice_job, *job): job for job in jobs}
+                first_error: Exception | None = None
                 for future in as_completed(futures):
-                    _record_completed(*future.result())
+                    job = futures[future]
+                    try:
+                        _record_completed(*future.result())
+                    except Exception as exc:
+                        _record_failed(job, exc)
+                        if first_error is None:
+                            first_error = exc
+                if first_error is not None:
+                    raise first_error
     except Exception as exc:
         progress["status"] = "failed"
         progress["updated_at_utc"] = _utc_now()
