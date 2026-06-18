@@ -6821,6 +6821,7 @@ function renderEvolutionLens() {
     '<div class="evolution-body">' +
       renderEvolutionSummary(data) +
       renderEvolutionMethodNote(data) +
+      renderEvolutionMatchingDiagnostics(data) +
       renderEvolutionSliceRail(data) +
       renderEvolutionFocusControls(data) +
       renderEvolutionMap(data) +
@@ -6870,6 +6871,70 @@ function renderEvolutionMethodNote(data) {
     'slice: ' + (slice.unit || 'year') + (slice.start_year ? ' ' + slice.start_year + '-' + slice.end_year : ''),
   ];
   return '<div class="evolution-row-meta">' + esc(parts.join(' / ')) + '</div>';
+}
+
+function renderEvolutionMatchingDiagnostics(data) {
+  const matching = data && data.matching_method && typeof data.matching_method === 'object'
+    ? data.matching_method
+    : {};
+  const diagnostics = matching.diagnostics && typeof matching.diagnostics === 'object'
+    ? matching.diagnostics
+    : null;
+  if (!diagnostics) return '';
+  const cells = [
+    ['source', diagnostics.source || matching.normalization || matching.metric || 'unknown'],
+    ['state count', formatAtlasCount(diagnostics.state_count || 0)],
+    ['candidate transitions', formatAtlasCount(diagnostics.candidate_transition_rows || 0)],
+    ['retained transitions', formatAtlasCount(diagnostics.retained_transition_rows || 0)],
+    ['dropped transitions', formatAtlasCount(diagnostics.dropped_transition_rows || 0)],
+    ['slice pairs', formatAtlasCount(diagnostics.slice_pair_count || 0)],
+    ['min score', formatEvolutionScore(
+      diagnostics.min_transition_score != null ? diagnostics.min_transition_score : matching.min_transition_score
+    )],
+    ['min support', formatAtlasCount(diagnostics.min_support_count || matching.min_support_count || 0)],
+  ];
+  const relationCounts = diagnostics.relation_counts && typeof diagnostics.relation_counts === 'object'
+    ? Object.entries(diagnostics.relation_counts)
+        .filter(([, value]) => Number(value || 0) > 0)
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+    : [];
+  const warningCounts = diagnostics.warning_flag_counts && typeof diagnostics.warning_flag_counts === 'object'
+    ? Object.entries(diagnostics.warning_flag_counts)
+        .filter(([, value]) => Number(value || 0) > 0)
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+    : [];
+  const slicePairs = Array.isArray(diagnostics.slice_pairs) ? diagnostics.slice_pairs : [];
+  const relationText = relationCounts.length
+    ? relationCounts.map(([key, value]) =>
+        '<span class="evolution-mini-tag">' + esc(key) + ': ' + formatAtlasCount(value) + '</span>'
+      ).join(' ')
+    : '<span class="evolution-mini-tag">none</span>';
+  const warningText = warningCounts.length
+    ? warningCounts.map(([key, value]) =>
+        '<span class="evolution-mini-tag">' + esc(key) + ': ' + formatAtlasCount(value) + '</span>'
+      ).join(' ')
+    : '<span class="evolution-mini-tag">none</span>';
+  const pairText = slicePairs.length
+    ? slicePairs.slice(0, 6).map(pair =>
+        '<span class="evolution-mini-tag">' + esc(pair.source_slice_id || '?') + ' -> ' +
+        esc(pair.target_slice_id || '?') + ': ' +
+        formatAtlasCount(pair.retained_count || 0) + '/' + formatAtlasCount(pair.candidate_count || 0) +
+        '</span>'
+      ).join(' ') +
+      (slicePairs.length > 6
+        ? ' <span class="evolution-mini-tag">+' + formatAtlasCount(slicePairs.length - 6) + '</span>'
+        : '')
+    : '<span class="evolution-mini-tag">none</span>';
+  return '<div class="evolution-panel">' +
+    '<div class="evolution-panel-title">Matching Diagnostics</div>' +
+    '<div class="evolution-detail-grid">' + cells.map(([label, value]) =>
+      '<div class="evolution-detail-cell"><div class="evolution-detail-label">' + esc(label) + '</div>' +
+      '<div class="evolution-detail-value">' + esc(value == null ? '' : value) + '</div></div>'
+    ).join('') + '</div>' +
+    '<div class="evolution-row-meta">relations: ' + relationText + '</div>' +
+    '<div class="evolution-row-meta">warning flags: ' + warningText + '</div>' +
+    '<div class="evolution-row-meta">slice pair diagnostics: ' + pairText + '</div>' +
+  '</div>';
 }
 
 function renderEvolutionSliceRail(data) {

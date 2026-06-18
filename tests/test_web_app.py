@@ -452,6 +452,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderEvolutionLens" in response.text
     assert "renderEvolutionMap" in response.text
     assert "renderEvolutionStateDetail" in response.text
+    assert "renderEvolutionMatchingDiagnostics" in response.text
+    assert "Matching Diagnostics" in response.text
+    assert "candidate transitions" in response.text
+    assert "slice pair diagnostics" in response.text
     assert "selectEvolutionState" in response.text
     assert "currentEvolutionSelectedStateId" in response.text
     assert "applyEvolutionUrlState" in response.text
@@ -2117,6 +2121,14 @@ def test_evolution_api_exposes_state_membership_sidecar(monkeypatch, tmp_path):
     assert evolution["state_membership_summary"]["loaded_rows"] == 2
     assert evolution["state_membership_summary"]["truncated"] is True
     assert evolution["state_membership_summary"]["by_state"]
+    matching_diagnostics = evolution["matching_method"]["diagnostics"]
+    assert matching_diagnostics["source"] == "projected_membership_transitions"
+    assert matching_diagnostics["candidate_transition_rows"] == len(evolution["transitions"])
+    assert matching_diagnostics["retained_transition_rows"] == len(evolution["transitions"])
+    assert matching_diagnostics["dropped_transition_rows"] == 0
+    assert matching_diagnostics["slice_pair_count"] == 1
+    assert matching_diagnostics["slice_pairs"][0]["candidate_count"] == len(evolution["transitions"])
+    assert matching_diagnostics["slice_pairs"][0]["retained_count"] == len(evolution["transitions"])
 
     sidecar_download = client.get(f"/api/jobs/{job_id}/download/evolution/state_membership.parquet")
     assert sidecar_download.status_code == 200
