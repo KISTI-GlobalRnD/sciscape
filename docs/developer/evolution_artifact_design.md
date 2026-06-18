@@ -598,6 +598,11 @@ lineage from raw records.
   keywords. The pack writes `time_slices`, `state_evidence`, and
   `state_membership` tables, supports year or rolling-year periodization, and
   can be passed directly into the document-overlap evolution writer.
+- `sciscape evolution-from-membership <result_root> <records> <membership>`
+  builds the same periodized state-membership evidence in memory and writes a
+  validated, web-loadable `evolution/` artifact in one command. Because
+  document-overlap continuity needs overlapping document universes, this CLI
+  defaults to 2-year rolling windows unless `--periodization` is provided.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
 - `/api/jobs/{job_id}/evolution` exposes optional `state_membership.parquet`
@@ -617,6 +622,10 @@ lineage from raw records.
   time-slice, state-evidence, and state-document membership tables from records
   and existing membership. It is an input-production bridge for richer matching,
   not a claim that slice-local reclustering has already been performed.
+- `write_slice_membership_evolution_artifacts` combines the periodized
+  evidence builder with the document-overlap evolution writer so applications
+  can create the full validated artifact without manually materializing
+  intermediate evidence files.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.
@@ -653,8 +662,9 @@ time-slice-specific clustering or matching evidence. The document-overlap
 transition evidence builder and writer are the first reusable richer-matching
 path: they require complete state-document membership by default and can opt
 into incomplete membership only with warning flags. `sciscape evolution-evidence`
-now creates periodized state-membership inputs from existing membership, but
-full slice-local reclustering is still a future integration step rather than a
+now creates periodized state-membership inputs from existing membership, and
+`sciscape evolution-from-membership` can write the validated artifact directly.
+Full slice-local reclustering is still a future integration step rather than a
 default claim. Split, merge, and ambiguous validation are covered by the
 synthetic smoke fixture, document-overlap unit tests, and the document-overlap
 writer test.

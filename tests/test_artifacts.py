@@ -63,6 +63,7 @@ from sciscape.artifacts import (
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_narrative_evidence_artifacts,
+    write_slice_membership_evolution_artifacts,
     write_temporal_artifacts,
     write_artifact_contract,
     write_cluster_review_packet_artifact,
@@ -1340,6 +1341,65 @@ def test_write_document_overlap_evolution_artifacts_promotes_stable_feature(tmp_
     assert manifest["artifacts"]["evolution_state_membership"]["path"] == "evolution/state_membership.parquet"
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["normalization"] == "state_document_membership_overlap"
+
+
+def test_write_slice_membership_evolution_artifacts_promotes_stable_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    records = pd.DataFrame(
+        {
+            "uid": ["A20", "A21", "A22", "B21", "B22", "C20"],
+            "pubyear": [2020, 2021, 2022, 2021, 2022, 2020],
+        }
+    )
+    membership = pd.DataFrame(
+        {
+            "uid": ["A20", "A21", "A22", "B21", "B22", "C20"],
+            "cluster": ["A", "A", "A", "B", "B", "C"],
+        }
+    )
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": ["A", "B", "C"],
+            "term": ["alpha", "beta", "carbon"],
+        }
+    )
+
+    written = write_slice_membership_evolution_artifacts(
+        root,
+        evolution_id="membership_overlap",
+        records_df=records,
+        membership_df=membership,
+        keywords_df=keywords,
+        metric="overlap_min",
+        periodization={"window_years": 2, "step_years": 1},
+        matching_method={"min_transition_score": 0.5, "min_support_count": 1},
+        source_artifacts=[
+            {"role": "records", "path": "abstracts.parquet"},
+            {"role": "membership", "path": "landscape/membership.parquet"},
+        ],
+    )
+
+    assert written["manifest_path"] == root / "evolution" / "evolution_manifest.json"
+    assert written["qa"]["status"] == "passed"
+
+    transitions = pd.read_parquet(written["transitions_path"])
+    states = pd.read_parquet(written["cluster_states_path"])
+    state_membership = pd.read_parquet(written["state_membership_path"])
+    assert set(states["cluster_label"]) >= {"alpha", "beta", "carbon"}
+    assert len(state_membership) == 8
+    assert set(transitions["metric"]) == {"overlap_min"}
+    assert len(transitions) == 2
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["state_membership_rows"] == 8
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
+    assert manifest["artifacts"]["evolution_state_membership"]["path"] == "evolution/state_membership.parquet"
+    evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert evolution_manifest["matching_method"]["normalization"] == "periodized_slice_membership_document_overlap"
+    assert "project_membership_to_time_slices" in [row["step"] for row in evolution_manifest["transforms"]]
 
 
 def test_result_artifact_inference_accepts_evolution_manifest_path(tmp_path):

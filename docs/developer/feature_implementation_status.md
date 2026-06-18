@@ -50,7 +50,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 85% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
-| F11 | Temporal and evolution | `[~]` | 81% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus | default slice-local reclustering integration and larger-scale layout polish |
+| F11 | Temporal and evolution | `[~]` | 82% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus | default slice-local reclustering integration and larger-scale layout polish |
 | F12 | Evidence-backed narratives | `[~]` | 56% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback | stable generator and reviewed publication surface |
 | F13 | Validation and QA | `[x]` | 86% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, CLI matrix artifact wrapper, matrix artifact file downloads, manifest-backed matrix CSV/Parquet/summary exports, VOSviewer-compatible term matrix network export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | additional target-specific matrix exports and UI polish |
@@ -260,7 +260,7 @@ operator controls and large-run safety.
 
 ### F08. Keyword Extraction, Labels, And Cleaning
 
-Status: `[~]` Partial. Rough completeness: 81%.
+Status: `[~]` Partial. Rough completeness: 82%.
 
 - `[x]` Keyword extraction pipeline exists.
 - `[x]` Quality annotation, artifact filtering, representative scoring,
@@ -436,6 +436,10 @@ Status: `[~]` Partial. Rough completeness: 81%.
   `sciscape evolution-evidence` CLI, producing `time_slices`,
   `state_evidence`, and `state_membership` tables for the document-overlap
   evolution writer.
+- `[x]` Periodized slice-membership evidence can also be written directly as a
+  validated, result-manifest-visible evolution artifact through
+  `write_slice_membership_evolution_artifacts` and
+  `sciscape evolution-from-membership`.
 - `[x]` Evolution writers can preserve optional `state_membership.parquet`
   sidecars, expose their row counts in QA, and include them in result-manifest
   artifact downloads.
@@ -461,9 +465,9 @@ Status: `[~]` Partial. Rough completeness: 81%.
   lineage, or the selected state's direct transition neighborhood.
 - `[~]` Membership-projection evolution writer intentionally emits only events
   that are supported by static membership continuity; split/merge are covered
-  by the validator smoke, document-overlap writer, and periodized membership
-  evidence pack, but still need default slice-local reclustering integration
-  before being promoted as default claims.
+  by the validator smoke, document-overlap writer, periodized membership
+  evidence pack, and one-shot membership-to-evolution writer, but full
+  slice-local reclustering remains a future integration step.
 - `[~]` Full evolution map layout is inspectable but not product-ready; it still
   needs richer time-slice matching and larger-scale layout polish.
 

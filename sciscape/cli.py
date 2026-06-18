@@ -9,6 +9,7 @@ Usage:
     sciscape visualize <keyword_table> [options]
     sciscape viewer    [options]
     sciscape evolution-evidence <records_table> <membership_table> [options]
+    sciscape evolution-from-membership <result_root> <records_table> <membership_table> [options]
     sciscape evolution <result_root> <slices_table> <state_evidence_table> [transition_evidence_table] [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
@@ -26,6 +27,7 @@ Examples:
     sciscape landscape edges.parquet abstracts.parquet -o workspace/output/landscape
     sciscape visualize keywords.parquet -o workspace/reports/keywords
     sciscape evolution-evidence abstracts.parquet membership.parquet -o workspace/evolution_evidence
+    sciscape evolution-from-membership result abstracts.parquet membership.parquet --periodization '{"window_years":2}'
     sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
     sciscape evolution result slices.parquet states.parquet --derive-transitions document-overlap --state-membership-table state_membership.parquet
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
@@ -280,6 +282,40 @@ def _build_parser() -> argparse.ArgumentParser:
     ee.add_argument("--periodization", type=str, default=None, help="Inline JSON object or path for slice metadata")
     ee.add_argument("--output-format", choices=["parquet", "csv"], default="parquet", help="Table output format")
     ee.add_argument("--json", action="store_true", help="Print a JSON summary")
+
+    # ---- evolution from membership ----
+    efm = sub.add_parser("evolution-from-membership", help="Write evolution artifacts from records and membership")
+    efm.add_argument("result_root", type=Path, help="SciScape result root to receive evolution/")
+    efm.add_argument("records_table", type=Path, help="Records/abstract table with uid and publication year")
+    efm.add_argument("membership_table", type=Path, help="Membership table with uid and cluster/cluster_* column")
+    efm.add_argument("--keywords-table", type=Path, default=None, help="Optional keyword table for state labels")
+    efm.add_argument("--evolution-id", type=str, default="cluster_evolution", help="Evolution artifact ID")
+    efm.add_argument("--metric", type=str, default="overlap_min", help="Document-overlap metric")
+    efm.add_argument("--title", type=str, default=None, help="Evolution artifact title")
+    efm.add_argument("--output-dir", type=Path, default=None, help="Output directory (default: <result_root>/evolution)")
+    efm.add_argument("--temporal-manifest", type=Path, default=None, help="Optional temporal_manifest.json source ref")
+    efm.add_argument("--cluster-column", type=str, default=None, help="Membership cluster column (default: auto-detect)")
+    efm.add_argument("--uid-column", type=str, default=None, help="Record document ID column (default: auto-detect)")
+    efm.add_argument("--membership-uid-column", type=str, default=None, help="Membership document ID column (default: auto-detect)")
+    efm.add_argument("--representative-work-limit", type=int, default=50, help="Max representative IDs stored in each state row")
+    efm.add_argument("--min-transition-score", type=float, default=0.5, help="Minimum transition score")
+    efm.add_argument("--min-support-count", type=int, default=1, help="Minimum transition support count")
+    efm.add_argument("--matching-method", type=str, default=None, help="Inline JSON object or path for matching metadata")
+    efm.add_argument("--event-rules", type=str, default=None, help="Inline JSON object or path for event rules")
+    efm.add_argument(
+        "--periodization",
+        type=str,
+        default=None,
+        help="Inline JSON object or path for slice metadata (default: 2-year rolling windows)",
+    )
+    efm.add_argument("--entity-scope", type=str, default=None, help="Inline JSON object or path for entity-scope metadata")
+    efm.add_argument(
+        "--allow-incomplete-state-membership",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Allow state membership doc_count mismatches and flag affected transitions",
+    )
+    efm.add_argument("--json", action="store_true", help="Print a JSON summary")
 
     # ---- evolution ----
     ev = sub.add_parser("evolution", help="Write artifact-backed cluster evolution tables")
@@ -912,6 +948,14 @@ def _write_table(df: pd.DataFrame, path: Path, *, output_format: str) -> None:
         raise ValueError(f"Unsupported output format: {output_format}")
 
 
+def _source_ref_path(path: Path, root: Path) -> str:
+    resolved = Path(path).expanduser().resolve()
+    try:
+        return resolved.relative_to(Path(root).expanduser().resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
 def _read_keyword_table(path: Path) -> pd.DataFrame:
     try:
         return _read_table(path)
@@ -1098,6 +1142,94 @@ def _run_evolution_evidence(args: argparse.Namespace) -> None:
     print(f"  states={manifest['counts']['states']} → {states_path}")
     print(f"  state_membership_rows={manifest['counts']['state_membership_rows']} → {membership_path}")
     print(f"  manifest → {manifest_path}")
+
+
+def _run_evolution_from_membership(args: argparse.Namespace) -> None:
+    from sciscape.artifacts import write_slice_membership_evolution_artifacts
+
+    try:
+        records = _read_table(args.records_table)
+        membership = _read_table(args.membership_table)
+        keywords = _read_table(args.keywords_table) if args.keywords_table is not None else None
+        matching_method = _read_json_object_arg(args.matching_method, label="--matching-method") or {}
+        matching_method.update(
+            {
+                "metric": args.metric,
+                "min_transition_score": args.min_transition_score,
+                "min_support_count": args.min_support_count,
+            }
+        )
+        event_rules = _read_json_object_arg(args.event_rules, label="--event-rules")
+        periodization = _read_json_object_arg(args.periodization, label="--periodization")
+        if periodization is None:
+            periodization = {"window_years": 2, "step_years": 1}
+        entity_scope = _read_json_object_arg(args.entity_scope, label="--entity-scope")
+    except Exception as exc:
+        print(f"Could not load evolution membership inputs: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    source_artifacts = [
+        {"role": "records", "path": _source_ref_path(args.records_table, args.result_root)},
+        {"role": "membership", "path": _source_ref_path(args.membership_table, args.result_root)},
+    ]
+    if args.keywords_table is not None:
+        source_artifacts.append({"role": "keywords", "path": _source_ref_path(args.keywords_table, args.result_root)})
+    if args.temporal_manifest is not None:
+        source_artifacts.append({"role": "temporal", "path": _source_ref_path(args.temporal_manifest, args.result_root)})
+
+    try:
+        written = write_slice_membership_evolution_artifacts(
+            args.result_root,
+            evolution_id=args.evolution_id,
+            records_df=records,
+            membership_df=membership,
+            keywords_df=keywords,
+            metric=args.metric,
+            temporal_manifest=args.temporal_manifest,
+            periodization=periodization,
+            matching_method=matching_method,
+            event_rules=event_rules,
+            entity_scope=entity_scope,
+            source_artifacts=source_artifacts,
+            output_dir=args.output_dir,
+            title=args.title,
+            cluster_column=args.cluster_column,
+            uid_column=args.uid_column,
+            membership_uid_column=args.membership_uid_column,
+            representative_work_limit=args.representative_work_limit,
+            require_complete_membership=not args.allow_incomplete_state_membership,
+        )
+    except Exception as exc:
+        print(f"Could not write evolution artifact from membership: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    qa = written["qa"]
+    counts = qa.get("counts", {})
+    payload = {
+        "evolution_id": written["evolution_id"],
+        "manifest_path": str(written["manifest_path"]),
+        "evolution_dir": str(written["evolution_dir"]),
+        "qa_path": str(written["qa_path"]),
+        "status": qa.get("status"),
+        "counts": counts,
+        "event_counts": qa.get("event_counts", {}),
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+
+    print(f"Evolution artifact saved: {written['manifest_path']}")
+    print(
+        "  status={status}, slices={slices}, states={states}, transitions={transitions}, events={events}, state_membership_rows={membership}".format(
+            status=qa.get("status"),
+            slices=counts.get("slices", 0),
+            states=counts.get("states", 0),
+            transitions=counts.get("transitions", 0),
+            events=counts.get("event_rows", 0),
+            membership=counts.get("state_membership_rows", 0),
+        )
+    )
+    print(f"  QA → {written['qa_path']}")
 
 
 def _run_evolution(args: argparse.Namespace) -> None:
@@ -1435,6 +1567,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_visualize(args)
     elif args.command == "evolution-evidence":
         _run_evolution_evidence(args)
+    elif args.command == "evolution-from-membership":
+        _run_evolution_from_membership(args)
     elif args.command == "evolution":
         _run_evolution(args)
     elif args.command == "export":

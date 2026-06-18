@@ -21,6 +21,7 @@ from .evolution import (
     build_document_overlap_evolution,
     build_evidence_backed_evolution,
     build_membership_projection_evolution,
+    build_slice_membership_evidence,
 )
 
 
@@ -8830,6 +8831,88 @@ def write_document_overlap_evolution_artifacts(
     )
 
 
+def write_slice_membership_evolution_artifacts(
+    result_root: str | Path,
+    *,
+    evolution_id: str,
+    records_df: pd.DataFrame,
+    membership_df: pd.DataFrame,
+    keywords_df: pd.DataFrame | None = None,
+    metric: str = "overlap_min",
+    temporal_manifest: str | Path | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    entity_scope: Mapping[str, Any] | None = None,
+    source_artifacts: list[Mapping[str, Any]] | None = None,
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    output_dir: str | Path | None = None,
+    title: str | None = None,
+    cluster_column: str | None = None,
+    uid_column: str | None = None,
+    membership_uid_column: str | None = None,
+    representative_work_limit: int = 50,
+    require_complete_membership: bool = True,
+) -> dict[str, Any]:
+    """Write v1 document-overlap evolution artifacts from records and membership."""
+
+    root = Path(result_root).expanduser().resolve()
+    evidence = build_slice_membership_evidence(
+        evolution_id=evolution_id,
+        records_df=records_df,
+        membership_df=membership_df,
+        keywords_df=keywords_df,
+        periodization=periodization,
+        cluster_column=cluster_column,
+        uid_column=uid_column,
+        membership_uid_column=membership_uid_column,
+        representative_work_limit=representative_work_limit,
+    )
+    merged_periodization = dict(evidence.periodization)
+    if periodization:
+        merged_periodization.update(dict(periodization))
+    merged_scope = dict(evidence.entity_scope)
+    if entity_scope:
+        merged_scope.update(dict(entity_scope))
+    matching = {
+        "metric": metric,
+        "min_transition_score": 0.5,
+        "min_support_count": 1,
+        "tie_policy": "keep_all_above_threshold",
+        "normalization": "periodized_slice_membership_document_overlap",
+    }
+    if matching_method:
+        matching.update(dict(matching_method))
+    matching["metric"] = metric
+    sources = (
+        [dict(item) for item in source_artifacts]
+        if source_artifacts is not None
+        else _evolution_default_sources(root, infer_result_artifacts(root), temporal_manifest=temporal_manifest)
+    )
+    return write_document_overlap_evolution_artifacts(
+        root,
+        evolution_id=evidence.evolution_id,
+        slices_df=evidence.slices,
+        state_evidence_df=evidence.state_evidence,
+        state_membership_df=evidence.state_membership,
+        metric=metric,
+        temporal_manifest=temporal_manifest,
+        uid_column="uid",
+        state_id_column="state_id",
+        periodization=merged_periodization,
+        matching_method=matching,
+        event_rules=event_rules,
+        entity_scope=merged_scope,
+        source_artifacts=sources,
+        rule_sets=rule_sets,
+        transforms=evidence.transforms,
+        output_dir=output_dir,
+        title=title,
+        default_level=str(evidence.entity_scope.get("cluster_level") or "cluster"),
+        require_complete_membership=require_complete_membership,
+    )
+
+
 def _synthetic_evolution_state(
     evolution_id: str,
     state_id: str,
@@ -12663,6 +12746,7 @@ __all__ = [
     "write_evolution_artifacts",
     "write_document_overlap_evolution_artifacts",
     "write_evidence_backed_evolution_artifacts",
+    "write_slice_membership_evolution_artifacts",
     "write_evolution_synthetic_smoke_artifact",
     "write_export_manifest",
     "write_temporal_artifacts",

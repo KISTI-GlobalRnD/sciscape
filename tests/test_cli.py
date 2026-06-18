@@ -8,7 +8,16 @@ import pandas as pd
 import pytest
 
 from sciscape.artifacts import validate_evolution_artifact, validate_export_manifest, validate_matrix_artifact
-from sciscape.cli import _build_parser, _run_bundle, _run_evolution, _run_evolution_evidence, _run_matrix, _run_query, _run_visualize
+from sciscape.cli import (
+    _build_parser,
+    _run_bundle,
+    _run_evolution,
+    _run_evolution_evidence,
+    _run_evolution_from_membership,
+    _run_matrix,
+    _run_query,
+    _run_visualize,
+)
 
 
 @pytest.fixture
@@ -787,6 +796,125 @@ class TestEvolutionEvidenceArgs:
         assert set(state_membership["schema_version"]) == {"sciscape_evolution_state_membership_v1"}
         assert manifest["schema_version"] == "sciscape_evolution_evidence_pack_v1"
         assert manifest["counts"]["state_membership_rows"] == len(state_membership)
+
+
+# ---------------------------------------------------------------------------
+# Evolution from membership subcommand
+# ---------------------------------------------------------------------------
+
+class TestEvolutionFromMembershipArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args([
+            "evolution-from-membership",
+            "result",
+            "records.parquet",
+            "membership.parquet",
+        ])
+        assert args.command == "evolution-from-membership"
+        assert args.result_root == Path("result")
+        assert args.records_table == Path("records.parquet")
+        assert args.membership_table == Path("membership.parquet")
+        assert args.metric == "overlap_min"
+        assert args.output_dir is None
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "evolution-from-membership",
+            "result",
+            "records.csv",
+            "membership.csv",
+            "--keywords-table",
+            "keywords.csv",
+            "--evolution-id",
+            "rolling_terms",
+            "--metric",
+            "jaccard_doc_overlap",
+            "--title",
+            "Rolling Terms",
+            "--output-dir",
+            "custom_evolution",
+            "--temporal-manifest",
+            "temporal/temporal_manifest.json",
+            "--cluster-column",
+            "cluster_micro",
+            "--uid-column",
+            "work_id",
+            "--membership-uid-column",
+            "paper_id",
+            "--representative-work-limit",
+            "5",
+            "--min-transition-score",
+            "0.25",
+            "--min-support-count",
+            "2",
+            "--matching-method",
+            '{"tie_policy":"keep_all"}',
+            "--event-rules",
+            '{"ambiguous_score_margin":0.1}',
+            "--periodization",
+            '{"window_years":2}',
+            "--entity-scope",
+            '{"cluster_level":"micro"}',
+            "--allow-incomplete-state-membership",
+            "--json",
+        ])
+        assert args.keywords_table == Path("keywords.csv")
+        assert args.evolution_id == "rolling_terms"
+        assert args.metric == "jaccard_doc_overlap"
+        assert args.title == "Rolling Terms"
+        assert args.output_dir == Path("custom_evolution")
+        assert args.temporal_manifest == Path("temporal/temporal_manifest.json")
+        assert args.cluster_column == "cluster_micro"
+        assert args.uid_column == "work_id"
+        assert args.membership_uid_column == "paper_id"
+        assert args.representative_work_limit == 5
+        assert args.min_transition_score == pytest.approx(0.25)
+        assert args.min_support_count == 2
+        assert args.allow_incomplete_state_membership is True
+        assert args.json is True
+
+    def test_run_evolution_from_membership_writes_valid_artifact(self, parser, tmp_path):
+        root = tmp_path / "result"
+        root.mkdir()
+        records_path = tmp_path / "records.csv"
+        membership_path = tmp_path / "membership.csv"
+        keywords_path = tmp_path / "keywords.csv"
+        pd.DataFrame(
+            {
+                "uid": ["A20", "A21", "A22", "B21", "B22", "C20"],
+                "pubyear": [2020, 2021, 2022, 2021, 2022, 2020],
+            }
+        ).to_csv(records_path, index=False)
+        pd.DataFrame(
+            {
+                "uid": ["A20", "A21", "A22", "B21", "B22", "C20"],
+                "cluster_micro": ["A", "A", "A", "B", "B", "C"],
+            }
+        ).to_csv(membership_path, index=False)
+        pd.DataFrame({"cluster_id": ["A", "B", "C"], "term": ["alpha", "beta", "carbon"]}).to_csv(keywords_path, index=False)
+
+        args = parser.parse_args([
+            "evolution-from-membership",
+            str(root),
+            str(records_path),
+            str(membership_path),
+            "--keywords-table",
+            str(keywords_path),
+            "--cluster-column",
+            "cluster_micro",
+            "--periodization",
+            '{"window_years":2}',
+            "--evolution-id",
+            "membership_cli_evolution",
+        ])
+        _run_evolution_from_membership(args)
+
+        validation = validate_evolution_artifact(root / "evolution" / "evolution_manifest.json").to_dict()
+        assert validation["status"] == "passed"
+        assert validation["counts"]["slices"] == 2
+        assert validation["counts"]["transitions"] == 2
+        assert validation["counts"]["state_membership_rows"] == 8
+        assert validation["event_counts"]["continuation"] == 2
 
 
 # ---------------------------------------------------------------------------
