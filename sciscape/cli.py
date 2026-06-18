@@ -394,6 +394,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional Parquet path for generated slice-local membership rows",
     )
     efsr.add_argument(
+        "--slice-membership-parts-dir",
+        type=Path,
+        default=None,
+        help="Optional directory for per-slice membership checkpoint parts",
+    )
+    efsr.add_argument(
         "--progress-path",
         type=Path,
         default=None,
@@ -1482,6 +1488,7 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
             min_docs_per_slice=args.min_docs_per_slice,
             max_workers=args.slice_reclustering_workers,
             slice_membership_output=args.slice_membership_output,
+            slice_membership_parts_dir=args.slice_membership_parts_dir,
             progress_path=progress_path,
             representative_work_limit=args.representative_work_limit,
             require_complete_membership=not args.allow_incomplete_state_membership,
@@ -1503,6 +1510,8 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
     }
     if written.get("slice_membership_path") is not None:
         payload["slice_membership_path"] = str(written["slice_membership_path"])
+    if written.get("slice_membership_parts_dir") is not None:
+        payload["slice_membership_parts_dir"] = str(written["slice_membership_parts_dir"])
     if written.get("progress_path") is not None:
         payload["progress_path"] = str(written["progress_path"])
     if args.json:
@@ -1523,6 +1532,8 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
     print(f"  QA → {written['qa_path']}")
     if written.get("slice_membership_path") is not None:
         print(f"  Slice membership → {written['slice_membership_path']}")
+    if written.get("slice_membership_parts_dir") is not None:
+        print(f"  Slice membership parts → {written['slice_membership_parts_dir']}")
     if written.get("progress_path") is not None:
         print(f"  Progress → {written['progress_path']}")
 

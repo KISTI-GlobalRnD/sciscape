@@ -213,6 +213,7 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path)
         }
     )
     progress_path = tmp_path / "slice_reclustering_progress.json"
+    parts_dir = tmp_path / "slice_reclustering_membership_parts"
 
     membership = build_slice_reclustering_membership(
         evolution_id="recluster",
@@ -224,6 +225,7 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path)
         seed=7,
         max_workers=2,
         progress_path=progress_path,
+        membership_parts_dir=parts_dir,
     )
 
     progress = json.loads(progress_path.read_text(encoding="utf-8"))
@@ -234,6 +236,11 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path)
     assert progress["completed_slices"] == 2
     assert progress["membership_rows"] == 8
     assert progress["params"]["max_workers"] == 2
+    assert progress["membership_part_count"] == 2
+    assert progress["membership_part_rows"] == 8
+    part_files = sorted(parts_dir.glob("*.parquet"))
+    assert len(part_files) == 2
+    assert sum(len(pd.read_parquet(path)) for path in part_files) == 8
     assert membership["slice_id"].tolist().count("year:2020-2021") == 4
     assert membership["slice_id"].tolist().count("year:2021-2022") == 4
     assert set(membership["backend"]) == {"igraph"}
@@ -281,6 +288,8 @@ def test_build_slice_reclustering_membership_marks_failed_progress(tmp_path):
     progress = json.loads(progress_path.read_text(encoding="utf-8"))
     assert progress["status"] == "failed"
     assert progress["processed_slices"] == 0
+    assert progress["membership_part_count"] == 0
+    assert progress["membership_part_rows"] == 0
     assert progress["error"]["type"] == "ValueError"
     assert "backend" in progress["error"]["message"]
 

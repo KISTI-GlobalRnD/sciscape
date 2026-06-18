@@ -1124,6 +1124,8 @@ class TestEvolutionFromSliceReclusteringArgs:
             "2",
             "--slice-membership-output",
             "evolution_work/slice_membership.parquet",
+            "--slice-membership-parts-dir",
+            "evolution_work/slice_membership_parts",
             "--progress-path",
             "evolution_work/progress.json",
             "--representative-work-limit",
@@ -1160,6 +1162,7 @@ class TestEvolutionFromSliceReclusteringArgs:
         assert args.min_docs_per_slice == 2
         assert args.slice_reclustering_workers == 2
         assert args.slice_membership_output == Path("evolution_work/slice_membership.parquet")
+        assert args.slice_membership_parts_dir == Path("evolution_work/slice_membership_parts")
         assert args.progress_path == Path("evolution_work/progress.json")
         assert args.representative_work_limit == 5
         assert args.min_transition_score == pytest.approx(0.25)
@@ -1186,6 +1189,7 @@ class TestEvolutionFromSliceReclusteringArgs:
             }
         ).to_csv(edges_path, index=False)
         slice_membership_output = root / "evolution_work" / "slice_membership.parquet"
+        slice_membership_parts_dir = root / "evolution_work" / "slice_membership_parts"
 
         args = parser.parse_args([
             "evolution-from-slice-reclustering",
@@ -1202,6 +1206,8 @@ class TestEvolutionFromSliceReclusteringArgs:
             "2",
             "--slice-membership-output",
             str(slice_membership_output),
+            "--slice-membership-parts-dir",
+            str(slice_membership_parts_dir),
             "--evolution-id",
             "slice_recluster_cli_evolution",
         ])
@@ -1210,10 +1216,14 @@ class TestEvolutionFromSliceReclusteringArgs:
         generated_membership = pd.read_parquet(slice_membership_output)
         assert len(generated_membership) == 8
         assert set(generated_membership["slice_id"]) == {"year:2020-2021", "year:2021-2022"}
+        part_files = sorted(slice_membership_parts_dir.glob("*.parquet"))
+        assert len(part_files) == 2
+        assert sum(len(pd.read_parquet(path)) for path in part_files) == 8
         progress = json.loads((root / "evolution_work" / "slice_reclustering_progress.json").read_text(encoding="utf-8"))
         assert progress["status"] == "completed"
         assert progress["completed_slices"] == 2
         assert progress["membership_rows"] == 8
+        assert progress["membership_part_count"] == 2
         assert progress["params"]["max_workers"] == 2
         validation = validate_evolution_artifact(root / "evolution" / "evolution_manifest.json").to_dict()
         assert validation["status"] == "passed"

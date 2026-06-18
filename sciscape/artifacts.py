@@ -9025,6 +9025,7 @@ def write_slice_reclustering_evolution_artifacts(
     min_docs_per_slice: int = 1,
     max_workers: int = 1,
     slice_membership_output: str | Path | None = None,
+    slice_membership_parts_dir: str | Path | None = None,
     progress_path: str | Path | None = None,
     representative_work_limit: int = 50,
     require_complete_membership: bool = True,
@@ -9040,6 +9041,14 @@ def write_slice_reclustering_evolution_artifacts(
             progress_output_path = root / progress_output_path
         progress_output_path = progress_output_path.resolve()
         progress_ref = _rel(progress_output_path, root) or str(progress_output_path)
+    membership_parts_path: Path | None = None
+    membership_parts_ref: str | None = None
+    if slice_membership_parts_dir is not None:
+        membership_parts_path = Path(slice_membership_parts_dir).expanduser()
+        if not membership_parts_path.is_absolute():
+            membership_parts_path = root / membership_parts_path
+        membership_parts_path = membership_parts_path.resolve()
+        membership_parts_ref = _rel(membership_parts_path, root) or str(membership_parts_path)
     slice_membership = build_slice_reclustering_membership(
         evolution_id=evolution_id,
         records_df=records_df,
@@ -9057,6 +9066,7 @@ def write_slice_reclustering_evolution_artifacts(
         min_docs_per_slice=min_docs_per_slice,
         max_workers=max_workers,
         progress_path=progress_output_path,
+        membership_parts_dir=membership_parts_path,
     )
     slice_membership_path: Path | None = None
     slice_membership_ref: str | None = None
@@ -9098,6 +9108,8 @@ def write_slice_reclustering_evolution_artifacts(
     }
     if slice_membership_ref is not None:
         recluster_transform["slice_membership_output"] = slice_membership_ref
+    if membership_parts_ref is not None:
+        recluster_transform["slice_membership_parts_dir"] = membership_parts_ref
     if progress_ref is not None:
         recluster_transform["progress_path"] = progress_ref
     default_level = str((entity_scope or {}).get("cluster_level") or "cluster")
@@ -9125,6 +9137,8 @@ def write_slice_reclustering_evolution_artifacts(
     )
     if slice_membership_path is not None:
         written["slice_membership_path"] = slice_membership_path
+    if membership_parts_path is not None:
+        written["slice_membership_parts_dir"] = membership_parts_path
     if progress_output_path is not None:
         written["progress_path"] = progress_output_path
     return written

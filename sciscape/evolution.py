@@ -140,6 +140,35 @@ def _write_progress_json(path: str | Path | None, payload: Mapping[str, Any]) ->
     tmp_path.replace(progress_path)
 
 
+def _safe_filename_id(value: object, *, fallback: str = "item") -> str:
+    text = str(value or "").strip()
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", text).strip("_.-")
+    return safe or fallback
+
+
+def _write_membership_part(
+    parts_dir: str | Path | None,
+    rows: list[dict[str, Any]],
+    *,
+    slice_id: object,
+    slice_index: object,
+) -> Path | None:
+    if parts_dir is None:
+        return None
+    try:
+        index = int(slice_index)
+    except (TypeError, ValueError):
+        index = 0
+    part_dir = Path(parts_dir).expanduser()
+    part_dir.mkdir(parents=True, exist_ok=True)
+    safe_slice = _safe_filename_id(slice_id, fallback=f"slice_{index}")
+    part_path = part_dir / f"slice_{index:06d}_{safe_slice}.parquet"
+    tmp_path = part_path.with_suffix(part_path.suffix + ".tmp")
+    pd.DataFrame(rows).sort_values(["slice_index", "cluster_id", "uid"], kind="stable").to_parquet(tmp_path, index=False)
+    tmp_path.replace(part_path)
+    return part_path
+
+
 def _coerce_int(value: Any) -> int | None:
     try:
         if value is None or (isinstance(value, float) and math.isnan(value)):
@@ -1186,6 +1215,7 @@ def build_slice_reclustering_membership(
     min_docs_per_slice: int = 1,
     progress_path: str | Path | None = None,
     max_workers: int = 1,
+    membership_parts_dir: str | Path | None = None,
 ) -> pd.DataFrame:
     """Run one-level slice-local Leiden clustering and return membership rows.
 
@@ -1258,6 +1288,8 @@ def build_slice_reclustering_membership(
         "completed_slices": 0,
         "skipped_slices": 0,
         "membership_rows": 0,
+        "membership_part_count": 0,
+        "membership_part_rows": 0,
         "params": {
             "backend": str(backend),
             "objective": objective_norm,
@@ -1266,6 +1298,7 @@ def build_slice_reclustering_membership(
             "n_iterations": int(iterations),
             "min_docs_per_slice": int(min_docs),
             "max_workers": int(workers),
+            "membership_parts_dir": str(Path(membership_parts_dir).expanduser()) if membership_parts_dir is not None else None,
         },
         "last_slice": None,
     }
@@ -1349,6 +1382,17 @@ def build_slice_reclustering_membership(
             jobs.append((slice_row, uids, slice_edges))
 
         def _record_completed(job_rows: list[dict[str, Any]], last_slice: dict[str, Any]) -> None:
+            part_path = _write_membership_part(
+                membership_parts_dir,
+                job_rows,
+                slice_id=last_slice.get("slice_id"),
+                slice_index=last_slice.get("slice_index"),
+            )
+            if part_path is not None:
+                last_slice = dict(last_slice)
+                last_slice["membership_part_path"] = str(part_path)
+                progress["membership_part_count"] = int(progress["membership_part_count"]) + 1
+                progress["membership_part_rows"] = int(progress["membership_part_rows"]) + int(len(job_rows))
             rows.extend(job_rows)
             progress["processed_slices"] = int(progress["processed_slices"]) + 1
             progress["completed_slices"] = int(progress["completed_slices"]) + 1

@@ -623,7 +623,8 @@ lineage from raw records.
   `<result_root>/evolution_work/slice_reclustering_progress.json` by default;
   use `--progress-path` to redirect it. Use `--slice-reclustering-workers` to
   opt into bounded parallel slice jobs; the default is one worker for
-  deterministic low-risk runs.
+  deterministic low-risk runs. Use `--slice-membership-parts-dir` to flush
+  completed slice membership checkpoints during the run.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
 - `/api/jobs/{job_id}/evolution` exposes optional `state_membership.parquet`
@@ -660,7 +661,8 @@ lineage from raw records.
   produces slice-scoped membership rows only; keyword extraction, hierarchy
   building, and report generation remain separate pipeline stages. The optional
   `max_workers` parameter records the requested worker count in the progress
-  sidecar.
+  sidecar. The optional `membership_parts_dir` parameter writes one Parquet part
+  per completed slice so interrupted runs can recover completed membership rows.
 - `write_slice_reclustering_evolution_artifacts` combines the slice-local
   reclustering runner with the slice-local membership writer, preserving a
   `run_slice_local_reclustering` transform entry in the evolution manifest.
@@ -670,7 +672,8 @@ lineage from raw records.
   `sciscape evolution-from-slice-membership`.
 - The reclustering runner can write `sciscape_slice_reclustering_progress_v1`
   JSON with running/completed/failed status, processed/completed/skipped slice
-  counts, last-slice diagnostics, and membership row counts.
+  counts, last-slice diagnostics, membership row counts, and optional
+  membership part counts.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.
@@ -713,14 +716,14 @@ now creates periodized state-membership inputs from existing membership,
 generated slice-local membership, and `sciscape
 evolution-from-slice-reclustering` provides the initial built-in slice-local
 Leiden/CPM path from records plus document edges. That path can optionally
-materialize generated slice-local membership rows before artifact writing, run
-bounded parallel slice jobs, and write a progress JSON sidecar from the CLI,
-creating recovery and monitoring checkpoints for large runs. Split, merge, and
-ambiguous validation are covered
+materialize generated slice-local membership rows before artifact writing, flush
+per-slice membership parts during execution, run bounded parallel slice jobs, and
+write a progress JSON sidecar from the CLI, creating recovery and monitoring
+checkpoints for large runs. Split, merge, and ambiguous validation are covered
 by the synthetic smoke fixture, document-overlap unit tests,
 document-overlap writer tests, and the slice-reclustering writer/CLI smokes.
-Incremental membership flushing and richer matching diagnostics remain future
-hardening work rather than a v1 artifact contract requirement.
+Richer matching diagnostics remain future hardening work rather than a v1
+artifact contract requirement.
 
 ## Open Questions
 

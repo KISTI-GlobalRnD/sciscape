@@ -1485,6 +1485,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     records.to_parquet(source_dir / "records.parquet", index=False)
     edges.to_parquet(source_dir / "edges.parquet", index=False)
     slice_membership_output = root / "evolution_work" / "slice_reclustering_membership.parquet"
+    slice_membership_parts_dir = root / "evolution_work" / "slice_reclustering_membership_parts"
     progress_path = root / "evolution_work" / "slice_reclustering_progress.json"
 
     written = write_slice_reclustering_evolution_artifacts(
@@ -1503,16 +1504,22 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
         backend="igraph",
         max_workers=2,
         slice_membership_output=slice_membership_output,
+        slice_membership_parts_dir=slice_membership_parts_dir,
         progress_path=progress_path,
     )
 
     assert written["qa"]["status"] == "passed"
     assert written["slice_membership_path"] == slice_membership_output.resolve()
+    assert written["slice_membership_parts_dir"] == slice_membership_parts_dir.resolve()
     assert written["progress_path"] == progress_path.resolve()
     progress = json.loads(progress_path.read_text(encoding="utf-8"))
     assert progress["status"] == "completed"
     assert progress["membership_rows"] == 8
     assert progress["params"]["max_workers"] == 2
+    assert progress["membership_part_count"] == 2
+    part_files = sorted(slice_membership_parts_dir.glob("*.parquet"))
+    assert len(part_files) == 2
+    assert sum(len(pd.read_parquet(path)) for path in part_files) == 8
     generated_membership = pd.read_parquet(slice_membership_output)
     assert len(generated_membership) == 8
     assert set(generated_membership["backend"]) == {"igraph"}
@@ -1530,6 +1537,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     recluster_transform = next(row for row in transforms if row["step"] == "run_slice_local_reclustering")
     assert recluster_transform["max_workers"] == 2
     assert recluster_transform["slice_membership_output"] == "evolution_work/slice_reclustering_membership.parquet"
+    assert recluster_transform["slice_membership_parts_dir"] == "evolution_work/slice_reclustering_membership_parts"
     assert recluster_transform["progress_path"] == "evolution_work/slice_reclustering_progress.json"
     assert recluster_transform["slice_membership_rows"] == 8
     manifest = build_result_manifest(root).to_dict()
