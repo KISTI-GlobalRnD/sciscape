@@ -52,7 +52,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 92% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, slice-local membership-to-evolution builder/writer/CLI bridge, default slice-local reclustering runner/writer/CLI bridge, optional materialized reclustering membership checkpoint, slice-reclustering progress sidecar, bounded slice-reclustering workers, incremental slice-membership part checkpoints, slice-level reclustering failure diagnostics, manifest-level transition matching diagnostics, web transition-matching diagnostics panel, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus | larger-scale layout polish and map workflow |
 | F12 | Evidence-backed narratives | `[~]` | 56% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback | stable generator and reviewed publication surface |
-| F13 | Validation and QA | `[x]` | 86% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators | strict checks for remaining app feature exposure |
+| F13 | Validation and QA | `[x]` | 87% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators, evolution matching-diagnostics manifest checks | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, CLI matrix artifact wrapper, matrix artifact file downloads, manifest-backed matrix CSV/Parquet/summary exports, VOSviewer-compatible term matrix network export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | additional target-specific matrix exports and UI polish |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
 
@@ -551,7 +551,7 @@ hooks preserve evidence refs and final reviewed publication outputs are defined.
 
 ### F13. Validation And QA
 
-Status: `[x]` Implemented. Rough completeness: 85%.
+Status: `[x]` Implemented. Rough completeness: 87%.
 
 - `[x]` Result-root artifact validation exists.
 - `[x]` Feature availability blocks can be inferred from artifacts.
@@ -559,6 +559,9 @@ Status: `[x]` Implemented. Rough completeness: 85%.
   narrative scaffolds do not demote otherwise stable keyword, evolution, or
   export features.
 - `[x]` Keyword artifact contamination checks exist.
+- `[x]` Evolution matching diagnostics are validated when declared in the
+  manifest, blocking malformed diagnostic objects while preserving older
+  artifacts that do not declare diagnostics.
 - `[x]` Demo quality gate exists.
 - `[x]` Tests cover major validation paths.
 - `[~]` Matrix, evolution, narrative, and export-manifest validation are not yet
