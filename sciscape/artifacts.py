@@ -11315,7 +11315,7 @@ def _feature_artifact_candidates(feature: str) -> list[str]:
         "temporal": ["records", "temporal"],
         "evolution": ["evolution"],
         "narrative": ["narrative"],
-        "quality": ["artifact_contract", "keyword_rule_qa", "cluster_review_packet_qa"],
+        "quality": ["artifact_contract", "keyword_rule_qa", "cluster_review_packet_qa", "narrative_qa"],
         "export": ["export", "keyword_rules", "report_data", "report_html", "viewer_html"],
     }
     return mapping.get(feature, [])

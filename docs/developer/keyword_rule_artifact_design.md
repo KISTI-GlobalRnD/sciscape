@@ -383,8 +383,9 @@ refs:
 Feature refs should be updated conservatively:
 
 - `features.keyword.artifact_refs` may include `keywords` and `keyword_rules`;
-- `features.quality.artifact_refs` may include `artifact_contract` and
-  `keyword_rule_qa`;
+- `features.quality.artifact_refs` may include `artifact_contract`,
+  `keyword_rule_qa`, and other validated QA artifacts such as narrative or
+  review-packet QA;
 - `features.export.artifact_refs` may include `keyword_rules` when exporting
   thesaurus or rule-set files.
 

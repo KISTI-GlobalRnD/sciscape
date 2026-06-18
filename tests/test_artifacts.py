@@ -599,6 +599,7 @@ def test_write_narrative_evidence_artifacts_creates_claim_graph_from_review_pack
     assert result_manifest["features"]["narrative"]["state"] == "beta"
     assert "narrative" in result_manifest["features"]["narrative"]["artifact_refs"]
     assert result_manifest["features"]["keyword"]["state"] == "stable"
+    assert "narrative_qa" in result_manifest["features"]["quality"]["artifact_refs"]
     artifacts = result_manifest["artifacts"]
     assert artifacts["narrative"]["path"] == "narrative/narrative_manifest.json"
     assert artifacts["narrative_targets"]["path"] == "narrative/narrative_targets.parquet"
