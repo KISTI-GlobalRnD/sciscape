@@ -1071,6 +1071,8 @@ Artifacts:
 - `narrative/narrative_sections.parquet`
 - `narrative/review_decisions.parquet`
 - `narrative/narrative_qa.json`
+- `narrative/publication_summary.json`
+- `narrative/publication_summary.md`
 
 Feature flag rule:
 
@@ -1084,6 +1086,8 @@ Success:
 - missing evidence appears as a caveat
 - narrative claim, evidence, section, review, and QA artifacts are exposed through
   the result manifest and downloads surface when present
+- reviewed narrative publication summaries render only accepted or not-required
+  claims and list rejected, needs-revision, and pending claims as omitted rows
 - generated narratives include prompt/model metadata when LLMs are used
 - narrative edits are recorded as review decisions and the latest decision is
   readable from the cluster narrative view

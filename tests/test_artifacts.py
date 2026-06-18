@@ -27,6 +27,7 @@ from sciscape.artifacts import (
     MATRIX_VALUES_SCHEMA_VERSION,
     NARRATIVE_CLAIMS_SCHEMA_VERSION,
     NARRATIVE_MANIFEST_SCHEMA_VERSION,
+    NARRATIVE_PUBLICATION_SCHEMA_VERSION,
     NARRATIVE_QA_SCHEMA_VERSION,
     RESULT_MANIFEST_SCHEMA_VERSION,
     TEMPORAL_ACTIVITY_SCHEMA_VERSION,
@@ -63,6 +64,7 @@ from sciscape.artifacts import (
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_narrative_evidence_artifacts,
+    write_narrative_publication_artifacts,
     write_slice_local_membership_evolution_artifacts,
     write_slice_reclustering_evolution_artifacts,
     write_slice_membership_evolution_artifacts,
@@ -632,6 +634,76 @@ def test_validate_narrative_artifact_blocks_unsupported_normal_claim(tmp_path):
     contract = validate_result_root(root).to_dict()
     assert contract["result_state"] == "blocked"
     assert any(warning["code"] == "narrative_unsupported_normal_claims" for warning in contract["warnings"])
+
+
+def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    written = write_narrative_evidence_artifacts(root)
+    assert written is not None
+    claims_path = root / "narrative" / "claims.parquet"
+    reviews_path = root / "narrative" / "review_decisions.parquet"
+    manifest_path = root / "narrative" / "narrative_manifest.json"
+    claims = pd.read_parquet(claims_path)
+    accepted_claim_id = str(claims.iloc[0]["claim_id"])
+    rejected_claim_id = str(claims.iloc[1]["claim_id"])
+    target_id = str(claims.iloc[0]["target_id"])
+    claims.loc[claims["claim_id"].map(str) == accepted_claim_id, "review_state"] = "accepted"
+    claims.loc[claims["claim_id"].map(str) == rejected_claim_id, "review_state"] = "rejected"
+    claims.to_parquet(claims_path, index=False)
+    pd.DataFrame(
+        [
+            {
+                "schema_version": "sciscape_narrative_review_decisions_v1",
+                "narrative_id": written["narrative_id"],
+                "decision_id": "decision_accept",
+                "claim_id": accepted_claim_id,
+                "decision_type": "accepted",
+                "reviewer": "tester",
+                "decided_at_utc": "2026-06-18T00:00:00+00:00",
+                "reason": "ready for publication",
+                "target_id": target_id,
+                "cluster_uid": "cluster:0",
+            },
+            {
+                "schema_version": "sciscape_narrative_review_decisions_v1",
+                "narrative_id": written["narrative_id"],
+                "decision_id": "decision_reject",
+                "claim_id": rejected_claim_id,
+                "decision_type": "rejected",
+                "reviewer": "tester",
+                "decided_at_utc": "2026-06-18T00:01:00+00:00",
+                "reason": "do not publish",
+                "target_id": target_id,
+                "cluster_uid": "cluster:0",
+            },
+        ]
+    ).to_parquet(reviews_path, index=False)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    outputs = dict(manifest.get("outputs") or {})
+    outputs["reviews"] = "review_decisions.parquet"
+    manifest["outputs"] = outputs
+    manifest["review_state_advertised"] = True
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    publication = write_narrative_publication_artifacts(root)
+
+    assert publication is not None
+    assert publication["available"] is True
+    assert publication["schema_version"] == NARRATIVE_PUBLICATION_SCHEMA_VERSION
+    assert publication["publication_state"] == "partial_review"
+    payload = json.loads((root / "narrative" / "publication_summary.json").read_text(encoding="utf-8"))
+    markdown = (root / "narrative" / "publication_summary.md").read_text(encoding="utf-8")
+    assert payload["schema_version"] == NARRATIVE_PUBLICATION_SCHEMA_VERSION
+    assert payload["counts"]["rendered_claims"] == 1
+    assert payload["counts"]["rejected_claims"] == 1
+    assert accepted_claim_id in markdown
+    assert "Omitted Claims" in markdown
+    assert rejected_claim_id in markdown
+    manifest_after = build_result_manifest(root).to_dict()
+    assert manifest_after["artifacts"]["narrative_publication_json"]["path"] == "narrative/publication_summary.json"
+    assert manifest_after["artifacts"]["narrative_publication_markdown"]["path"] == "narrative/publication_summary.md"
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):

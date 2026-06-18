@@ -47,6 +47,7 @@ NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION = "sciscape_narrative_claim_eviden
 NARRATIVE_SECTIONS_SCHEMA_VERSION = "sciscape_narrative_sections_v1"
 NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION = "sciscape_narrative_review_decisions_v1"
 NARRATIVE_QA_SCHEMA_VERSION = "sciscape_narrative_qa_v1"
+NARRATIVE_PUBLICATION_SCHEMA_VERSION = "sciscape_narrative_publication_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
 MATRIX_ENTITIES_SCHEMA_VERSION = "sciscape_matrix_entities_v1"
@@ -4277,6 +4278,333 @@ def write_narrative_evidence_artifacts(
         "validation": validation.to_dict(),
         "counts": validation.counts,
         "feature_state": validation.feature_state,
+    }
+
+
+def _publication_text(value: Any, *, fallback: str = "") -> str:
+    text = str(value if value is not None else fallback).strip()
+    return re.sub(r"\s+", " ", text)
+
+
+def _publication_records(df: pd.DataFrame) -> list[dict[str, Any]]:
+    if df is None or df.empty:
+        return []
+    records = df.where(pd.notna(df), None).to_dict(orient="records")
+    return json.loads(json.dumps(records, default=str))
+
+
+def _publication_sort_value(row: Mapping[str, Any], key: str) -> tuple[int, str]:
+    value = row.get(key)
+    try:
+        return int(value), ""
+    except (TypeError, ValueError):
+        return 10**9, str(value or "")
+
+
+def _publication_latest_reviews(reviews: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
+    for row in sorted(
+        reviews,
+        key=lambda item: (str(item.get("decided_at_utc") or ""), str(item.get("decision_id") or "")),
+    ):
+        claim_id = str(row.get("claim_id") or "")
+        target_id = str(row.get("target_id") or "")
+        if target_id and claim_id:
+            latest[f"{target_id}\x1f{claim_id}"] = row
+        if claim_id:
+            latest[claim_id] = row
+    return latest
+
+
+def _publication_review_state(
+    claim: Mapping[str, Any],
+    *,
+    latest_reviews: Mapping[str, Mapping[str, Any]],
+) -> tuple[str, Mapping[str, Any] | None]:
+    claim_id = str(claim.get("claim_id") or "")
+    target_id = str(claim.get("target_id") or "")
+    latest = latest_reviews.get(f"{target_id}\x1f{claim_id}") or latest_reviews.get(claim_id)
+    if latest:
+        state = str(latest.get("decision_type") or "").strip()
+        if state:
+            return state, latest
+    return str(claim.get("review_state") or "not_reviewed").strip() or "not_reviewed", None
+
+
+def _publication_markdown(payload: Mapping[str, Any]) -> str:
+    lines = [
+        f"# {_publication_text(payload.get('title'), fallback='Reviewed Narrative Publication')}",
+        "",
+        f"- Schema: {NARRATIVE_PUBLICATION_SCHEMA_VERSION}",
+        f"- Narrative: {_publication_text(payload.get('narrative_id'), fallback='unknown')}",
+        f"- Publication state: {_publication_text(payload.get('publication_state'), fallback='unknown')}",
+        f"- Generated: {_publication_text(payload.get('created_at_utc'), fallback='unknown')}",
+        "",
+        "## Review Summary",
+    ]
+    counts = payload.get("counts") if isinstance(payload.get("counts"), Mapping) else {}
+    for key in (
+        "targets",
+        "claims",
+        "rendered_claims",
+        "accepted_claims",
+        "not_required_claims",
+        "pending_claims",
+        "needs_revision_claims",
+        "rejected_claims",
+        "evidence_refs",
+    ):
+        lines.append(f"- {key.replace('_', ' ').title()}: {counts.get(key, 0)}")
+    clusters = [row for row in payload.get("clusters", []) if isinstance(row, Mapping)]
+    if not clusters:
+        lines.extend(["", "No narrative targets are available."])
+    for cluster in clusters:
+        lines.extend(["", f"## {_publication_text(cluster.get('target_label'), fallback='Untitled Target')}"])
+        lines.append(f"- Target: {_publication_text(cluster.get('cluster_uid'), fallback=cluster.get('target_id'))}")
+        lines.append(
+            "- Reviewed claims: "
+            f"{cluster.get('reviewed_claim_count', 0)} / {cluster.get('claim_count', 0)}"
+        )
+        rendered_any = False
+        for section in cluster.get("sections", []):
+            if not isinstance(section, Mapping):
+                continue
+            claims = [claim for claim in section.get("claims", []) if isinstance(claim, Mapping)]
+            if not claims:
+                continue
+            rendered_any = True
+            lines.extend(["", f"### {_publication_text(section.get('section_title'), fallback='Claims')}"])
+            for claim in claims:
+                evidence = [
+                    _publication_text(row.get("evidence_label"), fallback=row.get("evidence_ref_id"))
+                    for row in claim.get("evidence", [])
+                    if isinstance(row, Mapping)
+                ]
+                evidence_text = "; ".join([item for item in evidence if item]) or "evidence refs available"
+                lines.append(
+                    "- "
+                    + _publication_text(claim.get("claim_text"))
+                    + " "
+                    + f"(claim: {_publication_text(claim.get('claim_id'))}; "
+                    + f"review: {_publication_text(claim.get('review_state'))}; "
+                    + f"support: {_publication_text(claim.get('support_state'))}; "
+                    + f"evidence: {evidence_text})"
+                )
+        if not rendered_any:
+            lines.extend(["", "No reviewed claims are publishable yet."])
+        omitted = [row for row in cluster.get("omitted_claims", []) if isinstance(row, Mapping)]
+        if omitted:
+            lines.extend(["", "### Omitted Claims"])
+            for row in omitted:
+                lines.append(
+                    "- "
+                    + f"{_publication_text(row.get('claim_id'))}: "
+                    + f"{_publication_text(row.get('review_state'), fallback='not_reviewed')} "
+                    + f"({_publication_text(row.get('reason'), fallback='not rendered')})"
+                )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_narrative_publication_artifacts(
+    path: str | Path,
+    *,
+    json_name: str = "publication_summary.json",
+    markdown_name: str = "publication_summary.md",
+) -> dict[str, Any] | None:
+    """Write deterministic reviewed narrative publication summaries.
+
+    The writer does not generate new claims. It renders only accepted or
+    not-required claims and records other review states as omitted rows.
+    """
+
+    import pandas as pd
+
+    narrative_dir, manifest_path = _narrative_dir_and_manifest(path)
+    if not manifest_path.exists():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    validation = validate_narrative_artifact(manifest_path).to_dict()
+    if validation.get("status") == "blocked":
+        return {
+            "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
+            "available": False,
+            "error": "narrative artifact validation is blocked",
+            "validation": validation,
+        }
+    result_root = _narrative_result_root(narrative_dir)
+    targets_path = _narrative_output_path(narrative_dir, manifest, "targets", "narrative_targets.parquet")
+    claims_path = _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet")
+    refs_path = _narrative_output_path(narrative_dir, manifest, "evidence_refs", "evidence_refs.parquet")
+    links_path = _narrative_output_path(narrative_dir, manifest, "claim_evidence_links", "claim_evidence_links.parquet")
+    sections_path = _narrative_output_path(narrative_dir, manifest, "sections", "narrative_sections.parquet")
+    reviews_path = _narrative_output_path(narrative_dir, manifest, "reviews", "review_decisions.parquet")
+    targets = _publication_records(pd.read_parquet(targets_path))
+    claims = _publication_records(pd.read_parquet(claims_path))
+    refs = _publication_records(pd.read_parquet(refs_path))
+    links = _publication_records(pd.read_parquet(links_path))
+    sections = _publication_records(pd.read_parquet(sections_path))
+    reviews = _publication_records(pd.read_parquet(reviews_path)) if reviews_path.exists() else []
+    refs_by_id = {str(row.get("evidence_ref_id") or ""): row for row in refs}
+    links_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for link in links:
+        links_by_claim.setdefault(str(link.get("claim_id") or ""), []).append(link)
+    latest_reviews = _publication_latest_reviews(reviews)
+    render_states = {"accepted", "not_required"}
+    count_keys = [
+        "accepted_claims",
+        "not_required_claims",
+        "pending_claims",
+        "needs_revision_claims",
+        "rejected_claims",
+    ]
+    counts = {
+        "targets": len(targets),
+        "claims": len(claims),
+        "rendered_claims": 0,
+        "evidence_refs": len(refs),
+        **{key: 0 for key in count_keys},
+    }
+    cluster_payloads: list[dict[str, Any]] = []
+    for target in sorted(targets, key=lambda row: _publication_text(row.get("target_label"), fallback=row.get("target_id"))):
+        target_id = str(target.get("target_id") or "")
+        target_claims = [
+            claim
+            for claim in sorted(claims, key=lambda row: _publication_sort_value(row, "sort_order"))
+            if str(claim.get("target_id") or "") == target_id
+        ]
+        section_payloads = []
+        omitted_claims = []
+        reviewed_claim_count = 0
+        for section in sorted(
+            [row for row in sections if str(row.get("target_id") or "") == target_id],
+            key=lambda row: _publication_sort_value(row, "sort_order"),
+        ):
+            section_id = str(section.get("section_id") or "")
+            rendered_claims = []
+            for claim in [row for row in target_claims if str(row.get("section_id") or "") == section_id]:
+                review_state, latest_review = _publication_review_state(claim, latest_reviews=latest_reviews)
+                if review_state == "not_required" and latest_review is None:
+                    review_state = "not_reviewed"
+                if latest_review or review_state == "accepted":
+                    reviewed_claim_count += 1
+                if review_state == "accepted":
+                    counts["accepted_claims"] += 1
+                elif review_state == "not_required":
+                    counts["not_required_claims"] += 1
+                elif review_state == "needs_revision":
+                    counts["needs_revision_claims"] += 1
+                elif review_state == "rejected":
+                    counts["rejected_claims"] += 1
+                else:
+                    counts["pending_claims"] += 1
+                if review_state not in render_states:
+                    omitted_claims.append(
+                        {
+                            "claim_id": claim.get("claim_id"),
+                            "claim_type": claim.get("claim_type"),
+                            "review_state": review_state,
+                            "support_state": claim.get("support_state"),
+                            "reason": "not accepted for publication",
+                        }
+                    )
+                    continue
+                evidence_rows = []
+                for link in links_by_claim.get(str(claim.get("claim_id") or ""), []):
+                    ref_id = str(link.get("evidence_ref_id") or "")
+                    ref = refs_by_id.get(ref_id, {})
+                    evidence_rows.append(
+                        {
+                            "evidence_ref_id": ref_id,
+                            "evidence_role": link.get("evidence_role"),
+                            "evidence_label": ref.get("evidence_label"),
+                            "evidence_type": ref.get("evidence_type"),
+                            "locator_type": ref.get("locator_type"),
+                            "locator": ref.get("locator"),
+                            "aggregate_only": bool(ref.get("aggregate_only", False) or ref.get("locator_type") == "aggregate"),
+                        }
+                    )
+                rendered_claims.append(
+                    {
+                        "claim_id": claim.get("claim_id"),
+                        "claim_type": claim.get("claim_type"),
+                        "claim_text": claim.get("claim_text"),
+                        "review_state": review_state,
+                        "support_state": claim.get("support_state"),
+                        "confidence": claim.get("confidence"),
+                        "latest_review": latest_review,
+                        "evidence": evidence_rows,
+                    }
+                )
+            if rendered_claims:
+                section_payloads.append(
+                    {
+                        "section_id": section_id,
+                        "section_title": section.get("section_title"),
+                        "section_type": section.get("section_type"),
+                        "claims": rendered_claims,
+                    }
+                )
+                counts["rendered_claims"] += len(rendered_claims)
+        cluster_payloads.append(
+            {
+                "target_id": target_id,
+                "cluster_uid": target.get("target_key") or target.get("cluster_uid") or target_id,
+                "target_label": target.get("target_label"),
+                "claim_count": len(target_claims),
+                "reviewed_claim_count": reviewed_claim_count,
+                "pending_review_claim_count": max(0, len(target_claims) - reviewed_claim_count),
+                "sections": section_payloads,
+                "omitted_claims": omitted_claims,
+            }
+        )
+    if counts["rendered_claims"] <= 0:
+        publication_state = "empty"
+    elif counts["pending_claims"] or counts["needs_revision_claims"] or counts["rejected_claims"]:
+        publication_state = "partial_review"
+    else:
+        publication_state = "reviewed"
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
+    outputs["publication_json"] = str(outputs.get("publication_json") or json_name)
+    outputs["publication_markdown"] = str(outputs.get("publication_markdown") or markdown_name)
+    manifest["outputs"] = outputs
+    manifest["publication_state_advertised"] = True
+    manifest["publication_policy"] = {
+        "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
+        "rendered_review_states": sorted(render_states),
+        "omitted_review_states": ["needs_revision", "not_reviewed", "rejected"],
+        "llm_generation_allowed": False,
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    payload = {
+        "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
+        "available": True,
+        "narrative_id": manifest.get("narrative_id"),
+        "title": "Reviewed Narrative Publication",
+        "publication_state": publication_state,
+        "source_manifest": _rel(manifest_path, result_root),
+        "counts": counts,
+        "clusters": cluster_payloads,
+        "warnings": validation.get("warnings", []),
+        "created_at_utc": _utc_now(),
+    }
+    json_path = _narrative_output_path(narrative_dir, manifest, "publication_json", json_name)
+    markdown_path = _narrative_output_path(narrative_dir, manifest, "publication_markdown", markdown_name)
+    json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    markdown = _publication_markdown(payload)
+    markdown_path.write_text(markdown, encoding="utf-8")
+    return {
+        "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
+        "available": True,
+        "publication_state": publication_state,
+        "paths": {
+            "json": _rel(json_path, result_root),
+            "markdown": _rel(markdown_path, result_root),
+        },
+        "counts": counts,
     }
 
 
@@ -10876,6 +11204,43 @@ def _add_narrative_output_artifacts(
             schema_version=schema_version,
             description=description,
         )
+    try:
+        manifest = json.loads((root / manifest_rel_path).read_text(encoding="utf-8"))
+    except Exception:
+        manifest = {}
+    outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), Mapping) else {}
+    publication_specs = [
+        (
+            "publication_json",
+            "publication_json",
+            outputs.get("publication_json"),
+            "json",
+            "Reviewed narrative publication JSON.",
+        ),
+        (
+            "publication_markdown",
+            "publication_markdown",
+            outputs.get("publication_markdown"),
+            "markdown",
+            "Reviewed narrative publication Markdown.",
+        ),
+    ]
+    narrative_dir = Path(manifest_rel_path).parent
+    for output_key, base_key, rel_output, format_label, description in publication_specs:
+        if not rel_output:
+            continue
+        rel_path = Path(str(rel_output))
+        if not rel_path.is_absolute():
+            rel_path = narrative_dir / rel_path
+        key = f"narrative_{base_key}" if not suffix else f"narrative_{suffix}_{base_key}"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_publication",
+            path=rel_path.as_posix(),
+            required_for=["narrative", "export"],
+            schema_version=NARRATIVE_PUBLICATION_SCHEMA_VERSION if format_label == "json" else None,
+            description=description,
+        )
 
 
 def _is_cluster_sharded_keyword_manifest(payload: Mapping[str, Any] | None) -> bool:
@@ -13129,6 +13494,7 @@ __all__ = [
     "NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION",
     "NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION",
     "NARRATIVE_MANIFEST_SCHEMA_VERSION",
+    "NARRATIVE_PUBLICATION_SCHEMA_VERSION",
     "NARRATIVE_QA_SCHEMA_VERSION",
     "NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION",
     "NARRATIVE_SECTIONS_SCHEMA_VERSION",
@@ -13185,6 +13551,7 @@ __all__ = [
     "write_edge_evidence_samples",
     "write_cluster_review_packet_artifact",
     "write_narrative_evidence_artifacts",
+    "write_narrative_publication_artifacts",
     "write_cooccurrence_artifacts",
     "write_keyword_rule_artifacts",
     "write_matrix_artifact",

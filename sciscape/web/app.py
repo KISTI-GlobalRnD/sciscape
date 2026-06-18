@@ -35,6 +35,7 @@ from sciscape.artifacts import (
     validate_narrative_artifact,
     validate_result_root,
     validate_workspace,
+    write_narrative_publication_artifacts,
     write_result_manifest,
 )
 
@@ -675,6 +676,7 @@ async def review_cluster_narrative_claim(job_id: str, cluster_uid: str, req: Nar
     written = _write_narrative_review_decision(result, cluster_uid=cluster_uid, request=req)
     if written.get("error"):
         return written
+    publication = written.get("publication")
     root = _result_root_for_result(result)
     if root is not None:
         try:
@@ -688,6 +690,8 @@ async def review_cluster_narrative_claim(job_id: str, cluster_uid: str, req: Nar
     payload = _load_narrative_payload_for_result(result, cluster_uid=cluster_uid, claim_limit=40)
     payload["review_decision"] = written.get("review_decision")
     payload["review_validation"] = written.get("validation")
+    payload["publication"] = publication
+    payload["result_manifest"] = result.get("result_manifest")
     return payload
 
 
@@ -1336,11 +1340,13 @@ def _write_narrative_review_decision(
     }
     reviews = pd.concat([reviews, pd.DataFrame([review_row])], ignore_index=True)
     reviews.to_parquet(reviews_path, index=False)
+    publication = write_narrative_publication_artifacts(manifest_path)
     validation = validate_narrative_artifact(manifest_path).to_dict()
     return {
         "available": True,
         "review_decision": review_row,
         "validation": validation,
+        "publication": publication,
         "reviews_path": str(reviews_path),
     }
 

@@ -5512,6 +5512,10 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
     };
     const node = (currentAtlasPayload && currentAtlasPayload.nodes || []).find(row => String(row.cluster_uid || '') === String(clusterUid));
     if (node && payload.cluster) node.narrative = payload.cluster;
+    if (currentResult && payload.result_manifest) {
+      currentResult.result_manifest = payload.result_manifest;
+      updateDownloads(currentResult);
+    }
     refreshAtlasNarrativeInspector(clusterUid);
   } catch (err) {
     currentAtlasNarrativeReviewStatus = {
@@ -6435,6 +6439,7 @@ function manifestMatrixArtifactCards(result, jobId, seenPaths) {
 function narrativeArtifactIcon(key, record) {
   const artifactKey = String(key || '').toLowerCase();
   const path = String(record && record.path || '').toLowerCase();
+  if (artifactKey.includes('publication') || path.endsWith('publication_summary.json') || path.endsWith('publication_summary.md')) return 'PUB';
   if (artifactKey.includes('qa') || path.endsWith('narrative_qa.json')) return 'QA';
   if (artifactKey.includes('target') || path.endsWith('narrative_targets.parquet')) return 'TGT';
   if (artifactKey.includes('claim_evidence') || path.endsWith('claim_evidence_links.parquet')) return 'LNK';
@@ -6450,6 +6455,8 @@ function narrativeArtifactIcon(key, record) {
 function narrativeArtifactLabel(key, record) {
   const artifactKey = String(key || '').toLowerCase();
   const path = String(record && record.path || '').toLowerCase();
+  if (artifactKey.includes('markdown') || path.endsWith('publication_summary.md')) return 'Reviewed narrative publication Markdown';
+  if (artifactKey.includes('publication') || path.endsWith('publication_summary.json')) return 'Reviewed narrative publication JSON';
   if (path.endsWith('narrative_manifest.json')) return 'Narrative claim graph manifest';
   if (artifactKey.includes('qa') || path.endsWith('narrative_qa.json')) return 'Narrative QA report';
   if (artifactKey.includes('target') || path.endsWith('narrative_targets.parquet')) return 'Narrative targets';
@@ -6488,6 +6495,7 @@ function manifestNarrativeArtifactCards(result, jobId, seenPaths) {
     const isNarrativeArtifact = inNarrativeTree && (
       role === 'narrative'
       || role === 'narrative_table'
+      || role === 'narrative_publication'
       || (role === 'qa' && String(key).startsWith('narrative'))
     );
     if (!isNarrativeArtifact) continue;

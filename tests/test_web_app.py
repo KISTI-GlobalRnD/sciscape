@@ -356,6 +356,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "/narrative/review" in response.text
     assert "manifestNarrativeArtifactCards" in response.text
     assert "Narrative claim graph manifest" in response.text
+    assert "Reviewed narrative publication" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -1978,6 +1979,13 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert review_payload["review_decision"]["decision_type"] == "accepted"
     assert review_payload["review_decision"]["reviewer"] == "tester"
     assert review_payload["review_validation"]["blocking_issues"] == []
+    assert review_payload["publication"]["available"] is True
+    assert review_payload["publication"]["paths"]["json"] == "narrative/publication_summary.json"
+    assert review_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
+    assert (
+        review_payload["result_manifest"]["artifacts"]["narrative_publication_json"]["path"]
+        == "narrative/publication_summary.json"
+    )
     assert review_payload["cluster"]["claims"][0]["review_state"] == "accepted"
     review_decisions = pd.read_parquet(output_dir / "narrative" / "review_decisions.parquet")
     assert review_decisions["claim_id"].tolist() == [claim_id]
@@ -1999,6 +2007,12 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     )
     claims_after_review = pd.read_parquet(output_dir / "narrative" / "claims.parquet")
     assert claims_after_review.loc[claims_after_review["claim_id"] == claim_id, "review_state"].iloc[0] == "accepted"
+    publication_json_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_summary.json")
+    assert publication_json_response.status_code == 200
+    assert publication_json_response.json()["schema_version"] == "sciscape_narrative_publication_v1"
+    publication_markdown_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_summary.md")
+    assert publication_markdown_response.status_code == 200
+    assert claim_id in publication_markdown_response.text
 
     cluster_narrative_after_review_response = client.get(
         f"/api/jobs/{job_id}/clusters/cluster:0/narrative"

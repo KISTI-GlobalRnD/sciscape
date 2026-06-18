@@ -63,6 +63,8 @@ Narrative artifacts should live under:
   narrative_sections.parquet
   review_decisions.parquet
   narrative_qa.json
+  publication_summary.json
+  publication_summary.md
 ```
 
 For a landscape-scoped result, the same directory may live under:
@@ -183,7 +185,9 @@ Example:
     "claim_evidence_links": "claim_evidence_links.parquet",
     "sections": "narrative_sections.parquet",
     "reviews": "review_decisions.parquet",
-    "qa": "narrative_qa.json"
+    "qa": "narrative_qa.json",
+    "publication_json": "publication_summary.json",
+    "publication_markdown": "publication_summary.md"
   },
   "created_at_utc": "2026-06-03T00:00:00+00:00",
   "warnings": []
@@ -548,7 +552,9 @@ The writer should:
 8. write `review_decisions.parquet` only when review state exists;
 9. generate `narrative_manifest.json`;
 10. generate `narrative_qa.json`;
-11. return paths, counts, warnings, and QA status.
+11. write publication summary JSON/Markdown only from accepted or
+    not-required reviewed claims;
+12. return paths, counts, warnings, and QA status.
 
 The first implementation should not call an LLM. Later generators may update
 claim text only if they preserve evidence refs and write generation metadata.
