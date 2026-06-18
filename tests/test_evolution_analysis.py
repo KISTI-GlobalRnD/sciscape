@@ -13,6 +13,7 @@ from sciscape.evolution import (
     build_evolution_state_table,
     build_evolution_transition_table,
     build_membership_projection_evolution,
+    build_slice_local_membership_evidence,
     build_slice_membership_evidence,
     classify_evolution_events,
     label_evolution_transition_relations,
@@ -27,6 +28,7 @@ def test_evolution_is_public_lazy_submodule():
     assert sciscape.evolution.build_evolution_state_table is build_evolution_state_table
     assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
+    assert sciscape.evolution.build_slice_local_membership_evidence is build_slice_local_membership_evidence
     assert sciscape.evolution.build_slice_membership_evidence is build_slice_membership_evidence
     assert sciscape.evolution.label_evolution_transition_relations is label_evolution_transition_relations
     assert sciscape.evolution.rank_evolution_transitions is rank_evolution_transitions
@@ -104,6 +106,91 @@ def test_build_slice_membership_evidence_rejects_missing_cluster_column():
             evolution_id="bad",
             records_df=records,
             membership_df=membership,
+        )
+
+
+def test_build_slice_local_membership_evidence_outputs_document_overlap_inputs():
+    slice_membership = pd.DataFrame(
+        [
+            *[
+                {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": f"A{i}", "cluster_id": "A"}
+                for i in range(4)
+            ],
+            *[
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"A{i}", "cluster_id": "B1"}
+                for i in range(2)
+            ],
+            *[
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"A{i}", "cluster_id": "B2"}
+                for i in range(2, 4)
+            ],
+            *[
+                {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": f"C{i}", "cluster_id": "C"}
+                for i in range(3)
+            ],
+            *[
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"C{i}", "cluster_id": "C"}
+                for i in range(3)
+            ],
+        ]
+    )
+    keywords = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "cluster_id": "A", "term": "source alpha"},
+            {"slice_id": "year:2021", "cluster_id": "B1", "term": "branch beta"},
+            {"slice_id": "year:2021", "cluster_id": "B2", "term": "branch gamma"},
+            {"slice_id": "year:2021", "cluster_id": "C", "term": "stable carbon"},
+        ]
+    )
+
+    evidence = build_slice_local_membership_evidence(
+        evolution_id="slice local",
+        slice_membership_df=slice_membership,
+        keywords_df=keywords,
+        cluster_column="cluster_id",
+        representative_work_limit=2,
+        default_level="micro",
+    )
+
+    assert evidence.evolution_id == "slice_local"
+    assert evidence.periodization["state_method"] == "slice_local_membership"
+    assert evidence.entity_scope["cluster_id_namespace"] == "slice_local_membership"
+    assert evidence.slices["active_cluster_count"].tolist() == [2, 3]
+    assert len(evidence.state_membership) == 14
+    assert set(evidence.state_evidence["cluster_label"]) >= {"source alpha", "branch beta", "branch gamma", "stable carbon"}
+    assert "derive_slice_local_cluster_states" in [row["step"] for row in evidence.transforms]
+
+    result = build_document_overlap_evolution(
+        evolution_id="slice local overlap",
+        slices=evidence.slices,
+        state_evidence=evidence.state_evidence,
+        state_membership=evidence.state_membership,
+        metric="overlap_min",
+        matching_method={"min_transition_score": 0.5, "min_support_count": 2},
+        entity_scope=evidence.entity_scope,
+        periodization=evidence.periodization,
+        transforms=evidence.transforms,
+        default_level="micro",
+    )
+
+    assert len(result.transitions) == 3
+    assert {"split", "continuation"} <= set(result.events["event_type"])
+    assert result.matching_method["normalization"] == "state_document_membership_overlap"
+
+
+def test_build_slice_local_membership_evidence_rejects_duplicate_uid_cluster_assignments():
+    slice_membership = pd.DataFrame(
+        [
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": "D0", "cluster_id": "A"},
+            {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": "D0", "cluster_id": "B"},
+        ]
+    )
+
+    with pytest.raises(ValueError, match="one cluster per slice"):
+        build_slice_local_membership_evidence(
+            evolution_id="bad",
+            slice_membership_df=slice_membership,
+            cluster_column="cluster_id",
         )
 
 

@@ -295,8 +295,17 @@ def _cluster_column(membership: pd.DataFrame) -> str | None:
     return sorted(columns)[0] if columns else None
 
 
+def _slice_membership_cluster_column(membership: pd.DataFrame) -> str | None:
+    for column in ("cluster", "cluster_id", "cluster_key"):
+        if column in membership.columns:
+            return column
+    return _cluster_column(membership)
+
+
 def _level_from_cluster_column(column: str) -> str:
     if column == "cluster":
+        return "cluster"
+    if column in {"cluster_id", "cluster_key"}:
         return "cluster"
     if column.startswith("cluster_"):
         return column.removeprefix("cluster_")
@@ -308,6 +317,167 @@ def _keyword_label_column(columns: list[str]) -> str:
         if name in columns:
             return name
     return columns[0] if columns else "term"
+
+
+def _cluster_key_from_value(value: Any, *, column: str, level: str) -> tuple[str, str, str]:
+    text = str(value).strip()
+    if column == "cluster_key" and ":" in text:
+        raw_level, raw_cluster_id = text.split(":", 1)
+        state_level = raw_level.strip() or level
+        cluster_id = raw_cluster_id.strip() or text
+        return f"{state_level}:{cluster_id}", cluster_id, state_level
+    return f"{level}:{text}", text, level
+
+
+def _parse_slice_years(slice_id: str) -> tuple[int | None, int | None]:
+    match = re.search(r"(\d{4})(?:\D+(\d{4}))?", str(slice_id))
+    if not match:
+        return None, None
+    start = int(match.group(1))
+    end = int(match.group(2)) if match.group(2) else start
+    return start, end
+
+
+def _single_group_value(group: pd.DataFrame, column: str, *, label: str) -> Any:
+    values = [value for value in group[column].tolist() if not _is_missing(value) and str(value).strip() != ""]
+    unique = {str(value).strip() for value in values}
+    if len(unique) > 1:
+        raise ValueError(f"slice-local membership has conflicting {label} for slice_id={group.name}")
+    return values[0] if values else None
+
+
+def _infer_slice_table_from_membership(
+    evolution_id: str,
+    slice_membership: pd.DataFrame,
+    *,
+    slice_id_column: str,
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for slice_id, group in slice_membership.groupby(slice_id_column, sort=False):
+        slice_text = str(slice_id).strip()
+        if not slice_text:
+            continue
+        raw_index = _single_group_value(group, "slice_index", label="slice_index") if "slice_index" in group.columns else None
+        raw_start = _single_group_value(group, "start_year", label="start_year") if "start_year" in group.columns else None
+        raw_end = _single_group_value(group, "end_year", label="end_year") if "end_year" in group.columns else None
+        parsed_start, parsed_end = _parse_slice_years(slice_text)
+        start_year = _coerce_int(raw_start) if raw_start is not None else parsed_start
+        end_year = _coerce_int(raw_end) if raw_end is not None else parsed_end
+        if start_year is None or end_year is None:
+            raise ValueError(
+                "slice-local membership needs start_year/end_year columns "
+                f"or parseable year values in slice_id: {slice_text}"
+            )
+        unit = (
+            _text_or_default(_single_group_value(group, "unit", label="unit"), "year")
+            if "unit" in group.columns
+            else "year"
+        )
+        label = (
+            _text_or_default(_single_group_value(group, "slice_label", label="slice_label"), slice_text)
+            if "slice_label" in group.columns
+            else slice_text
+        )
+        rows.append(
+            {
+                "slice_id": slice_text,
+                "_raw_slice_index": _coerce_int(raw_index) if raw_index is not None else None,
+                "slice_label": label,
+                "start_year": int(start_year),
+                "end_year": int(end_year),
+                "unit": unit,
+            }
+        )
+    if not rows:
+        raise ValueError("slice-local membership produced no slices")
+    rows.sort(
+        key=lambda row: (
+            row["_raw_slice_index"] if row["_raw_slice_index"] is not None else 10**9,
+            row["start_year"],
+            row["end_year"],
+            row["slice_id"],
+        )
+    )
+    if any(row["_raw_slice_index"] is not None for row in rows):
+        raw_indexes = [row["_raw_slice_index"] for row in rows]
+        if any(value is None for value in raw_indexes):
+            raise ValueError("slice-local membership must provide slice_index for every slice or none")
+        if sorted(raw_indexes) != list(range(len(rows))):
+            raise ValueError("slice-local membership slice_index must be contiguous from zero")
+    for index, row in enumerate(rows):
+        row["schema_version"] = EVOLUTION_TIME_SLICES_SCHEMA_VERSION
+        row["evolution_id"] = evolution_id
+        row["slice_index"] = int(row["_raw_slice_index"] if row["_raw_slice_index"] is not None else index)
+        row["doc_count"] = 0
+        row["edge_count"] = None
+        row["active_cluster_count"] = 0
+        row["unknown_year_count"] = 0
+        row["warning_flags"] = ""
+        del row["_raw_slice_index"]
+    return _normalize_evolution_slices(evolution_id, pd.DataFrame(rows))
+
+
+def _slice_local_keyword_label_map(
+    keywords: pd.DataFrame | None,
+    *,
+    default_level: str,
+) -> dict[tuple[str, str, str], dict[str, Any]]:
+    if keywords is None or keywords.empty:
+        return {}
+    label_col = _keyword_label_column(list(keywords.columns))
+    slice_col = "slice_id" if "slice_id" in keywords.columns else None
+    state_col = "state_id" if "state_id" in keywords.columns else None
+    cluster_key_col = "cluster_key" if "cluster_key" in keywords.columns else None
+    cluster_id_col = None
+    for name in ("cluster_id", "cluster", "source_cluster_id"):
+        if name in keywords.columns:
+            cluster_id_col = name
+            break
+    rows: dict[tuple[str, str, str], dict[str, Any]] = {}
+
+    keys: list[str] = []
+    if state_col:
+        keys.append(state_col)
+    if slice_col:
+        keys.append(slice_col)
+    if cluster_key_col:
+        keys.append(cluster_key_col)
+    elif cluster_id_col:
+        keys.append(cluster_id_col)
+    if not keys:
+        return rows
+
+    for group_key, group in keywords.groupby(keys, dropna=False, sort=True):
+        if not isinstance(group_key, tuple):
+            group_key = (group_key,)
+        item = dict(zip(keys, group_key))
+        terms = [str(value).strip() for value in group[label_col].dropna().head(5).tolist() if str(value).strip()]
+        if not terms:
+            continue
+        label = {"label": terms[0], "top_terms": terms, "term_count": int(len(terms))}
+        if state_col:
+            state_id = str(item[state_col]).strip()
+            if state_id:
+                rows[("state_id", "", state_id)] = label
+        slice_id = str(item.get(slice_col, "")).strip() if slice_col else ""
+        if cluster_key_col:
+            cluster_key = str(item[cluster_key_col]).strip()
+        elif cluster_id_col:
+            cluster_key = f"{default_level}:{str(item[cluster_id_col]).strip()}"
+        else:
+            cluster_key = ""
+        if cluster_key:
+            if slice_id:
+                rows[("slice_cluster_key", slice_id, cluster_key)] = label
+            rows[("cluster_key", "", cluster_key)] = label
+            if ":" in cluster_key:
+                rows[("cluster_id", "", cluster_key.split(":", 1)[1])] = label
+        elif cluster_id_col:
+            cluster_id = str(item[cluster_id_col]).strip()
+            if slice_id:
+                rows[("slice_cluster_id", slice_id, cluster_id)] = label
+            rows[("cluster_id", "", cluster_id)] = label
+    return rows
 
 
 def _build_time_slices(evolution_id: str, years: list[int], periodization: Mapping[str, Any] | None) -> pd.DataFrame:
@@ -698,6 +868,172 @@ def build_slice_membership_evidence(
         state_evidence=state_evidence,
         state_membership=state_membership,
         periodization=periodization_payload,
+        entity_scope=entity_scope,
+        transforms=transforms,
+    )
+
+
+def build_slice_local_membership_evidence(
+    *,
+    evolution_id: str,
+    slice_membership_df: pd.DataFrame,
+    slices_df: pd.DataFrame | None = None,
+    keywords_df: pd.DataFrame | None = None,
+    cluster_column: str | None = None,
+    uid_column: str | None = None,
+    slice_id_column: str = "slice_id",
+    representative_work_limit: int = 50,
+    default_level: str = "cluster",
+) -> EvolutionEvidenceTables:
+    """Build evolution evidence from slice-local clustering membership.
+
+    The input membership is already scoped by ``slice_id``. Cluster ids are not
+    assumed to be stable across slices; downstream continuity should be derived
+    from document-overlap evidence.
+    """
+
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    if slice_membership_df.empty:
+        raise ValueError("slice_membership_df must not be empty")
+    if slice_id_column not in slice_membership_df.columns:
+        raise ValueError(f"slice_membership_df missing slice_id column: {slice_id_column}")
+    member_uid_column = _resolve_uid_column(slice_membership_df, uid_column, label="slice_membership_df")
+    if cluster_column is not None:
+        if cluster_column not in slice_membership_df.columns:
+            raise ValueError(f"slice_membership_df missing requested cluster_column: {cluster_column}")
+        selected_cluster_column = cluster_column
+    else:
+        selected_cluster_column = _slice_membership_cluster_column(slice_membership_df)
+    if selected_cluster_column is None:
+        raise ValueError("slice_membership_df must include cluster, cluster_id, cluster_key, or cluster_* column")
+    if representative_work_limit < 0:
+        raise ValueError("representative_work_limit must be non-negative")
+
+    level = str(default_level or "").strip() or _level_from_cluster_column(selected_cluster_column)
+    if selected_cluster_column not in {"cluster_id", "cluster_key"}:
+        level = _level_from_cluster_column(selected_cluster_column)
+    passthrough = [column for column in ("slice_index", "start_year", "end_year", "slice_label", "unit") if column in slice_membership_df.columns]
+    membership = slice_membership_df[[slice_id_column, member_uid_column, selected_cluster_column, *passthrough]].copy()
+    membership["_slice_id"] = membership[slice_id_column].map(str).str.strip()
+    membership["_uid"] = membership[member_uid_column].map(str).str.strip()
+    membership["_cluster_raw"] = membership[selected_cluster_column].map(str).str.strip()
+    membership = membership[(membership["_slice_id"] != "") & (membership["_uid"] != "") & (membership["_cluster_raw"] != "")]
+    membership = membership.drop_duplicates(subset=["_slice_id", "_uid", "_cluster_raw"])
+    if membership.empty:
+        raise ValueError("slice-local membership has no valid slice/document/cluster rows")
+    duplicate_docs = (
+        membership.groupby(["_slice_id", "_uid"], sort=True)["_cluster_raw"]
+        .nunique()
+        .reset_index(name="cluster_count")
+    )
+    duplicate_docs = duplicate_docs[duplicate_docs["cluster_count"] > 1]
+    if not duplicate_docs.empty:
+        first = duplicate_docs.iloc[0]
+        raise ValueError(
+            "slice-local membership must assign each document to one cluster per slice; "
+            f"duplicate uid={first['_uid']} slice_id={first['_slice_id']}"
+        )
+
+    if slices_df is None:
+        slices = _infer_slice_table_from_membership(evolution_id, membership, slice_id_column="_slice_id")
+    else:
+        slices = _normalize_evolution_slices(evolution_id, slices_df)
+    slice_ids = set(slices["slice_id"].map(str))
+    unknown_slices = sorted(set(membership["_slice_id"]) - slice_ids)
+    if unknown_slices:
+        preview = ", ".join(unknown_slices[:5])
+        suffix = "..." if len(unknown_slices) > 5 else ""
+        raise ValueError(f"slice_membership_df references unknown slice_id: {preview}{suffix}")
+
+    label_map = _slice_local_keyword_label_map(keywords_df, default_level=level)
+    slice_index = {str(row.slice_id): int(row.slice_index) for row in slices.itertuples(index=False)}
+    rows: list[dict[str, Any]] = []
+    state_docs: dict[str, set[str]] = {}
+    grouped = (
+        membership.groupby(["_slice_id", "_cluster_raw"], sort=True)
+        .agg(work_ids=("_uid", lambda values: sorted(set(map(str, values)))))
+        .reset_index()
+    )
+    for item in grouped.to_dict("records"):
+        slice_id = str(item["_slice_id"])
+        cluster_key, cluster_id, state_level = _cluster_key_from_value(
+            item["_cluster_raw"],
+            column=selected_cluster_column,
+            level=level,
+        )
+        state_id = _state_id(slice_id, cluster_key)
+        doc_ids = set(item["work_ids"])
+        if not doc_ids:
+            continue
+        label_info = (
+            label_map.get(("state_id", "", state_id))
+            or label_map.get(("slice_cluster_key", slice_id, cluster_key))
+            or label_map.get(("slice_cluster_id", slice_id, cluster_id))
+            or label_map.get(("cluster_key", "", cluster_key))
+            or label_map.get(("cluster_id", "", cluster_id))
+            or {}
+        )
+        top_terms = list(label_info.get("top_terms") or [])
+        state_docs[state_id] = doc_ids
+        rows.append(
+            {
+                "schema_version": EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "state_id": state_id,
+                "slice_id": slice_id,
+                "slice_index": int(slice_index[slice_id]),
+                "cluster_key": cluster_key,
+                "cluster_label": str(label_info.get("label") or cluster_key),
+                "doc_count": int(len(doc_ids)),
+                "term_count": int(label_info.get("term_count") or len(top_terms)),
+                "top_terms": json.dumps(top_terms, ensure_ascii=True),
+                "cluster_uid": cluster_key,
+                "cluster_id": cluster_id,
+                "level": state_level,
+                "representative_work_ids": json.dumps(sorted(doc_ids)[:representative_work_limit], ensure_ascii=True),
+                "source_cluster_key": cluster_key,
+                "warning_flags": "",
+            }
+        )
+    if not rows:
+        raise ValueError("slice-local membership evidence produced no active cluster states")
+
+    state_evidence = pd.DataFrame(rows).sort_values(["slice_index", "cluster_key"], kind="stable").reset_index(drop=True)
+    slices = _update_slice_counts(slices, state_evidence)
+    ordered_slices = slices.sort_values("slice_index", kind="stable")
+    durations = (
+        pd.to_numeric(ordered_slices["end_year"], errors="coerce")
+        - pd.to_numeric(ordered_slices["start_year"], errors="coerce")
+        + 1
+    ).dropna()
+    start_diffs = pd.to_numeric(ordered_slices["start_year"], errors="coerce").diff().dropna()
+    positive_steps = [int(value) for value in start_diffs.tolist() if int(value) > 0]
+    periodization = {
+        "unit": "year",
+        "window_years": int(durations.max()) if not durations.empty else 1,
+        "step_years": int(min(positive_steps)) if positive_steps else 1,
+        "start_year": int(slices["start_year"].min()),
+        "end_year": int(slices["end_year"].max()),
+        "state_method": "slice_local_membership",
+        "include_unknown_year": False,
+    }
+    entity_scope = {
+        "cluster_level": level,
+        "cluster_id_namespace": "slice_local_membership",
+        "document_universe": "slice_local_membership_rows",
+        "filter_refs": [],
+    }
+    transforms = [
+        {"step": "normalize_slice_local_membership", "cluster_column": selected_cluster_column},
+        {"step": "derive_slice_local_cluster_states"},
+        {"step": "write_state_document_membership"},
+    ]
+    return EvolutionEvidenceTables(
+        evolution_id=evolution_id,
+        slices=slices.reset_index(drop=True),
+        state_evidence=state_evidence,
+        state_membership=_state_membership_rows(evolution_id, state_evidence, state_docs),
+        periodization=periodization,
         entity_scope=entity_scope,
         transforms=transforms,
     )
@@ -2081,6 +2417,7 @@ __all__ = [
     "build_evidence_backed_evolution",
     "build_evolution_state_table",
     "build_membership_projection_evolution",
+    "build_slice_local_membership_evidence",
     "build_slice_membership_evidence",
     "EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION",
     "build_evolution_transition_table",

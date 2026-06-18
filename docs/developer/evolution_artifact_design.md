@@ -79,9 +79,14 @@ fixture contract for implementation and release gates.
 
 Current implementation scope:
 
-- time slices are yearly point slices only (`window_years=1`, `step_years=1`);
-- static membership projection supports `projected_cluster_identity` as the
+- membership projection supports yearly point slices
+  (`window_years=1`, `step_years=1`);
+- periodized membership evidence supports yearly or rolling-year windows for
+  document-overlap matching;
+- static membership projection supports `projected_cluster_identity` as one
   transition metric;
+- externally generated or future internally generated slice-local membership
+  can be normalized into state evidence and matched by document overlap;
 - document-overlap transition derivation is available when slice-local state
   evidence and complete state-document membership are supplied explicitly.
 - `state_membership.parquet` is optional. It records state-document membership
@@ -603,6 +608,11 @@ lineage from raw records.
   validated, web-loadable `evolution/` artifact in one command. Because
   document-overlap continuity needs overlapping document universes, this CLI
   defaults to 2-year rolling windows unless `--periodization` is provided.
+- `sciscape evolution-from-slice-membership <result_root>
+  <slice_membership>` builds the same validated `evolution/` artifact from
+  already slice-local membership rows. The input must include `slice_id`, a
+  document id, and a cluster column, plus either explicit slice metadata or
+  parseable year values in `slice_id`.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
 - `/api/jobs/{job_id}/evolution` exposes optional `state_membership.parquet`
@@ -626,6 +636,14 @@ lineage from raw records.
   evidence builder with the document-overlap evolution writer so applications
   can create the full validated artifact without manually materializing
   intermediate evidence files.
+- `sciscape.evolution.build_slice_local_membership_evidence` builds
+  schema-ready time-slice, state-evidence, and state-document membership tables
+  from already slice-local clustering outputs. It treats cluster ids as
+  slice-scoped and relies on document-overlap evidence for continuity.
+- `write_slice_local_membership_evolution_artifacts` combines that slice-local
+  membership bridge with the document-overlap evolution writer so future
+  per-slice reclustering outputs can become web-loadable evolution artifacts
+  without precomputing transition tables.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.
@@ -662,12 +680,14 @@ time-slice-specific clustering or matching evidence. The document-overlap
 transition evidence builder and writer are the first reusable richer-matching
 path: they require complete state-document membership by default and can opt
 into incomplete membership only with warning flags. `sciscape evolution-evidence`
-now creates periodized state-membership inputs from existing membership, and
-`sciscape evolution-from-membership` can write the validated artifact directly.
-Full slice-local reclustering is still a future integration step rather than a
-default claim. Split, merge, and ambiguous validation are covered by the
-synthetic smoke fixture, document-overlap unit tests, and the document-overlap
-writer test.
+now creates periodized state-membership inputs from existing membership,
+`sciscape evolution-from-membership` can write the validated artifact directly,
+and `sciscape evolution-from-slice-membership` can do the same for externally
+or future internally generated slice-local membership. The default slice-local
+reclustering runner is still a future integration step rather than a default
+claim. Split, merge, and ambiguous validation are covered by the synthetic
+smoke fixture, document-overlap unit tests, and the document-overlap writer
+test.
 
 ## Open Questions
 

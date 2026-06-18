@@ -14,6 +14,7 @@ from sciscape.cli import (
     _run_evolution,
     _run_evolution_evidence,
     _run_evolution_from_membership,
+    _run_evolution_from_slice_membership,
     _run_matrix,
     _run_query,
     _run_visualize,
@@ -63,6 +64,9 @@ class TestBuildParser:
             "landscape",
             "visualize",
             "viewer",
+            "evolution-evidence",
+            "evolution-from-membership",
+            "evolution-from-slice-membership",
             "evolution",
             "matrix",
             "bundle",
@@ -96,6 +100,12 @@ class TestBuildParser:
             return ["viewer"]
         if cmd == "evolution":
             return ["evolution", "result", "slices.parquet", "states.parquet", "transitions.parquet"]
+        if cmd == "evolution-evidence":
+            return ["evolution-evidence", "records.parquet", "membership.parquet"]
+        if cmd == "evolution-from-membership":
+            return ["evolution-from-membership", "result", "records.parquet", "membership.parquet"]
+        if cmd == "evolution-from-slice-membership":
+            return ["evolution-from-slice-membership", "result", "slice_membership.parquet"]
         if cmd == "matrix":
             return ["matrix", "wrap-term-cooccurrence", "result"]
         if cmd == "bundle":
@@ -915,6 +925,137 @@ class TestEvolutionFromMembershipArgs:
         assert validation["counts"]["transitions"] == 2
         assert validation["counts"]["state_membership_rows"] == 8
         assert validation["event_counts"]["continuation"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Evolution from slice-local membership subcommand
+# ---------------------------------------------------------------------------
+
+class TestEvolutionFromSliceMembershipArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args([
+            "evolution-from-slice-membership",
+            "result",
+            "slice_membership.parquet",
+        ])
+        assert args.command == "evolution-from-slice-membership"
+        assert args.result_root == Path("result")
+        assert args.slice_membership_table == Path("slice_membership.parquet")
+        assert args.metric == "overlap_min"
+        assert args.slice_id_column == "slice_id"
+        assert args.default_level == "cluster"
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "evolution-from-slice-membership",
+            "result",
+            "slice_membership.csv",
+            "--slices-table",
+            "slices.csv",
+            "--keywords-table",
+            "keywords.csv",
+            "--evolution-id",
+            "slice_terms",
+            "--metric",
+            "jaccard_doc_overlap",
+            "--title",
+            "Slice Terms",
+            "--output-dir",
+            "custom_evolution",
+            "--temporal-manifest",
+            "temporal/temporal_manifest.json",
+            "--cluster-column",
+            "cluster_id",
+            "--uid-column",
+            "work_id",
+            "--slice-id-column",
+            "period_id",
+            "--default-level",
+            "micro",
+            "--representative-work-limit",
+            "5",
+            "--min-transition-score",
+            "0.25",
+            "--min-support-count",
+            "2",
+            "--matching-method",
+            '{"tie_policy":"keep_all"}',
+            "--event-rules",
+            '{"ambiguous_score_margin":0.1}',
+            "--entity-scope",
+            '{"cluster_level":"micro"}',
+            "--allow-incomplete-state-membership",
+            "--json",
+        ])
+        assert args.slices_table == Path("slices.csv")
+        assert args.keywords_table == Path("keywords.csv")
+        assert args.evolution_id == "slice_terms"
+        assert args.metric == "jaccard_doc_overlap"
+        assert args.title == "Slice Terms"
+        assert args.output_dir == Path("custom_evolution")
+        assert args.temporal_manifest == Path("temporal/temporal_manifest.json")
+        assert args.cluster_column == "cluster_id"
+        assert args.uid_column == "work_id"
+        assert args.slice_id_column == "period_id"
+        assert args.default_level == "micro"
+        assert args.representative_work_limit == 5
+        assert args.min_transition_score == pytest.approx(0.25)
+        assert args.min_support_count == 2
+        assert args.allow_incomplete_state_membership is True
+        assert args.json is True
+
+    def test_run_evolution_from_slice_membership_writes_valid_artifact(self, parser, tmp_path):
+        root = tmp_path / "result"
+        root.mkdir()
+        slice_membership_path = tmp_path / "slice_membership.csv"
+        pd.DataFrame(
+            [
+                *[
+                    {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": f"A{i}", "cluster_id": "A"}
+                    for i in range(4)
+                ],
+                *[
+                    {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"A{i}", "cluster_id": "B1"}
+                    for i in range(2)
+                ],
+                *[
+                    {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"A{i}", "cluster_id": "B2"}
+                    for i in range(2, 4)
+                ],
+                *[
+                    {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": f"C{i}", "cluster_id": "C"}
+                    for i in range(3)
+                ],
+                *[
+                    {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"C{i}", "cluster_id": "C"}
+                    for i in range(3)
+                ],
+            ]
+        ).to_csv(slice_membership_path, index=False)
+
+        args = parser.parse_args([
+            "evolution-from-slice-membership",
+            str(root),
+            str(slice_membership_path),
+            "--cluster-column",
+            "cluster_id",
+            "--default-level",
+            "micro",
+            "--min-transition-score",
+            "0.5",
+            "--min-support-count",
+            "2",
+            "--evolution-id",
+            "slice_membership_cli_evolution",
+        ])
+        _run_evolution_from_slice_membership(args)
+
+        validation = validate_evolution_artifact(root / "evolution" / "evolution_manifest.json").to_dict()
+        assert validation["status"] == "passed"
+        assert validation["counts"]["slices"] == 2
+        assert validation["counts"]["transitions"] == 3
+        assert validation["counts"]["state_membership_rows"] == 14
+        assert validation["event_counts"]["split"] == 1
 
 
 # ---------------------------------------------------------------------------

@@ -63,6 +63,7 @@ from sciscape.artifacts import (
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_narrative_evidence_artifacts,
+    write_slice_local_membership_evolution_artifacts,
     write_slice_membership_evolution_artifacts,
     write_temporal_artifacts,
     write_artifact_contract,
@@ -1400,6 +1401,67 @@ def test_write_slice_membership_evolution_artifacts_promotes_stable_feature(tmp_
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["normalization"] == "periodized_slice_membership_document_overlap"
     assert "project_membership_to_time_slices" in [row["step"] for row in evolution_manifest["transforms"]]
+
+
+def test_write_slice_local_membership_evolution_artifacts_promotes_stable_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    slice_membership = pd.DataFrame(
+        [
+            *[
+                {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": f"A{i}", "cluster_id": "A"}
+                for i in range(4)
+            ],
+            *[
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"A{i}", "cluster_id": "B1"}
+                for i in range(2)
+            ],
+            *[
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"A{i}", "cluster_id": "B2"}
+                for i in range(2, 4)
+            ],
+            *[
+                {"slice_id": "year:2020", "slice_index": 0, "start_year": 2020, "end_year": 2020, "uid": f"C{i}", "cluster_id": "C"}
+                for i in range(3)
+            ],
+            *[
+                {"slice_id": "year:2021", "slice_index": 1, "start_year": 2021, "end_year": 2021, "uid": f"C{i}", "cluster_id": "C"}
+                for i in range(3)
+            ],
+        ]
+    )
+    source_path = root / "evolution_inputs" / "slice_membership.parquet"
+    source_path.parent.mkdir(parents=True)
+    slice_membership.to_parquet(source_path, index=False)
+
+    written = write_slice_local_membership_evolution_artifacts(
+        root,
+        evolution_id="slice_local_overlap",
+        slice_membership_df=slice_membership,
+        metric="overlap_min",
+        matching_method={"min_transition_score": 0.5, "min_support_count": 2},
+        source_artifacts=[{"role": "slice_membership", "path": "evolution_inputs/slice_membership.parquet"}],
+        default_level="micro",
+    )
+
+    assert written["qa"]["status"] == "passed"
+    transitions = pd.read_parquet(written["transitions_path"])
+    states = pd.read_parquet(written["cluster_states_path"])
+    state_membership = pd.read_parquet(written["state_membership_path"])
+    assert len(states) == 5
+    assert len(state_membership) == 14
+    assert len(transitions) == 3
+
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["event_counts"]["split"] == 1
+    assert validation["counts"]["state_membership_rows"] == 14
+
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
+    evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert evolution_manifest["matching_method"]["normalization"] == "slice_local_membership_document_overlap"
+    assert evolution_manifest["slice_method"]["state_method"] == "slice_local_membership"
+    assert "derive_slice_local_cluster_states" in [row["step"] for row in evolution_manifest["transforms"]]
 
 
 def test_result_artifact_inference_accepts_evolution_manifest_path(tmp_path):
