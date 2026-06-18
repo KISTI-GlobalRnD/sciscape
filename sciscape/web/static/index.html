@@ -2325,11 +2325,16 @@ body {
   stroke: rgba(69, 82, 102, 0.36);
   stroke-width: 2;
   fill: none;
+  cursor: pointer;
 }
 .evolution-map-edge.relation-continuation { stroke: rgba(43, 168, 156, 0.48); }
 .evolution-map-edge.relation-split-child,
 .evolution-map-edge.relation-merge-parent,
 .evolution-map-edge.relation-ambiguous { stroke: rgba(69, 82, 102, 0.46); stroke-dasharray: 8 5; }
+.evolution-map-edge.selected {
+  stroke: var(--ink);
+  stroke-opacity: 0.82;
+}
 .evolution-map-node {
   fill: var(--teal);
   stroke: var(--white);
@@ -7071,10 +7076,16 @@ function renderEvolutionMap(data) {
   const edgeLayer = edges.map(edge => {
     const relation = evolutionMapClassToken(edge.relation || 'transition');
     const width = Math.max(1.4, Math.min(4.2, 1.4 + Number(edge.score || 0) * 2.2));
-    return '<path class="evolution-map-edge relation-' + escAttr(relation) + '" d="M ' +
+    const sourceId = String(edge.source_state_id || '');
+    const targetId = String(edge.target_state_id || edge.source_state_id || '');
+    const selected = [sourceId, targetId].includes(String(currentEvolutionSelectedStateId || '')) ? ' selected' : '';
+    const sourceLabel = evolutionStateLabel(nodesById.get(sourceId), sourceId);
+    const targetLabel = evolutionStateLabel(nodesById.get(targetId), targetId);
+    return '<path class="evolution-map-edge relation-' + escAttr(relation + selected) + '" d="M ' +
       xOf(edge.source_x) + ' ' + yOf(edge.source_y) + ' L ' + xOf(edge.target_x) + ' ' + yOf(edge.target_y) +
-      '" style="stroke-width:' + width.toFixed(2) + '"><title>' +
-      esc(edge.transition_id || 'transition') + ' / ' + esc(edge.relation || '') + ' / score ' +
+      '" style="stroke-width:' + width.toFixed(2) + '" tabindex="0" role="button" onclick="' +
+      evolutionSelectHandler(targetId) + '"><title>' +
+      esc(sourceLabel) + ' -> ' + esc(targetLabel) + ' / ' + esc(edge.relation || '') + ' / score ' +
       esc(formatEvolutionScore(edge.score)) + '</title></path>';
   }).join('');
   const eventLayer = events.map(event => {
