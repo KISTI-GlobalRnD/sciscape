@@ -1083,7 +1083,8 @@ Success:
 - every claim links to evidence
 - missing evidence appears as a caveat
 - generated narratives include prompt/model metadata when LLMs are used
-- narrative edits are recorded as review decisions
+- narrative edits are recorded as review decisions and the latest decision is
+  readable from the cluster narrative view
 
 Partial:
 

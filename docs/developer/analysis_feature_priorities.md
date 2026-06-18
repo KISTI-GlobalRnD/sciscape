@@ -267,6 +267,8 @@ Completion criteria:
 - Narrative evidence-reference outputs can be validated independently from the
   UI and without generation.
 - Missing or weak evidence is visible to the user.
+- Review decisions round-trip from UI/API writeback into cluster narrative
+  readback.
 - Narrative artifacts can be regenerated after cleaning, matrix, or evolution
   changes.
 

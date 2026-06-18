@@ -264,6 +264,8 @@ Current status:
   ready/review/blocked clusters, syncs the `atlas_review` URL state, and
   provides direct and next-target navigation to clusters that need analyst
   review.
+- The Narrative review block writes claim decisions, displays pending/saved/failed
+  feedback, and reads back the latest persisted decision for the selected claim.
 
 Remaining implementation order:
 
