@@ -7833,6 +7833,130 @@ def _evolution_required_fields(manifest: Mapping[str, Any]) -> set[str]:
     return {key for key in required if manifest.get(key) in (None, "")}
 
 
+def _evolution_matching_diagnostics_checks(
+    manifest: Mapping[str, Any],
+    *,
+    blocking_issues: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    matching_method = manifest.get("matching_method")
+    if not isinstance(matching_method, Mapping):
+        blocking_issues.append(
+            _evolution_issue(
+                "invalid_evolution_matching_method",
+                "blocking",
+                "Evolution matching_method must be an object.",
+                artifact="manifest",
+            )
+        )
+        return {"status": "blocked", "declared": False}
+    diagnostics = matching_method.get("diagnostics")
+    if diagnostics is None:
+        return {"status": "skipped", "declared": False}
+    if not isinstance(diagnostics, Mapping):
+        blocking_issues.append(
+            _evolution_issue(
+                "invalid_evolution_matching_diagnostics",
+                "blocking",
+                "matching_method.diagnostics must be an object when declared.",
+                artifact="manifest",
+            )
+        )
+        return {"status": "blocked", "declared": True}
+
+    def _diagnostic_non_negative_int(value: Any) -> int | None:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(number) or number != int(number) or number < 0:
+            return None
+        return int(number)
+
+    required_ints = [
+        "state_count",
+        "candidate_transition_rows",
+        "retained_transition_rows",
+        "dropped_transition_rows",
+        "min_support_count",
+        "slice_pair_count",
+    ]
+    invalid_fields = []
+    for field in required_ints:
+        if _diagnostic_non_negative_int(diagnostics.get(field)) is None:
+            invalid_fields.append(field)
+    score = _coerce_float(diagnostics.get("min_transition_score"))
+    if score is None or not math.isfinite(score) or score < 0.0 or score > 1.0:
+        invalid_fields.append("min_transition_score")
+    if not str(diagnostics.get("source") or "").strip():
+        invalid_fields.append("source")
+    for field in ("relation_counts", "warning_flag_counts"):
+        counts = diagnostics.get(field, {})
+        if not isinstance(counts, Mapping):
+            invalid_fields.append(field)
+            continue
+        for key, value in counts.items():
+            if not str(key).strip():
+                invalid_fields.append(field)
+                break
+            if _diagnostic_non_negative_int(value) is None:
+                invalid_fields.append(field)
+                break
+    slice_pairs = diagnostics.get("slice_pairs", [])
+    if not isinstance(slice_pairs, list):
+        invalid_fields.append("slice_pairs")
+    else:
+        for pair in slice_pairs:
+            if not isinstance(pair, Mapping):
+                invalid_fields.append("slice_pairs")
+                break
+            pair_invalid = False
+            for field in ("candidate_count", "retained_count", "dropped_count", "source_slice_index", "target_slice_index"):
+                if _diagnostic_non_negative_int(pair.get(field)) is None:
+                    pair_invalid = True
+                    break
+            if pair_invalid or not str(pair.get("source_slice_id") or "").strip() or not str(pair.get("target_slice_id") or "").strip():
+                invalid_fields.append("slice_pairs")
+                break
+
+    if invalid_fields:
+        blocking_issues.append(
+            _evolution_issue(
+                "invalid_evolution_matching_diagnostics",
+                "blocking",
+                f"Invalid matching_method.diagnostics fields: {sorted(set(invalid_fields))}",
+                artifact="manifest",
+            )
+        )
+        return {"status": "blocked", "declared": True}
+
+    retained_rows = _diagnostic_non_negative_int(diagnostics.get("retained_transition_rows")) or 0
+    candidate_rows = _diagnostic_non_negative_int(diagnostics.get("candidate_transition_rows")) or 0
+    dropped_rows = _diagnostic_non_negative_int(diagnostics.get("dropped_transition_rows")) or 0
+    slice_pair_count = _diagnostic_non_negative_int(diagnostics.get("slice_pair_count")) or 0
+    if retained_rows > candidate_rows or dropped_rows > candidate_rows:
+        warnings.append(
+            _evolution_issue(
+                "inconsistent_evolution_matching_diagnostics",
+                "warning",
+                "matching_method.diagnostics transition counts are internally inconsistent.",
+                artifact="manifest",
+            )
+        )
+    if isinstance(slice_pairs, list) and slice_pair_count != len(slice_pairs):
+        warnings.append(
+            _evolution_issue(
+                "inconsistent_evolution_matching_diagnostics",
+                "warning",
+                "matching_method.diagnostics slice_pair_count does not match slice_pairs length.",
+                artifact="manifest",
+            )
+        )
+    return {"status": "passed", "declared": True}
+
+
 def _evolution_read_parquet(
     path: Path,
     *,
@@ -8481,6 +8605,11 @@ def validate_evolution_artifact(path: str | Path) -> EvolutionArtifactValidation
         transitions,
         manifest=manifest,
         blocking_issues=blocking_issues,
+    )
+    checks["matching_diagnostics"] = _evolution_matching_diagnostics_checks(
+        manifest,
+        blocking_issues=blocking_issues,
+        warnings=warnings,
     )
     checks["source_artifacts"] = _evolution_source_checks(result_root=result_root, manifest=manifest, warnings=warnings)
     checks["qa"] = _evolution_qa_checks(paths["qa"], warnings=warnings, blocking_issues=blocking_issues)

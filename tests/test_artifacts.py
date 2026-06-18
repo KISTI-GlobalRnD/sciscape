@@ -1166,6 +1166,43 @@ def test_write_evolution_synthetic_smoke_covers_all_event_types(tmp_path):
     assert manifest["artifacts"]["evolution"]["schema_version"] == EVOLUTION_MANIFEST_SCHEMA_VERSION
 
 
+def test_validate_evolution_artifact_blocks_invalid_matching_diagnostics(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    written = write_evolution_synthetic_smoke_artifact(root)
+    manifest_path = written["manifest_path"]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["matching_method"]["diagnostics"] = {
+        "source": "",
+        "state_count": 15,
+        "candidate_transition_rows": "bad",
+        "retained_transition_rows": 9,
+        "dropped_transition_rows": 0,
+        "min_transition_score": 0.5,
+        "min_support_count": 1,
+        "slice_pair_count": 1,
+        "slice_pairs": [
+            {
+                "source_slice_id": "year:2020",
+                "target_slice_id": "year:2021",
+                "source_slice_index": 0,
+                "target_slice_index": 1,
+                "candidate_count": 9,
+                "retained_count": 9,
+                "dropped_count": 0,
+            }
+        ],
+        "relation_counts": {"continuation": 3},
+        "warning_flag_counts": {},
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    validation = validate_evolution_artifact(manifest_path).to_dict()
+
+    assert validation["status"] == "blocked"
+    assert validation["checks"]["matching_diagnostics"]["status"] == "blocked"
+    assert any(issue["code"] == "invalid_evolution_matching_diagnostics" for issue in validation["blocking_issues"])
+
+
 def test_write_evolution_artifacts_promotes_stable_evolution_feature(tmp_path):
     root = _write_valid_result_root(tmp_path / "result")
     records = pd.read_parquet(root / "abstracts.parquet")
