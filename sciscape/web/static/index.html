@@ -2326,6 +2326,7 @@ body {
   stroke-width: 2;
   fill: none;
   cursor: pointer;
+  pointer-events: stroke;
 }
 .evolution-map-edge.relation-continuation { stroke: rgba(43, 168, 156, 0.48); }
 .evolution-map-edge.relation-split-child,
@@ -2359,6 +2360,12 @@ body {
 .evolution-map-event.selected {
   stroke: var(--ink);
   stroke-width: 3;
+}
+.evolution-map-edge:focus,
+.evolution-map-node:focus,
+.evolution-map-event:focus {
+  outline: none;
+  filter: drop-shadow(0 0 4px rgba(10, 15, 26, 0.32));
 }
 .evolution-map-label {
   fill: var(--graphite);
@@ -7081,10 +7088,11 @@ function renderEvolutionMap(data) {
     const selected = [sourceId, targetId].includes(String(currentEvolutionSelectedStateId || '')) ? ' selected' : '';
     const sourceLabel = evolutionStateLabel(nodesById.get(sourceId), sourceId);
     const targetLabel = evolutionStateLabel(nodesById.get(targetId), targetId);
+    const edgeLabel = sourceLabel + ' to ' + targetLabel + ', ' + String(edge.relation || 'transition');
     return '<path class="evolution-map-edge relation-' + escAttr(relation + selected) + '" d="M ' +
       xOf(edge.source_x) + ' ' + yOf(edge.source_y) + ' L ' + xOf(edge.target_x) + ' ' + yOf(edge.target_y) +
-      '" style="stroke-width:' + width.toFixed(2) + '" tabindex="0" role="button" onclick="' +
-      evolutionSelectHandler(targetId) + '"><title>' +
+      '" style="stroke-width:' + width.toFixed(2) + '" tabindex="0" role="button" aria-label="' + escAttr(edgeLabel) +
+      '" onclick="' + evolutionSelectHandler(targetId) + '" onkeydown="' + evolutionKeySelectHandler(targetId) + '"><title>' +
       esc(sourceLabel) + ' -> ' + esc(targetLabel) + ' / ' + esc(edge.relation || '') + ' / score ' +
       esc(formatEvolutionScore(edge.score)) + '</title></path>';
   }).join('');
@@ -7093,9 +7101,10 @@ function renderEvolutionMap(data) {
     const y = yOf(event.y);
     const stateId = String(event.state_id || '');
     const active = stateId && stateId === String(currentEvolutionSelectedStateId || '') ? ' selected' : '';
+    const eventLabel = String(event.event_type || 'event') + ' event ' + String(event.event_id || '');
     return '<circle class="evolution-map-event event-' + escAttr(evolutionMapClassToken(event.event_type || 'event') + active) +
-      '" cx="' + x + '" cy="' + y + '" r="4.2" tabindex="0" role="button" onclick="' +
-      evolutionSelectHandler(stateId) + '"><title>' +
+      '" cx="' + x + '" cy="' + y + '" r="4.2" tabindex="0" role="button" aria-label="' + escAttr(eventLabel) +
+      '" onclick="' + evolutionSelectHandler(stateId) + '" onkeydown="' + evolutionKeySelectHandler(stateId) + '"><title>' +
       esc(event.event_type || 'event') + ' / ' + esc(event.event_id || '') + '</title></circle>';
   }).join('');
   const nodeLayer = nodes.map(node => {
@@ -7106,9 +7115,10 @@ function renderEvolutionMap(data) {
     const selectedClass = stateId && stateId === String(currentEvolutionSelectedStateId || '') ? ' selected' : '';
     const radius = Math.max(4, Math.min(12, 4 + Math.sqrt(Math.max(1, Number(node.doc_count || 1))) * 1.4));
     const terms = Array.isArray(node.top_terms) && node.top_terms.length ? ' / ' + node.top_terms.slice(0, 4).join(', ') : '';
+    const nodeLabel = evolutionStateLabel(node, stateId) + ', ' + formatAtlasCount(node.doc_count || 0) + ' docs';
     return '<circle class="evolution-map-node' + escAttr(eventClass + selectedClass) + '" cx="' + x + '" cy="' + y +
-      '" r="' + radius.toFixed(1) + '" tabindex="0" role="button" onclick="' +
-      evolutionSelectHandler(stateId) + '"><title>' +
+      '" r="' + radius.toFixed(1) + '" tabindex="0" role="button" aria-label="' + escAttr(nodeLabel) +
+      '" onclick="' + evolutionSelectHandler(stateId) + '" onkeydown="' + evolutionKeySelectHandler(stateId) + '"><title>' +
       esc((node.cluster_label || node.cluster_key || node.state_id || 'state') + ' / ' +
         formatAtlasCount(node.doc_count || 0) + ' docs' + terms) + '</title></circle>';
   }).join('');
@@ -7285,6 +7295,16 @@ function clearEvolutionSelection() {
 
 function evolutionSelectHandler(stateId) {
   return 'selectEvolutionState(decodeURIComponent(\'' + encodeURIComponent(String(stateId || '')) + '\'))';
+}
+
+function evolutionKeySelectHandler(stateId) {
+  return 'evolutionActivateOnKey(event, decodeURIComponent(\'' + encodeURIComponent(String(stateId || '')) + '\'))';
+}
+
+function evolutionActivateOnKey(event, stateId) {
+  if (!event || !['Enter', ' '].includes(event.key)) return;
+  event.preventDefault();
+  selectEvolutionState(stateId);
 }
 
 function initialEvolutionTabRequested() {

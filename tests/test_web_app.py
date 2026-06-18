@@ -477,7 +477,12 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Clear selection" in response.text
     assert "focusedEvolutionMap" in response.text
     assert "evolution-map-edge.selected" in response.text
-    assert 'role="button" onclick="' in response.text
+    assert 'role="button" aria-label="' in response.text
+    assert '" onkeydown="' in response.text
+    assert "evolutionActivateOnKey" in response.text
+    assert "evolutionKeySelectHandler" in response.text
+    assert "aria-label" in response.text
+    assert "pointer-events: stroke" in response.text
     assert "Neighborhood" in response.text
     assert "evolution-map-panel" in response.text
     assert "evolution-detail-grid" in response.text
