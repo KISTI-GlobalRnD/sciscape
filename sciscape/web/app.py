@@ -1368,7 +1368,8 @@ def _cluster_narrative_view(
     reviewed_claim_count = 0
     for claim in target_claims:
         claim_id = str(claim.get("claim_id") or "")
-        claim_reviews = reviews_by_claim.get(claim_id, [])
+        target_claim_key = f"{target_id}\x1f{claim_id}"
+        claim_reviews = reviews_by_claim.get(target_claim_key) or reviews_by_claim.get(claim_id, [])
         latest_review = claim_reviews[-1] if claim_reviews else None
         review_count += len(claim_reviews)
         if claim_reviews:
@@ -1494,7 +1495,11 @@ def _load_narrative_payload_for_result(
         reviews,
         key=lambda row: (str(row.get("decided_at_utc") or ""), str(row.get("decision_id") or "")),
     ):
-        reviews_by_claim.setdefault(str(review.get("claim_id") or ""), []).append(review)
+        claim_id = str(review.get("claim_id") or "")
+        target_id = str(review.get("target_id") or "")
+        if target_id:
+            reviews_by_claim.setdefault(f"{target_id}\x1f{claim_id}", []).append(review)
+        reviews_by_claim.setdefault(claim_id, []).append(review)
     matched_targets = [
         target
         for target in targets

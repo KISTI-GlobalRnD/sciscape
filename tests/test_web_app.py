@@ -1974,6 +1974,20 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert review_decisions["claim_id"].tolist() == [claim_id]
     assert review_decisions["decision_type"].tolist() == ["accepted"]
     assert review_decisions["reason"].tolist() == ["evidence refs are sufficient"]
+    assert review_decisions["target_id"].notna().all()
+    assert review_decisions["cluster_uid"].tolist() == ["cluster:0"]
+    other_target_review = review_decisions.iloc[0].copy()
+    other_target_review["decision_id"] = "decision_other_target"
+    other_target_review["target_id"] = "target_other"
+    other_target_review["cluster_uid"] = "cluster:other"
+    other_target_review["decision_type"] = "rejected"
+    other_target_review["reviewer"] = "other"
+    other_target_review["reason"] = "other target should not override"
+    other_target_review["decided_at_utc"] = "2999-01-01T00:00:00+00:00"
+    pd.concat([review_decisions, pd.DataFrame([other_target_review])], ignore_index=True).to_parquet(
+        output_dir / "narrative" / "review_decisions.parquet",
+        index=False,
+    )
     claims_after_review = pd.read_parquet(output_dir / "narrative" / "claims.parquet")
     assert claims_after_review.loc[claims_after_review["claim_id"] == claim_id, "review_state"].iloc[0] == "accepted"
 
@@ -1991,6 +2005,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert latest_review["decision_type"] == "accepted"
     assert latest_review["reviewer"] == "tester"
     assert latest_review["reason"] == "evidence refs are sufficient"
+    assert latest_review["cluster_uid"] == "cluster:0"
 
     missing_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:missing/narrative")
     assert missing_narrative_response.status_code == 200

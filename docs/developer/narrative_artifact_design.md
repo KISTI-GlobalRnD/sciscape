@@ -421,6 +421,8 @@ Optional columns:
 - `old_support_state`;
 - `new_support_state`;
 - `evidence_ref_ids`;
+- `target_id`;
+- `cluster_uid`;
 - `review_batch_id`;
 - `warning_flags`.
 
@@ -428,6 +430,8 @@ Rules:
 
 - `decision_id` must be unique.
 - `claim_id` must resolve.
+- New review writeback should include `target_id` and `cluster_uid`; readers must
+  tolerate older review rows that only identify the resolved `claim_id`.
 - Edits that change claim meaning must keep or update evidence refs.
 - Rejected claims must not render as normal narrative text.
 
