@@ -5449,6 +5449,7 @@ function refreshAtlasNarrativeInspector(clusterUid) {
 async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
   if (!currentJobId || !clusterUid || !claimId) return;
   const decisionLabel = String(decisionType || '').replace('_', ' ');
+  const reviewReason = 'atlas inspector review action: ' + decisionLabel;
   currentAtlasNarrativeReviewStatus = {
     clusterUid,
     claimId,
@@ -5460,7 +5461,7 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
     const response = await fetch('/api/jobs/' + currentJobId + '/clusters/' + encodeURIComponent(clusterUid) + '/narrative/review', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({claim_id: claimId, decision_type: decisionType, reviewer: 'web'})
+      body: JSON.stringify({claim_id: claimId, decision_type: decisionType, reviewer: 'web', reason: reviewReason})
     });
     const payload = await response.json();
     if (!response.ok || payload.error) throw new Error(payload.error || 'narrative review failed');

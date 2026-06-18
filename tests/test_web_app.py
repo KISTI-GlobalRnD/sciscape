@@ -384,6 +384,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasNarrativeReviewStatus" in response.text
     assert "review saved:" in response.text
     assert "review failed:" in response.text
+    assert "atlas inspector review action:" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
@@ -1965,6 +1966,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     review_decisions = pd.read_parquet(output_dir / "narrative" / "review_decisions.parquet")
     assert review_decisions["claim_id"].tolist() == [claim_id]
     assert review_decisions["decision_type"].tolist() == ["accepted"]
+    assert review_decisions["reason"].tolist() == ["evidence refs are sufficient"]
     claims_after_review = pd.read_parquet(output_dir / "narrative" / "claims.parquet")
     assert claims_after_review.loc[claims_after_review["claim_id"] == claim_id, "review_state"].iloc[0] == "accepted"
 
