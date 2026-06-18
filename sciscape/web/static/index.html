@@ -7087,14 +7087,24 @@ function renderEvolutionMap(data) {
   }).join('');
   const truncated = map.truncated || {};
   const truncationNote = Object.entries(truncated).filter(([, value]) => value).map(([key]) => key).join(', ');
+  const totalNodes = Number(map.total_node_count || map.node_count || nodes.length);
+  const totalEdges = Number(map.total_edge_count || map.edge_count || edges.length);
+  const totalLineages = Number(map.total_lineage_count || map.lineage_count || lineages.length);
+  const hiddenCounts = [
+    Number(map.hidden_lineage_count || 0) > 0 ? formatAtlasCount(map.hidden_lineage_count) + ' hidden lineages' : '',
+    Number(map.hidden_node_count || 0) > 0 ? formatAtlasCount(map.hidden_node_count) + ' hidden states' : '',
+    Number(map.hidden_edge_count || 0) > 0 ? formatAtlasCount(map.hidden_edge_count) + ' hidden transitions' : '',
+  ].filter(Boolean).join(' / ');
   return '<div class="evolution-map-panel">' +
     '<div class="evolution-map-head">' +
       '<div><div class="evolution-map-title">Lineage time map</div>' +
       '<div class="evolution-map-meta">' + esc(map.layout || 'lineage_time_grid') + ' / ' +
-        formatAtlasCount(map.node_count || nodes.length) + ' states / ' +
-        formatAtlasCount(map.edge_count || edges.length) + ' transitions' +
+        formatAtlasCount(map.lineage_count || lineages.length) + '/' + formatAtlasCount(totalLineages) + ' lineages / ' +
+        formatAtlasCount(map.node_count || nodes.length) + '/' + formatAtlasCount(totalNodes) + ' states / ' +
+        formatAtlasCount(map.edge_count || edges.length) + '/' + formatAtlasCount(totalEdges) + ' transitions' +
         (map.focus_mode && map.focus_mode !== 'all' ? ' / focus ' + esc(map.focus_mode) : '') +
-        (truncationNote ? ' / truncated ' + esc(truncationNote) : '') + '</div></div>' +
+        (truncationNote ? ' / truncated ' + esc(truncationNote) : '') +
+        (hiddenCounts ? ' / ' + esc(hiddenCounts) : '') + '</div></div>' +
       '<div class="evolution-map-legend">' +
         '<span class="evolution-mini-tag">node docs</span>' +
         '<span class="evolution-mini-tag">edge score</span>' +

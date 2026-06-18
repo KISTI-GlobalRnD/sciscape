@@ -461,6 +461,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "evolutionLoadProfileQuery" in response.text
     assert "evolution_profile" in response.text
     assert "loaded within limits" in response.text
+    assert "hidden states" in response.text
     assert "selectEvolutionState" in response.text
     assert "currentEvolutionSelectedStateId" in response.text
     assert "applyEvolutionUrlState" in response.text
@@ -1974,6 +1975,11 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert evolution["evolution_map"]["node_count"] == 15
     assert evolution["evolution_map"]["edge_count"] == 9
     assert evolution["evolution_map"]["event_count"] == 8
+    assert evolution["evolution_map"]["total_lineage_count"] == 12
+    assert evolution["evolution_map"]["total_node_count"] == 15
+    assert evolution["evolution_map"]["total_edge_count"] == 9
+    assert evolution["evolution_map"]["hidden_node_count"] == 0
+    assert evolution["evolution_map"]["hidden_edge_count"] == 0
     assert evolution["evolution_map"]["slices"][0]["x"] == 0.0
     assert evolution["evolution_map"]["slices"][-1]["x"] == 1.0
     assert any(edge["relation"] == "split_child" for edge in evolution["evolution_map"]["edges"])
@@ -1982,6 +1988,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert bounded_evolution_response.status_code == 200
     bounded_evolution = bounded_evolution_response.json()
     assert bounded_evolution["evolution_map"]["node_count"] == 2
+    assert bounded_evolution["evolution_map"]["total_node_count"] == 15
+    assert bounded_evolution["evolution_map"]["hidden_node_count"] == 13
     assert bounded_evolution["evolution_map"]["truncated"]["nodes"] is True
 
     evolution_qa_download = client.get(f"/api/jobs/{job_id}/download/evolution/evolution_qa.json")
