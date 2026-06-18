@@ -8,6 +8,7 @@ Usage:
     sciscape landscape <edge_file> <abstract_parquet> [options]
     sciscape visualize <keyword_table> [options]
     sciscape viewer    [options]
+    sciscape evolution-evidence <records_table> <membership_table> [options]
     sciscape evolution <result_root> <slices_table> <state_evidence_table> [transition_evidence_table] [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
@@ -24,6 +25,7 @@ Examples:
     sciscape convert wos savedrecs.txt -o abstracts.parquet
     sciscape landscape edges.parquet abstracts.parquet -o workspace/output/landscape
     sciscape visualize keywords.parquet -o workspace/reports/keywords
+    sciscape evolution-evidence abstracts.parquet membership.parquet -o workspace/evolution_evidence
     sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
     sciscape evolution result slices.parquet states.parquet --derive-transitions document-overlap --state-membership-table state_membership.parquet
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
@@ -258,6 +260,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Write one standalone dashboard HTML instead of a multi-page report",
     )
     vz.add_argument("--open", action="store_true", help="Open the generated output in a browser")
+
+    # ---- evolution evidence ----
+    ee = sub.add_parser("evolution-evidence", help="Build slice-local evidence tables for evolution")
+    ee.add_argument("records_table", type=Path, help="Records/abstract table with uid and publication year")
+    ee.add_argument("membership_table", type=Path, help="Membership table with uid and cluster/cluster_* column")
+    ee.add_argument("-o", "--output-dir", type=Path, default=Path("evolution_evidence"), help="Output directory")
+    ee.add_argument("--keywords-table", type=Path, default=None, help="Optional keyword table for state labels")
+    ee.add_argument("--evolution-id", type=str, default="cluster_evolution", help="Evolution artifact ID")
+    ee.add_argument("--cluster-column", type=str, default=None, help="Membership cluster column (default: auto-detect)")
+    ee.add_argument("--uid-column", type=str, default=None, help="Record document ID column (default: auto-detect)")
+    ee.add_argument("--membership-uid-column", type=str, default=None, help="Membership document ID column (default: auto-detect)")
+    ee.add_argument(
+        "--representative-work-limit",
+        type=int,
+        default=50,
+        help="Max representative IDs stored in each state row (default: 50)",
+    )
+    ee.add_argument("--periodization", type=str, default=None, help="Inline JSON object or path for slice metadata")
+    ee.add_argument("--output-format", choices=["parquet", "csv"], default="parquet", help="Table output format")
+    ee.add_argument("--json", action="store_true", help="Print a JSON summary")
 
     # ---- evolution ----
     ev = sub.add_parser("evolution", help="Write artifact-backed cluster evolution tables")
@@ -880,6 +902,16 @@ def _read_table(path: Path) -> pd.DataFrame:
     )
 
 
+def _write_table(df: pd.DataFrame, path: Path, *, output_format: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if output_format == "parquet":
+        df.to_parquet(path, index=False)
+    elif output_format == "csv":
+        df.to_csv(path, index=False)
+    else:  # pragma: no cover
+        raise ValueError(f"Unsupported output format: {output_format}")
+
+
 def _read_keyword_table(path: Path) -> pd.DataFrame:
     try:
         return _read_table(path)
@@ -990,6 +1022,82 @@ def _read_json_object_arg(value: str | None, *, label: str) -> dict | None:
     if not isinstance(payload, dict):
         raise ValueError(f"{label} must be a JSON object")
     return payload
+
+
+def _run_evolution_evidence(args: argparse.Namespace) -> None:
+    from sciscape.evolution import build_slice_membership_evidence
+
+    try:
+        records = _read_table(args.records_table)
+        membership = _read_table(args.membership_table)
+        keywords = _read_table(args.keywords_table) if args.keywords_table is not None else None
+        periodization = _read_json_object_arg(args.periodization, label="--periodization")
+        evidence = build_slice_membership_evidence(
+            evolution_id=args.evolution_id,
+            records_df=records,
+            membership_df=membership,
+            keywords_df=keywords,
+            periodization=periodization,
+            cluster_column=args.cluster_column,
+            uid_column=args.uid_column,
+            membership_uid_column=args.membership_uid_column,
+            representative_work_limit=args.representative_work_limit,
+        )
+    except Exception as exc:
+        print(f"Could not build evolution evidence: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    output_dir = Path(args.output_dir)
+    suffix = "parquet" if args.output_format == "parquet" else "csv"
+    slices_path = output_dir / f"time_slices.{suffix}"
+    states_path = output_dir / f"state_evidence.{suffix}"
+    membership_path = output_dir / f"state_membership.{suffix}"
+    manifest_path = output_dir / "evolution_evidence_manifest.json"
+    try:
+        _write_table(evidence.slices, slices_path, output_format=args.output_format)
+        _write_table(evidence.state_evidence, states_path, output_format=args.output_format)
+        _write_table(evidence.state_membership, membership_path, output_format=args.output_format)
+        manifest = {
+            "schema_version": "sciscape_evolution_evidence_pack_v1",
+            "evolution_id": evidence.evolution_id,
+            "outputs": {
+                "time_slices": slices_path.name,
+                "state_evidence": states_path.name,
+                "state_membership": membership_path.name,
+            },
+            "counts": {
+                "slices": int(len(evidence.slices)),
+                "states": int(len(evidence.state_evidence)),
+                "state_membership_rows": int(len(evidence.state_membership)),
+            },
+            "periodization": evidence.periodization,
+            "entity_scope": evidence.entity_scope,
+            "transforms": evidence.transforms,
+        }
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    except Exception as exc:
+        print(f"Could not write evolution evidence: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    payload = {
+        "evolution_id": evidence.evolution_id,
+        "output_dir": str(output_dir),
+        "manifest_path": str(manifest_path),
+        "time_slices_path": str(slices_path),
+        "state_evidence_path": str(states_path),
+        "state_membership_path": str(membership_path),
+        "counts": manifest["counts"],
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+
+    print(f"Evolution evidence saved: {output_dir}")
+    print(f"  slices={manifest['counts']['slices']} → {slices_path}")
+    print(f"  states={manifest['counts']['states']} → {states_path}")
+    print(f"  state_membership_rows={manifest['counts']['state_membership_rows']} → {membership_path}")
+    print(f"  manifest → {manifest_path}")
 
 
 def _run_evolution(args: argparse.Namespace) -> None:
@@ -1325,6 +1433,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_viewer(args)
     elif args.command == "visualize":
         _run_visualize(args)
+    elif args.command == "evolution-evidence":
+        _run_evolution_evidence(args)
     elif args.command == "evolution":
         _run_evolution(args)
     elif args.command == "export":

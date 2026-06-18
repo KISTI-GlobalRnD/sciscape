@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from sciscape.artifacts import validate_evolution_artifact, validate_export_manifest, validate_matrix_artifact
-from sciscape.cli import _build_parser, _run_bundle, _run_evolution, _run_matrix, _run_query, _run_visualize
+from sciscape.cli import _build_parser, _run_bundle, _run_evolution, _run_evolution_evidence, _run_matrix, _run_query, _run_visualize
 
 
 @pytest.fixture
@@ -689,6 +689,104 @@ class TestBundleArgs:
         assert payload["bundle_path"].endswith("exports/vosviewer_bundle/vosviewer_bundle.zip")
         assert payload["inventory_path"].endswith("exports/vosviewer_bundle/vosviewer_bundle_inventory.json")
         assert payload["manifest_path"].endswith("exports/vosviewer_bundle/export_manifest.json")
+
+
+# ---------------------------------------------------------------------------
+# Evolution evidence subcommand
+# ---------------------------------------------------------------------------
+
+class TestEvolutionEvidenceArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args([
+            "evolution-evidence",
+            "records.parquet",
+            "membership.parquet",
+        ])
+        assert args.command == "evolution-evidence"
+        assert args.records_table == Path("records.parquet")
+        assert args.membership_table == Path("membership.parquet")
+        assert args.output_dir == Path("evolution_evidence")
+        assert args.output_format == "parquet"
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "evolution-evidence",
+            "records.csv",
+            "membership.csv",
+            "--keywords-table",
+            "keywords.csv",
+            "--evolution-id",
+            "rolling_terms",
+            "--cluster-column",
+            "cluster_micro",
+            "--uid-column",
+            "work_id",
+            "--membership-uid-column",
+            "paper_id",
+            "--representative-work-limit",
+            "5",
+            "--periodization",
+            '{"window_years":2,"step_years":1}',
+            "--output-format",
+            "csv",
+            "-o",
+            "evidence",
+            "--json",
+        ])
+        assert args.keywords_table == Path("keywords.csv")
+        assert args.evolution_id == "rolling_terms"
+        assert args.cluster_column == "cluster_micro"
+        assert args.uid_column == "work_id"
+        assert args.membership_uid_column == "paper_id"
+        assert args.representative_work_limit == 5
+        assert args.periodization == '{"window_years":2,"step_years":1}'
+        assert args.output_format == "csv"
+        assert args.output_dir == Path("evidence")
+        assert args.json is True
+
+    def test_run_evolution_evidence_writes_tables_from_csv(self, parser, tmp_path):
+        records_path = tmp_path / "records.csv"
+        membership_path = tmp_path / "membership.csv"
+        keywords_path = tmp_path / "keywords.csv"
+        output_dir = tmp_path / "evidence"
+        pd.DataFrame(
+            {
+                "uid": ["D0", "D1", "D2", "D3"],
+                "pubyear": [2020, 2021, 2021, 2022],
+            }
+        ).to_csv(records_path, index=False)
+        pd.DataFrame(
+            {
+                "uid": ["D0", "D1", "D2", "D3"],
+                "cluster_micro": ["A", "A", "B", "A"],
+            }
+        ).to_csv(membership_path, index=False)
+        pd.DataFrame({"cluster_id": ["A", "B"], "term": ["alpha", "beta"]}).to_csv(keywords_path, index=False)
+
+        args = parser.parse_args([
+            "evolution-evidence",
+            str(records_path),
+            str(membership_path),
+            "--keywords-table",
+            str(keywords_path),
+            "--cluster-column",
+            "cluster_micro",
+            "--periodization",
+            '{"window_years":2}',
+            "-o",
+            str(output_dir),
+        ])
+        _run_evolution_evidence(args)
+
+        slices = pd.read_parquet(output_dir / "time_slices.parquet")
+        states = pd.read_parquet(output_dir / "state_evidence.parquet")
+        state_membership = pd.read_parquet(output_dir / "state_membership.parquet")
+        manifest = json.loads((output_dir / "evolution_evidence_manifest.json").read_text(encoding="utf-8"))
+        assert slices["slice_id"].tolist() == ["year:2020-2021", "year:2021-2022"]
+        assert set(states["cluster_key"]) == {"micro:A", "micro:B"}
+        assert set(state_membership["schema_version"]) == {"sciscape_evolution_state_membership_v1"}
+        assert manifest["schema_version"] == "sciscape_evolution_evidence_pack_v1"
+        assert manifest["counts"]["state_membership_rows"] == len(state_membership)
 
 
 # ---------------------------------------------------------------------------

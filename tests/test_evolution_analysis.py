@@ -13,6 +13,7 @@ from sciscape.evolution import (
     build_evolution_state_table,
     build_evolution_transition_table,
     build_membership_projection_evolution,
+    build_slice_membership_evidence,
     classify_evolution_events,
     label_evolution_transition_relations,
     rank_evolution_transitions,
@@ -26,8 +27,84 @@ def test_evolution_is_public_lazy_submodule():
     assert sciscape.evolution.build_evolution_state_table is build_evolution_state_table
     assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
+    assert sciscape.evolution.build_slice_membership_evidence is build_slice_membership_evidence
     assert sciscape.evolution.label_evolution_transition_relations is label_evolution_transition_relations
     assert sciscape.evolution.rank_evolution_transitions is rank_evolution_transitions
+
+
+def test_build_slice_membership_evidence_outputs_document_overlap_inputs():
+    records = pd.DataFrame(
+        {
+            "uid": ["D0", "D1", "D2", "D3", "D4"],
+            "pubyear": [2020, 2021, 2021, 2022, 2022],
+        }
+    )
+    membership = pd.DataFrame(
+        {
+            "uid": ["D0", "D1", "D2", "D3", "D4"],
+            "cluster_micro": ["A", "A", "B", "A", "B"],
+        }
+    )
+    keywords = pd.DataFrame(
+        {
+            "cluster_id": ["A", "A", "B"],
+            "term": ["alpha", "alloy", "battery"],
+        }
+    )
+
+    evidence = build_slice_membership_evidence(
+        evolution_id="rolling evidence",
+        records_df=records,
+        membership_df=membership,
+        keywords_df=keywords,
+        cluster_column="cluster_micro",
+        periodization={"window_years": 2, "step_years": 1},
+        representative_work_limit=1,
+    )
+
+    assert evidence.evolution_id == "rolling_evidence"
+    assert evidence.periodization["window_years"] == 2
+    assert evidence.entity_scope["cluster_level"] == "micro"
+    assert evidence.slices["slice_id"].tolist() == ["year:2020-2021", "year:2021-2022"]
+    assert evidence.slices["active_cluster_count"].tolist() == [2, 2]
+    assert set(evidence.state_evidence["cluster_key"]) == {"micro:A", "micro:B"}
+    state_a = evidence.state_evidence[evidence.state_evidence["cluster_key"] == "micro:A"].iloc[0]
+    assert state_a["cluster_label"] == "alpha"
+    assert state_a["representative_work_ids"] == '["D0"]'
+    assert len(evidence.state_membership) == 7
+    assert set(evidence.state_membership["schema_version"]) == {"sciscape_evolution_state_membership_v1"}
+
+    result = build_document_overlap_evolution(
+        evolution_id="rolling overlap",
+        slices=evidence.slices,
+        state_evidence=evidence.state_evidence,
+        state_membership=evidence.state_membership,
+        metric="overlap_min",
+        matching_method={"min_transition_score": 0.5, "min_support_count": 1},
+        entity_scope=evidence.entity_scope,
+        periodization=evidence.periodization,
+        transforms=evidence.transforms,
+        default_level="micro",
+    )
+
+    assert result.matching_method["metric"] == "overlap_min"
+    assert not result.transitions.empty
+    assert "continuation" in set(result.events["event_type"])
+    assert {"write_state_document_membership", "derive_transition_evidence_from_state_document_membership"} <= {
+        item["step"] for item in result.transforms
+    }
+
+
+def test_build_slice_membership_evidence_rejects_missing_cluster_column():
+    records = pd.DataFrame({"uid": ["D0"], "pubyear": [2020]})
+    membership = pd.DataFrame({"uid": ["D0"], "label": ["A"]})
+
+    with pytest.raises(ValueError, match="cluster or cluster_"):
+        build_slice_membership_evidence(
+            evolution_id="bad",
+            records_df=records,
+            membership_df=membership,
+        )
 
 
 def test_membership_projection_evolution_builds_in_memory_tables():

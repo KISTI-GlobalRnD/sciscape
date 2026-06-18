@@ -104,6 +104,19 @@ class EvolutionAnalysisResult:
     state_membership: pd.DataFrame | None = None
 
 
+@dataclass(frozen=True)
+class EvolutionEvidenceTables:
+    """Schema-ready time-slice evidence tables for evolution writers."""
+
+    evolution_id: str
+    slices: pd.DataFrame
+    state_evidence: pd.DataFrame
+    state_membership: pd.DataFrame
+    periodization: dict[str, Any]
+    entity_scope: dict[str, Any]
+    transforms: list[dict[str, Any]]
+
+
 def _safe_id(value: object, *, fallback: str = "result") -> str:
     text = str(value or "").strip()
     safe = re.sub(r"[^A-Za-z0-9_.:-]+", "_", text).strip("_.:-")
@@ -247,6 +260,17 @@ def _uid_column(records: pd.DataFrame) -> str | None:
     return None
 
 
+def _resolve_uid_column(df: pd.DataFrame, requested: str | None, *, label: str) -> str:
+    if requested:
+        if requested not in df.columns:
+            raise ValueError(f"{label} missing requested uid column: {requested}")
+        return requested
+    column = _uid_column(df)
+    if column is None:
+        raise ValueError(f"{label} must include uid, work_id, paper_id, or id")
+    return column
+
+
 def _state_document_column(state_membership: pd.DataFrame, requested: str | None) -> str:
     if requested:
         if requested not in state_membership.columns:
@@ -314,6 +338,76 @@ def _build_time_slices(evolution_id: str, years: list[int], periodization: Mappi
             }
         )
     return pd.DataFrame(rows)
+
+
+def _build_periodized_time_slices(
+    evolution_id: str,
+    years: list[int],
+    periodization: Mapping[str, Any] | None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    if not years:
+        raise ValueError("evolution evidence requires at least one valid publication year")
+    unit = str((periodization or {}).get("unit", "year")).strip().lower()
+    if unit != "year":
+        raise ValueError("evolution evidence currently supports only unit='year'")
+    window_years = _config_int(periodization, "window_years", 1, label="evolution evidence periodization")
+    step_years = _config_int(periodization, "step_years", 1, label="evolution evidence periodization")
+    if window_years < 1:
+        raise ValueError("evolution evidence window_years must be at least 1")
+    if step_years < 1:
+        raise ValueError("evolution evidence step_years must be at least 1")
+    if bool((periodization or {}).get("include_unknown_year", False)):
+        raise ValueError("evolution evidence currently supports only include_unknown_year=False")
+    include_partial_windows = bool((periodization or {}).get("include_partial_windows", False))
+    start_year = _config_int(periodization, "start_year", min(years), label="evolution evidence periodization")
+    end_year = _config_int(periodization, "end_year", max(years), label="evolution evidence periodization")
+    if end_year < start_year:
+        raise ValueError("evolution evidence end_year must be greater than or equal to start_year")
+
+    rows = []
+    for index, start in enumerate(range(start_year, end_year + 1, step_years)):
+        raw_end = start + window_years - 1
+        if raw_end > end_year and rows and not include_partial_windows:
+            break
+        end = min(end_year, raw_end)
+        if end < start:
+            continue
+        if window_years == 1:
+            slice_id = f"year:{start}"
+            label = str(start)
+        else:
+            slice_id = f"year:{start}-{end}"
+            label = f"{start}-{end}"
+        rows.append(
+            {
+                "schema_version": EVOLUTION_TIME_SLICES_SCHEMA_VERSION,
+                "evolution_id": evolution_id,
+                "slice_id": slice_id,
+                "slice_index": int(index),
+                "slice_label": label,
+                "start_year": int(start),
+                "end_year": int(end),
+                "unit": "year",
+                "doc_count": 0,
+                "edge_count": None,
+                "active_cluster_count": 0,
+                "unknown_year_count": 0,
+                "warning_flags": "",
+            }
+        )
+    if not rows:
+        raise ValueError("evolution evidence periodization produced no slices")
+    payload = {
+        "unit": "year",
+        "window_years": int(window_years),
+        "step_years": int(step_years),
+        "start_year": int(start_year),
+        "end_year": int(end_year),
+        "state_method": "slice_membership_projection",
+        "include_unknown_year": False,
+        "include_partial_windows": bool(include_partial_windows),
+    }
+    return pd.DataFrame(rows), payload
 
 
 def _normalize_evolution_slices(evolution_id: str, slices: pd.DataFrame) -> pd.DataFrame:
@@ -466,6 +560,147 @@ def _state_rows(
     if states.empty:
         states = pd.DataFrame(columns=sorted(REQUIRED_EVOLUTION_STATE_COLUMNS))
     return states, state_docs
+
+
+def build_slice_membership_evidence(
+    *,
+    evolution_id: str,
+    records_df: pd.DataFrame,
+    membership_df: pd.DataFrame,
+    keywords_df: pd.DataFrame | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    cluster_column: str | None = None,
+    uid_column: str | None = None,
+    membership_uid_column: str | None = None,
+    representative_work_limit: int = 50,
+) -> EvolutionEvidenceTables:
+    """Build schema-ready slice/state/membership evidence tables.
+
+    The builder projects an existing membership table into yearly or rolling
+    time windows. It does not relabel transitions itself; the resulting tables
+    are intended for ``build_document_overlap_evolution`` or the corresponding
+    artifact writer.
+    """
+
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    if records_df.empty:
+        raise ValueError("records_df must not be empty")
+    if membership_df.empty:
+        raise ValueError("membership_df must not be empty")
+    year_column = _year_column(records_df)
+    if year_column is None:
+        raise ValueError("records_df must include pubyear, year, or publication_year")
+    record_uid_column = _resolve_uid_column(records_df, uid_column, label="records_df")
+    member_uid_column = _resolve_uid_column(membership_df, membership_uid_column, label="membership_df")
+    if cluster_column is not None:
+        if cluster_column not in membership_df.columns:
+            raise ValueError(f"membership_df missing requested cluster_column: {cluster_column}")
+        selected_cluster_column = cluster_column
+    else:
+        selected_cluster_column = _cluster_column(membership_df)
+    if selected_cluster_column is None:
+        raise ValueError("membership_df must include cluster or cluster_* column")
+    if representative_work_limit < 0:
+        raise ValueError("representative_work_limit must be non-negative")
+
+    years_raw = pd.to_numeric(records_df[year_column], errors="coerce")
+    valid_years = sorted({int(year) for year in years_raw.dropna().tolist() if int(year) > 0})
+    if not valid_years:
+        raise ValueError("records_df has no valid publication years")
+    slices, periodization_payload = _build_periodized_time_slices(evolution_id, valid_years, periodization)
+    level = _level_from_cluster_column(selected_cluster_column)
+    label_map = _cluster_label_map(keywords_df, selected_cluster_column)
+
+    records = records_df[[record_uid_column, year_column]].dropna(subset=[record_uid_column]).copy()
+    records["_uid"] = records[record_uid_column].map(str).str.strip()
+    records["_evolution_year"] = pd.to_numeric(records[year_column], errors="coerce")
+    records = records[(records["_uid"] != "") & records["_evolution_year"].notna()]
+    records["_evolution_year"] = records["_evolution_year"].astype(int)
+    records = records[records["_evolution_year"] > 0]
+    records = records.drop_duplicates(subset=["_uid", "_evolution_year"])
+    membership = membership_df[[member_uid_column, selected_cluster_column]].dropna(subset=[member_uid_column, selected_cluster_column]).copy()
+    membership["_uid"] = membership[member_uid_column].map(str).str.strip()
+    membership["_cluster_id"] = membership[selected_cluster_column].map(str).str.strip()
+    membership = membership[(membership["_uid"] != "") & (membership["_cluster_id"] != "")]
+    membership = membership.drop_duplicates(subset=["_uid", "_cluster_id"])
+    joined = records.merge(membership[["_uid", "_cluster_id"]], on="_uid", how="inner")
+    if joined.empty:
+        raise ValueError("records_df and membership_df have no overlapping document ids")
+
+    rows: list[dict[str, Any]] = []
+    state_docs: dict[str, set[str]] = {}
+    for slice_row in slices.sort_values("slice_index", kind="stable").itertuples(index=False):
+        start_year = int(slice_row.start_year)
+        end_year = int(slice_row.end_year)
+        in_slice = joined[(joined["_evolution_year"] >= start_year) & (joined["_evolution_year"] <= end_year)]
+        if in_slice.empty:
+            continue
+        grouped = (
+            in_slice.groupby("_cluster_id", sort=True)
+            .agg(work_ids=("_uid", lambda values: sorted(set(map(str, values)))))
+            .reset_index()
+        )
+        for item in grouped.to_dict("records"):
+            cluster_id = str(item["_cluster_id"])
+            cluster_key = f"{level}:{cluster_id}"
+            state_id = _state_id(str(slice_row.slice_id), cluster_key)
+            doc_ids = set(item["work_ids"])
+            if not doc_ids:
+                continue
+            label_info = label_map.get(cluster_key, {})
+            top_terms = list(label_info.get("top_terms") or [])
+            state_docs[state_id] = doc_ids
+            rows.append(
+                {
+                    "schema_version": EVOLUTION_CLUSTER_STATES_SCHEMA_VERSION,
+                    "evolution_id": evolution_id,
+                    "state_id": state_id,
+                    "slice_id": str(slice_row.slice_id),
+                    "slice_index": int(slice_row.slice_index),
+                    "cluster_key": cluster_key,
+                    "cluster_label": str(label_info.get("label") or cluster_key),
+                    "doc_count": int(len(doc_ids)),
+                    "term_count": int(label_info.get("term_count") or len(top_terms)),
+                    "top_terms": json.dumps(top_terms, ensure_ascii=True),
+                    "cluster_uid": cluster_key,
+                    "cluster_id": cluster_id,
+                    "level": level,
+                    "representative_work_ids": json.dumps(sorted(doc_ids)[:representative_work_limit], ensure_ascii=True),
+                    "source_cluster_key": cluster_key,
+                    "warning_flags": "",
+                }
+            )
+    if not rows:
+        raise ValueError("slice membership evidence produced no active cluster states")
+
+    state_evidence = pd.DataFrame(rows).sort_values(["slice_index", "cluster_key"], kind="stable").reset_index(drop=True)
+    slices = _update_slice_counts(slices, state_evidence)
+    state_membership = _state_membership_rows(evolution_id, state_evidence, state_docs)
+    entity_scope = {
+        "cluster_level": level,
+        "cluster_id_namespace": "projected_membership_evidence",
+        "document_universe": "records_with_valid_pubyear_and_membership",
+        "filter_refs": [],
+    }
+    transforms = [
+        {"step": "parse_publication_years"},
+        {
+            "step": "build_periodized_time_slices",
+            "window_years": int(periodization_payload["window_years"]),
+            "step_years": int(periodization_payload["step_years"]),
+        },
+        {"step": "project_membership_to_time_slices", "cluster_column": selected_cluster_column},
+        {"step": "write_state_document_membership"},
+    ]
+    return EvolutionEvidenceTables(
+        evolution_id=evolution_id,
+        slices=slices.reset_index(drop=True),
+        state_evidence=state_evidence,
+        state_membership=state_membership,
+        periodization=periodization_payload,
+        entity_scope=entity_scope,
+        transforms=transforms,
+    )
 
 
 def _state_membership_rows(evolution_id: str, states: pd.DataFrame, state_docs: Mapping[str, set[str]]) -> pd.DataFrame:
@@ -1840,11 +2075,13 @@ def build_membership_projection_evolution(
 
 __all__ = [
     "EvolutionAnalysisResult",
+    "EvolutionEvidenceTables",
     "build_document_overlap_evolution",
     "build_document_overlap_transition_evidence",
     "build_evidence_backed_evolution",
     "build_evolution_state_table",
     "build_membership_projection_evolution",
+    "build_slice_membership_evidence",
     "EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION",
     "build_evolution_transition_table",
     "classify_evolution_events",
