@@ -241,7 +241,7 @@ Required columns:
 | `confidence` | float | bounded confidence or support score in `[0, 1]` |
 | `evidence_ref_count` | int | number of linked evidence refs |
 | `text_origin` | string | `deterministic_template`, `human_review`, `model_generated`, or `imported` |
-| `review_state` | string | `unreviewed`, `accepted`, `edited`, `rejected`, or `not_required` |
+| `review_state` | string | `not_reviewed`, `accepted`, `needs_revision`, `rejected`, or `not_required` |
 
 Optional columns:
 
@@ -409,7 +409,7 @@ Required columns when review is advertised:
 | `narrative_id` | string | parent narrative id |
 | `decision_id` | string | stable decision id |
 | `claim_id` | string | claim being reviewed |
-| `decision_type` | string | `accept`, `edit`, `reject`, `downgrade`, `add_caveat`, or `restore` |
+| `decision_type` | string | `accepted`, `needs_revision`, `not_required`, or `rejected` |
 | `reviewer` | string | reviewer identifier or `system` |
 | `decided_at_utc` | string | decision timestamp |
 | `reason` | string | short reason |
@@ -463,7 +463,8 @@ Minimum checks:
 - unsupported claims are blocked or rendered only as explicit caveats;
 - model-generated text has model, prompt, and run metadata;
 - QA caveats and missing feature states are not contradicted by claims;
-- review decisions preserve evidence refs for edited claims.
+- review decisions preserve evidence refs for claims marked as accepted,
+  revision-needed, not-required, or rejected.
 
 ## Validation States
 
@@ -472,7 +473,7 @@ Narrative validation should feed the normal result contract:
 | Condition | Result |
 | --- | --- |
 | manifest, targets, claims, evidence sources, evidence refs, links, sections, and QA all pass | `narrative=stable` |
-| artifact exists but has weak evidence, aggregate-only evidence, or unreviewed optional claims | `narrative=beta` |
+| artifact exists but has weak evidence, aggregate-only evidence, or `not_reviewed` optional claims | `narrative=beta` |
 | artifact is advertised but has unresolved evidence refs or unsupported normal claims | result `blocked` |
 | deterministic scaffold exists but no narrative artifact is written | `narrative=hidden` |
 | no narrative artifact exists | `narrative=hidden` |
@@ -585,7 +586,9 @@ rewriting narrative text.
 6. `[~]` Add a quality-gate flag that rejects unsupported normal claims.
    Result-root validation now blocks unsupported normal claims; a dedicated CLI
    flag can still make this explicit in release checks.
-7. `[ ]` Only then add narrative review UI or optional generation hooks.
+7. `[~]` Add narrative review UI or optional generation hooks.
+   Atlas now exposes claim-level review actions and save/failure feedback; stable
+   narrative generation hooks remain pending.
 
 ## Acceptance Criteria
 
