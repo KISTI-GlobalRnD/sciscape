@@ -10,6 +10,8 @@ import json
 import math
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
@@ -121,6 +123,20 @@ def _safe_id(value: object, *, fallback: str = "result") -> str:
     text = str(value or "").strip()
     safe = re.sub(r"[^A-Za-z0-9_.:-]+", "_", text).strip("_.:-")
     return safe or fallback
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _write_progress_json(path: str | Path | None, payload: Mapping[str, Any]) -> None:
+    if path is None:
+        return
+    progress_path = Path(path).expanduser()
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = progress_path.with_suffix(progress_path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(dict(payload), indent=2, sort_keys=True, default=str), encoding="utf-8")
+    tmp_path.replace(progress_path)
 
 
 def _coerce_int(value: Any) -> int | None:
@@ -1167,6 +1183,7 @@ def build_slice_reclustering_membership(
     n_iterations: int = 10,
     backend: str = "auto",
     min_docs_per_slice: int = 1,
+    progress_path: str | Path | None = None,
 ) -> pd.DataFrame:
     """Run one-level slice-local Leiden clustering and return membership rows.
 
@@ -1224,56 +1241,121 @@ def build_slice_reclustering_membership(
         edge_work["_weight"] = 1.0
 
     rows: list[dict[str, Any]] = []
-    for slice_row in slices.sort_values("slice_index", kind="stable").itertuples(index=False):
-        in_slice = records[
-            (records["_year"] >= int(slice_row.start_year))
-            & (records["_year"] <= int(slice_row.end_year))
-        ]
-        uids = sorted(set(in_slice["_uid"].tolist()))
-        if len(uids) < min_docs:
-            continue
-        uid_set = set(uids)
-        slice_edges = edge_work[
-            edge_work["_source_uid"].isin(uid_set)
-            & edge_work["_target_uid"].isin(uid_set)
-        ].copy()
-        membership, quality, n_clusters, backend_used = _run_slice_leiden(
-            uids=uids,
-            edges=slice_edges,
-            source_column="_source_uid",
-            target_column="_target_uid",
-            weight_column="_weight",
-            resolution=resolution_float,
-            objective=objective_norm,
-            seed=int(seed),
-            n_iterations=iterations,
-            backend=backend,
-        )
-        for uid, cluster_id in zip(uids, membership):
-            rows.append(
-                {
-                    "evolution_id": evolution_id,
+    ordered_slices = slices.sort_values("slice_index", kind="stable").reset_index(drop=True)
+    progress: dict[str, Any] = {
+        "schema_version": "sciscape_slice_reclustering_progress_v1",
+        "evolution_id": evolution_id,
+        "status": "running",
+        "created_at_utc": _utc_now(),
+        "updated_at_utc": _utc_now(),
+        "total_slices": int(len(ordered_slices)),
+        "processed_slices": 0,
+        "completed_slices": 0,
+        "skipped_slices": 0,
+        "membership_rows": 0,
+        "params": {
+            "backend": str(backend),
+            "objective": objective_norm,
+            "resolution": resolution_float,
+            "seed": int(seed),
+            "n_iterations": int(iterations),
+            "min_docs_per_slice": int(min_docs),
+        },
+        "last_slice": None,
+    }
+    _write_progress_json(progress_path, progress)
+    try:
+        for slice_row in ordered_slices.itertuples(index=False):
+            in_slice = records[
+                (records["_year"] >= int(slice_row.start_year))
+                & (records["_year"] <= int(slice_row.end_year))
+            ]
+            uids = sorted(set(in_slice["_uid"].tolist()))
+            if len(uids) < min_docs:
+                progress["processed_slices"] = int(progress["processed_slices"]) + 1
+                progress["skipped_slices"] = int(progress["skipped_slices"]) + 1
+                progress["updated_at_utc"] = _utc_now()
+                progress["last_slice"] = {
                     "slice_id": str(slice_row.slice_id),
                     "slice_index": int(slice_row.slice_index),
-                    "slice_label": str(slice_row.slice_label),
-                    "start_year": int(slice_row.start_year),
-                    "end_year": int(slice_row.end_year),
-                    "unit": str(slice_row.unit),
-                    "uid": uid,
-                    "cluster_id": int(cluster_id),
-                    "resolution": resolution_float,
-                    "objective": objective_norm,
-                    "seed": int(seed),
-                    "n_iterations": int(iterations),
-                    "backend": backend_used,
-                    "quality": quality,
-                    "slice_doc_count": int(len(uids)),
-                    "slice_edge_count": int(len(slice_edges)),
-                    "slice_cluster_count": int(n_clusters),
+                    "status": "skipped",
+                    "doc_count": int(len(uids)),
+                    "edge_count": 0,
+                    "reason": "below_min_docs_per_slice",
                 }
+                _write_progress_json(progress_path, progress)
+                continue
+            uid_set = set(uids)
+            slice_edges = edge_work[
+                edge_work["_source_uid"].isin(uid_set)
+                & edge_work["_target_uid"].isin(uid_set)
+            ].copy()
+            membership, quality, n_clusters, backend_used = _run_slice_leiden(
+                uids=uids,
+                edges=slice_edges,
+                source_column="_source_uid",
+                target_column="_target_uid",
+                weight_column="_weight",
+                resolution=resolution_float,
+                objective=objective_norm,
+                seed=int(seed),
+                n_iterations=iterations,
+                backend=backend,
             )
+            for uid, cluster_id in zip(uids, membership):
+                rows.append(
+                    {
+                        "evolution_id": evolution_id,
+                        "slice_id": str(slice_row.slice_id),
+                        "slice_index": int(slice_row.slice_index),
+                        "slice_label": str(slice_row.slice_label),
+                        "start_year": int(slice_row.start_year),
+                        "end_year": int(slice_row.end_year),
+                        "unit": str(slice_row.unit),
+                        "uid": uid,
+                        "cluster_id": int(cluster_id),
+                        "resolution": resolution_float,
+                        "objective": objective_norm,
+                        "seed": int(seed),
+                        "n_iterations": int(iterations),
+                        "backend": backend_used,
+                        "quality": quality,
+                        "slice_doc_count": int(len(uids)),
+                        "slice_edge_count": int(len(slice_edges)),
+                        "slice_cluster_count": int(n_clusters),
+                    }
+                )
+            progress["processed_slices"] = int(progress["processed_slices"]) + 1
+            progress["completed_slices"] = int(progress["completed_slices"]) + 1
+            progress["membership_rows"] = int(len(rows))
+            progress["updated_at_utc"] = _utc_now()
+            progress["last_slice"] = {
+                "slice_id": str(slice_row.slice_id),
+                "slice_index": int(slice_row.slice_index),
+                "status": "completed",
+                "doc_count": int(len(uids)),
+                "edge_count": int(len(slice_edges)),
+                "cluster_count": int(n_clusters),
+                "backend": backend_used,
+                "quality": quality,
+            }
+            _write_progress_json(progress_path, progress)
+    except Exception as exc:
+        progress["status"] = "failed"
+        progress["updated_at_utc"] = _utc_now()
+        progress["error"] = {"type": type(exc).__name__, "message": str(exc)}
+        _write_progress_json(progress_path, progress)
+        raise
     if not rows:
+        progress["status"] = "failed"
+        progress["updated_at_utc"] = _utc_now()
+        progress["error"] = {"type": "ValueError", "message": "slice-local reclustering produced no membership rows"}
+        _write_progress_json(progress_path, progress)
         raise ValueError("slice-local reclustering produced no membership rows")
+    progress["status"] = "completed"
+    progress["updated_at_utc"] = _utc_now()
+    progress["membership_rows"] = int(len(rows))
+    _write_progress_json(progress_path, progress)
     return pd.DataFrame(rows).sort_values(["slice_index", "cluster_id", "uid"], kind="stable").reset_index(drop=True)
 
 

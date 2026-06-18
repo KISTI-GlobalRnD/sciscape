@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 import pytest
 
@@ -196,7 +198,7 @@ def test_build_slice_local_membership_evidence_rejects_duplicate_uid_cluster_ass
         )
 
 
-def test_build_slice_reclustering_membership_runs_induced_slice_graphs():
+def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path):
     records = pd.DataFrame(
         {
             "uid": ["A20", "A21", "A22", "C20", "C21", "C22"],
@@ -210,6 +212,7 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs():
             "rel_sum2": [2.0, 2.0, 2.0, 2.0],
         }
     )
+    progress_path = tmp_path / "slice_reclustering_progress.json"
 
     membership = build_slice_reclustering_membership(
         evolution_id="recluster",
@@ -219,8 +222,16 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs():
         resolution=0.01,
         backend="igraph",
         seed=7,
+        progress_path=progress_path,
     )
 
+    progress = json.loads(progress_path.read_text(encoding="utf-8"))
+    assert progress["schema_version"] == "sciscape_slice_reclustering_progress_v1"
+    assert progress["status"] == "completed"
+    assert progress["total_slices"] == 2
+    assert progress["processed_slices"] == 2
+    assert progress["completed_slices"] == 2
+    assert progress["membership_rows"] == 8
     assert membership["slice_id"].tolist().count("year:2020-2021") == 4
     assert membership["slice_id"].tolist().count("year:2021-2022") == 4
     assert set(membership["backend"]) == {"igraph"}
@@ -249,6 +260,27 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs():
 
     assert len(result.transitions) == 2
     assert result.events["event_type"].tolist().count("continuation") == 2
+
+
+def test_build_slice_reclustering_membership_marks_failed_progress(tmp_path):
+    records = pd.DataFrame({"uid": ["A", "B"], "pubyear": [2020, 2020]})
+    edges = pd.DataFrame({"uid1": ["A"], "uid2": ["B"], "rel_sum2": [1.0]})
+    progress_path = tmp_path / "failed_progress.json"
+
+    with pytest.raises(ValueError, match="backend"):
+        build_slice_reclustering_membership(
+            evolution_id="bad-backend",
+            records_df=records,
+            edges_df=edges,
+            backend="unknown",
+            progress_path=progress_path,
+        )
+
+    progress = json.loads(progress_path.read_text(encoding="utf-8"))
+    assert progress["status"] == "failed"
+    assert progress["processed_slices"] == 0
+    assert progress["error"]["type"] == "ValueError"
+    assert "backend" in progress["error"]["message"]
 
 
 def test_membership_projection_evolution_builds_in_memory_tables():

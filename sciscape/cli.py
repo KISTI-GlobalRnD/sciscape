@@ -387,6 +387,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional Parquet path for generated slice-local membership rows",
     )
+    efsr.add_argument(
+        "--progress-path",
+        type=Path,
+        default=None,
+        help="Progress JSON path (default: <result_root>/evolution_work/slice_reclustering_progress.json)",
+    )
     efsr.add_argument("--representative-work-limit", type=int, default=50, help="Max representative IDs stored in each state row")
     efsr.add_argument("--min-transition-score", type=float, default=0.5, help="Minimum transition score")
     efsr.add_argument("--min-support-count", type=int, default=1, help="Minimum transition support count")
@@ -1440,6 +1446,7 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
         source_artifacts.append({"role": "keywords", "path": _source_ref_path(args.keywords_table, args.result_root)})
     if args.temporal_manifest is not None:
         source_artifacts.append({"role": "temporal", "path": _source_ref_path(args.temporal_manifest, args.result_root)})
+    progress_path = args.progress_path or (args.result_root / "evolution_work" / "slice_reclustering_progress.json")
 
     try:
         written = write_slice_reclustering_evolution_artifacts(
@@ -1468,6 +1475,7 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
             backend=args.backend,
             min_docs_per_slice=args.min_docs_per_slice,
             slice_membership_output=args.slice_membership_output,
+            progress_path=progress_path,
             representative_work_limit=args.representative_work_limit,
             require_complete_membership=not args.allow_incomplete_state_membership,
         )
@@ -1488,6 +1496,8 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
     }
     if written.get("slice_membership_path") is not None:
         payload["slice_membership_path"] = str(written["slice_membership_path"])
+    if written.get("progress_path") is not None:
+        payload["progress_path"] = str(written["progress_path"])
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
@@ -1506,6 +1516,8 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
     print(f"  QA → {written['qa_path']}")
     if written.get("slice_membership_path") is not None:
         print(f"  Slice membership → {written['slice_membership_path']}")
+    if written.get("progress_path") is not None:
+        print(f"  Progress → {written['progress_path']}")
 
 
 def _run_evolution(args: argparse.Namespace) -> None:

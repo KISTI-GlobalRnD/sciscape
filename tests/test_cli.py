@@ -1122,6 +1122,8 @@ class TestEvolutionFromSliceReclusteringArgs:
             "2",
             "--slice-membership-output",
             "evolution_work/slice_membership.parquet",
+            "--progress-path",
+            "evolution_work/progress.json",
             "--representative-work-limit",
             "5",
             "--min-transition-score",
@@ -1155,6 +1157,7 @@ class TestEvolutionFromSliceReclusteringArgs:
         assert args.n_iterations == 3
         assert args.min_docs_per_slice == 2
         assert args.slice_membership_output == Path("evolution_work/slice_membership.parquet")
+        assert args.progress_path == Path("evolution_work/progress.json")
         assert args.representative_work_limit == 5
         assert args.min_transition_score == pytest.approx(0.25)
         assert args.min_support_count == 2
@@ -1202,6 +1205,10 @@ class TestEvolutionFromSliceReclusteringArgs:
         generated_membership = pd.read_parquet(slice_membership_output)
         assert len(generated_membership) == 8
         assert set(generated_membership["slice_id"]) == {"year:2020-2021", "year:2021-2022"}
+        progress = json.loads((root / "evolution_work" / "slice_reclustering_progress.json").read_text(encoding="utf-8"))
+        assert progress["status"] == "completed"
+        assert progress["completed_slices"] == 2
+        assert progress["membership_rows"] == 8
         validation = validate_evolution_artifact(root / "evolution" / "evolution_manifest.json").to_dict()
         assert validation["status"] == "passed"
         assert validation["counts"]["slices"] == 2

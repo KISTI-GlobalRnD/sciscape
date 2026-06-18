@@ -1485,6 +1485,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     records.to_parquet(source_dir / "records.parquet", index=False)
     edges.to_parquet(source_dir / "edges.parquet", index=False)
     slice_membership_output = root / "evolution_work" / "slice_reclustering_membership.parquet"
+    progress_path = root / "evolution_work" / "slice_reclustering_progress.json"
 
     written = write_slice_reclustering_evolution_artifacts(
         root,
@@ -1501,10 +1502,15 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
         resolution=0.01,
         backend="igraph",
         slice_membership_output=slice_membership_output,
+        progress_path=progress_path,
     )
 
     assert written["qa"]["status"] == "passed"
     assert written["slice_membership_path"] == slice_membership_output.resolve()
+    assert written["progress_path"] == progress_path.resolve()
+    progress = json.loads(progress_path.read_text(encoding="utf-8"))
+    assert progress["status"] == "completed"
+    assert progress["membership_rows"] == 8
     generated_membership = pd.read_parquet(slice_membership_output)
     assert len(generated_membership) == 8
     assert set(generated_membership["backend"]) == {"igraph"}
@@ -1521,6 +1527,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     assert "run_slice_local_reclustering" in [row["step"] for row in transforms]
     recluster_transform = next(row for row in transforms if row["step"] == "run_slice_local_reclustering")
     assert recluster_transform["slice_membership_output"] == "evolution_work/slice_reclustering_membership.parquet"
+    assert recluster_transform["progress_path"] == "evolution_work/slice_reclustering_progress.json"
     assert recluster_transform["slice_membership_rows"] == 8
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["evolution"]["state"] == "stable"
