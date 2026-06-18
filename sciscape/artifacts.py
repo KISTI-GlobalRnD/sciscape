@@ -9023,6 +9023,7 @@ def write_slice_reclustering_evolution_artifacts(
     n_iterations: int = 10,
     backend: str = "auto",
     min_docs_per_slice: int = 1,
+    slice_membership_output: str | Path | None = None,
     representative_work_limit: int = 50,
     require_complete_membership: bool = True,
 ) -> dict[str, Any]:
@@ -9045,6 +9046,16 @@ def write_slice_reclustering_evolution_artifacts(
         backend=backend,
         min_docs_per_slice=min_docs_per_slice,
     )
+    slice_membership_path: Path | None = None
+    slice_membership_ref: str | None = None
+    if slice_membership_output is not None:
+        slice_membership_path = Path(slice_membership_output).expanduser()
+        if not slice_membership_path.is_absolute():
+            slice_membership_path = root / slice_membership_path
+        slice_membership_path = slice_membership_path.resolve()
+        slice_membership_path.parent.mkdir(parents=True, exist_ok=True)
+        slice_membership.to_parquet(slice_membership_path, index=False)
+        slice_membership_ref = _rel(slice_membership_path, root) or str(slice_membership_path)
     matching = {
         "metric": metric,
         "min_transition_score": 0.5,
@@ -9070,9 +9081,12 @@ def write_slice_reclustering_evolution_artifacts(
         "seed": int(seed),
         "n_iterations": int(n_iterations),
         "min_docs_per_slice": int(min_docs_per_slice),
+        "slice_membership_rows": int(len(slice_membership)),
     }
+    if slice_membership_ref is not None:
+        recluster_transform["slice_membership_output"] = slice_membership_ref
     default_level = str((entity_scope or {}).get("cluster_level") or "cluster")
-    return write_slice_local_membership_evolution_artifacts(
+    written = write_slice_local_membership_evolution_artifacts(
         root,
         evolution_id=evolution_id,
         slice_membership_df=slice_membership,
@@ -9094,6 +9108,9 @@ def write_slice_reclustering_evolution_artifacts(
         default_level=default_level,
         require_complete_membership=require_complete_membership,
     )
+    if slice_membership_path is not None:
+        written["slice_membership_path"] = slice_membership_path
+    return written
 
 
 def _synthetic_evolution_state(

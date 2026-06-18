@@ -381,6 +381,12 @@ def _build_parser() -> argparse.ArgumentParser:
     efsr.add_argument("--seed", type=int, default=0, help="Leiden random seed")
     efsr.add_argument("--n-iterations", type=int, default=10, help="Leiden iterations per slice")
     efsr.add_argument("--min-docs-per-slice", type=int, default=1, help="Skip slices with fewer documents")
+    efsr.add_argument(
+        "--slice-membership-output",
+        type=Path,
+        default=None,
+        help="Optional Parquet path for generated slice-local membership rows",
+    )
     efsr.add_argument("--representative-work-limit", type=int, default=50, help="Max representative IDs stored in each state row")
     efsr.add_argument("--min-transition-score", type=float, default=0.5, help="Minimum transition score")
     efsr.add_argument("--min-support-count", type=int, default=1, help="Minimum transition support count")
@@ -1461,6 +1467,7 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
             n_iterations=args.n_iterations,
             backend=args.backend,
             min_docs_per_slice=args.min_docs_per_slice,
+            slice_membership_output=args.slice_membership_output,
             representative_work_limit=args.representative_work_limit,
             require_complete_membership=not args.allow_incomplete_state_membership,
         )
@@ -1479,6 +1486,8 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
         "counts": counts,
         "event_counts": qa.get("event_counts", {}),
     }
+    if written.get("slice_membership_path") is not None:
+        payload["slice_membership_path"] = str(written["slice_membership_path"])
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
@@ -1495,6 +1504,8 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
         )
     )
     print(f"  QA → {written['qa_path']}")
+    if written.get("slice_membership_path") is not None:
+        print(f"  Slice membership → {written['slice_membership_path']}")
 
 
 def _run_evolution(args: argparse.Namespace) -> None:

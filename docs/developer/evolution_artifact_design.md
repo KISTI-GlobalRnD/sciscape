@@ -616,7 +616,9 @@ lineage from raw records.
 - `sciscape evolution-from-slice-reclustering <result_root> <records>
   <edges>` runs one-level Leiden/CPM on each induced time-slice graph, then
   writes the same validated document-overlap `evolution/` artifact. The CLI
-  defaults to 2-year rolling windows unless `--periodization` is provided.
+  defaults to 2-year rolling windows unless `--periodization` is provided. Use
+  `--slice-membership-output` when a large run should leave a reusable
+  slice-local membership checkpoint for recovery or external review.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
 - `/api/jobs/{job_id}/evolution` exposes optional `state_membership.parquet`
@@ -655,6 +657,10 @@ lineage from raw records.
 - `write_slice_reclustering_evolution_artifacts` combines the slice-local
   reclustering runner with the slice-local membership writer, preserving a
   `run_slice_local_reclustering` transform entry in the evolution manifest.
+  When `slice_membership_output` is provided, the generated membership rows are
+  materialized before evolution artifact writing so the run can be resumed via
+  `write_slice_local_membership_evolution_artifacts` or
+  `sciscape evolution-from-slice-membership`.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.
@@ -696,7 +702,9 @@ now creates periodized state-membership inputs from existing membership,
 `sciscape evolution-from-slice-membership` can do the same for externally
 generated slice-local membership, and `sciscape
 evolution-from-slice-reclustering` provides the initial built-in slice-local
-Leiden/CPM path from records plus document edges. Split, merge, and ambiguous
+Leiden/CPM path from records plus document edges. That path can now optionally
+materialize generated slice-local membership rows before artifact writing,
+creating a recovery checkpoint for large runs. Split, merge, and ambiguous
 validation are covered by the synthetic smoke fixture, document-overlap unit
 tests, document-overlap writer tests, and the slice-reclustering writer/CLI
 smokes. Large-run reclustering progress, bounded parallelism, and richer

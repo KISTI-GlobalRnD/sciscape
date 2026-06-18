@@ -1484,6 +1484,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     source_dir.mkdir(parents=True)
     records.to_parquet(source_dir / "records.parquet", index=False)
     edges.to_parquet(source_dir / "edges.parquet", index=False)
+    slice_membership_output = root / "evolution_work" / "slice_reclustering_membership.parquet"
 
     written = write_slice_reclustering_evolution_artifacts(
         root,
@@ -1499,9 +1500,14 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
         ],
         resolution=0.01,
         backend="igraph",
+        slice_membership_output=slice_membership_output,
     )
 
     assert written["qa"]["status"] == "passed"
+    assert written["slice_membership_path"] == slice_membership_output.resolve()
+    generated_membership = pd.read_parquet(slice_membership_output)
+    assert len(generated_membership) == 8
+    assert set(generated_membership["backend"]) == {"igraph"}
     validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
     assert validation["status"] == "passed"
     assert validation["counts"]["slices"] == 2
@@ -1511,7 +1517,11 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
 
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["normalization"] == "slice_reclustering_document_overlap"
-    assert "run_slice_local_reclustering" in [row["step"] for row in evolution_manifest["transforms"]]
+    transforms = evolution_manifest["transforms"]
+    assert "run_slice_local_reclustering" in [row["step"] for row in transforms]
+    recluster_transform = next(row for row in transforms if row["step"] == "run_slice_local_reclustering")
+    assert recluster_transform["slice_membership_output"] == "evolution_work/slice_reclustering_membership.parquet"
+    assert recluster_transform["slice_membership_rows"] == 8
     manifest = build_result_manifest(root).to_dict()
     assert manifest["features"]["evolution"]["state"] == "stable"
 
