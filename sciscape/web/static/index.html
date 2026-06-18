@@ -2332,16 +2332,26 @@ body {
   fill: var(--teal);
   stroke: var(--white);
   stroke-width: 2;
+  cursor: pointer;
 }
 .evolution-map-node.event-emergence { fill: var(--amber); }
 .evolution-map-node.event-decline { fill: var(--coral); }
 .evolution-map-node.event-split,
 .evolution-map-node.event-merge,
 .evolution-map-node.event-ambiguous { fill: var(--graphite); }
+.evolution-map-node.selected {
+  stroke: var(--ink);
+  stroke-width: 4;
+}
 .evolution-map-event {
   fill: var(--white);
   stroke: var(--graphite);
   stroke-width: 1.5;
+  cursor: pointer;
+}
+.evolution-map-event.selected {
+  stroke: var(--ink);
+  stroke-width: 3;
 }
 .evolution-map-label {
   fill: var(--graphite);
@@ -2384,6 +2394,12 @@ body {
   border-radius: 4px;
   background: var(--white);
   padding: 0.46rem 0.52rem;
+  cursor: pointer;
+}
+.evolution-event-row.selected,
+.evolution-state-row.selected {
+  border-color: rgba(28, 35, 46, 0.52);
+  box-shadow: 0 0 0 2px rgba(43, 168, 156, 0.14);
 }
 .evolution-event-row[data-event="continuation"] { border-left-color: var(--teal); }
 .evolution-event-row[data-event="emergence"] { border-left-color: var(--amber); }
@@ -2422,6 +2438,31 @@ body {
   padding: 0.08rem 0.24rem;
   white-space: nowrap;
 }
+.evolution-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.42rem;
+  margin-bottom: 0.46rem;
+}
+.evolution-detail-cell {
+  border: 1px solid rgba(197, 207, 224, 0.72);
+  border-radius: 4px;
+  background: var(--white);
+  padding: 0.42rem;
+}
+.evolution-detail-label {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+}
+.evolution-detail-value {
+  margin-top: 0.12rem;
+  color: var(--graphite);
+  font-size: 0.7rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
 .evolution-empty {
   padding: 1rem;
   color: var(--silver);
@@ -2435,6 +2476,7 @@ body {
   .evolution-head,
   .evolution-map-head,
   .evolution-grid,
+  .evolution-detail-grid,
   .evolution-summary-grid,
   .run-state-head,
   .run-state-grid { grid-template-columns: 1fr; }
@@ -3146,6 +3188,7 @@ let atlasDeckRenderToken = 0;
 let currentAtlasDeckSettings = {edges: true, hierarchy: true, labels: true, minWeight: 0, labelLimit: 80};
 let currentEvolutionPayload = null;
 let currentEvolutionEventFilter = 'all';
+let currentEvolutionSelectedStateId = '';
 const ATLAS_SESSION_LIMIT = 6;
 const RESULT_FEATURE_LABELS = {
   overview: 'Overview',
@@ -6731,6 +6774,9 @@ async function loadEvolution() {
       return;
     }
     currentEvolutionPayload = data;
+    if (currentEvolutionSelectedStateId && !evolutionStateById(data, currentEvolutionSelectedStateId)) {
+      currentEvolutionSelectedStateId = '';
+    }
     renderEvolutionLens();
   } catch(e) {
     currentEvolutionPayload = null;
@@ -6762,6 +6808,7 @@ function renderEvolutionLens() {
       renderEvolutionMethodNote(data) +
       renderEvolutionSliceRail(data) +
       renderEvolutionMap(data) +
+      renderEvolutionStateDetail(data) +
       renderEvolutionEventFilter(data) +
       '<div class="evolution-grid">' +
         '<div class="evolution-panel"><div class="evolution-panel-title">Events</div>' +
@@ -6867,18 +6914,24 @@ function renderEvolutionMap(data) {
   const eventLayer = events.map(event => {
     const x = xOf(event.x);
     const y = yOf(event.y);
-    return '<circle class="evolution-map-event event-' + escAttr(evolutionMapClassToken(event.event_type || 'event')) +
-      '" cx="' + x + '" cy="' + y + '" r="4.2"><title>' +
+    const stateId = String(event.state_id || '');
+    const active = stateId && stateId === String(currentEvolutionSelectedStateId || '') ? ' selected' : '';
+    return '<circle class="evolution-map-event event-' + escAttr(evolutionMapClassToken(event.event_type || 'event') + active) +
+      '" cx="' + x + '" cy="' + y + '" r="4.2" tabindex="0" role="button" onclick="' +
+      evolutionSelectHandler(stateId) + '"><title>' +
       esc(event.event_type || 'event') + ' / ' + esc(event.event_id || '') + '</title></circle>';
   }).join('');
   const nodeLayer = nodes.map(node => {
     const x = xOf(node.x);
     const y = yOf(node.y);
     const eventClass = node.primary_event_type ? ' event-' + evolutionMapClassToken(node.primary_event_type) : '';
+    const stateId = String(node.state_id || '');
+    const selectedClass = stateId && stateId === String(currentEvolutionSelectedStateId || '') ? ' selected' : '';
     const radius = Math.max(4, Math.min(12, 4 + Math.sqrt(Math.max(1, Number(node.doc_count || 1))) * 1.4));
     const terms = Array.isArray(node.top_terms) && node.top_terms.length ? ' / ' + node.top_terms.slice(0, 4).join(', ') : '';
-    return '<circle class="evolution-map-node' + escAttr(eventClass) + '" cx="' + x + '" cy="' + y +
-      '" r="' + radius.toFixed(1) + '"><title>' +
+    return '<circle class="evolution-map-node' + escAttr(eventClass + selectedClass) + '" cx="' + x + '" cy="' + y +
+      '" r="' + radius.toFixed(1) + '" tabindex="0" role="button" onclick="' +
+      evolutionSelectHandler(stateId) + '"><title>' +
       esc((node.cluster_label || node.cluster_key || node.state_id || 'state') + ' / ' +
         formatAtlasCount(node.doc_count || 0) + ' docs' + terms) + '</title></circle>';
   }).join('');
@@ -6939,17 +6992,79 @@ function selectEvolutionEventFilter(type) {
   renderEvolutionLens();
 }
 
+function selectEvolutionState(stateId) {
+  if (!String(stateId || '').trim()) return;
+  currentEvolutionSelectedStateId = String(stateId || '');
+  renderEvolutionLens();
+}
+
+function evolutionSelectHandler(stateId) {
+  return 'selectEvolutionState(decodeURIComponent(\'' + encodeURIComponent(String(stateId || '')) + '\'))';
+}
+
+function renderEvolutionStateDetail(data) {
+  const state = selectedEvolutionState(data);
+  if (!state) {
+    return '<div class="evolution-panel"><div class="evolution-panel-title">State Detail</div>' +
+      '<div class="evolution-empty">Select a state node, event, transition, or row to inspect its local evolution evidence.</div></div>';
+  }
+  const stateId = String(state.state_id || '');
+  const lineage = evolutionLineageForState(data, stateId);
+  const events = evolutionEventsForState(data, stateId);
+  const incoming = evolutionTransitionsForState(data, stateId, 'target_state_id');
+  const outgoing = evolutionTransitionsForState(data, stateId, 'source_state_id');
+  const membership = evolutionStateMembershipInfo(data, stateId);
+  const terms = Array.isArray(state.top_terms) ? state.top_terms.slice(0, 8) : [];
+  const cells = [
+    ['state', state.state_id],
+    ['slice', state.slice_id],
+    ['docs', formatAtlasCount(state.doc_count || 0)],
+    ['lineage', lineage && lineage.lineage_id || 'unlinked'],
+    ['incoming', incoming.length],
+    ['outgoing', outgoing.length],
+    ['events', events.length],
+    ['loaded links', membership && membership.loaded_count || 0],
+  ];
+  const eventTags = events.length
+    ? events.slice(0, 8).map(event => '<span class="evolution-mini-tag">' + esc(event.event_type || 'event') + '</span>').join(' ')
+    : '<span class="evolution-mini-tag">none</span>';
+  const transitionText = [
+    incoming.length ? 'incoming ' + incoming.slice(0, 3).map(row => esc(row.relation || 'transition')).join(', ') : 'incoming none',
+    outgoing.length ? 'outgoing ' + outgoing.slice(0, 3).map(row => esc(row.relation || 'transition')).join(', ') : 'outgoing none',
+  ].join(' / ');
+  return '<div class="evolution-panel">' +
+    '<div class="evolution-panel-title">State Detail</div>' +
+    '<div class="evolution-row-head">' +
+      '<div class="evolution-row-title">' + esc(state.cluster_label || state.cluster_key || state.state_id) + '</div>' +
+      '<span class="evolution-mini-tag">' + esc(state.slice_id || '') + '</span>' +
+    '</div>' +
+    '<div class="evolution-detail-grid">' + cells.map(([label, value]) =>
+      '<div class="evolution-detail-cell"><div class="evolution-detail-label">' + esc(label) + '</div>' +
+      '<div class="evolution-detail-value">' + esc(value == null ? '' : value) + '</div></div>'
+    ).join('') + '</div>' +
+    '<div class="evolution-row-meta">terms: ' + esc(terms.length ? terms.join(', ') : 'none') + '</div>' +
+    '<div class="evolution-row-meta">events: ' + eventTags + '</div>' +
+    '<div class="evolution-row-meta">' + transitionText + '</div>' +
+    (membership && membership.uid_samples && membership.uid_samples.length
+      ? '<div class="evolution-row-meta">uid samples: ' + esc(membership.uid_samples.slice(0, 5).join(', ')) + '</div>'
+      : '') +
+  '</div>';
+}
+
 function renderEvolutionEvents(data) {
   const rows = (Array.isArray(data.events) ? data.events : []).filter(event =>
     currentEvolutionEventFilter === 'all' || String(event.event_type || '') === currentEvolutionEventFilter
   );
   if (!rows.length) return '<div class="evolution-empty">No events for this filter.</div>';
   return '<div class="evolution-event-list">' + rows.slice(0, 24).map(event => {
+    const stateId = String(event.state_id || '');
     const state = evolutionStateById(data, event.state_id);
     const title = event.event_label || event.event_type || 'event';
     const target = state ? (state.cluster_label || state.cluster_key || state.state_id) : event.state_id;
     const refs = Array.isArray(event.transition_refs) ? event.transition_refs : [];
-    return '<div class="evolution-event-row" data-event="' + escAttr(event.event_type || '') + '">' +
+    const active = evolutionEventTouchesState(event, currentEvolutionSelectedStateId) ? ' selected' : '';
+    return '<div class="evolution-event-row' + active + '" data-event="' + escAttr(event.event_type || '') +
+      '" onclick="' + evolutionSelectHandler(stateId) + '">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' + esc(title) + ' / ' + esc(target || 'state') + '</div>' +
         '<span class="evolution-mini-tag">' + esc(event.slice_id || '') + '</span>' +
@@ -6967,6 +7082,7 @@ function renderEvolutionStates(data) {
   if (!states.length) return '<div class="evolution-empty">No state rows loaded.</div>';
   const sorted = states.slice().sort((a, b) => Number(b.doc_count || 0) - Number(a.doc_count || 0)).slice(0, 14);
   return '<div class="evolution-state-list">' + sorted.map(state => {
+    const stateId = String(state.state_id || '');
     const terms = Array.isArray(state.top_terms) && state.top_terms.length
       ? ' / ' + state.top_terms.slice(0, 3).join(', ')
       : '';
@@ -6977,7 +7093,8 @@ function renderEvolutionStates(data) {
           ? ' (' + membership.uid_samples.slice(0, 2).join(', ') + ')'
           : '')
       : '';
-    return '<div class="evolution-state-row">' +
+    const active = stateId && stateId === String(currentEvolutionSelectedStateId || '') ? ' selected' : '';
+    return '<div class="evolution-state-row' + active + '" onclick="' + evolutionSelectHandler(stateId) + '">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' + esc(state.cluster_label || state.cluster_key || state.state_id) + '</div>' +
         '<span class="evolution-mini-tag">' + esc(state.slice_id || '') + '</span>' +
@@ -6999,7 +7116,10 @@ function renderEvolutionTransitions(data) {
   return '<div class="evolution-event-list">' + transitions.slice(0, 18).map(row => {
     const source = evolutionStateById(data, row.source_state_id);
     const target = evolutionStateById(data, row.target_state_id);
-    return '<div class="evolution-event-row" data-event="' + escAttr(row.relation || '') + '">' +
+    const targetId = String(row.target_state_id || row.source_state_id || '');
+    const active = [row.source_state_id, row.target_state_id].map(String).includes(String(currentEvolutionSelectedStateId || '')) ? ' selected' : '';
+    return '<div class="evolution-event-row' + active + '" data-event="' + escAttr(row.relation || '') +
+      '" onclick="' + evolutionSelectHandler(targetId) + '">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' +
           esc(evolutionStateLabel(source, row.source_state_id)) + ' -> ' +
@@ -7027,6 +7147,35 @@ function renderEvolutionWarnings(data) {
 function evolutionStateById(data, stateId) {
   const states = Array.isArray(data && data.cluster_states) ? data.cluster_states : [];
   return states.find(state => String(state.state_id || '') === String(stateId || '')) || null;
+}
+
+function selectedEvolutionState(data) {
+  if (!currentEvolutionSelectedStateId) return null;
+  return evolutionStateById(data, currentEvolutionSelectedStateId);
+}
+
+function evolutionLineageForState(data, stateId) {
+  const lineages = Array.isArray(data && data.lineages) ? data.lineages : [];
+  return lineages.find(row => String(row.state_id || '') === String(stateId || '')) || null;
+}
+
+function evolutionTransitionsForState(data, stateId, field) {
+  const transitions = Array.isArray(data && data.transitions) ? data.transitions : [];
+  return transitions.filter(row => String(row[field] || '') === String(stateId || ''));
+}
+
+function evolutionEventsForState(data, stateId) {
+  const events = Array.isArray(data && data.events) ? data.events : [];
+  return events.filter(event => evolutionEventTouchesState(event, stateId));
+}
+
+function evolutionEventTouchesState(event, stateId) {
+  const target = String(stateId || '');
+  if (!target) return false;
+  const refs = [event && event.state_id];
+  if (Array.isArray(event && event.source_state_ids)) refs.push(...event.source_state_ids);
+  if (Array.isArray(event && event.target_state_ids)) refs.push(...event.target_state_ids);
+  return refs.map(value => String(value || '')).includes(target);
 }
 
 function evolutionStateLabel(state, fallback) {

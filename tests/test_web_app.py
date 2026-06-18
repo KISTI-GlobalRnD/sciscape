@@ -451,7 +451,12 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "loadEvolution" in response.text
     assert "renderEvolutionLens" in response.text
     assert "renderEvolutionMap" in response.text
+    assert "renderEvolutionStateDetail" in response.text
+    assert "selectEvolutionState" in response.text
+    assert "currentEvolutionSelectedStateId" in response.text
     assert "evolution-map-panel" in response.text
+    assert "evolution-detail-grid" in response.text
+    assert "Select a state node" in response.text
     assert "selectEvolutionEventFilter" in response.text
     assert "/api/jobs/${currentJobId}/evolution" in response.text
     assert "evolution/time_slices.parquet" in response.text
