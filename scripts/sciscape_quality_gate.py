@@ -1298,6 +1298,17 @@ def _find_headless_browser() -> str | None:
     return None
 
 
+def _headless_browser_isolation_args(root: Path) -> list[str]:
+    profile_dir = root / "chrome_profile"
+    return [
+        f"--user-data-dir={profile_dir}",
+        "--disable-background-networking",
+        "--disable-extensions",
+        "--no-first-run",
+        "--no-default-browser-check",
+    ]
+
+
 def _png_rgba_rows(path: Path) -> tuple[int, int, bytes]:
     data = path.read_bytes()
     _assert(data.startswith(b"\x89PNG\r\n\x1a\n"), "screenshot is not a PNG file")
@@ -1391,6 +1402,7 @@ def run_atlas_visual_smoke_gate() -> dict[str, Any]:
             "--headless=new",
             "--no-sandbox",
             "--disable-dev-shm-usage",
+            *_headless_browser_isolation_args(root),
             "--use-gl=swiftshader",
             "--enable-unsafe-swiftshader",
             "--window-size=900,600",
@@ -1430,6 +1442,7 @@ def run_atlas_interaction_smoke_gate() -> dict[str, Any]:
             "--headless=new",
             "--no-sandbox",
             "--disable-dev-shm-usage",
+            *_headless_browser_isolation_args(root),
             "--use-gl=swiftshader",
             "--enable-unsafe-swiftshader",
             "--window-size=1100,760",
@@ -1479,6 +1492,7 @@ def run_atlas_inspector_smoke_gate() -> dict[str, Any]:
             "--headless=new",
             "--no-sandbox",
             "--disable-dev-shm-usage",
+            *_headless_browser_isolation_args(root),
             "--window-size=1200,900",
             "--virtual-time-budget=9000",
             "--run-all-compositor-stages-before-draw",
