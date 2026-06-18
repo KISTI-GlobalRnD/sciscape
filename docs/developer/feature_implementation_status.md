@@ -548,6 +548,9 @@ Status: `[~]` Partial. Rough completeness: 56%.
   narrative payload, cluster-level reviewed/pending claim counts are exposed,
   narrative validation is refreshed, and the inspector shows pending/saved/failed
   feedback.
+- `[x]` Result manifests and the web downloads tab expose narrative companion
+  artifacts, including targets, claims, evidence refs, claim-evidence links,
+  sections, review decisions when present, and QA.
 - `[ ]` There is no stable narrative generation pipeline.
 - `[ ]` There is no final reviewed narrative publication surface.
 

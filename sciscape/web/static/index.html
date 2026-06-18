@@ -6432,6 +6432,77 @@ function manifestMatrixArtifactCards(result, jobId, seenPaths) {
   return cards.join('');
 }
 
+function narrativeArtifactIcon(key, record) {
+  const artifactKey = String(key || '').toLowerCase();
+  const path = String(record && record.path || '').toLowerCase();
+  if (artifactKey.includes('qa') || path.endsWith('narrative_qa.json')) return 'QA';
+  if (artifactKey.includes('target') || path.endsWith('narrative_targets.parquet')) return 'TGT';
+  if (artifactKey.includes('claim_evidence') || path.endsWith('claim_evidence_links.parquet')) return 'LNK';
+  if (artifactKey.includes('claim') || path.endsWith('claims.parquet')) return 'CLM';
+  if (artifactKey.includes('evidence_source') || path.endsWith('evidence_sources.parquet')) return 'SRC';
+  if (artifactKey.includes('evidence_ref') || path.endsWith('evidence_refs.parquet')) return 'EVD';
+  if (artifactKey.includes('section') || path.endsWith('narrative_sections.parquet')) return 'SEC';
+  if (artifactKey.includes('review') || path.endsWith('review_decisions.parquet')) return 'REV';
+  if (path.endsWith('narrative_manifest.json')) return 'NAR';
+  return 'NAR';
+}
+
+function narrativeArtifactLabel(key, record) {
+  const artifactKey = String(key || '').toLowerCase();
+  const path = String(record && record.path || '').toLowerCase();
+  if (path.endsWith('narrative_manifest.json')) return 'Narrative claim graph manifest';
+  if (artifactKey.includes('qa') || path.endsWith('narrative_qa.json')) return 'Narrative QA report';
+  if (artifactKey.includes('target') || path.endsWith('narrative_targets.parquet')) return 'Narrative targets';
+  if (artifactKey.includes('claim_evidence') || path.endsWith('claim_evidence_links.parquet')) return 'Narrative claim-evidence links';
+  if (artifactKey.includes('claim') || path.endsWith('claims.parquet')) return 'Narrative claims';
+  if (artifactKey.includes('evidence_source') || path.endsWith('evidence_sources.parquet')) return 'Narrative evidence sources';
+  if (artifactKey.includes('evidence_ref') || path.endsWith('evidence_refs.parquet')) return 'Narrative evidence references';
+  if (artifactKey.includes('section') || path.endsWith('narrative_sections.parquet')) return 'Narrative sections';
+  if (artifactKey.includes('review') || path.endsWith('review_decisions.parquet')) return 'Narrative review decisions';
+  return 'Narrative artifact';
+}
+
+function narrativeArtifactMeta(key, record) {
+  const meta = [];
+  const schema = record && record.schema_version;
+  if (schema) meta.push('schema: ' + String(schema).replace(/^sciscape_/, ''));
+  const rows = Number(record && record.rows);
+  if (Number.isFinite(rows) && rows > 0) meta.push('rows: ' + formatAtlasCount(rows));
+  if (key) meta.push('artifact: ' + String(key).replace(/_/g, ' '));
+  return meta;
+}
+
+function manifestNarrativeArtifactCards(result, jobId, seenPaths) {
+  const manifest = result && result.result_manifest || {};
+  const artifacts = manifest.artifacts && typeof manifest.artifacts === 'object' ? manifest.artifacts : {};
+  const cards = [];
+  const seen = seenPaths || new Set();
+  for (const entry of Object.entries(artifacts)) {
+    const key = entry[0];
+    const record = entry[1] || {};
+    if (!record || record.status === 'missing' || record.status === 'blocked') continue;
+    const path = record.path;
+    if (!path || seen.has(path)) continue;
+    const role = String(record.role || '').toLowerCase();
+    const inNarrativeTree = String(path).startsWith('narrative/');
+    const isNarrativeArtifact = inNarrativeTree && (
+      role === 'narrative'
+      || role === 'narrative_table'
+      || (role === 'qa' && String(key).startsWith('narrative'))
+    );
+    if (!isNarrativeArtifact) continue;
+    seen.add(path);
+    cards.push(dlCard(
+      path,
+      narrativeArtifactLabel(key, record),
+      narrativeArtifactIcon(key, record),
+      jobId,
+      narrativeArtifactMeta(key, record)
+    ));
+  }
+  return cards.join('');
+}
+
 function runStateRecoverableRows(result) {
   const runState = resultRunState(result || {});
   if (!runState) return [];
@@ -6798,6 +6869,7 @@ function updateDownloads(result) {
     addDownload('evolution/evolution_events.parquet', 'Evolution event rows', 'EVT');
   }
   grid.innerHTML += manifestMatrixArtifactCards(result || {}, currentJobId, seenDownloads);
+  grid.innerHTML += manifestNarrativeArtifactCards(result || {}, currentJobId, seenDownloads);
   const manifest = result && result.result_manifest || {};
   const exportRows = Array.isArray(manifest.exports) ? manifest.exports : [];
   const bundleExport = manifestExportRow(exportRows, 'vosviewer_bundle');

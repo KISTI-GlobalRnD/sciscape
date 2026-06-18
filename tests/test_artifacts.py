@@ -599,6 +599,16 @@ def test_write_narrative_evidence_artifacts_creates_claim_graph_from_review_pack
     assert result_manifest["features"]["narrative"]["state"] == "beta"
     assert "narrative" in result_manifest["features"]["narrative"]["artifact_refs"]
     assert result_manifest["features"]["keyword"]["state"] == "stable"
+    artifacts = result_manifest["artifacts"]
+    assert artifacts["narrative"]["path"] == "narrative/narrative_manifest.json"
+    assert artifacts["narrative_targets"]["path"] == "narrative/narrative_targets.parquet"
+    assert artifacts["narrative_claims"]["path"] == "narrative/claims.parquet"
+    assert artifacts["narrative_claims"]["role"] == "narrative_table"
+    assert artifacts["narrative_claims"]["rows"] == validation["counts"]["claims"]
+    assert artifacts["narrative_evidence_refs"]["path"] == "narrative/evidence_refs.parquet"
+    assert artifacts["narrative_claim_evidence_links"]["path"] == "narrative/claim_evidence_links.parquet"
+    assert artifacts["narrative_sections"]["path"] == "narrative/narrative_sections.parquet"
+    assert "narrative_review_decisions" not in artifacts
     assert "narrative/narrative_qa.json" in result_manifest["quality"]["gate_paths"]
 
 

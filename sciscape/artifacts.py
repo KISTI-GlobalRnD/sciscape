@@ -10798,6 +10798,86 @@ def _add_evolution_output_artifacts(
         )
 
 
+def _add_narrative_output_artifacts(
+    records: dict[str, dict[str, Any]],
+    *,
+    root: Path,
+    manifest_rel_path: str,
+    suffix: str,
+) -> None:
+    try:
+        validation = validate_narrative_artifact(root / manifest_rel_path).to_dict()
+    except Exception:
+        return
+    paths = validation.get("paths") if isinstance(validation.get("paths"), Mapping) else {}
+    counts = validation.get("counts") if isinstance(validation.get("counts"), Mapping) else {}
+    specs = [
+        (
+            "targets",
+            "targets",
+            NARRATIVE_TARGETS_SCHEMA_VERSION,
+            "Narrative target entities.",
+            counts.get("targets"),
+        ),
+        (
+            "claims",
+            "claims",
+            NARRATIVE_CLAIMS_SCHEMA_VERSION,
+            "Evidence-backed narrative claims.",
+            counts.get("claims"),
+        ),
+        (
+            "evidence_sources",
+            "evidence_sources",
+            NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION,
+            "Narrative source artifact references.",
+            counts.get("evidence_sources"),
+        ),
+        (
+            "evidence_refs",
+            "evidence_refs",
+            NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION,
+            "Narrative evidence references.",
+            counts.get("evidence_refs"),
+        ),
+        (
+            "claim_evidence_links",
+            "claim_evidence_links",
+            NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION,
+            "Claim-to-evidence link table.",
+            counts.get("claim_evidence_links"),
+        ),
+        (
+            "sections",
+            "sections",
+            NARRATIVE_SECTIONS_SCHEMA_VERSION,
+            "Narrative display sections.",
+            counts.get("sections"),
+        ),
+        (
+            "reviews",
+            "review_decisions",
+            NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION,
+            "Narrative review decisions.",
+            counts.get("reviews"),
+        ),
+    ]
+    for output_key, base_key, schema_version, description, rows in specs:
+        rel_output = paths.get(output_key)
+        if not rel_output:
+            continue
+        key = f"narrative_{base_key}" if not suffix else f"narrative_{suffix}_{base_key}"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_table",
+            path=str(rel_output),
+            required_for=["narrative"],
+            table_info={"rows": rows} if rows is not None else None,
+            schema_version=schema_version,
+            description=description,
+        )
+
+
 def _is_cluster_sharded_keyword_manifest(payload: Mapping[str, Any] | None) -> bool:
     return bool(payload and payload.get("schema_version") == "sciscape_keyword_cluster_shards_v1")
 
@@ -11154,6 +11234,12 @@ def _build_manifest_artifacts(validation: ArtifactValidationResult) -> dict[str,
             required_for=["narrative"],
             schema_version=NARRATIVE_MANIFEST_SCHEMA_VERSION,
             description="Evidence-backed narrative claim graph manifest.",
+        )
+        _add_narrative_output_artifacts(
+            records,
+            root=root,
+            manifest_rel_path=str(rel_path),
+            suffix="" if i == 1 else str(i),
         )
         qa_path = Path(str(rel_path)).parent / "narrative_qa.json"
         if (root / qa_path).exists():

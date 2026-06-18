@@ -1082,6 +1082,8 @@ Success:
 
 - every claim links to evidence
 - missing evidence appears as a caveat
+- narrative claim, evidence, section, review, and QA artifacts are exposed through
+  the result manifest and downloads surface when present
 - generated narratives include prompt/model metadata when LLMs are used
 - narrative edits are recorded as review decisions and the latest decision is
   readable from the cluster narrative view

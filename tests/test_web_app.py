@@ -354,6 +354,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlas-narrative-panel" in response.text
     assert "submitAtlasNarrativeReview" in response.text
     assert "/narrative/review" in response.text
+    assert "manifestNarrativeArtifactCards" in response.text
+    assert "Narrative claim graph manifest" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -1714,7 +1716,14 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["result_manifest"]["schema_version"] == "sciscape_result_manifest_v1"
     assert job_payload["result"]["result_manifest"]["manifest_state"] == "present"
     assert job_payload["result"]["result_manifest"]["title"] == "Curated Web Result"
-    assert job_payload["result"]["result_manifest"]["artifacts"]["keywords"]["path"] == "landscape/keywords.parquet"
+    artifacts = job_payload["result"]["result_manifest"]["artifacts"]
+    assert artifacts["keywords"]["path"] == "landscape/keywords.parquet"
+    assert artifacts["narrative"]["path"] == "narrative/narrative_manifest.json"
+    assert artifacts["narrative_claims"]["path"] == "narrative/claims.parquet"
+    assert artifacts["narrative_claims"]["role"] == "narrative_table"
+    assert artifacts["narrative_claims"]["rows"] > 0
+    assert artifacts["narrative_evidence_refs"]["path"] == "narrative/evidence_refs.parquet"
+    assert artifacts["narrative_qa"]["path"] == "narrative/narrative_qa.json"
     assert job_payload["result"]["run_state"]["status"] == "failed"
     assert job_payload["result"]["run_state"]["shards"] == {"total": 3, "complete": 1, "failed": 1, "running": 1}
     assert job_payload["result"]["run_state"]["resume"]["supported"] is True
@@ -2051,6 +2060,15 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert evolution_states_download.status_code == 200
     assert "cluster_states.parquet" in evolution_states_download.headers["content-disposition"]
     assert evolution_states_download.content
+
+    narrative_manifest_download = client.get(f"/api/jobs/{job_id}/download/narrative/narrative_manifest.json")
+    assert narrative_manifest_download.status_code == 200
+    assert narrative_manifest_download.json()["schema_version"] == "sciscape_narrative_manifest_v1"
+
+    narrative_claims_download = client.get(f"/api/jobs/{job_id}/download/narrative/claims.parquet")
+    assert narrative_claims_download.status_code == 200
+    assert "claims.parquet" in narrative_claims_download.headers["content-disposition"]
+    assert narrative_claims_download.content
 
     export_download = client.get(f"/api/jobs/{job_id}/download/vosviewer/vosviewer_map.txt")
     assert export_download.status_code == 200
