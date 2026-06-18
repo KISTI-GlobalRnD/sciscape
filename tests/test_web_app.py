@@ -461,6 +461,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "evolutionLoadProfileQuery" in response.text
     assert "evolution_profile" in response.text
     assert "loaded within limits" in response.text
+    assert "evolutionCoverageLabels" in response.text
+    assert "membership" in response.text
     assert "hidden states" in response.text
     assert "selectEvolutionState" in response.text
     assert "currentEvolutionSelectedStateId" in response.text

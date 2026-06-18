@@ -6898,6 +6898,7 @@ function renderEvolutionLoadControls(data) {
     ['full', 'Full'],
   ];
   const truncated = evolutionTruncationLabels(data);
+  const coverage = evolutionCoverageLabels(data);
   const profileText = 'profile ' + currentEvolutionLoadProfile;
   const truncatedText = truncated.length
     ? 'truncated ' + truncated.slice(0, 5).join(', ') + (truncated.length > 5 ? ', +' + (truncated.length - 5) : '')
@@ -6910,6 +6911,9 @@ function renderEvolutionLoadControls(data) {
     }).join('') +
     '<span class="evolution-mini-tag">' + esc(profileText) + '</span>' +
     '<span class="evolution-mini-tag">' + esc(truncatedText) + '</span>' +
+    coverage.slice(0, 5).map(label =>
+      '<span class="evolution-mini-tag">' + esc(label) + '</span>'
+    ).join('') +
   '</div>';
 }
 
@@ -6925,6 +6929,24 @@ function evolutionTruncationLabels(data) {
     if (value) labels.push('map ' + key);
   }
   return Array.from(new Set(labels)).sort();
+}
+
+function evolutionCoverageLabels(data) {
+  const counts = data && data.counts && typeof data.counts === 'object' ? data.counts : {};
+  const specs = [
+    ['cluster_states', 'states', 'states'],
+    ['transitions', 'transitions', 'transitions'],
+    ['lineages', 'lineages', 'lineages'],
+    ['events', 'events', 'events'],
+    ['state_membership', 'state_membership_rows', 'membership'],
+  ];
+  return specs.map(([rowKey, countKey, label]) => {
+    const rows = data && Array.isArray(data[rowKey]) ? data[rowKey] : [];
+    const total = Number(counts[countKey] || 0);
+    if (!rows.length && !total) return '';
+    const totalText = total > 0 ? '/' + formatAtlasCount(total) : '';
+    return label + ' ' + formatAtlasCount(rows.length) + totalText;
+  }).filter(Boolean);
 }
 
 function selectEvolutionLoadProfile(profile) {
