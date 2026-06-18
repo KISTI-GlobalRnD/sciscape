@@ -1283,6 +1283,8 @@ def test_write_evidence_backed_evolution_artifacts_promotes_stable_feature(tmp_p
     assert "evolution_qa" in manifest["features"]["evolution"]["artifact_refs"]
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["metric"] == "term_overlap"
+    assert evolution_manifest["matching_method"]["diagnostics"]["source"] == "explicit_transition_evidence"
+    assert evolution_manifest["matching_method"]["diagnostics"]["retained_transition_rows"] == 3
 
 
 def test_write_document_overlap_evolution_artifacts_promotes_stable_feature(tmp_path):
@@ -1343,6 +1345,11 @@ def test_write_document_overlap_evolution_artifacts_promotes_stable_feature(tmp_
     assert manifest["artifacts"]["evolution_state_membership"]["path"] == "evolution/state_membership.parquet"
     evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
     assert evolution_manifest["matching_method"]["normalization"] == "state_document_membership_overlap"
+    diagnostics = evolution_manifest["matching_method"]["diagnostics"]
+    assert diagnostics["source"] == "state_document_membership_overlap"
+    assert diagnostics["candidate_transition_rows"] == 3
+    assert diagnostics["retained_transition_rows"] == 3
+    assert diagnostics["slice_pairs"][0]["candidate_count"] == 3
 
 
 def test_write_slice_membership_evolution_artifacts_promotes_stable_feature(tmp_path):

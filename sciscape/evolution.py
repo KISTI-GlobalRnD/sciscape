@@ -1938,6 +1938,95 @@ def build_evolution_transition_table(
     return label_evolution_transition_relations(transitions, event_rules=event_rules)
 
 
+def _transition_matching_diagnostics(
+    *,
+    states: pd.DataFrame,
+    transition_evidence: pd.DataFrame,
+    transitions: pd.DataFrame,
+    matching_method: Mapping[str, Any],
+    source: str,
+) -> dict[str, Any]:
+    """Return compact manifest-safe diagnostics for transition matching."""
+
+    state_lookup: dict[str, dict[str, Any]] = {}
+    if not states.empty and {"state_id", "slice_id", "slice_index"} <= set(states.columns):
+        for row in states[["state_id", "slice_id", "slice_index"]].itertuples(index=False):
+            state_lookup[str(row.state_id)] = {
+                "slice_id": str(row.slice_id),
+                "slice_index": int(row.slice_index),
+            }
+
+    def _slice_pair_key(source_state_id: object, target_state_id: object) -> tuple[int, int, str, str] | None:
+        source_info = state_lookup.get(str(source_state_id))
+        target_info = state_lookup.get(str(target_state_id))
+        if source_info is None or target_info is None:
+            return None
+        return (
+            int(source_info["slice_index"]),
+            int(target_info["slice_index"]),
+            str(source_info["slice_id"]),
+            str(target_info["slice_id"]),
+        )
+
+    candidate_counts: dict[tuple[int, int, str, str], int] = {}
+    if not transition_evidence.empty and {"source_state_id", "target_state_id"} <= set(transition_evidence.columns):
+        for row in transition_evidence[["source_state_id", "target_state_id"]].itertuples(index=False):
+            key = _slice_pair_key(row.source_state_id, row.target_state_id)
+            if key is not None:
+                candidate_counts[key] = candidate_counts.get(key, 0) + 1
+
+    retained_counts: dict[tuple[int, int, str, str], int] = {}
+    if not transitions.empty and {"source_state_id", "target_state_id"} <= set(transitions.columns):
+        for row in transitions[["source_state_id", "target_state_id"]].itertuples(index=False):
+            key = _slice_pair_key(row.source_state_id, row.target_state_id)
+            if key is not None:
+                retained_counts[key] = retained_counts.get(key, 0) + 1
+
+    slice_pairs = []
+    for key in sorted(set(candidate_counts) | set(retained_counts)):
+        candidate_count = int(candidate_counts.get(key, 0))
+        retained_count = int(retained_counts.get(key, 0))
+        source_slice_index, target_slice_index, source_slice_id, target_slice_id = key
+        slice_pairs.append(
+            {
+                "source_slice_id": source_slice_id,
+                "target_slice_id": target_slice_id,
+                "source_slice_index": int(source_slice_index),
+                "target_slice_index": int(target_slice_index),
+                "candidate_count": candidate_count,
+                "retained_count": retained_count,
+                "dropped_count": max(candidate_count - retained_count, 0),
+            }
+        )
+
+    relation_counts = (
+        {str(key): int(value) for key, value in transitions["relation"].map(str).value_counts().sort_index().items()}
+        if not transitions.empty and "relation" in transitions.columns
+        else {}
+    )
+    warning_counts: dict[str, int] = {}
+    if not transitions.empty and "warning_flags" in transitions.columns:
+        for flags in transitions["warning_flags"].fillna("").map(str):
+            for flag in [item.strip() for item in flags.split(",") if item.strip()]:
+                warning_counts[flag] = warning_counts.get(flag, 0) + 1
+
+    candidate_rows = int(len(transition_evidence))
+    retained_rows = int(len(transitions))
+    return {
+        "source": source,
+        "state_count": int(len(states)),
+        "candidate_transition_rows": candidate_rows,
+        "retained_transition_rows": retained_rows,
+        "dropped_transition_rows": max(candidate_rows - retained_rows, 0),
+        "min_transition_score": float(matching_method.get("min_transition_score", 0.0)),
+        "min_support_count": int(matching_method.get("min_support_count", 1)),
+        "slice_pair_count": int(len(slice_pairs)),
+        "slice_pairs": slice_pairs,
+        "relation_counts": relation_counts,
+        "warning_flag_counts": {key: int(value) for key, value in sorted(warning_counts.items())},
+    }
+
+
 def build_document_overlap_transition_evidence(
     *,
     states: pd.DataFrame,
@@ -2279,6 +2368,13 @@ def build_document_overlap_evolution(
         metric=metric,
         matching_method=matching,
         event_rules=rules,
+    )
+    matching["diagnostics"] = _transition_matching_diagnostics(
+        states=states,
+        transition_evidence=transition_evidence,
+        transitions=transitions,
+        matching_method=matching,
+        source="state_document_membership_overlap",
     )
     lineages = _lineage_rows(evolution_id, states, transitions)
     events = classify_evolution_events(
@@ -2647,6 +2743,13 @@ def build_evidence_backed_evolution(
         event_rules=rules,
         allow_skip_slices=allow_skip_slices,
     )
+    matching["diagnostics"] = _transition_matching_diagnostics(
+        states=states,
+        transition_evidence=transition_evidence,
+        transitions=transitions,
+        matching_method=matching,
+        source="explicit_transition_evidence",
+    )
     lineages = _lineage_rows(evolution_id, states, transitions)
     events = classify_evolution_events(
         evolution_id=evolution_id,
@@ -2778,6 +2881,13 @@ def build_membership_projection_evolution(
         states,
         state_docs,
         matching_method=matching,
+    )
+    matching["diagnostics"] = _transition_matching_diagnostics(
+        states=states,
+        transition_evidence=transitions,
+        transitions=transitions,
+        matching_method=matching,
+        source="projected_membership_transitions",
     )
     lineages = _lineage_rows(evolution_id, states, transitions)
     events = classify_evolution_events(

@@ -120,7 +120,7 @@ Required fields:
 | `title` | string | human-readable title |
 | `result_id` | string or null | parent result when available |
 | `slice_method` | object | how time slices and cluster states were produced |
-| `matching_method` | object | transition metric, thresholds, and tie policy |
+| `matching_method` | object | transition metric, thresholds, tie policy, and matching diagnostics |
 | `event_rules` | object | split, merge, emergence, decline, and continuation rules |
 | `entity_scope` | object | levels, cluster universe, document universe, and filters |
 | `metrics` | array | transition and stability metric definitions |
@@ -153,7 +153,14 @@ Example:
     "min_transition_score": 0.5,
     "min_support_count": 1,
     "tie_policy": "keep_all_above_threshold",
-    "normalization": "static_membership_projection"
+    "normalization": "static_membership_projection",
+    "diagnostics": {
+      "source": "projected_membership_transitions",
+      "candidate_transition_rows": 128,
+      "retained_transition_rows": 96,
+      "dropped_transition_rows": 32,
+      "slice_pair_count": 4
+    }
   },
   "event_rules": {
     "continuation_min_score": 0.5,
@@ -319,6 +326,9 @@ Rules:
 - Duplicate `(source_state_id, target_state_id, metric)` rows are invalid.
 - Transitions are evidence rows. Event labels are assigned in
   `evolution_events.parquet`.
+- `matching_method.diagnostics` records compact matching diagnostics for
+  manifest review: candidate, retained, and dropped transition row counts;
+  relation and warning-flag counts; and per-slice-pair candidate/retained counts.
 
 ## Lineages Table
 

@@ -350,6 +350,11 @@ def test_membership_projection_evolution_builds_in_memory_tables():
     assert result.periodization["end_year"] == 2022
     assert result.entity_scope["cluster_level"] == "cluster"
     assert result.matching_method["metric"] == "projected_cluster_identity"
+    diagnostics = result.matching_method["diagnostics"]
+    assert diagnostics["source"] == "projected_membership_transitions"
+    assert diagnostics["candidate_transition_rows"] == 2
+    assert diagnostics["retained_transition_rows"] == 2
+    assert diagnostics["relation_counts"] == {"continuation": 2}
     assert result.slices["active_cluster_count"].tolist() == [1, 2, 1]
     assert len(result.states) == 4
     assert len(result.transitions) == 2
@@ -955,6 +960,15 @@ def test_build_document_overlap_evolution_derives_transitions_from_cluster_membe
     assert result.evolution_id == "overlap_evolution"
     assert result.matching_method["metric"] == "jaccard_doc_overlap"
     assert result.matching_method["normalization"] == "state_document_membership_overlap"
+    diagnostics = result.matching_method["diagnostics"]
+    assert diagnostics["source"] == "state_document_membership_overlap"
+    assert diagnostics["candidate_transition_rows"] == 3
+    assert diagnostics["retained_transition_rows"] == 3
+    assert diagnostics["slice_pair_count"] == 1
+    assert diagnostics["slice_pairs"][0]["source_slice_id"] == "year:2020"
+    assert diagnostics["slice_pairs"][0]["target_slice_id"] == "year:2021"
+    assert diagnostics["slice_pairs"][0]["candidate_count"] == 3
+    assert diagnostics["relation_counts"]["split_child"] == 2
     assert result.periodization["transition_method"] == "state_document_membership_overlap"
     assert result.state_membership is not None
     assert len(result.state_membership) == 14
@@ -1014,6 +1028,11 @@ def test_build_evidence_backed_evolution_returns_complete_analysis_result():
     assert len(result.lineages) == 8
     assert {"split", "merge", "continuation"} <= set(result.events["event_type"])
     assert result.matching_method["metric"] == "term_overlap"
+    diagnostics = result.matching_method["diagnostics"]
+    assert diagnostics["source"] == "explicit_transition_evidence"
+    assert diagnostics["candidate_transition_rows"] == 5
+    assert diagnostics["retained_transition_rows"] == 5
+    assert diagnostics["slice_pairs"][0]["retained_count"] == 5
     assert result.periodization["state_method"] == "explicit_state_evidence"
     assert result.entity_scope["cluster_id_namespace"] == "explicit_state_evidence"
     assert [item["step"] for item in result.transforms[:3]] == [
