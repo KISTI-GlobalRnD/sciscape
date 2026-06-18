@@ -7142,6 +7142,9 @@ function renderEvolutionMap(data) {
 function renderEvolutionFocusControls(data) {
   const selected = selectedEvolutionState(data);
   const canFocus = Boolean(selected && evolutionMapNodeById(data, selected.state_id));
+  const selectedLabel = selected
+    ? evolutionMapShortLabel(selected.cluster_label || selected.cluster_key || selected.state_id || 'selected', 28)
+    : 'none';
   const modes = [
     ['all', 'All'],
     ['lineage', 'Lineage'],
@@ -7153,7 +7156,10 @@ function renderEvolutionFocusControls(data) {
     return '<button class="net-chip' + active + '" ' + disabled +
       ' onclick="selectEvolutionFocusMode(decodeURIComponent(\'' + encodeURIComponent(mode) + '\'))">' +
       esc(label) + '</button>';
-  }).join('') + '</div>';
+  }).join('') +
+    '<span class="evolution-mini-tag">selected ' + esc(selectedLabel) + '</span>' +
+    '<button class="net-chip" ' + (selected ? '' : 'disabled') + ' onclick="clearEvolutionSelection()">Clear selection</button>' +
+  '</div>';
 }
 
 function selectEvolutionFocusMode(mode) {
@@ -7255,6 +7261,13 @@ function selectEvolutionEventFilter(type) {
 function selectEvolutionState(stateId) {
   if (!String(stateId || '').trim()) return;
   currentEvolutionSelectedStateId = String(stateId || '');
+  renderEvolutionLens();
+  syncEvolutionUrlState();
+}
+
+function clearEvolutionSelection() {
+  currentEvolutionSelectedStateId = '';
+  currentEvolutionFocusMode = 'all';
   renderEvolutionLens();
   syncEvolutionUrlState();
 }

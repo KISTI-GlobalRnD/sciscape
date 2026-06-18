@@ -473,6 +473,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "evolution_focus" in response.text
     assert "renderEvolutionFocusControls" in response.text
     assert "selectEvolutionFocusMode" in response.text
+    assert "clearEvolutionSelection" in response.text
+    assert "Clear selection" in response.text
     assert "focusedEvolutionMap" in response.text
     assert "Neighborhood" in response.text
     assert "evolution-map-panel" in response.text
