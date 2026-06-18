@@ -379,6 +379,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Review checklist" in response.text
     assert "Review queue" in response.text
     assert "Narrative review" in response.text
+    assert "not_required" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text

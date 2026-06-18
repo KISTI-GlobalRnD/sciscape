@@ -5382,7 +5382,7 @@ function renderAtlasNarrativeReview(node, model) {
       : 'no linked evidence refs';
     const claimId = String(claim.claim_id || '');
     const reviewState = String(claim.review_state || 'not_reviewed');
-    const actionButtons = ['accepted', 'needs_revision', 'rejected'].map(decision =>
+    const actionButtons = ['accepted', 'needs_revision', 'not_required', 'rejected'].map(decision =>
       '<button class="atlas-narrative-action' + (reviewState === decision ? ' active' : '') + '" onclick="submitAtlasNarrativeReview(decodeURIComponent(\'' +
         encodeReviewArg(clusterUid) + '\'), decodeURIComponent(\'' + encodeReviewArg(claimId) + '\'), \'' + decision + '\')">' +
         esc(decision.replace('_', ' ')) + '</button>'
