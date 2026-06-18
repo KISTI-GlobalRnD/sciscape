@@ -2415,6 +2415,11 @@ body {
   border-color: rgba(28, 35, 46, 0.52);
   box-shadow: 0 0 0 2px rgba(43, 168, 156, 0.14);
 }
+.evolution-event-row:focus,
+.evolution-state-row:focus {
+  outline: 2px solid rgba(10, 15, 26, 0.24);
+  outline-offset: 2px;
+}
 .evolution-event-row[data-event="continuation"] { border-left-color: var(--teal); }
 .evolution-event-row[data-event="emergence"] { border-left-color: var(--amber); }
 .evolution-event-row[data-event="decline"] { border-left-color: var(--coral); }
@@ -7423,8 +7428,10 @@ function renderEvolutionEvents(data) {
     const target = state ? (state.cluster_label || state.cluster_key || state.state_id) : event.state_id;
     const refs = Array.isArray(event.transition_refs) ? event.transition_refs : [];
     const active = evolutionEventTouchesState(event, currentEvolutionSelectedStateId) ? ' selected' : '';
+    const rowLabel = String(title || 'event') + ', ' + String(target || 'state');
     return '<div class="evolution-event-row' + active + '" data-event="' + escAttr(event.event_type || '') +
-      '" onclick="' + evolutionSelectHandler(stateId) + '">' +
+      '" tabindex="0" role="button" aria-label="' + escAttr(rowLabel) + '" onclick="' +
+      evolutionSelectHandler(stateId) + '" onkeydown="' + evolutionKeySelectHandler(stateId) + '">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' + esc(title) + ' / ' + esc(target || 'state') + '</div>' +
         '<span class="evolution-mini-tag">' + esc(event.slice_id || '') + '</span>' +
@@ -7454,7 +7461,9 @@ function renderEvolutionStates(data) {
           : '')
       : '';
     const active = stateId && stateId === String(currentEvolutionSelectedStateId || '') ? ' selected' : '';
-    return '<div class="evolution-state-row' + active + '" onclick="' + evolutionSelectHandler(stateId) + '">' +
+    const rowLabel = evolutionStateLabel(state, stateId) + ', ' + formatAtlasCount(state.doc_count || 0) + ' docs';
+    return '<div class="evolution-state-row' + active + '" tabindex="0" role="button" aria-label="' + escAttr(rowLabel) +
+      '" onclick="' + evolutionSelectHandler(stateId) + '" onkeydown="' + evolutionKeySelectHandler(stateId) + '">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' + esc(state.cluster_label || state.cluster_key || state.state_id) + '</div>' +
         '<span class="evolution-mini-tag">' + esc(state.slice_id || '') + '</span>' +
@@ -7478,12 +7487,16 @@ function renderEvolutionTransitions(data) {
     const target = evolutionStateById(data, row.target_state_id);
     const targetId = String(row.target_state_id || row.source_state_id || '');
     const active = [row.source_state_id, row.target_state_id].map(String).includes(String(currentEvolutionSelectedStateId || '')) ? ' selected' : '';
+    const sourceLabel = evolutionStateLabel(source, row.source_state_id);
+    const targetLabel = evolutionStateLabel(target, row.target_state_id);
+    const rowLabel = sourceLabel + ' to ' + targetLabel + ', ' + String(row.relation || 'transition');
     return '<div class="evolution-event-row' + active + '" data-event="' + escAttr(row.relation || '') +
-      '" onclick="' + evolutionSelectHandler(targetId) + '">' +
+      '" tabindex="0" role="button" aria-label="' + escAttr(rowLabel) + '" onclick="' +
+      evolutionSelectHandler(targetId) + '" onkeydown="' + evolutionKeySelectHandler(targetId) + '">' +
       '<div class="evolution-row-head">' +
         '<div class="evolution-row-title">' +
-          esc(evolutionStateLabel(source, row.source_state_id)) + ' -> ' +
-          esc(evolutionStateLabel(target, row.target_state_id)) + '</div>' +
+          esc(sourceLabel) + ' -> ' +
+          esc(targetLabel) + '</div>' +
         '<span class="evolution-mini-tag">' + esc(row.relation || 'transition') + '</span>' +
       '</div>' +
       '<div class="evolution-row-meta">' + esc(row.source_slice_id || '') + ' -> ' + esc(row.target_slice_id || '') +

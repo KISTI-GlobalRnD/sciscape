@@ -483,6 +483,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "evolutionKeySelectHandler" in response.text
     assert "aria-label" in response.text
     assert "pointer-events: stroke" in response.text
+    assert "evolution-event-row:focus" in response.text
+    assert "evolution-state-row:focus" in response.text
     assert "Neighborhood" in response.text
     assert "evolution-map-panel" in response.text
     assert "evolution-detail-grid" in response.text
