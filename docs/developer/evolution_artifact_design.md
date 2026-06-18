@@ -734,8 +734,9 @@ write a progress JSON sidecar from the CLI, creating recovery and monitoring
 checkpoints for large runs. Split, merge, and ambiguous validation are covered
 by the synthetic smoke fixture, document-overlap unit tests,
 document-overlap writer tests, and the slice-reclustering writer/CLI smokes.
-Richer matching diagnostics remain future hardening work rather than a v1
-artifact contract requirement.
+Compact transition matching diagnostics are part of the v1 manifest surface and
+are exposed in the web Evolution lens for artifact review. Deeper analyst-facing
+matching audit workflows remain future hardening work.
 
 ## Open Questions
 
