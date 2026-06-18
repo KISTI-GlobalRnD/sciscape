@@ -1120,6 +1120,8 @@ class TestEvolutionFromSliceReclusteringArgs:
             "3",
             "--min-docs-per-slice",
             "2",
+            "--slice-reclustering-workers",
+            "2",
             "--slice-membership-output",
             "evolution_work/slice_membership.parquet",
             "--progress-path",
@@ -1156,6 +1158,7 @@ class TestEvolutionFromSliceReclusteringArgs:
         assert args.seed == 7
         assert args.n_iterations == 3
         assert args.min_docs_per_slice == 2
+        assert args.slice_reclustering_workers == 2
         assert args.slice_membership_output == Path("evolution_work/slice_membership.parquet")
         assert args.progress_path == Path("evolution_work/progress.json")
         assert args.representative_work_limit == 5
@@ -1195,6 +1198,8 @@ class TestEvolutionFromSliceReclusteringArgs:
             "0.01",
             "--backend",
             "igraph",
+            "--slice-reclustering-workers",
+            "2",
             "--slice-membership-output",
             str(slice_membership_output),
             "--evolution-id",
@@ -1209,6 +1214,7 @@ class TestEvolutionFromSliceReclusteringArgs:
         assert progress["status"] == "completed"
         assert progress["completed_slices"] == 2
         assert progress["membership_rows"] == 8
+        assert progress["params"]["max_workers"] == 2
         validation = validate_evolution_artifact(root / "evolution" / "evolution_manifest.json").to_dict()
         assert validation["status"] == "passed"
         assert validation["counts"]["slices"] == 2

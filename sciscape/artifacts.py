@@ -9023,6 +9023,7 @@ def write_slice_reclustering_evolution_artifacts(
     n_iterations: int = 10,
     backend: str = "auto",
     min_docs_per_slice: int = 1,
+    max_workers: int = 1,
     slice_membership_output: str | Path | None = None,
     progress_path: str | Path | None = None,
     representative_work_limit: int = 50,
@@ -9054,6 +9055,7 @@ def write_slice_reclustering_evolution_artifacts(
         n_iterations=n_iterations,
         backend=backend,
         min_docs_per_slice=min_docs_per_slice,
+        max_workers=max_workers,
         progress_path=progress_output_path,
     )
     slice_membership_path: Path | None = None
@@ -9091,6 +9093,7 @@ def write_slice_reclustering_evolution_artifacts(
         "seed": int(seed),
         "n_iterations": int(n_iterations),
         "min_docs_per_slice": int(min_docs_per_slice),
+        "max_workers": int(max_workers),
         "slice_membership_rows": int(len(slice_membership)),
     }
     if slice_membership_ref is not None:

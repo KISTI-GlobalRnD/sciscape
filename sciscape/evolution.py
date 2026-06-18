@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1184,6 +1185,7 @@ def build_slice_reclustering_membership(
     backend: str = "auto",
     min_docs_per_slice: int = 1,
     progress_path: str | Path | None = None,
+    max_workers: int = 1,
 ) -> pd.DataFrame:
     """Run one-level slice-local Leiden clustering and return membership rows.
 
@@ -1219,6 +1221,9 @@ def build_slice_reclustering_membership(
     min_docs = _config_int({"min_docs_per_slice": min_docs_per_slice}, "min_docs_per_slice", 1, label="slice-local reclustering")
     if min_docs < 1:
         raise ValueError("slice-local reclustering min_docs_per_slice must be at least 1")
+    workers = _config_int({"max_workers": max_workers}, "max_workers", 1, label="slice-local reclustering")
+    if workers < 1:
+        raise ValueError("slice-local reclustering max_workers must be at least 1")
 
     records = records_df[[record_uid_column, year_column]].dropna(subset=[record_uid_column]).copy()
     records["_uid"] = records[record_uid_column].map(str).str.strip()
@@ -1260,15 +1265,66 @@ def build_slice_reclustering_membership(
             "seed": int(seed),
             "n_iterations": int(iterations),
             "min_docs_per_slice": int(min_docs),
+            "max_workers": int(workers),
         },
         "last_slice": None,
     }
     _write_progress_json(progress_path, progress)
+
+    def _slice_job(slice_row: Mapping[str, Any], uids: list[str], slice_edges: pd.DataFrame) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        membership, quality, n_clusters, backend_used = _run_slice_leiden(
+            uids=uids,
+            edges=slice_edges,
+            source_column="_source_uid",
+            target_column="_target_uid",
+            weight_column="_weight",
+            resolution=resolution_float,
+            objective=objective_norm,
+            seed=int(seed),
+            n_iterations=iterations,
+            backend=backend,
+        )
+        job_rows = [
+            {
+                "evolution_id": evolution_id,
+                "slice_id": str(slice_row["slice_id"]),
+                "slice_index": int(slice_row["slice_index"]),
+                "slice_label": str(slice_row["slice_label"]),
+                "start_year": int(slice_row["start_year"]),
+                "end_year": int(slice_row["end_year"]),
+                "unit": str(slice_row["unit"]),
+                "uid": uid,
+                "cluster_id": int(cluster_id),
+                "resolution": resolution_float,
+                "objective": objective_norm,
+                "seed": int(seed),
+                "n_iterations": int(iterations),
+                "backend": backend_used,
+                "quality": quality,
+                "slice_doc_count": int(len(uids)),
+                "slice_edge_count": int(len(slice_edges)),
+                "slice_cluster_count": int(n_clusters),
+            }
+            for uid, cluster_id in zip(uids, membership)
+        ]
+        last_slice = {
+            "slice_id": str(slice_row["slice_id"]),
+            "slice_index": int(slice_row["slice_index"]),
+            "status": "completed",
+            "doc_count": int(len(uids)),
+            "edge_count": int(len(slice_edges)),
+            "cluster_count": int(n_clusters),
+            "backend": backend_used,
+            "quality": quality,
+        }
+        return job_rows, last_slice
+
     try:
-        for slice_row in ordered_slices.itertuples(index=False):
+        jobs: list[tuple[dict[str, Any], list[str], pd.DataFrame]] = []
+        for slice_row in ordered_slices.to_dict("records"):
             in_slice = records[
-                (records["_year"] >= int(slice_row.start_year))
-                & (records["_year"] <= int(slice_row.end_year))
+                (records["_year"] >= int(slice_row["start_year"]))
+                & (records["_year"] <= int(slice_row["end_year"]))
             ]
             uids = sorted(set(in_slice["_uid"].tolist()))
             if len(uids) < min_docs:
@@ -1276,8 +1332,8 @@ def build_slice_reclustering_membership(
                 progress["skipped_slices"] = int(progress["skipped_slices"]) + 1
                 progress["updated_at_utc"] = _utc_now()
                 progress["last_slice"] = {
-                    "slice_id": str(slice_row.slice_id),
-                    "slice_index": int(slice_row.slice_index),
+                    "slice_id": str(slice_row["slice_id"]),
+                    "slice_index": int(slice_row["slice_index"]),
                     "status": "skipped",
                     "doc_count": int(len(uids)),
                     "edge_count": 0,
@@ -1290,56 +1346,25 @@ def build_slice_reclustering_membership(
                 edge_work["_source_uid"].isin(uid_set)
                 & edge_work["_target_uid"].isin(uid_set)
             ].copy()
-            membership, quality, n_clusters, backend_used = _run_slice_leiden(
-                uids=uids,
-                edges=slice_edges,
-                source_column="_source_uid",
-                target_column="_target_uid",
-                weight_column="_weight",
-                resolution=resolution_float,
-                objective=objective_norm,
-                seed=int(seed),
-                n_iterations=iterations,
-                backend=backend,
-            )
-            for uid, cluster_id in zip(uids, membership):
-                rows.append(
-                    {
-                        "evolution_id": evolution_id,
-                        "slice_id": str(slice_row.slice_id),
-                        "slice_index": int(slice_row.slice_index),
-                        "slice_label": str(slice_row.slice_label),
-                        "start_year": int(slice_row.start_year),
-                        "end_year": int(slice_row.end_year),
-                        "unit": str(slice_row.unit),
-                        "uid": uid,
-                        "cluster_id": int(cluster_id),
-                        "resolution": resolution_float,
-                        "objective": objective_norm,
-                        "seed": int(seed),
-                        "n_iterations": int(iterations),
-                        "backend": backend_used,
-                        "quality": quality,
-                        "slice_doc_count": int(len(uids)),
-                        "slice_edge_count": int(len(slice_edges)),
-                        "slice_cluster_count": int(n_clusters),
-                    }
-                )
+            jobs.append((slice_row, uids, slice_edges))
+
+        def _record_completed(job_rows: list[dict[str, Any]], last_slice: dict[str, Any]) -> None:
+            rows.extend(job_rows)
             progress["processed_slices"] = int(progress["processed_slices"]) + 1
             progress["completed_slices"] = int(progress["completed_slices"]) + 1
             progress["membership_rows"] = int(len(rows))
             progress["updated_at_utc"] = _utc_now()
-            progress["last_slice"] = {
-                "slice_id": str(slice_row.slice_id),
-                "slice_index": int(slice_row.slice_index),
-                "status": "completed",
-                "doc_count": int(len(uids)),
-                "edge_count": int(len(slice_edges)),
-                "cluster_count": int(n_clusters),
-                "backend": backend_used,
-                "quality": quality,
-            }
+            progress["last_slice"] = last_slice
             _write_progress_json(progress_path, progress)
+
+        if workers == 1 or len(jobs) <= 1:
+            for job in jobs:
+                _record_completed(*_slice_job(*job))
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = [executor.submit(_slice_job, *job) for job in jobs]
+                for future in as_completed(futures):
+                    _record_completed(*future.result())
     except Exception as exc:
         progress["status"] = "failed"
         progress["updated_at_utc"] = _utc_now()

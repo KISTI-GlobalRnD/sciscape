@@ -222,6 +222,7 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path)
         resolution=0.01,
         backend="igraph",
         seed=7,
+        max_workers=2,
         progress_path=progress_path,
     )
 
@@ -232,6 +233,7 @@ def test_build_slice_reclustering_membership_runs_induced_slice_graphs(tmp_path)
     assert progress["processed_slices"] == 2
     assert progress["completed_slices"] == 2
     assert progress["membership_rows"] == 8
+    assert progress["params"]["max_workers"] == 2
     assert membership["slice_id"].tolist().count("year:2020-2021") == 4
     assert membership["slice_id"].tolist().count("year:2021-2022") == 4
     assert set(membership["backend"]) == {"igraph"}

@@ -1501,6 +1501,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
         ],
         resolution=0.01,
         backend="igraph",
+        max_workers=2,
         slice_membership_output=slice_membership_output,
         progress_path=progress_path,
     )
@@ -1511,6 +1512,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     progress = json.loads(progress_path.read_text(encoding="utf-8"))
     assert progress["status"] == "completed"
     assert progress["membership_rows"] == 8
+    assert progress["params"]["max_workers"] == 2
     generated_membership = pd.read_parquet(slice_membership_output)
     assert len(generated_membership) == 8
     assert set(generated_membership["backend"]) == {"igraph"}
@@ -1526,6 +1528,7 @@ def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tm
     transforms = evolution_manifest["transforms"]
     assert "run_slice_local_reclustering" in [row["step"] for row in transforms]
     recluster_transform = next(row for row in transforms if row["step"] == "run_slice_local_reclustering")
+    assert recluster_transform["max_workers"] == 2
     assert recluster_transform["slice_membership_output"] == "evolution_work/slice_reclustering_membership.parquet"
     assert recluster_transform["progress_path"] == "evolution_work/slice_reclustering_progress.json"
     assert recluster_transform["slice_membership_rows"] == 8

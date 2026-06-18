@@ -382,6 +382,12 @@ def _build_parser() -> argparse.ArgumentParser:
     efsr.add_argument("--n-iterations", type=int, default=10, help="Leiden iterations per slice")
     efsr.add_argument("--min-docs-per-slice", type=int, default=1, help="Skip slices with fewer documents")
     efsr.add_argument(
+        "--slice-reclustering-workers",
+        type=int,
+        default=1,
+        help="Maximum slice reclustering workers (default: 1)",
+    )
+    efsr.add_argument(
         "--slice-membership-output",
         type=Path,
         default=None,
@@ -1474,6 +1480,7 @@ def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
             n_iterations=args.n_iterations,
             backend=args.backend,
             min_docs_per_slice=args.min_docs_per_slice,
+            max_workers=args.slice_reclustering_workers,
             slice_membership_output=args.slice_membership_output,
             progress_path=progress_path,
             representative_work_limit=args.representative_work_limit,
