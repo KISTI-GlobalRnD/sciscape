@@ -1352,6 +1352,7 @@ def _cluster_narrative_view(
     claims: list[dict[str, Any]],
     refs_by_id: dict[str, dict[str, Any]],
     links_by_claim: dict[str, list[dict[str, Any]]],
+    reviews_by_claim: dict[str, list[dict[str, Any]]],
     sources_by_id: dict[str, dict[str, Any]],
     claim_limit: int,
 ) -> dict[str, Any]:
@@ -1363,8 +1364,12 @@ def _cluster_narrative_view(
     ][: max(1, int(claim_limit))]
     claim_rows: list[dict[str, Any]] = []
     aggregate_only_refs = 0
+    review_count = 0
     for claim in target_claims:
         claim_id = str(claim.get("claim_id") or "")
+        claim_reviews = reviews_by_claim.get(claim_id, [])
+        latest_review = claim_reviews[-1] if claim_reviews else None
+        review_count += len(claim_reviews)
         evidence_rows = []
         for link in links_by_claim.get(claim_id, []):
             ref_id = str(link.get("evidence_ref_id") or "")
@@ -1399,6 +1404,8 @@ def _cluster_narrative_view(
                 "evidence_ref_count": claim.get("evidence_ref_count"),
                 "text_origin": claim.get("text_origin"),
                 "review_state": claim.get("review_state"),
+                "review_count": len(claim_reviews),
+                "latest_review": latest_review,
                 "warning_flags": claim.get("warning_flags"),
                 "evidence": evidence_rows,
             }
@@ -1419,6 +1426,7 @@ def _cluster_narrative_view(
         "target": target,
         "state": state,
         "claim_count": len(target_claims),
+        "review_count": int(review_count),
         "aggregate_only_ref_count": int(aggregate_only_refs),
         "sections": section_rows,
         "claims": claim_rows,
@@ -1468,11 +1476,20 @@ def _load_narrative_payload_for_result(
     sources = _read_narrative_records(
         _narrative_output_path(narrative_dir, manifest, "evidence_sources", "evidence_sources.parquet")
     )
+    reviews = _read_narrative_records(
+        _narrative_output_path(narrative_dir, manifest, "reviews", "review_decisions.parquet")
+    )
     refs_by_id = {str(ref.get("evidence_ref_id") or ""): ref for ref in refs}
     sources_by_id = {str(source.get("evidence_source_id") or ""): source for source in sources}
     links_by_claim: dict[str, list[dict[str, Any]]] = {}
     for link in links:
         links_by_claim.setdefault(str(link.get("claim_id") or ""), []).append(link)
+    reviews_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for review in sorted(
+        reviews,
+        key=lambda row: (str(row.get("decided_at_utc") or ""), str(row.get("decision_id") or "")),
+    ):
+        reviews_by_claim.setdefault(str(review.get("claim_id") or ""), []).append(review)
     matched_targets = [
         target
         for target in targets
@@ -1485,6 +1502,7 @@ def _load_narrative_payload_for_result(
             claims=claims,
             refs_by_id=refs_by_id,
             links_by_claim=links_by_claim,
+            reviews_by_claim=reviews_by_claim,
             sources_by_id=sources_by_id,
             claim_limit=claim_limit,
         )

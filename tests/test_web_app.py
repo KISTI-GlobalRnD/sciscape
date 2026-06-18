@@ -384,6 +384,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasNarrativeReviewStatus" in response.text
     assert "review saved:" in response.text
     assert "review failed:" in response.text
+    assert "latest review:" in response.text
     assert "atlas inspector review action:" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
@@ -1974,7 +1975,14 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
         f"/api/jobs/{job_id}/clusters/cluster:0/narrative"
     )
     assert cluster_narrative_after_review_response.status_code == 200
-    assert cluster_narrative_after_review_response.json()["cluster"]["claims"][0]["review_state"] == "accepted"
+    cluster_after_review = cluster_narrative_after_review_response.json()["cluster"]
+    assert cluster_after_review["review_count"] == 1
+    assert cluster_after_review["claims"][0]["review_state"] == "accepted"
+    assert cluster_after_review["claims"][0]["review_count"] == 1
+    latest_review = cluster_after_review["claims"][0]["latest_review"]
+    assert latest_review["decision_type"] == "accepted"
+    assert latest_review["reviewer"] == "tester"
+    assert latest_review["reason"] == "evidence refs are sufficient"
 
     missing_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:missing/narrative")
     assert missing_narrative_response.status_code == 200

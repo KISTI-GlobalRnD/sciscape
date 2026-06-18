@@ -5401,6 +5401,13 @@ function renderAtlasNarrativeReview(node, model) {
       : 'no linked evidence refs';
     const claimId = String(claim.claim_id || '');
     const reviewState = String(claim.review_state || 'not_reviewed');
+    const latestReview = claim.latest_review && typeof claim.latest_review === 'object' ? claim.latest_review : null;
+    const latestReviewLabel = latestReview ? [
+      'latest review: ' + String(latestReview.decision_type || reviewState).replace('_', ' '),
+      latestReview.reviewer ? 'by ' + latestReview.reviewer : '',
+      latestReview.decided_at_utc || '',
+      latestReview.reason || ''
+    ].filter(Boolean).join(' / ') : '';
     const actionButtons = ['accepted', 'needs_revision', 'not_required', 'rejected'].map(decision =>
       '<button class="atlas-narrative-action' + (reviewState === decision ? ' active' : '') + '" onclick="submitAtlasNarrativeReview(decodeURIComponent(\'' +
         encodeReviewArg(clusterUid) + '\'), decodeURIComponent(\'' + encodeReviewArg(claimId) + '\'), \'' + decision + '\')">' +
@@ -5415,6 +5422,7 @@ function renderAtlasNarrativeReview(node, model) {
       '</div>' +
       '<div class="atlas-narrative-claim-text">' + esc(claim.claim_text || '') + '</div>' +
       '<div class="atlas-narrative-evidence" title="' + escAttr(evidenceLabel) + '">' + esc(evidenceLabel) + '</div>' +
+      (latestReviewLabel ? '<div class="atlas-narrative-evidence" title="' + escAttr(latestReviewLabel) + '">' + esc(latestReviewLabel) + '</div>' : '') +
       '<div class="atlas-narrative-actions">' + actionButtons + '</div>' +
     '</div>';
   }).join('');
