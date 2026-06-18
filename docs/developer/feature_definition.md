@@ -1085,6 +1085,7 @@ Success:
 - generated narratives include prompt/model metadata when LLMs are used
 - narrative edits are recorded as review decisions and the latest decision is
   readable from the cluster narrative view
+- cluster narrative views expose reviewed and pending claim counts
 
 Partial:
 

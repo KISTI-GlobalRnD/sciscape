@@ -390,6 +390,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "review failed:" in response.text
     assert "latest review:" in response.text
     assert "atlas inspector review action:" in response.text
+    assert "reviewed_claim_count" in response.text
+    assert "pending_review_claim_count" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
@@ -1981,6 +1983,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert cluster_narrative_after_review_response.status_code == 200
     cluster_after_review = cluster_narrative_after_review_response.json()["cluster"]
     assert cluster_after_review["review_count"] == 1
+    assert cluster_after_review["reviewed_claim_count"] == 1
+    assert cluster_after_review["pending_review_claim_count"] == cluster_after_review["claim_count"] - 1
     assert cluster_after_review["claims"][0]["review_state"] == "accepted"
     assert cluster_after_review["claims"][0]["review_count"] == 1
     latest_review = cluster_after_review["claims"][0]["latest_review"]

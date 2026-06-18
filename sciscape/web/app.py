@@ -1365,11 +1365,14 @@ def _cluster_narrative_view(
     claim_rows: list[dict[str, Any]] = []
     aggregate_only_refs = 0
     review_count = 0
+    reviewed_claim_count = 0
     for claim in target_claims:
         claim_id = str(claim.get("claim_id") or "")
         claim_reviews = reviews_by_claim.get(claim_id, [])
         latest_review = claim_reviews[-1] if claim_reviews else None
         review_count += len(claim_reviews)
+        if claim_reviews:
+            reviewed_claim_count += 1
         evidence_rows = []
         for link in links_by_claim.get(claim_id, []):
             ref_id = str(link.get("evidence_ref_id") or "")
@@ -1427,6 +1430,8 @@ def _cluster_narrative_view(
         "state": state,
         "claim_count": len(target_claims),
         "review_count": int(review_count),
+        "reviewed_claim_count": int(reviewed_claim_count),
+        "pending_review_claim_count": max(0, len(target_claims) - reviewed_claim_count),
         "aggregate_only_ref_count": int(aggregate_only_refs),
         "sections": section_rows,
         "claims": claim_rows,

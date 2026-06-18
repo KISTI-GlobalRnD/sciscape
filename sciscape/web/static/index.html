@@ -5455,7 +5455,9 @@ function renderAtlasNarrativeReview(node, model) {
     '</div>';
   }).join('');
   const note = formatAtlasCount(narrative.claim_count || narrative.claims.length) + ' claims / ' +
-    formatAtlasCount(narrative.aggregate_only_ref_count || 0) + ' aggregate-only refs';
+    formatAtlasCount(narrative.aggregate_only_ref_count || 0) + ' aggregate-only refs / ' +
+    formatAtlasCount(narrative.reviewed_claim_count || 0) + ' reviewed / ' +
+    formatAtlasCount(narrative.pending_review_claim_count || 0) + ' pending';
   const statusHtml = renderAtlasNarrativeReviewStatus(clusterUid);
   return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
     '<div class="atlas-narrative-panel ' + esc(state) + '">' +
