@@ -2243,7 +2243,8 @@ body {
   font-weight: 600;
 }
 .evolution-slice-rail,
-.evolution-event-filter {
+.evolution-event-filter,
+.evolution-focus-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -3189,6 +3190,7 @@ let currentAtlasDeckSettings = {edges: true, hierarchy: true, labels: true, minW
 let currentEvolutionPayload = null;
 let currentEvolutionEventFilter = 'all';
 let currentEvolutionSelectedStateId = '';
+let currentEvolutionFocusMode = 'all';
 let evolutionUrlStateApplied = false;
 const ATLAS_SESSION_LIMIT = 6;
 const RESULT_FEATURE_LABELS = {
@@ -6080,6 +6082,9 @@ function showResults(result) {
   renderRunState(result);
   renderAtlasShell(result);
   evolutionUrlStateApplied = false;
+  currentEvolutionSelectedStateId = '';
+  currentEvolutionEventFilter = 'all';
+  currentEvolutionFocusMode = 'all';
 
   // Stats
   const row = document.getElementById('stats-row');
@@ -6817,6 +6822,7 @@ function renderEvolutionLens() {
       renderEvolutionSummary(data) +
       renderEvolutionMethodNote(data) +
       renderEvolutionSliceRail(data) +
+      renderEvolutionFocusControls(data) +
       renderEvolutionMap(data) +
       renderEvolutionStateDetail(data) +
       renderEvolutionEventFilter(data) +
@@ -6879,7 +6885,8 @@ function renderEvolutionSliceRail(data) {
 }
 
 function renderEvolutionMap(data) {
-  const map = data && data.evolution_map || {};
+  const rawMap = data && data.evolution_map || {};
+  const map = focusedEvolutionMap(data, rawMap);
   if (!map.available) {
     return '<div class="evolution-empty">' + esc(map.reason || 'Evolution map layout is unavailable for this artifact.') + '</div>';
   }
@@ -6959,6 +6966,7 @@ function renderEvolutionMap(data) {
       '<div class="evolution-map-meta">' + esc(map.layout || 'lineage_time_grid') + ' / ' +
         formatAtlasCount(map.node_count || nodes.length) + ' states / ' +
         formatAtlasCount(map.edge_count || edges.length) + ' transitions' +
+        (map.focus_mode && map.focus_mode !== 'all' ? ' / focus ' + esc(map.focus_mode) : '') +
         (truncationNote ? ' / truncated ' + esc(truncationNote) : '') + '</div></div>' +
       '<div class="evolution-map-legend">' +
         '<span class="evolution-mini-tag">node docs</span>' +
@@ -6970,6 +6978,88 @@ function renderEvolutionMap(data) {
       sliceLayer + lineageLayer + edgeLayer + eventLayer + nodeLayer + labelLayer +
     '</svg></div>' +
   '</div>';
+}
+
+function renderEvolutionFocusControls(data) {
+  const selected = selectedEvolutionState(data);
+  const canFocus = Boolean(selected && evolutionMapNodeById(data, selected.state_id));
+  const modes = [
+    ['all', 'All'],
+    ['lineage', 'Lineage'],
+    ['neighborhood', 'Neighborhood'],
+  ];
+  return '<div class="evolution-focus-controls">' + modes.map(([mode, label]) => {
+    const disabled = mode !== 'all' && !canFocus ? ' disabled' : '';
+    const active = currentEvolutionFocusMode === mode && (mode === 'all' || canFocus) ? ' active' : '';
+    return '<button class="net-chip' + active + '" ' + disabled +
+      ' onclick="selectEvolutionFocusMode(decodeURIComponent(\'' + encodeURIComponent(mode) + '\'))">' +
+      esc(label) + '</button>';
+  }).join('') + '</div>';
+}
+
+function selectEvolutionFocusMode(mode) {
+  const next = ['all', 'lineage', 'neighborhood'].includes(mode) ? mode : 'all';
+  const selected = selectedEvolutionState(currentEvolutionPayload);
+  if (next !== 'all' && !(selected && evolutionMapNodeById(currentEvolutionPayload, selected.state_id))) {
+    currentEvolutionFocusMode = 'all';
+  } else {
+    currentEvolutionFocusMode = next;
+  }
+  renderEvolutionLens();
+  syncEvolutionUrlState();
+}
+
+function focusedEvolutionMap(data, rawMap) {
+  const map = rawMap && typeof rawMap === 'object' ? rawMap : {};
+  if (!map.available || currentEvolutionFocusMode === 'all') return map;
+  const selected = selectedEvolutionState(data);
+  if (!selected) return Object.assign({}, map, {focus_mode: 'all'});
+  const selectedId = String(selected.state_id || '');
+  const nodes = Array.isArray(map.nodes) ? map.nodes : [];
+  const edges = Array.isArray(map.edges) ? map.edges : [];
+  const events = Array.isArray(map.events) ? map.events : [];
+  const selectedNode = nodes.find(node => String(node.state_id || '') === selectedId) || null;
+  if (!selectedNode) return Object.assign({}, map, {focus_mode: 'all'});
+  const selectedLineage = selectedNode && String(selectedNode.lineage_id || '');
+  let visibleStateIds = new Set([selectedId]);
+  if (currentEvolutionFocusMode === 'lineage' && selectedLineage) {
+    visibleStateIds = new Set(
+      nodes
+        .filter(node => String(node.lineage_id || '') === selectedLineage)
+        .map(node => String(node.state_id || ''))
+        .filter(Boolean)
+    );
+  } else if (currentEvolutionFocusMode === 'neighborhood') {
+    for (const edge of edges) {
+      const source = String(edge.source_state_id || '');
+      const target = String(edge.target_state_id || '');
+      if (source === selectedId || target === selectedId) {
+        if (source) visibleStateIds.add(source);
+        if (target) visibleStateIds.add(target);
+      }
+    }
+  }
+  const focusedNodes = nodes.filter(node => visibleStateIds.has(String(node.state_id || '')));
+  const focusedEdges = edges.filter(edge =>
+    visibleStateIds.has(String(edge.source_state_id || '')) &&
+    visibleStateIds.has(String(edge.target_state_id || ''))
+  );
+  const focusedEvents = events.filter(event => evolutionEventTouchesState(event, selectedId) || visibleStateIds.has(String(event.state_id || '')));
+  const visibleLineages = new Set(focusedNodes.map(node => String(node.lineage_id || '')).filter(Boolean));
+  const focusedLineages = (Array.isArray(map.lineages) ? map.lineages : []).filter(lineage =>
+    visibleLineages.has(String(lineage.lineage_id || ''))
+  );
+  return Object.assign({}, map, {
+    focus_mode: currentEvolutionFocusMode,
+    nodes: focusedNodes,
+    edges: focusedEdges,
+    events: focusedEvents,
+    lineages: focusedLineages,
+    node_count: focusedNodes.length,
+    edge_count: focusedEdges.length,
+    event_count: focusedEvents.length,
+    lineage_count: focusedLineages.length,
+  });
 }
 
 function evolutionMapClassToken(value) {
@@ -7016,7 +7106,7 @@ function evolutionSelectHandler(stateId) {
 
 function initialEvolutionTabRequested() {
   const params = new URLSearchParams(window.location.search);
-  return Boolean(params.get('evolution_state') || params.get('evolution_event'));
+  return Boolean(params.get('evolution_state') || params.get('evolution_event') || params.get('evolution_focus'));
 }
 
 function applyEvolutionUrlState(data) {
@@ -7031,6 +7121,15 @@ function applyEvolutionUrlState(data) {
   if (stateParam && evolutionStateById(data, stateParam)) {
     currentEvolutionSelectedStateId = String(stateParam);
   }
+  const focusParam = params.get('evolution_focus');
+  if (['all', 'lineage', 'neighborhood'].includes(focusParam)) {
+    currentEvolutionFocusMode = focusParam;
+  }
+  if (currentEvolutionFocusMode !== 'all' && !currentEvolutionSelectedStateId) {
+    currentEvolutionFocusMode = 'all';
+  } else if (currentEvolutionFocusMode !== 'all' && !evolutionMapNodeById(data, currentEvolutionSelectedStateId)) {
+    currentEvolutionFocusMode = 'all';
+  }
 }
 
 function syncEvolutionUrlState() {
@@ -7040,6 +7139,8 @@ function syncEvolutionUrlState() {
     else url.searchParams.delete('evolution_state');
     if (currentEvolutionEventFilter && currentEvolutionEventFilter !== 'all') url.searchParams.set('evolution_event', currentEvolutionEventFilter);
     else url.searchParams.delete('evolution_event');
+    if (currentEvolutionFocusMode && currentEvolutionFocusMode !== 'all') url.searchParams.set('evolution_focus', currentEvolutionFocusMode);
+    else url.searchParams.delete('evolution_focus');
     window.history.replaceState(null, '', url.toString());
   } catch (_) {}
 }
@@ -7189,6 +7290,11 @@ function renderEvolutionWarnings(data) {
 function evolutionStateById(data, stateId) {
   const states = Array.isArray(data && data.cluster_states) ? data.cluster_states : [];
   return states.find(state => String(state.state_id || '') === String(stateId || '')) || null;
+}
+
+function evolutionMapNodeById(data, stateId) {
+  const nodes = Array.isArray(data && data.evolution_map && data.evolution_map.nodes) ? data.evolution_map.nodes : [];
+  return nodes.find(node => String(node.state_id || '') === String(stateId || '')) || null;
 }
 
 function selectedEvolutionState(data) {

@@ -458,6 +458,11 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "syncEvolutionUrlState" in response.text
     assert "evolution_state" in response.text
     assert "evolution_event" in response.text
+    assert "evolution_focus" in response.text
+    assert "renderEvolutionFocusControls" in response.text
+    assert "selectEvolutionFocusMode" in response.text
+    assert "focusedEvolutionMap" in response.text
+    assert "Neighborhood" in response.text
     assert "evolution-map-panel" in response.text
     assert "evolution-detail-grid" in response.text
     assert "Select a state node" in response.text
