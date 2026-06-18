@@ -64,6 +64,7 @@ from sciscape.artifacts import (
     write_matrix_from_term_cooccurrence,
     write_narrative_evidence_artifacts,
     write_slice_local_membership_evolution_artifacts,
+    write_slice_reclustering_evolution_artifacts,
     write_slice_membership_evolution_artifacts,
     write_temporal_artifacts,
     write_artifact_contract,
@@ -1462,6 +1463,57 @@ def test_write_slice_local_membership_evolution_artifacts_promotes_stable_featur
     assert evolution_manifest["matching_method"]["normalization"] == "slice_local_membership_document_overlap"
     assert evolution_manifest["slice_method"]["state_method"] == "slice_local_membership"
     assert "derive_slice_local_cluster_states" in [row["step"] for row in evolution_manifest["transforms"]]
+
+
+def test_write_slice_reclustering_evolution_artifacts_promotes_stable_feature(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    records = pd.DataFrame(
+        {
+            "uid": ["A20", "A21", "A22", "C20", "C21", "C22"],
+            "pubyear": [2020, 2021, 2022, 2020, 2021, 2022],
+        }
+    )
+    edges = pd.DataFrame(
+        {
+            "uid1": ["A20", "A21", "C20", "C21"],
+            "uid2": ["A21", "A22", "C21", "C22"],
+            "rel_sum2": [2.0, 2.0, 2.0, 2.0],
+        }
+    )
+    source_dir = root / "evolution_inputs"
+    source_dir.mkdir(parents=True)
+    records.to_parquet(source_dir / "records.parquet", index=False)
+    edges.to_parquet(source_dir / "edges.parquet", index=False)
+
+    written = write_slice_reclustering_evolution_artifacts(
+        root,
+        evolution_id="slice_recluster_overlap",
+        records_df=records,
+        edges_df=edges,
+        metric="overlap_min",
+        periodization={"window_years": 2, "step_years": 1},
+        matching_method={"min_transition_score": 0.5, "min_support_count": 1},
+        source_artifacts=[
+            {"role": "records", "path": "evolution_inputs/records.parquet"},
+            {"role": "edges", "path": "evolution_inputs/edges.parquet"},
+        ],
+        resolution=0.01,
+        backend="igraph",
+    )
+
+    assert written["qa"]["status"] == "passed"
+    validation = validate_evolution_artifact(written["manifest_path"]).to_dict()
+    assert validation["status"] == "passed"
+    assert validation["counts"]["slices"] == 2
+    assert validation["counts"]["states"] == 4
+    assert validation["counts"]["transitions"] == 2
+    assert validation["event_counts"]["continuation"] == 2
+
+    evolution_manifest = json.loads(written["manifest_path"].read_text(encoding="utf-8"))
+    assert evolution_manifest["matching_method"]["normalization"] == "slice_reclustering_document_overlap"
+    assert "run_slice_local_reclustering" in [row["step"] for row in evolution_manifest["transforms"]]
+    manifest = build_result_manifest(root).to_dict()
+    assert manifest["features"]["evolution"]["state"] == "stable"
 
 
 def test_result_artifact_inference_accepts_evolution_manifest_path(tmp_path):

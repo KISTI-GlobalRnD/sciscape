@@ -11,6 +11,7 @@ Usage:
     sciscape evolution-evidence <records_table> <membership_table> [options]
     sciscape evolution-from-membership <result_root> <records_table> <membership_table> [options]
     sciscape evolution-from-slice-membership <result_root> <slice_membership_table> [options]
+    sciscape evolution-from-slice-reclustering <result_root> <records_table> <edge_table> [options]
     sciscape evolution <result_root> <slices_table> <state_evidence_table> [transition_evidence_table] [options]
     sciscape export    <edge_parquet> <membership_parquet> [options]
     sciscape rule-export <rule_manifest> [options]
@@ -30,6 +31,7 @@ Examples:
     sciscape evolution-evidence abstracts.parquet membership.parquet -o workspace/evolution_evidence
     sciscape evolution-from-membership result abstracts.parquet membership.parquet --periodization '{"window_years":2}'
     sciscape evolution-from-slice-membership result slice_membership.parquet --slices-table slices.parquet
+    sciscape evolution-from-slice-reclustering result abstracts.parquet edges.parquet --periodization '{"window_years":2}'
     sciscape evolution result slices.parquet states.parquet transitions.parquet --metric term_overlap
     sciscape evolution result slices.parquet states.parquet --derive-transitions document-overlap --state-membership-table state_membership.parquet
     sciscape rule-export result/rules/keyword_cleaning_default_v1/rule_set_manifest.json -o result/vosviewer
@@ -354,6 +356,50 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Allow state membership doc_count mismatches and flag affected transitions",
     )
     efsm.add_argument("--json", action="store_true", help="Print a JSON summary")
+
+    # ---- evolution from slice-local reclustering ----
+    efsr = sub.add_parser(
+        "evolution-from-slice-reclustering",
+        help="Write evolution artifacts by reclustering induced slice graphs",
+    )
+    efsr.add_argument("result_root", type=Path, help="SciScape result root to receive evolution/")
+    efsr.add_argument("records_table", type=Path, help="Records/abstract table with uid and publication year")
+    efsr.add_argument("edge_table", type=Path, help="Paper-level edge table")
+    efsr.add_argument("--keywords-table", type=Path, default=None, help="Optional keyword table for state labels")
+    efsr.add_argument("--evolution-id", type=str, default="cluster_evolution", help="Evolution artifact ID")
+    efsr.add_argument("--metric", type=str, default="overlap_min", help="Document-overlap metric")
+    efsr.add_argument("--title", type=str, default=None, help="Evolution artifact title")
+    efsr.add_argument("--output-dir", type=Path, default=None, help="Output directory (default: <result_root>/evolution)")
+    efsr.add_argument("--temporal-manifest", type=Path, default=None, help="Optional temporal_manifest.json source ref")
+    efsr.add_argument("--uid-column", type=str, default=None, help="Record document ID column (default: auto-detect)")
+    efsr.add_argument("--edge-source-column", type=str, default=None, help="Edge source document ID column (default: auto-detect)")
+    efsr.add_argument("--edge-target-column", type=str, default=None, help="Edge target document ID column (default: auto-detect)")
+    efsr.add_argument("--edge-weight-column", type=str, default=None, help="Edge weight column (default: rel_sum2/weight/w/value or 1.0)")
+    efsr.add_argument("--resolution", type=float, default=1.0, help="Leiden/CPM resolution for each slice")
+    efsr.add_argument("--objective", choices=["cpm", "modularity"], default="cpm", help="Leiden objective")
+    efsr.add_argument("--backend", choices=["auto", "rust", "igraph"], default="auto", help="Slice clustering backend")
+    efsr.add_argument("--seed", type=int, default=0, help="Leiden random seed")
+    efsr.add_argument("--n-iterations", type=int, default=10, help="Leiden iterations per slice")
+    efsr.add_argument("--min-docs-per-slice", type=int, default=1, help="Skip slices with fewer documents")
+    efsr.add_argument("--representative-work-limit", type=int, default=50, help="Max representative IDs stored in each state row")
+    efsr.add_argument("--min-transition-score", type=float, default=0.5, help="Minimum transition score")
+    efsr.add_argument("--min-support-count", type=int, default=1, help="Minimum transition support count")
+    efsr.add_argument("--matching-method", type=str, default=None, help="Inline JSON object or path for matching metadata")
+    efsr.add_argument("--event-rules", type=str, default=None, help="Inline JSON object or path for event rules")
+    efsr.add_argument(
+        "--periodization",
+        type=str,
+        default=None,
+        help="Inline JSON object or path for slice metadata (default: 2-year rolling windows)",
+    )
+    efsr.add_argument("--entity-scope", type=str, default=None, help="Inline JSON object or path for entity-scope metadata")
+    efsr.add_argument(
+        "--allow-incomplete-state-membership",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Allow state membership doc_count mismatches and flag affected transitions",
+    )
+    efsr.add_argument("--json", action="store_true", help="Print a JSON summary")
 
     # ---- evolution ----
     ev = sub.add_parser("evolution", help="Write artifact-backed cluster evolution tables")
@@ -1356,6 +1402,101 @@ def _run_evolution_from_slice_membership(args: argparse.Namespace) -> None:
     print(f"  QA → {written['qa_path']}")
 
 
+def _run_evolution_from_slice_reclustering(args: argparse.Namespace) -> None:
+    from sciscape.artifacts import write_slice_reclustering_evolution_artifacts
+
+    try:
+        records = _read_table(args.records_table)
+        edges = _read_table(args.edge_table)
+        keywords = _read_table(args.keywords_table) if args.keywords_table is not None else None
+        matching_method = _read_json_object_arg(args.matching_method, label="--matching-method") or {}
+        matching_method.update(
+            {
+                "metric": args.metric,
+                "min_transition_score": args.min_transition_score,
+                "min_support_count": args.min_support_count,
+            }
+        )
+        event_rules = _read_json_object_arg(args.event_rules, label="--event-rules")
+        periodization = _read_json_object_arg(args.periodization, label="--periodization")
+        if periodization is None:
+            periodization = {"window_years": 2, "step_years": 1}
+        entity_scope = _read_json_object_arg(args.entity_scope, label="--entity-scope")
+    except Exception as exc:
+        print(f"Could not load slice-reclustering evolution inputs: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    source_artifacts = [
+        {"role": "records", "path": _source_ref_path(args.records_table, args.result_root)},
+        {"role": "edges", "path": _source_ref_path(args.edge_table, args.result_root)},
+    ]
+    if args.keywords_table is not None:
+        source_artifacts.append({"role": "keywords", "path": _source_ref_path(args.keywords_table, args.result_root)})
+    if args.temporal_manifest is not None:
+        source_artifacts.append({"role": "temporal", "path": _source_ref_path(args.temporal_manifest, args.result_root)})
+
+    try:
+        written = write_slice_reclustering_evolution_artifacts(
+            args.result_root,
+            evolution_id=args.evolution_id,
+            records_df=records,
+            edges_df=edges,
+            keywords_df=keywords,
+            metric=args.metric,
+            temporal_manifest=args.temporal_manifest,
+            periodization=periodization,
+            matching_method=matching_method,
+            event_rules=event_rules,
+            entity_scope=entity_scope,
+            source_artifacts=source_artifacts,
+            output_dir=args.output_dir,
+            title=args.title,
+            uid_column=args.uid_column,
+            edge_source_column=args.edge_source_column,
+            edge_target_column=args.edge_target_column,
+            edge_weight_column=args.edge_weight_column,
+            resolution=args.resolution,
+            objective=args.objective,
+            seed=args.seed,
+            n_iterations=args.n_iterations,
+            backend=args.backend,
+            min_docs_per_slice=args.min_docs_per_slice,
+            representative_work_limit=args.representative_work_limit,
+            require_complete_membership=not args.allow_incomplete_state_membership,
+        )
+    except Exception as exc:
+        print(f"Could not write evolution artifact from slice-local reclustering: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    qa = written["qa"]
+    counts = qa.get("counts", {})
+    payload = {
+        "evolution_id": written["evolution_id"],
+        "manifest_path": str(written["manifest_path"]),
+        "evolution_dir": str(written["evolution_dir"]),
+        "qa_path": str(written["qa_path"]),
+        "status": qa.get("status"),
+        "counts": counts,
+        "event_counts": qa.get("event_counts", {}),
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+
+    print(f"Evolution artifact saved: {written['manifest_path']}")
+    print(
+        "  status={status}, slices={slices}, states={states}, transitions={transitions}, events={events}, state_membership_rows={membership}".format(
+            status=qa.get("status"),
+            slices=counts.get("slices", 0),
+            states=counts.get("states", 0),
+            transitions=counts.get("transitions", 0),
+            events=counts.get("event_rows", 0),
+            membership=counts.get("state_membership_rows", 0),
+        )
+    )
+    print(f"  QA → {written['qa_path']}")
+
+
 def _run_evolution(args: argparse.Namespace) -> None:
     from sciscape.artifacts import write_document_overlap_evolution_artifacts, write_evidence_backed_evolution_artifacts
 
@@ -1695,6 +1836,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_evolution_from_membership(args)
     elif args.command == "evolution-from-slice-membership":
         _run_evolution_from_slice_membership(args)
+    elif args.command == "evolution-from-slice-reclustering":
+        _run_evolution_from_slice_reclustering(args)
     elif args.command == "evolution":
         _run_evolution(args)
     elif args.command == "export":

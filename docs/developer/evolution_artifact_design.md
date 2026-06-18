@@ -613,6 +613,10 @@ lineage from raw records.
   already slice-local membership rows. The input must include `slice_id`, a
   document id, and a cluster column, plus either explicit slice metadata or
   parseable year values in `slice_id`.
+- `sciscape evolution-from-slice-reclustering <result_root> <records>
+  <edges>` runs one-level Leiden/CPM on each induced time-slice graph, then
+  writes the same validated document-overlap `evolution/` artifact. The CLI
+  defaults to 2-year rolling windows unless `--periodization` is provided.
 - The web app local-data browser recognizes `evolution/evolution_manifest.json`
   as an evolution artifact and can open it as the containing result root.
 - `/api/jobs/{job_id}/evolution` exposes optional `state_membership.parquet`
@@ -641,9 +645,16 @@ lineage from raw records.
   from already slice-local clustering outputs. It treats cluster ids as
   slice-scoped and relies on document-overlap evidence for continuity.
 - `write_slice_local_membership_evolution_artifacts` combines that slice-local
-  membership bridge with the document-overlap evolution writer so future
-  per-slice reclustering outputs can become web-loadable evolution artifacts
-  without precomputing transition tables.
+  membership bridge with the document-overlap evolution writer so per-slice
+  reclustering outputs can become web-loadable evolution artifacts without
+  precomputing transition tables.
+- `sciscape.evolution.build_slice_reclustering_membership` runs one-level
+  slice-local Leiden/CPM on records plus an induced document-edge graph. It
+  produces slice-scoped membership rows only; keyword extraction, hierarchy
+  building, and report generation remain separate pipeline stages.
+- `write_slice_reclustering_evolution_artifacts` combines the slice-local
+  reclustering runner with the slice-local membership writer, preserving a
+  `run_slice_local_reclustering` transform entry in the evolution manifest.
 - `sciscape.evolution.build_evolution_state_table` normalizes raw slice-local
   state evidence from external or future slice-local clustering steps into
   schema-complete cluster state rows.
@@ -682,12 +693,15 @@ path: they require complete state-document membership by default and can opt
 into incomplete membership only with warning flags. `sciscape evolution-evidence`
 now creates periodized state-membership inputs from existing membership,
 `sciscape evolution-from-membership` can write the validated artifact directly,
-and `sciscape evolution-from-slice-membership` can do the same for externally
-or future internally generated slice-local membership. The default slice-local
-reclustering runner is still a future integration step rather than a default
-claim. Split, merge, and ambiguous validation are covered by the synthetic
-smoke fixture, document-overlap unit tests, and the document-overlap writer
-test.
+`sciscape evolution-from-slice-membership` can do the same for externally
+generated slice-local membership, and `sciscape
+evolution-from-slice-reclustering` provides the initial built-in slice-local
+Leiden/CPM path from records plus document edges. Split, merge, and ambiguous
+validation are covered by the synthetic smoke fixture, document-overlap unit
+tests, document-overlap writer tests, and the slice-reclustering writer/CLI
+smokes. Large-run reclustering progress, bounded parallelism, and richer
+matching diagnostics remain future hardening work rather than a v1 artifact
+contract requirement.
 
 ## Open Questions
 

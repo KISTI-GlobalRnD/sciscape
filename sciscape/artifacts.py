@@ -22,6 +22,7 @@ from .evolution import (
     build_evidence_backed_evolution,
     build_membership_projection_evolution,
     build_slice_local_membership_evidence,
+    build_slice_reclustering_membership,
     build_slice_membership_evidence,
 )
 
@@ -8847,6 +8848,7 @@ def write_slice_membership_evolution_artifacts(
     entity_scope: Mapping[str, Any] | None = None,
     source_artifacts: list[Mapping[str, Any]] | None = None,
     rule_sets: list[Mapping[str, Any]] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
     output_dir: str | Path | None = None,
     title: str | None = None,
     cluster_column: str | None = None,
@@ -8906,7 +8908,7 @@ def write_slice_membership_evolution_artifacts(
         entity_scope=merged_scope,
         source_artifacts=sources,
         rule_sets=rule_sets,
-        transforms=evidence.transforms,
+        transforms=[dict(item) for item in (transforms or [])] + evidence.transforms,
         output_dir=output_dir,
         title=title,
         default_level=str(evidence.entity_scope.get("cluster_level") or "cluster"),
@@ -8928,6 +8930,7 @@ def write_slice_local_membership_evolution_artifacts(
     entity_scope: Mapping[str, Any] | None = None,
     source_artifacts: list[Mapping[str, Any]] | None = None,
     rule_sets: list[Mapping[str, Any]] | None = None,
+    transforms: list[Mapping[str, Any]] | None = None,
     output_dir: str | Path | None = None,
     title: str | None = None,
     cluster_column: str | None = None,
@@ -8985,10 +8988,110 @@ def write_slice_local_membership_evolution_artifacts(
         entity_scope=merged_scope,
         source_artifacts=sources,
         rule_sets=rule_sets,
-        transforms=evidence.transforms,
+        transforms=[dict(item) for item in (transforms or [])] + evidence.transforms,
         output_dir=output_dir,
         title=title,
         default_level=str(evidence.entity_scope.get("cluster_level") or default_level or "cluster"),
+        require_complete_membership=require_complete_membership,
+    )
+
+
+def write_slice_reclustering_evolution_artifacts(
+    result_root: str | Path,
+    *,
+    evolution_id: str,
+    records_df: pd.DataFrame,
+    edges_df: pd.DataFrame,
+    keywords_df: pd.DataFrame | None = None,
+    metric: str = "overlap_min",
+    temporal_manifest: str | Path | None = None,
+    periodization: Mapping[str, Any] | None = None,
+    matching_method: Mapping[str, Any] | None = None,
+    event_rules: Mapping[str, Any] | None = None,
+    entity_scope: Mapping[str, Any] | None = None,
+    source_artifacts: list[Mapping[str, Any]] | None = None,
+    rule_sets: list[Mapping[str, Any]] | None = None,
+    output_dir: str | Path | None = None,
+    title: str | None = None,
+    uid_column: str | None = None,
+    edge_source_column: str | None = None,
+    edge_target_column: str | None = None,
+    edge_weight_column: str | None = None,
+    resolution: float = 1.0,
+    objective: str = "cpm",
+    seed: int = 0,
+    n_iterations: int = 10,
+    backend: str = "auto",
+    min_docs_per_slice: int = 1,
+    representative_work_limit: int = 50,
+    require_complete_membership: bool = True,
+) -> dict[str, Any]:
+    """Write v1 evolution artifacts by reclustering induced slice graphs."""
+
+    root = Path(result_root).expanduser().resolve()
+    slice_membership = build_slice_reclustering_membership(
+        evolution_id=evolution_id,
+        records_df=records_df,
+        edges_df=edges_df,
+        periodization=periodization,
+        uid_column=uid_column,
+        edge_source_column=edge_source_column,
+        edge_target_column=edge_target_column,
+        edge_weight_column=edge_weight_column,
+        resolution=resolution,
+        objective=objective,
+        seed=seed,
+        n_iterations=n_iterations,
+        backend=backend,
+        min_docs_per_slice=min_docs_per_slice,
+    )
+    matching = {
+        "metric": metric,
+        "min_transition_score": 0.5,
+        "min_support_count": 1,
+        "tie_policy": "keep_all_above_threshold",
+        "normalization": "slice_reclustering_document_overlap",
+    }
+    if matching_method:
+        matching.update(dict(matching_method))
+    matching["metric"] = metric
+    resolved_backends = sorted(set(slice_membership["backend"].map(str))) if "backend" in slice_membership.columns else []
+    sources = (
+        [dict(item) for item in source_artifacts]
+        if source_artifacts is not None
+        else _evolution_default_sources(root, infer_result_artifacts(root), temporal_manifest=temporal_manifest)
+    )
+    recluster_transform = {
+        "step": "run_slice_local_reclustering",
+        "requested_backend": str(backend),
+        "resolved_backends": resolved_backends,
+        "objective": str(objective),
+        "resolution": float(resolution),
+        "seed": int(seed),
+        "n_iterations": int(n_iterations),
+        "min_docs_per_slice": int(min_docs_per_slice),
+    }
+    default_level = str((entity_scope or {}).get("cluster_level") or "cluster")
+    return write_slice_local_membership_evolution_artifacts(
+        root,
+        evolution_id=evolution_id,
+        slice_membership_df=slice_membership,
+        keywords_df=keywords_df,
+        metric=metric,
+        temporal_manifest=temporal_manifest,
+        matching_method=matching,
+        event_rules=event_rules,
+        entity_scope=entity_scope,
+        source_artifacts=sources,
+        rule_sets=rule_sets,
+        transforms=[recluster_transform],
+        output_dir=output_dir,
+        title=title,
+        cluster_column="cluster_id",
+        uid_column="uid",
+        slice_id_column="slice_id",
+        representative_work_limit=representative_work_limit,
+        default_level=default_level,
         require_complete_membership=require_complete_membership,
     )
 
@@ -12827,6 +12930,7 @@ __all__ = [
     "write_document_overlap_evolution_artifacts",
     "write_evidence_backed_evolution_artifacts",
     "write_slice_local_membership_evolution_artifacts",
+    "write_slice_reclustering_evolution_artifacts",
     "write_slice_membership_evolution_artifacts",
     "write_evolution_synthetic_smoke_artifact",
     "write_export_manifest",

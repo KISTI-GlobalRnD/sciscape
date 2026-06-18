@@ -480,6 +480,118 @@ def _slice_local_keyword_label_map(
     return rows
 
 
+def _edge_column(edges: pd.DataFrame, requested: str | None, candidates: tuple[str, ...], *, label: str) -> str:
+    if requested:
+        if requested not in edges.columns:
+            raise ValueError(f"edges_df missing requested {label} column: {requested}")
+        return requested
+    for column in candidates:
+        if column in edges.columns:
+            return column
+    raise ValueError(f"edges_df must include one of these {label} columns: {', '.join(candidates)}")
+
+
+def _edge_weight_column(edges: pd.DataFrame, requested: str | None) -> str | None:
+    if requested:
+        if requested not in edges.columns:
+            raise ValueError(f"edges_df missing requested weight column: {requested}")
+        return requested
+    for column in ("rel_sum2", "weight", "w", "value"):
+        if column in edges.columns:
+            return column
+    return None
+
+
+def _contiguous_labels(labels: list[int] | list[str] | Any) -> list[int]:
+    mapping: dict[str, int] = {}
+    out: list[int] = []
+    for value in labels:
+        key = str(int(value)) if isinstance(value, (int, float)) and not isinstance(value, bool) else str(value)
+        if key not in mapping:
+            mapping[key] = len(mapping)
+        out.append(mapping[key])
+    return out
+
+
+def _run_slice_leiden(
+    *,
+    uids: list[str],
+    edges: pd.DataFrame,
+    source_column: str,
+    target_column: str,
+    weight_column: str | None,
+    resolution: float,
+    objective: str,
+    seed: int,
+    n_iterations: int,
+    backend: str,
+) -> tuple[list[int], float | None, int, str]:
+    uid_to_index = {uid: index for index, uid in enumerate(uids)}
+    if len(uids) == 0:
+        return [], None, 0, "none"
+    if len(uids) == 1 or edges.empty:
+        return list(range(len(uids))), None, len(uids), "singleton"
+
+    work = edges[[source_column, target_column] + ([weight_column] if weight_column else [])].copy()
+    work["_src"] = work[source_column].map(str).map(uid_to_index)
+    work["_dst"] = work[target_column].map(str).map(uid_to_index)
+    work = work.dropna(subset=["_src", "_dst"])
+    work = work[work["_src"] != work["_dst"]]
+    if work.empty:
+        return list(range(len(uids))), None, len(uids), "singleton"
+    src = work["_src"].astype(int).to_numpy()
+    dst = work["_dst"].astype(int).to_numpy()
+    weights = (
+        pd.to_numeric(work[weight_column], errors="coerce").fillna(1.0).astype(float).to_numpy()
+        if weight_column
+        else pd.Series([1.0] * len(work), dtype=float).to_numpy()
+    )
+    objective = str(objective or "cpm").strip().lower()
+    if objective not in {"cpm", "modularity"}:
+        raise ValueError("slice-local reclustering objective must be cpm or modularity")
+    backend = str(backend or "auto").strip().lower()
+    if backend not in {"auto", "rust", "igraph"}:
+        raise ValueError("slice-local reclustering backend must be auto, rust, or igraph")
+
+    if backend in {"auto", "rust"}:
+        try:
+            from .clustering.runner import RustLeidenRunner
+
+            runner = RustLeidenRunner(
+                src.astype("uint32"),
+                dst.astype("uint32"),
+                weights.astype("float64"),
+                len(uids),
+                objective=objective,
+                default_iterations=n_iterations,
+                default_seed=seed,
+            )
+            result = runner.run(resolution)
+            membership = _contiguous_labels(result.membership.tolist())
+            return membership, float(result.quality), len(set(membership)), "rust"
+        except Exception:
+            if backend == "rust":
+                raise
+
+    import igraph as ig
+
+    from .clustering.runner import LeidenRunner
+
+    graph = ig.Graph(n=len(uids), edges=list(zip(src.tolist(), dst.tolist())), directed=False)
+    graph.es["weight"] = weights.tolist()
+    graph.vs["uid"] = uids
+    graph.simplify(combine_edges={"weight": "sum"}, multiple=True, loops=False)
+    runner = LeidenRunner(
+        graph,
+        objective=objective,
+        default_iterations=n_iterations,
+        default_seed=seed,
+    )
+    result = runner.run(resolution)
+    membership = _contiguous_labels(list(result.membership))
+    return membership, float(result.quality), len(set(membership)), "igraph"
+
+
 def _build_time_slices(evolution_id: str, years: list[int], periodization: Mapping[str, Any] | None) -> pd.DataFrame:
     if not years:
         raise ValueError("evolution analysis requires at least one valid publication year")
@@ -1037,6 +1149,132 @@ def build_slice_local_membership_evidence(
         entity_scope=entity_scope,
         transforms=transforms,
     )
+
+
+def build_slice_reclustering_membership(
+    *,
+    evolution_id: str,
+    records_df: pd.DataFrame,
+    edges_df: pd.DataFrame,
+    periodization: Mapping[str, Any] | None = None,
+    uid_column: str | None = None,
+    edge_source_column: str | None = None,
+    edge_target_column: str | None = None,
+    edge_weight_column: str | None = None,
+    resolution: float = 1.0,
+    objective: str = "cpm",
+    seed: int = 0,
+    n_iterations: int = 10,
+    backend: str = "auto",
+    min_docs_per_slice: int = 1,
+) -> pd.DataFrame:
+    """Run one-level slice-local Leiden clustering and return membership rows.
+
+    This is a bridge for cluster evolution. It intentionally produces only
+    slice-scoped membership; keyword extraction, hierarchy construction, and
+    report generation remain separate pipeline stages.
+    """
+
+    evolution_id = _safe_id(evolution_id, fallback="cluster_evolution")
+    if records_df.empty:
+        raise ValueError("records_df must not be empty")
+    if edges_df.empty:
+        raise ValueError("edges_df must not be empty")
+    year_column = _year_column(records_df)
+    if year_column is None:
+        raise ValueError("records_df must include pubyear, year, or publication_year")
+    record_uid_column = _resolve_uid_column(records_df, uid_column, label="records_df")
+    source_column = _edge_column(edges_df, edge_source_column, ("uid1", "source", "src", "from", "node1"), label="source")
+    target_column = _edge_column(edges_df, edge_target_column, ("uid2", "target", "dst", "to", "node2"), label="target")
+    weight_column = _edge_weight_column(edges_df, edge_weight_column)
+    try:
+        resolution_float = float(resolution)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("slice-local reclustering resolution must be a number") from exc
+    if not math.isfinite(resolution_float) or resolution_float < 0.0:
+        raise ValueError("slice-local reclustering resolution must be non-negative")
+    objective_norm = str(objective or "cpm").strip().lower()
+    if objective_norm not in {"cpm", "modularity"}:
+        raise ValueError("slice-local reclustering objective must be cpm or modularity")
+    iterations = _config_int({"n_iterations": n_iterations}, "n_iterations", 10, label="slice-local reclustering")
+    if iterations < 0:
+        raise ValueError("slice-local reclustering n_iterations must be non-negative")
+    min_docs = _config_int({"min_docs_per_slice": min_docs_per_slice}, "min_docs_per_slice", 1, label="slice-local reclustering")
+    if min_docs < 1:
+        raise ValueError("slice-local reclustering min_docs_per_slice must be at least 1")
+
+    records = records_df[[record_uid_column, year_column]].dropna(subset=[record_uid_column]).copy()
+    records["_uid"] = records[record_uid_column].map(str).str.strip()
+    records["_year"] = pd.to_numeric(records[year_column], errors="coerce")
+    records = records[(records["_uid"] != "") & records["_year"].notna()]
+    records["_year"] = records["_year"].astype(int)
+    records = records[records["_year"] > 0].drop_duplicates(subset=["_uid", "_year"])
+    if records.empty:
+        raise ValueError("records_df has no valid publication years")
+
+    valid_years = sorted(set(records["_year"].astype(int).tolist()))
+    slices, _ = _build_periodized_time_slices(evolution_id, valid_years, periodization)
+    edge_work = edges_df[[source_column, target_column] + ([weight_column] if weight_column else [])].copy()
+    edge_work["_source_uid"] = edge_work[source_column].map(str).str.strip()
+    edge_work["_target_uid"] = edge_work[target_column].map(str).str.strip()
+    edge_work = edge_work[(edge_work["_source_uid"] != "") & (edge_work["_target_uid"] != "")]
+    if weight_column:
+        edge_work["_weight"] = pd.to_numeric(edge_work[weight_column], errors="coerce").fillna(1.0)
+    else:
+        edge_work["_weight"] = 1.0
+
+    rows: list[dict[str, Any]] = []
+    for slice_row in slices.sort_values("slice_index", kind="stable").itertuples(index=False):
+        in_slice = records[
+            (records["_year"] >= int(slice_row.start_year))
+            & (records["_year"] <= int(slice_row.end_year))
+        ]
+        uids = sorted(set(in_slice["_uid"].tolist()))
+        if len(uids) < min_docs:
+            continue
+        uid_set = set(uids)
+        slice_edges = edge_work[
+            edge_work["_source_uid"].isin(uid_set)
+            & edge_work["_target_uid"].isin(uid_set)
+        ].copy()
+        membership, quality, n_clusters, backend_used = _run_slice_leiden(
+            uids=uids,
+            edges=slice_edges,
+            source_column="_source_uid",
+            target_column="_target_uid",
+            weight_column="_weight",
+            resolution=resolution_float,
+            objective=objective_norm,
+            seed=int(seed),
+            n_iterations=iterations,
+            backend=backend,
+        )
+        for uid, cluster_id in zip(uids, membership):
+            rows.append(
+                {
+                    "evolution_id": evolution_id,
+                    "slice_id": str(slice_row.slice_id),
+                    "slice_index": int(slice_row.slice_index),
+                    "slice_label": str(slice_row.slice_label),
+                    "start_year": int(slice_row.start_year),
+                    "end_year": int(slice_row.end_year),
+                    "unit": str(slice_row.unit),
+                    "uid": uid,
+                    "cluster_id": int(cluster_id),
+                    "resolution": resolution_float,
+                    "objective": objective_norm,
+                    "seed": int(seed),
+                    "n_iterations": int(iterations),
+                    "backend": backend_used,
+                    "quality": quality,
+                    "slice_doc_count": int(len(uids)),
+                    "slice_edge_count": int(len(slice_edges)),
+                    "slice_cluster_count": int(n_clusters),
+                }
+            )
+    if not rows:
+        raise ValueError("slice-local reclustering produced no membership rows")
+    return pd.DataFrame(rows).sort_values(["slice_index", "cluster_id", "uid"], kind="stable").reset_index(drop=True)
 
 
 def _state_membership_rows(evolution_id: str, states: pd.DataFrame, state_docs: Mapping[str, set[str]]) -> pd.DataFrame:
@@ -2417,6 +2655,7 @@ __all__ = [
     "build_evidence_backed_evolution",
     "build_evolution_state_table",
     "build_membership_projection_evolution",
+    "build_slice_reclustering_membership",
     "build_slice_local_membership_evidence",
     "build_slice_membership_evidence",
     "EVOLUTION_STATE_MEMBERSHIP_SCHEMA_VERSION",

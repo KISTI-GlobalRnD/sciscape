@@ -14,6 +14,7 @@ from sciscape.evolution import (
     build_evolution_transition_table,
     build_membership_projection_evolution,
     build_slice_local_membership_evidence,
+    build_slice_reclustering_membership,
     build_slice_membership_evidence,
     classify_evolution_events,
     label_evolution_transition_relations,
@@ -29,6 +30,7 @@ def test_evolution_is_public_lazy_submodule():
     assert sciscape.evolution.build_evolution_transition_table is build_evolution_transition_table
     assert sciscape.evolution.build_membership_projection_evolution is build_membership_projection_evolution
     assert sciscape.evolution.build_slice_local_membership_evidence is build_slice_local_membership_evidence
+    assert sciscape.evolution.build_slice_reclustering_membership is build_slice_reclustering_membership
     assert sciscape.evolution.build_slice_membership_evidence is build_slice_membership_evidence
     assert sciscape.evolution.label_evolution_transition_relations is label_evolution_transition_relations
     assert sciscape.evolution.rank_evolution_transitions is rank_evolution_transitions
@@ -192,6 +194,61 @@ def test_build_slice_local_membership_evidence_rejects_duplicate_uid_cluster_ass
             slice_membership_df=slice_membership,
             cluster_column="cluster_id",
         )
+
+
+def test_build_slice_reclustering_membership_runs_induced_slice_graphs():
+    records = pd.DataFrame(
+        {
+            "uid": ["A20", "A21", "A22", "C20", "C21", "C22"],
+            "pubyear": [2020, 2021, 2022, 2020, 2021, 2022],
+        }
+    )
+    edges = pd.DataFrame(
+        {
+            "uid1": ["A20", "A21", "C20", "C21"],
+            "uid2": ["A21", "A22", "C21", "C22"],
+            "rel_sum2": [2.0, 2.0, 2.0, 2.0],
+        }
+    )
+
+    membership = build_slice_reclustering_membership(
+        evolution_id="recluster",
+        records_df=records,
+        edges_df=edges,
+        periodization={"window_years": 2, "step_years": 1},
+        resolution=0.01,
+        backend="igraph",
+        seed=7,
+    )
+
+    assert membership["slice_id"].tolist().count("year:2020-2021") == 4
+    assert membership["slice_id"].tolist().count("year:2021-2022") == 4
+    assert set(membership["backend"]) == {"igraph"}
+    assert set(membership["slice_cluster_count"]) == {2}
+    first = membership[membership["slice_id"] == "year:2020-2021"].set_index("uid")
+    assert first.loc["A20", "cluster_id"] == first.loc["A21", "cluster_id"]
+    assert first.loc["C20", "cluster_id"] == first.loc["C21", "cluster_id"]
+    assert first.loc["A20", "cluster_id"] != first.loc["C20", "cluster_id"]
+
+    evidence = build_slice_local_membership_evidence(
+        evolution_id="recluster",
+        slice_membership_df=membership,
+        cluster_column="cluster_id",
+    )
+    result = build_document_overlap_evolution(
+        evolution_id="recluster",
+        slices=evidence.slices,
+        state_evidence=evidence.state_evidence,
+        state_membership=evidence.state_membership,
+        metric="overlap_min",
+        matching_method={"min_transition_score": 0.5, "min_support_count": 1},
+        entity_scope=evidence.entity_scope,
+        periodization=evidence.periodization,
+        transforms=evidence.transforms,
+    )
+
+    assert len(result.transitions) == 2
+    assert result.events["event_type"].tolist().count("continuation") == 2
 
 
 def test_membership_projection_evolution_builds_in_memory_tables():

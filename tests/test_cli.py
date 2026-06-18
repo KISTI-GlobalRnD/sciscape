@@ -15,6 +15,7 @@ from sciscape.cli import (
     _run_evolution_evidence,
     _run_evolution_from_membership,
     _run_evolution_from_slice_membership,
+    _run_evolution_from_slice_reclustering,
     _run_matrix,
     _run_query,
     _run_visualize,
@@ -67,6 +68,7 @@ class TestBuildParser:
             "evolution-evidence",
             "evolution-from-membership",
             "evolution-from-slice-membership",
+            "evolution-from-slice-reclustering",
             "evolution",
             "matrix",
             "bundle",
@@ -106,6 +108,8 @@ class TestBuildParser:
             return ["evolution-from-membership", "result", "records.parquet", "membership.parquet"]
         if cmd == "evolution-from-slice-membership":
             return ["evolution-from-slice-membership", "result", "slice_membership.parquet"]
+        if cmd == "evolution-from-slice-reclustering":
+            return ["evolution-from-slice-reclustering", "result", "records.parquet", "edges.parquet"]
         if cmd == "matrix":
             return ["matrix", "wrap-term-cooccurrence", "result"]
         if cmd == "bundle":
@@ -1056,6 +1060,145 @@ class TestEvolutionFromSliceMembershipArgs:
         assert validation["counts"]["transitions"] == 3
         assert validation["counts"]["state_membership_rows"] == 14
         assert validation["event_counts"]["split"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Evolution from slice-local reclustering subcommand
+# ---------------------------------------------------------------------------
+
+class TestEvolutionFromSliceReclusteringArgs:
+    def test_basic_parse(self, parser):
+        args = parser.parse_args([
+            "evolution-from-slice-reclustering",
+            "result",
+            "records.parquet",
+            "edges.parquet",
+        ])
+        assert args.command == "evolution-from-slice-reclustering"
+        assert args.result_root == Path("result")
+        assert args.records_table == Path("records.parquet")
+        assert args.edge_table == Path("edges.parquet")
+        assert args.metric == "overlap_min"
+        assert args.backend == "auto"
+        assert args.resolution == pytest.approx(1.0)
+
+    def test_explicit_options(self, parser):
+        args = parser.parse_args([
+            "evolution-from-slice-reclustering",
+            "result",
+            "records.csv",
+            "edges.csv",
+            "--keywords-table",
+            "keywords.csv",
+            "--evolution-id",
+            "slice_recluster",
+            "--metric",
+            "jaccard_doc_overlap",
+            "--title",
+            "Slice Recluster",
+            "--output-dir",
+            "custom_evolution",
+            "--temporal-manifest",
+            "temporal/temporal_manifest.json",
+            "--uid-column",
+            "work_id",
+            "--edge-source-column",
+            "source",
+            "--edge-target-column",
+            "target",
+            "--edge-weight-column",
+            "weight",
+            "--resolution",
+            "0.01",
+            "--objective",
+            "cpm",
+            "--backend",
+            "igraph",
+            "--seed",
+            "7",
+            "--n-iterations",
+            "3",
+            "--min-docs-per-slice",
+            "2",
+            "--representative-work-limit",
+            "5",
+            "--min-transition-score",
+            "0.25",
+            "--min-support-count",
+            "2",
+            "--matching-method",
+            '{"tie_policy":"keep_all"}',
+            "--event-rules",
+            '{"ambiguous_score_margin":0.1}',
+            "--periodization",
+            '{"window_years":2}',
+            "--entity-scope",
+            '{"cluster_level":"micro"}',
+            "--allow-incomplete-state-membership",
+            "--json",
+        ])
+        assert args.keywords_table == Path("keywords.csv")
+        assert args.evolution_id == "slice_recluster"
+        assert args.metric == "jaccard_doc_overlap"
+        assert args.title == "Slice Recluster"
+        assert args.output_dir == Path("custom_evolution")
+        assert args.temporal_manifest == Path("temporal/temporal_manifest.json")
+        assert args.uid_column == "work_id"
+        assert args.edge_source_column == "source"
+        assert args.edge_target_column == "target"
+        assert args.edge_weight_column == "weight"
+        assert args.resolution == pytest.approx(0.01)
+        assert args.backend == "igraph"
+        assert args.seed == 7
+        assert args.n_iterations == 3
+        assert args.min_docs_per_slice == 2
+        assert args.representative_work_limit == 5
+        assert args.min_transition_score == pytest.approx(0.25)
+        assert args.min_support_count == 2
+        assert args.allow_incomplete_state_membership is True
+        assert args.json is True
+
+    def test_run_evolution_from_slice_reclustering_writes_valid_artifact(self, parser, tmp_path):
+        root = tmp_path / "result"
+        root.mkdir()
+        records_path = tmp_path / "records.csv"
+        edges_path = tmp_path / "edges.csv"
+        pd.DataFrame(
+            {
+                "uid": ["A20", "A21", "A22", "C20", "C21", "C22"],
+                "pubyear": [2020, 2021, 2022, 2020, 2021, 2022],
+            }
+        ).to_csv(records_path, index=False)
+        pd.DataFrame(
+            {
+                "uid1": ["A20", "A21", "C20", "C21"],
+                "uid2": ["A21", "A22", "C21", "C22"],
+                "rel_sum2": [2.0, 2.0, 2.0, 2.0],
+            }
+        ).to_csv(edges_path, index=False)
+
+        args = parser.parse_args([
+            "evolution-from-slice-reclustering",
+            str(root),
+            str(records_path),
+            str(edges_path),
+            "--periodization",
+            '{"window_years":2,"step_years":1}',
+            "--resolution",
+            "0.01",
+            "--backend",
+            "igraph",
+            "--evolution-id",
+            "slice_recluster_cli_evolution",
+        ])
+        _run_evolution_from_slice_reclustering(args)
+
+        validation = validate_evolution_artifact(root / "evolution" / "evolution_manifest.json").to_dict()
+        assert validation["status"] == "passed"
+        assert validation["counts"]["slices"] == 2
+        assert validation["counts"]["states"] == 4
+        assert validation["counts"]["transitions"] == 2
+        assert validation["event_counts"]["continuation"] == 2
 
 
 # ---------------------------------------------------------------------------
