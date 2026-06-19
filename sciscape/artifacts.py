@@ -4332,6 +4332,18 @@ def _publication_text(value: Any, *, fallback: str = "") -> str:
     return re.sub(r"\s+", " ", text)
 
 
+def _publication_anchor(value: Any, *, fallback: str, seen: set[str]) -> str:
+    base = _publication_text(value, fallback=fallback).lower()
+    base = re.sub(r"[^a-z0-9]+", "-", base).strip("-") or "cluster"
+    anchor = base
+    index = 2
+    while anchor in seen:
+        anchor = f"{base}-{index}"
+        index += 1
+    seen.add(anchor)
+    return anchor
+
+
 def _publication_records(df: pd.DataFrame) -> list[dict[str, Any]]:
     if df is None or df.empty:
         return []
@@ -4401,6 +4413,19 @@ def _publication_markdown(payload: Mapping[str, Any]) -> str:
         "evidence_refs",
     ):
         lines.append(f"- {key.replace('_', ' ').title()}: {counts.get(key, 0)}")
+    cluster_index = [row for row in payload.get("cluster_index", []) if isinstance(row, Mapping)]
+    if cluster_index:
+        lines.extend(["", "## Cluster Index"])
+        for row in cluster_index:
+            label = _publication_text(row.get("target_label"), fallback=row.get("cluster_uid"))
+            lines.append(
+                "- "
+                + f"{label}: "
+                + f"{row.get('rendered_claim_count', 0)} rendered / "
+                + f"{row.get('omitted_claim_count', 0)} omitted / "
+                + f"{row.get('pending_review_claim_count', 0)} pending "
+                + f"({row.get('publication_state', 'unknown')})"
+            )
     clusters = [row for row in payload.get("clusters", []) if isinstance(row, Mapping)]
     if not clusters:
         lines.extend(["", "No narrative targets are available."])
@@ -4477,6 +4502,29 @@ def _publication_html(payload: Mapping[str, Any]) -> str:
         )
         for key in count_keys
     )
+    cluster_index_rows: list[str] = []
+    for row in [item for item in payload.get("cluster_index", []) if isinstance(item, Mapping)]:
+        anchor = text(row.get("anchor"), fallback="cluster")
+        label = text(row.get("target_label"), fallback=row.get("cluster_uid"))
+        state = text(row.get("publication_state"), fallback="unknown")
+        rendered = text(row.get("rendered_claim_count"), fallback="0")
+        omitted = text(row.get("omitted_claim_count"), fallback="0")
+        pending = text(row.get("pending_review_claim_count"), fallback="0")
+        cluster_index_rows.append(
+            '<a class="cluster-index-card" href="#'
+            + anchor
+            + '">'
+            + f"<strong>{label}</strong>"
+            + f"<span>{state} | {rendered} rendered | {omitted} omitted | {pending} pending</span>"
+            + "</a>"
+        )
+    cluster_index_html = (
+        '<section class="cluster-index"><h2>Cluster Index</h2><div class="cluster-index-grid">'
+        + "\n".join(cluster_index_rows)
+        + "</div></section>"
+        if cluster_index_rows
+        else ""
+    )
     cluster_blocks: list[str] = []
     clusters = [row for row in payload.get("clusters", []) if isinstance(row, Mapping)]
     if not clusters:
@@ -4528,8 +4576,9 @@ def _publication_html(payload: Mapping[str, Any]) -> str:
             omitted_html = f'<details class="omitted"><summary>Omitted Claims</summary><ul>{omitted_items}</ul></details>'
         if not sections_html:
             sections_html.append('<p class="muted">No reviewed claims are publishable yet.</p>')
+        anchor = text(cluster.get("anchor"), fallback=cluster.get("cluster_uid") or cluster.get("target_id"))
         cluster_blocks.append(
-            '<section class="cluster">'
+            f'<section class="cluster" id="{anchor}">'
             f'<h2>{text(cluster.get("target_label"), fallback="Untitled Target")}</h2>'
             '<div class="cluster-meta">'
             f'Target: {text(cluster.get("cluster_uid"), fallback=cluster.get("target_id"))} | '
@@ -4564,6 +4613,13 @@ h3 {{ font-size: .95rem; margin: 1rem 0 .5rem; color: #304256; }}
 .count-card {{ padding: .7rem; }}
 .count-card span {{ display: block; color: #637083; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; }}
 .count-card strong {{ display: block; font-size: 1.2rem; margin-top: .2rem; }}
+.cluster-index {{ margin: 0 0 1.5rem; }}
+.cluster-index h2 {{ margin-bottom: .65rem; }}
+.cluster-index-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .6rem; }}
+.cluster-index-card {{ display: block; border: 1px solid #d9dee8; background: #fff; border-radius: 6px; padding: .75rem; color: inherit; text-decoration: none; }}
+.cluster-index-card:hover {{ border-color: #8aa4c7; }}
+.cluster-index-card strong {{ display: block; font-size: .92rem; margin-bottom: .25rem; }}
+.cluster-index-card span {{ display: block; color: #637083; font-size: .78rem; }}
 .cluster {{ margin: 1rem 0; padding: 1rem; }}
 .claim {{ padding: .8rem; margin: .65rem 0; }}
 .claim p {{ margin: .45rem 0; line-height: 1.45; }}
@@ -4581,6 +4637,7 @@ h3 {{ font-size: .95rem; margin: 1rem 0 .5rem; color: #304256; }}
 <section class="counts">
 {count_cards}
 </section>
+{cluster_index_html}
 {''.join(cluster_blocks)}
 </main>
 </body>
@@ -4679,8 +4736,11 @@ def write_narrative_publication_artifacts(
         **{key: 0 for key in count_keys},
     }
     cluster_payloads: list[dict[str, Any]] = []
+    seen_anchors: set[str] = set()
     for target in sorted(targets, key=lambda row: _publication_text(row.get("target_label"), fallback=row.get("target_id"))):
         target_id = str(target.get("target_id") or "")
+        cluster_uid = target.get("target_key") or target.get("cluster_uid") or target_id
+        anchor = _publication_anchor(cluster_uid, fallback=target_id, seen=seen_anchors)
         target_claims = [
             claim
             for claim in sorted(claims, key=lambda row: _publication_sort_value(row, "sort_order"))
@@ -4689,6 +4749,7 @@ def write_narrative_publication_artifacts(
         section_payloads = []
         omitted_claims = []
         reviewed_claim_count = 0
+        rendered_claim_count = 0
         for section in sorted(
             [row for row in sections if str(row.get("target_id") or "") == target_id],
             key=lambda row: _publication_sort_value(row, "sort_order"),
@@ -4759,18 +4820,44 @@ def write_narrative_publication_artifacts(
                     }
                 )
                 counts["rendered_claims"] += len(rendered_claims)
+                rendered_claim_count += len(rendered_claims)
+        if rendered_claim_count <= 0:
+            cluster_publication_state = "empty"
+        elif omitted_claims:
+            cluster_publication_state = "partial_review"
+        else:
+            cluster_publication_state = "reviewed"
         cluster_payloads.append(
             {
                 "target_id": target_id,
-                "cluster_uid": target.get("target_key") or target.get("cluster_uid") or target_id,
+                "cluster_uid": cluster_uid,
+                "anchor": anchor,
                 "target_label": target.get("target_label"),
                 "claim_count": len(target_claims),
                 "reviewed_claim_count": reviewed_claim_count,
+                "rendered_claim_count": rendered_claim_count,
+                "omitted_claim_count": len(omitted_claims),
                 "pending_review_claim_count": max(0, len(target_claims) - reviewed_claim_count),
+                "publication_state": cluster_publication_state,
                 "sections": section_payloads,
                 "omitted_claims": omitted_claims,
             }
         )
+    cluster_index = [
+        {
+            "target_id": cluster.get("target_id"),
+            "cluster_uid": cluster.get("cluster_uid"),
+            "anchor": cluster.get("anchor"),
+            "target_label": cluster.get("target_label"),
+            "claim_count": cluster.get("claim_count", 0),
+            "reviewed_claim_count": cluster.get("reviewed_claim_count", 0),
+            "rendered_claim_count": cluster.get("rendered_claim_count", 0),
+            "omitted_claim_count": cluster.get("omitted_claim_count", 0),
+            "pending_review_claim_count": cluster.get("pending_review_claim_count", 0),
+            "publication_state": cluster.get("publication_state", "unknown"),
+        }
+        for cluster in cluster_payloads
+    ]
     if counts["rendered_claims"] <= 0:
         publication_state = "empty"
     elif counts["pending_claims"] or counts["needs_revision_claims"] or counts["rejected_claims"]:
@@ -4799,6 +4886,7 @@ def write_narrative_publication_artifacts(
         "publication_state": publication_state,
         "source_manifest": _rel(manifest_path, result_root),
         "counts": counts,
+        "cluster_index": cluster_index,
         "clusters": cluster_payloads,
         "warnings": validation.get("warnings", []),
         "created_at_utc": _utc_now(),

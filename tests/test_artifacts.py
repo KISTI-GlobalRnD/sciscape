@@ -745,10 +745,21 @@ def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
     assert payload["schema_version"] == NARRATIVE_PUBLICATION_SCHEMA_VERSION
     assert payload["counts"]["rendered_claims"] == 1
     assert payload["counts"]["rejected_claims"] == 1
+    indexed_target = next(row for row in payload["cluster_index"] if row["target_id"] == target_id)
+    rendered_cluster = next(row for row in payload["clusters"] if row["target_id"] == target_id)
+    assert indexed_target["anchor"].startswith("cluster-")
+    assert indexed_target["rendered_claim_count"] == 1
+    assert indexed_target["omitted_claim_count"] >= 1
+    assert rendered_cluster["publication_state"] == "partial_review"
+    assert rendered_cluster["rendered_claim_count"] == 1
+    assert "## Cluster Index" in markdown
     assert accepted_claim_id in markdown
     assert "Omitted Claims" in markdown
     assert rejected_claim_id in markdown
     assert "<!doctype html>" in html_report
+    assert "Cluster Index" in html_report
+    assert f'href="#{indexed_target["anchor"]}"' in html_report
+    assert f'id="{indexed_target["anchor"]}"' in html_report
     assert accepted_claim_id in html_report
     assert "Omitted Claims" in html_report
     assert rejected_claim_id in html_report

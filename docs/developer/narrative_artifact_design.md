@@ -79,6 +79,13 @@ For a landscape-scoped result, the same directory may live under:
 `review_decisions.parquet` is optional until the app has an explicit review
 workflow. If review state is advertised in the manifest, the file is required.
 
+Reviewed publication summaries should include `cluster_index` alongside
+`clusters`. The index is the report navigation surface: each row carries the
+cluster anchor, target id, cluster uid, display label, claim counts, rendered
+claim count, omitted claim count, pending review count, and cluster-level
+publication state. Markdown and HTML reports should render this index before
+the full claim sections.
+
 ## Schema Versions
 
 Use explicit schema names:
@@ -583,8 +590,9 @@ The writer should:
 8. write `review_decisions.parquet` only when review state exists;
 9. generate `narrative_manifest.json`;
 10. generate `narrative_qa.json`;
-11. write publication summary JSON/Markdown/HTML and the publication bundle
-    only from accepted or not-required reviewed claims;
+11. write publication summary JSON/Markdown/HTML with a cluster-level index,
+    then write the publication bundle only from accepted or not-required
+    reviewed claims;
 12. return paths, counts, warnings, and QA status.
 
 The first implementation should not call an LLM. Later generators may update

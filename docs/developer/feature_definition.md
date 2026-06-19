@@ -1091,6 +1091,9 @@ Success:
   the result manifest and downloads surface when present
 - reviewed narrative publication summaries render only accepted or not-required
   claims and list rejected, needs-revision, and pending claims as omitted rows
+- reviewed narrative publication summaries include a cluster-level index with
+  rendered, omitted, pending, and publication-state counts for multi-cluster
+  report navigation
 - Atlas narrative review surfaces link to reviewed publication Markdown, HTML,
   and JSON artifacts when they have been written, and can preview the reviewed
   publication JSON in the inspector

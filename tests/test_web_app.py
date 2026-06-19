@@ -2038,6 +2038,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     publication_api_payload = publication_api_response.json()
     assert publication_api_payload["available"] is True
     assert publication_api_payload["counts"]["rendered_claims"] >= 1
+    assert publication_api_payload["cluster_index"][0]["cluster_uid"] == "cluster:0"
+    assert publication_api_payload["cluster_index"][0]["anchor"] == "cluster-0"
+    assert publication_api_payload["cluster_index"][0]["rendered_claim_count"] >= 1
     rendered_claim_ids = {
         claim["claim_id"]
         for cluster in publication_api_payload["clusters"]
@@ -2051,6 +2054,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     publication_html_response = client.get(f"/api/jobs/{job_id}/view/narrative/publication_summary.html")
     assert publication_html_response.status_code == 200
     assert "<!doctype html>" in publication_html_response.text
+    assert "Cluster Index" in publication_html_response.text
+    assert 'href="#cluster-0"' in publication_html_response.text
     assert claim_id in publication_html_response.text
     publication_bundle_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_bundle.zip")
     assert publication_bundle_response.status_code == 200
