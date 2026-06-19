@@ -583,6 +583,9 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` `sciscape narrative publish` exposes the reviewed publication writer as
   a CLI workflow step, producing JSON, Markdown, HTML, and zip bundle artifacts
   without rendering unreviewed generated claims as publication text.
+- `[x]` The web API and Atlas Narrative review panel can explicitly refresh the
+  reviewed publication artifacts after review decisions, reusing the same
+  deterministic publication writer and result-manifest refresh path as the CLI.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
   generation/report workflow is still not polished as a complete in-app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,

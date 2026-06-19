@@ -264,10 +264,12 @@ the safe apply hook with `--apply`. The default `echo` provider is deterministic
 and network-free for workflow validation; `openai` uses the optional `llm`
 extra. Generated rows are still candidates until review accepts them.
 
-The reviewed publication path is `sciscape narrative publish <result_root>`.
-It writes the deterministic JSON, Markdown, HTML, and zip publication artifacts
-from the current claim/review state. It does not generate new claim text, and it
-continues to omit rejected, needs-revision, and pending generated claims.
+The reviewed publication CLI path is
+`sciscape narrative publish <result_root>`. The web API path is
+`POST /api/jobs/{job_id}/narrative/publish`. Both write the deterministic JSON,
+Markdown, HTML, and zip publication artifacts from the current claim/review
+state. They do not generate new claim text, and they continue to omit rejected,
+needs-revision, and pending generated claims.
 
 ## Narrative Targets Table
 

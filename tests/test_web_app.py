@@ -354,6 +354,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlas-narrative-panel" in response.text
     assert "submitAtlasNarrativeReview" in response.text
     assert "/narrative/review" in response.text
+    assert "publishAtlasNarrativePublication" in response.text
+    assert "/narrative/publish" in response.text
     assert "manifestNarrativeArtifactCards" in response.text
     assert "Narrative claim graph manifest" in response.text
     assert "Reviewed narrative publication" in response.text
@@ -2030,6 +2032,19 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     )
     claims_after_review = pd.read_parquet(output_dir / "narrative" / "claims.parquet")
     assert claims_after_review.loc[claims_after_review["claim_id"] == claim_id, "review_state"].iloc[0] == "accepted"
+    publish_response = client.post(f"/api/jobs/{job_id}/narrative/publish")
+    assert publish_response.status_code == 200
+    publish_payload = publish_response.json()
+    assert publish_payload["available"] is True
+    assert publish_payload["publication"]["available"] is True
+    assert publish_payload["publication"]["paths"]["json"] == "narrative/publication_summary.json"
+    assert publish_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
+    assert publish_payload["publication"]["paths"]["html"] == "narrative/publication_summary.html"
+    assert publish_payload["publication"]["paths"]["bundle"] == "narrative/publication_bundle.zip"
+    assert (
+        publish_payload["result_manifest"]["artifacts"]["narrative_publication_html"]["path"]
+        == "narrative/publication_summary.html"
+    )
     publication_json_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_summary.json")
     assert publication_json_response.status_code == 200
     assert publication_json_response.json()["schema_version"] == "sciscape_narrative_publication_v1"

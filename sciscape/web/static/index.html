@@ -5479,7 +5479,9 @@ function atlasNarrativePublicationArtifacts() {
 function renderAtlasNarrativePublicationLinks() {
   if (!currentJobId) return '';
   const paths = atlasNarrativePublicationArtifacts();
-  const links = [];
+  const links = [
+    '<button type="button" class="atlas-narrative-publication-link" onclick="publishAtlasNarrativePublication()">Publish report</button>'
+  ];
   if (paths.html) {
     links.push('<a class="atlas-narrative-publication-link" target="_blank" rel="noopener" href="' +
       artifactUrl(currentJobId, 'view', paths.html) + '">Report</a>');
@@ -5580,6 +5582,43 @@ async function loadAtlasNarrativePublicationPreview() {
     };
   }
   if (currentAtlasNodeUid) refreshAtlasNarrativeInspector(currentAtlasNodeUid);
+}
+
+async function publishAtlasNarrativePublication() {
+  if (!currentJobId) return;
+  const clusterUid = String(currentAtlasNodeUid || '');
+  currentAtlasNarrativeReviewStatus = {
+    clusterUid,
+    state: 'pending',
+    message: 'publishing reviewed report',
+  };
+  if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+  try {
+    const response = await fetch('/api/jobs/' + currentJobId + '/narrative/publish', {method: 'POST'});
+    const payload = await response.json();
+    if (!response.ok || payload.error || payload.available === false) {
+      throw new Error(payload.error || 'narrative publication failed');
+    }
+    if (currentResult && payload.result_manifest) {
+      currentResult.result_manifest = payload.result_manifest;
+      updateDownloads(currentResult);
+    }
+    currentAtlasPublicationPreview = null;
+    currentAtlasNarrativeReviewStatus = {
+      clusterUid,
+      state: 'saved',
+      message: 'reviewed report published',
+    };
+    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+  } catch (err) {
+    currentAtlasNarrativeReviewStatus = {
+      clusterUid,
+      state: 'failed',
+      message: 'publication failed: ' + (err && err.message ? err.message : 'unknown error'),
+    };
+    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+    console.warn(err);
+  }
 }
 
 function renderAtlasNarrativeReview(node, model) {

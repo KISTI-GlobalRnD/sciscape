@@ -675,6 +675,41 @@ async def get_job_narrative_publication(job_id: str):
     return _json_safe(payload)
 
 
+@app.post("/api/jobs/{job_id}/narrative/publish")
+async def publish_job_narrative(job_id: str):
+    """Write or refresh reviewed narrative publication artifacts for a completed job."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    manifest_path = _narrative_manifest_path_for_result(result)
+    if manifest_path is None:
+        return {"available": False, "error": "no narrative claim graph artifact"}
+    publication = write_narrative_publication_artifacts(manifest_path)
+    if not publication or publication.get("available") is False:
+        return _json_safe(
+            publication
+            or {"available": False, "error": "could not write narrative publication artifacts"}
+        )
+    root = _result_root_for_result(result)
+    if root is not None:
+        try:
+            _refresh_job_result_manifest(job_id, result, root, mode="local_result")
+        except Exception:
+            pass
+    _attach_report_atlas(result)
+    _attach_narrative_summary(result)
+    job["result"] = result
+    _jobs.persist(job_id)
+    return _json_safe(
+        {
+            "available": True,
+            "publication": publication,
+            "result_manifest": result.get("result_manifest"),
+        }
+    )
+
+
 @app.get("/api/jobs/{job_id}/clusters/{cluster_uid}/narrative")
 async def get_cluster_narrative(job_id: str, cluster_uid: str, limit: int = 40):
     """Get claim/evidence rows for one selected Atlas cluster."""
