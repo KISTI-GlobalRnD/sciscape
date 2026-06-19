@@ -873,6 +873,31 @@ class TestNarrativeArgs:
         assert args.reset_review_state == "needs_revision"
         assert args.json is True
 
+    def test_publish_parse(self, parser):
+        args = parser.parse_args([
+            "narrative",
+            "publish",
+            "result",
+            "--json-name",
+            "reviewed.json",
+            "--markdown-name",
+            "reviewed.md",
+            "--html-name",
+            "reviewed.html",
+            "--bundle-name",
+            "reviewed.zip",
+            "--json",
+        ])
+
+        assert args.command == "narrative"
+        assert args.narrative_command == "publish"
+        assert args.result_root == Path("result")
+        assert args.json_name == "reviewed.json"
+        assert args.markdown_name == "reviewed.md"
+        assert args.html_name == "reviewed.html"
+        assert args.bundle_name == "reviewed.zip"
+        assert args.json is True
+
     def test_run_narrative_render_prompts_json(self, parser, tmp_path, capsys):
         root = _write_cli_narrative_result_root(tmp_path / "result")
         args = parser.parse_args([
@@ -936,6 +961,60 @@ class TestNarrativeArgs:
         assert payload["applied"] is True
         assert (root / payload["updates_path"]).exists()
         assert (root / payload["run_manifest_path"]).exists()
+
+    def test_run_narrative_publish_json(self, parser, tmp_path, capsys):
+        root = _write_cli_narrative_result_root(tmp_path / "result")
+        claims_path = root / "narrative" / "claims.parquet"
+        reviews_path = root / "narrative" / "review_decisions.parquet"
+        manifest_path = root / "narrative" / "narrative_manifest.json"
+        claims = pd.read_parquet(claims_path)
+        claim_id = str(claims.iloc[0]["claim_id"])
+        target_id = str(claims.iloc[0]["target_id"])
+        claims.loc[claims["claim_id"].map(str) == claim_id, "review_state"] = "accepted"
+        claims.to_parquet(claims_path, index=False)
+        pd.DataFrame(
+            [
+                {
+                    "schema_version": "sciscape_narrative_review_decisions_v1",
+                    "narrative_id": claims.iloc[0]["narrative_id"],
+                    "decision_id": "decision_accept",
+                    "claim_id": claim_id,
+                    "decision_type": "accepted",
+                    "reviewer": "tester",
+                    "decided_at_utc": "2026-06-18T00:00:00+00:00",
+                    "reason": "ready",
+                    "target_id": target_id,
+                    "cluster_uid": "cluster:0",
+                }
+            ]
+        ).to_parquet(reviews_path, index=False)
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        outputs = dict(manifest.get("outputs") or {})
+        outputs["reviews"] = "review_decisions.parquet"
+        manifest["outputs"] = outputs
+        manifest["review_state_advertised"] = True
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+        args = parser.parse_args([
+            "narrative",
+            "publish",
+            str(root),
+            "--json",
+        ])
+
+        _run_narrative(args)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["available"] is True
+        assert payload["paths"]["json"] == "narrative/publication_summary.json"
+        assert payload["paths"]["markdown"] == "narrative/publication_summary.md"
+        assert payload["paths"]["html"] == "narrative/publication_summary.html"
+        assert payload["paths"]["bundle"] == "narrative/publication_bundle.zip"
+        assert (root / "narrative" / "publication_summary.json").exists()
+        assert (root / "narrative" / "publication_summary.md").exists()
+        assert (root / "narrative" / "publication_summary.html").exists()
+        assert (root / "narrative" / "publication_bundle.zip").exists()
+        summary = json.loads((root / "narrative" / "publication_summary.json").read_text(encoding="utf-8"))
+        assert summary["counts"]["rendered_claims"] == 1
 
     def test_run_narrative_apply_generated_json(self, parser, tmp_path, capsys):
         root = _write_cli_narrative_result_root(tmp_path / "result")

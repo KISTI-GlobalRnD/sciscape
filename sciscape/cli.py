@@ -21,6 +21,7 @@ Usage:
     sciscape narrative render-prompts <result_root> [options]
     sciscape narrative run-prompts <result_root_or_prompt_manifest> [options]
     sciscape narrative apply-generated <result_root> <updates_file> [options]
+    sciscape narrative publish <result_root> [options]
     sciscape web       [options]
     sciscape gui
 
@@ -44,6 +45,7 @@ Examples:
     sciscape narrative render-prompts result --prompt-ref prompt:narrative:v1
     sciscape narrative run-prompts result --provider echo --model echo --apply
     sciscape narrative apply-generated result generated_claims.json --provider openai --model gpt-5 --model-run-id run_001 --prompt-ref prompt:narrative:v1
+    sciscape narrative publish result --json
 """
 
 from __future__ import annotations
@@ -691,6 +693,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Review state assigned to model-generated claims (default: not_reviewed)",
     )
     napply.add_argument("--json", action="store_true", help="Print update result as JSON")
+    npub = nv_sub.add_parser(
+        "publish",
+        help="Write reviewed narrative publication JSON, Markdown, HTML, and bundle artifacts",
+    )
+    npub.add_argument("result_root", type=Path, help="SciScape result root or narrative_manifest.json path")
+    npub.add_argument("--json-name", type=str, default="publication_summary.json")
+    npub.add_argument("--markdown-name", type=str, default="publication_summary.md")
+    npub.add_argument("--html-name", type=str, default="publication_summary.html")
+    npub.add_argument("--bundle-name", type=str, default="publication_bundle.zip")
+    npub.add_argument("--json", action="store_true", help="Print publication artifact result as JSON")
 
     # ---- query (OpenAlex) ----
     qa = sub.add_parser("query", help="Query OpenAlex → fetch → edges → landscape (all-in-one)")
@@ -1975,6 +1987,35 @@ def _run_narrative(args: argparse.Namespace) -> None:
         print(f"  Generated updates → {written.get('updates_path')}")
         if written.get("applied"):
             print("  Applied through safe narrative update hook")
+        return
+
+    if args.narrative_command == "publish":
+        from sciscape.artifacts import write_narrative_publication_artifacts
+
+        try:
+            written = write_narrative_publication_artifacts(
+                args.result_root,
+                json_name=args.json_name,
+                markdown_name=args.markdown_name,
+                html_name=args.html_name,
+                bundle_name=args.bundle_name,
+            )
+        except Exception as exc:
+            print(f"Could not publish reviewed narrative artifacts: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if not written or not written.get("available"):
+            error = written.get("error", "unknown error") if isinstance(written, dict) else "missing narrative artifact"
+            print(f"Could not publish reviewed narrative artifacts: {error}", file=sys.stderr)
+            sys.exit(1)
+        if args.json:
+            print(json.dumps(written, indent=2, sort_keys=True, default=str))
+            return
+        paths = written.get("paths") if isinstance(written.get("paths"), dict) else {}
+        print(f"Reviewed narrative publication written: {written.get('publication_state', 'unknown')}")
+        print(f"  JSON → {paths.get('json')}")
+        print(f"  Markdown → {paths.get('markdown')}")
+        print(f"  HTML → {paths.get('html')}")
+        print(f"  Bundle → {paths.get('bundle')}")
         return
 
     if args.narrative_command != "apply-generated":

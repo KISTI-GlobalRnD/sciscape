@@ -23,7 +23,7 @@ A narrative artifact must answer:
 
 ## Non-Goals
 
-- Do not add narrative generation in this milestone.
+- Do not ship ungated narrative generation as analysis output.
 - Do not ship free-form LLM cluster descriptions as product output.
 - Do not present narrative text without resolvable evidence references.
 - Do not use representative works, temporal charts, or neighboring clusters as
@@ -263,6 +263,11 @@ It reads the prompt batch, writes
 the safe apply hook with `--apply`. The default `echo` provider is deterministic
 and network-free for workflow validation; `openai` uses the optional `llm`
 extra. Generated rows are still candidates until review accepts them.
+
+The reviewed publication path is `sciscape narrative publish <result_root>`.
+It writes the deterministic JSON, Markdown, HTML, and zip publication artifacts
+from the current claim/review state. It does not generate new claim text, and it
+continues to omit rejected, needs-revision, and pending generated claims.
 
 ## Narrative Targets Table
 
@@ -674,7 +679,8 @@ rewriting narrative text.
    Atlas now exposes claim-level review actions and save/failure feedback; the
    CLI can render JSONL prompt batches, execute them through an explicit
    provider runner, and apply JSON/JSONL generated claim batches through the
-   safe model-assisted update hook. The polished reviewed generation/report app
+   safe model-assisted update hook. The CLI can publish reviewed JSON, Markdown,
+   HTML, and bundle artifacts; the polished in-app reviewed generation/report
    workflow remains pending.
 
 ## Acceptance Criteria

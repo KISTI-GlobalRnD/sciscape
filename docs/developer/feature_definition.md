@@ -1103,6 +1103,8 @@ Success:
   publication JSON in the inspector
 - reviewed narrative publication bundles include publication summaries,
   generation metadata, QA, review decisions, and claim/evidence tables
+- reviewed narrative publication artifacts can be generated through the CLI
+  after review decisions are present
 - generated narratives include prompt/model metadata when LLMs are used
 - generation prompt batches can be rendered from validated claim/evidence
   artifacts before any provider is called
