@@ -359,7 +359,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Reviewed narrative publication" in response.text
     assert "atlasNarrativePublicationArtifacts" in response.text
     assert "renderAtlasNarrativePublicationLinks" in response.text
+    assert "renderAtlasNarrativePublicationPreview" in response.text
+    assert "loadAtlasNarrativePublicationPreview" in response.text
     assert "View summary" in response.text
+    assert "Preview" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -2017,6 +2020,18 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     publication_json_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_summary.json")
     assert publication_json_response.status_code == 200
     assert publication_json_response.json()["schema_version"] == "sciscape_narrative_publication_v1"
+    publication_api_response = client.get(f"/api/jobs/{job_id}/narrative/publication")
+    assert publication_api_response.status_code == 200
+    publication_api_payload = publication_api_response.json()
+    assert publication_api_payload["available"] is True
+    assert publication_api_payload["counts"]["rendered_claims"] >= 1
+    rendered_claim_ids = {
+        claim["claim_id"]
+        for cluster in publication_api_payload["clusters"]
+        for section in cluster["sections"]
+        for claim in section["claims"]
+    }
+    assert claim_id in rendered_claim_ids
     publication_markdown_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_summary.md")
     assert publication_markdown_response.status_code == 200
     assert claim_id in publication_markdown_response.text

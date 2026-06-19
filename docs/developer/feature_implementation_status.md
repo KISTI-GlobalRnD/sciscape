@@ -555,7 +555,8 @@ Status: `[~]` Partial. Rough completeness: 62%.
   Markdown artifacts; accepted and not-required claims render as narrative text,
   while rejected, needs-revision, and pending claims are listed as omitted rows.
 - `[x]` The Atlas Narrative review panel exposes view/download links for
-  reviewed publication Markdown and JSON artifacts once they exist.
+  reviewed publication Markdown and JSON artifacts once they exist, and can
+  fetch the reviewed JSON summary for an inline inspector preview.
 - `[ ]` There is no stable narrative generation pipeline.
 - `[ ]` There is no polished final reviewed narrative report layout or bundle.
 

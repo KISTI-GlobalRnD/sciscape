@@ -656,6 +656,25 @@ async def get_job_narrative(job_id: str, limit: int = 80):
     return _load_narrative_payload_for_result(result, claim_limit=limit)
 
 
+@app.get("/api/jobs/{job_id}/narrative/publication")
+async def get_job_narrative_publication(job_id: str):
+    """Get the reviewed narrative publication summary JSON for a completed job."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    publication_path = _narrative_publication_json_path_for_result(result)
+    if publication_path is None:
+        return {"available": False, "reason": "no reviewed narrative publication artifact"}
+    try:
+        payload = json.loads(publication_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"available": False, "error": f"could not read narrative publication: {exc}"}
+    payload["available"] = True
+    payload["publication_path"] = str(publication_path)
+    return _json_safe(payload)
+
+
 @app.get("/api/jobs/{job_id}/clusters/{cluster_uid}/narrative")
 async def get_cluster_narrative(job_id: str, cluster_uid: str, limit: int = 40):
     """Get claim/evidence rows for one selected Atlas cluster."""
@@ -1201,6 +1220,30 @@ def _narrative_manifest_path_for_result(result: dict[str, Any]) -> Path | None:
         if path is not None and path.exists() and path.is_file():
             return path
     fallback = root / "narrative" / "narrative_manifest.json"
+    return fallback if fallback.exists() and fallback.is_file() else None
+
+
+def _narrative_publication_json_path_for_result(result: dict[str, Any]) -> Path | None:
+    root = _result_root_for_result(result)
+    if root is None:
+        return None
+    manifest = _manifest_for_result(result)
+    artifacts = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
+    for key, record in artifacts.items():
+        if not isinstance(record, dict):
+            continue
+        if record.get("status") != "present":
+            continue
+        role = str(record.get("role") or "")
+        path_text = str(record.get("path") or "")
+        if role != "narrative_publication" and "publication" not in str(key):
+            continue
+        if not (str(key).endswith("_json") or path_text.endswith(".json")):
+            continue
+        path = _path_inside_result_root(root, path_text)
+        if path is not None and path.exists() and path.is_file():
+            return path
+    fallback = root / "narrative" / "publication_summary.json"
     return fallback if fallback.exists() and fallback.is_file() else None
 
 
