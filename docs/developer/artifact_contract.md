@@ -106,6 +106,7 @@ writers should emit `result_manifest.json`.
 | `narrative/narrative_qa.json` | `schema_version`, `narrative_id`, `status`, `checks`, `counts`, `claim_counts`, `unsupported_claims`, `warnings`, `blocking_issues` | Narrative artifact QA summary. |
 | `narrative/publication_summary.json` | `schema_version`, `narrative_id`, `publication_state`, `counts`, `clusters`, `warnings` | Review-state-aware publication summary that renders only accepted or not-required claims. |
 | `narrative/publication_summary.md` | Markdown headings, review summary, rendered claims, omitted-claim list | Human-readable reviewed narrative publication summary. |
+| `narrative/publication_summary.html` | Static HTML report, review summary cards, rendered claims, omitted-claim list | Browser-readable reviewed narrative publication report generated from the same JSON payload. |
 | `exports/<export_id>/export_manifest.json` | `schema_version`, `export_id`, `export_family`, `export_kind`, `format`, `status`, `feature_refs`, `source_artifacts`, `outputs` | Export manifest contract defined in `export_manifest_design.md`. |
 | `exports/<export_id>/export_files.parquet` | `schema_version`, `export_id`, `file_id`, `path`, `role`, `format`, `public_share_state` | Output file inventory. |
 | `exports/<export_id>/export_inputs.parquet` | `schema_version`, `export_id`, `input_id`, `artifact_ref`, `artifact_role`, `artifact_path`, `feature_state`, `required` | Source artifacts and feature states used by the export. |

@@ -5460,7 +5460,7 @@ function renderAtlasReviewPacket(node, model) {
 function atlasNarrativePublicationArtifacts() {
   const manifest = currentResult && currentResult.result_manifest || {};
   const artifacts = manifest.artifacts && typeof manifest.artifacts === 'object' ? manifest.artifacts : {};
-  const paths = {json: '', markdown: ''};
+  const paths = {json: '', markdown: '', html: ''};
   for (const entry of Object.entries(artifacts)) {
     const key = String(entry[0] || '').toLowerCase();
     const record = entry[1] || {};
@@ -5468,7 +5468,8 @@ function atlasNarrativePublicationArtifacts() {
     const path = String(record.path || '');
     const role = String(record.role || '').toLowerCase();
     if (role !== 'narrative_publication' && !key.includes('publication')) continue;
-    if (key.includes('markdown') || path.endsWith('.md')) paths.markdown = path;
+    if (key.includes('html') || path.endsWith('.html')) paths.html = path;
+    else if (key.includes('markdown') || path.endsWith('.md')) paths.markdown = path;
     else if (key.includes('json') || path.endsWith('.json')) paths.json = path;
   }
   return paths;
@@ -5478,6 +5479,10 @@ function renderAtlasNarrativePublicationLinks() {
   if (!currentJobId) return '';
   const paths = atlasNarrativePublicationArtifacts();
   const links = [];
+  if (paths.html) {
+    links.push('<a class="atlas-narrative-publication-link" target="_blank" rel="noopener" href="' +
+      artifactUrl(currentJobId, 'view', paths.html) + '">Report</a>');
+  }
   if (paths.markdown) {
     links.push('<a class="atlas-narrative-publication-link" target="_blank" rel="noopener" href="' +
       artifactUrl(currentJobId, 'view', paths.markdown) + '">View summary</a>');
@@ -6624,8 +6629,10 @@ function narrativeArtifactIcon(key, record) {
 function narrativeArtifactLabel(key, record) {
   const artifactKey = String(key || '').toLowerCase();
   const path = String(record && record.path || '').toLowerCase();
+  if (artifactKey.includes('html') || path.endsWith('publication_summary.html')) return 'Reviewed narrative publication HTML report';
   if (artifactKey.includes('markdown') || path.endsWith('publication_summary.md')) return 'Reviewed narrative publication Markdown';
-  if (artifactKey.includes('publication') || path.endsWith('publication_summary.json')) return 'Reviewed narrative publication JSON';
+  if (artifactKey.includes('json') || path.endsWith('publication_summary.json')) return 'Reviewed narrative publication JSON';
+  if (artifactKey.includes('publication')) return 'Reviewed narrative publication artifact';
   if (path.endsWith('narrative_manifest.json')) return 'Narrative claim graph manifest';
   if (artifactKey.includes('qa') || path.endsWith('narrative_qa.json')) return 'Narrative QA report';
   if (artifactKey.includes('target') || path.endsWith('narrative_targets.parquet')) return 'Narrative targets';

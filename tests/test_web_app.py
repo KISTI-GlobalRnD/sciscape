@@ -363,6 +363,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "loadAtlasNarrativePublicationPreview" in response.text
     assert "View summary" in response.text
     assert "Preview" in response.text
+    assert "Reviewed narrative publication HTML report" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -1988,6 +1989,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert review_payload["publication"]["available"] is True
     assert review_payload["publication"]["paths"]["json"] == "narrative/publication_summary.json"
     assert review_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
+    assert review_payload["publication"]["paths"]["html"] == "narrative/publication_summary.html"
     assert (
         review_payload["result_manifest"]["artifacts"]["narrative_publication_json"]["path"]
         == "narrative/publication_summary.json"
@@ -1995,6 +1997,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert (
         review_payload["result_manifest"]["artifacts"]["narrative_publication_markdown"]["path"]
         == "narrative/publication_summary.md"
+    )
+    assert (
+        review_payload["result_manifest"]["artifacts"]["narrative_publication_html"]["path"]
+        == "narrative/publication_summary.html"
     )
     assert review_payload["cluster"]["claims"][0]["review_state"] == "accepted"
     review_decisions = pd.read_parquet(output_dir / "narrative" / "review_decisions.parquet")
@@ -2035,6 +2041,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     publication_markdown_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_summary.md")
     assert publication_markdown_response.status_code == 200
     assert claim_id in publication_markdown_response.text
+    publication_html_response = client.get(f"/api/jobs/{job_id}/view/narrative/publication_summary.html")
+    assert publication_html_response.status_code == 200
+    assert "<!doctype html>" in publication_html_response.text
+    assert claim_id in publication_html_response.text
 
     cluster_narrative_after_review_response = client.get(
         f"/api/jobs/{job_id}/clusters/cluster:0/narrative"

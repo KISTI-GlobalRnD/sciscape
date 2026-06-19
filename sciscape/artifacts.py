@@ -4406,11 +4406,148 @@ def _publication_markdown(payload: Mapping[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _publication_html(payload: Mapping[str, Any]) -> str:
+    def text(value: Any, *, fallback: str = "") -> str:
+        return html.escape(_publication_text(value, fallback=fallback), quote=True)
+
+    counts = payload.get("counts") if isinstance(payload.get("counts"), Mapping) else {}
+    count_keys = (
+        "targets",
+        "claims",
+        "rendered_claims",
+        "accepted_claims",
+        "not_required_claims",
+        "pending_claims",
+        "needs_revision_claims",
+        "rejected_claims",
+        "evidence_refs",
+    )
+    count_cards = "\n".join(
+        (
+            '<div class="count-card">'
+            f'<span>{html.escape(key.replace("_", " ").title(), quote=True)}</span>'
+            f"<strong>{html.escape(str(counts.get(key, 0)), quote=True)}</strong>"
+            "</div>"
+        )
+        for key in count_keys
+    )
+    cluster_blocks: list[str] = []
+    clusters = [row for row in payload.get("clusters", []) if isinstance(row, Mapping)]
+    if not clusters:
+        cluster_blocks.append('<section class="cluster"><p>No narrative targets are available.</p></section>')
+    for cluster in clusters:
+        sections_html: list[str] = []
+        for section in cluster.get("sections", []):
+            if not isinstance(section, Mapping):
+                continue
+            claims_html: list[str] = []
+            for claim in [row for row in section.get("claims", []) if isinstance(row, Mapping)]:
+                evidence_rows = []
+                for row in [item for item in claim.get("evidence", []) if isinstance(item, Mapping)]:
+                    evidence_label = text(row.get("evidence_label"), fallback=row.get("evidence_ref_id"))
+                    role = text(row.get("evidence_role"), fallback="evidence")
+                    aggregate = " aggregate" if bool(row.get("aggregate_only")) else ""
+                    evidence_rows.append(f"<li><span>{role}</span>{evidence_label}{aggregate}</li>")
+                evidence_html = (
+                    '<ul class="evidence">' + "\n".join(evidence_rows) + "</ul>"
+                    if evidence_rows
+                    else '<p class="muted">Evidence refs are available in the JSON payload.</p>'
+                )
+                claims_html.append(
+                    '<article class="claim">'
+                    f'<div class="claim-meta">{text(claim.get("review_state"), fallback="not_reviewed")} '
+                    f'| {text(claim.get("support_state"), fallback="unknown")} '
+                    f'| claim {text(claim.get("claim_id"))}</div>'
+                    f'<p>{text(claim.get("claim_text"))}</p>'
+                    f"{evidence_html}"
+                    "</article>"
+                )
+            if claims_html:
+                sections_html.append(
+                    '<section class="section">'
+                    f'<h3>{text(section.get("section_title"), fallback="Claims")}</h3>'
+                    + "\n".join(claims_html)
+                    + "</section>"
+                )
+        omitted = [row for row in cluster.get("omitted_claims", []) if isinstance(row, Mapping)]
+        omitted_html = ""
+        if omitted:
+            omitted_items = "\n".join(
+                "<li>"
+                f"{text(row.get('claim_id'))}: {text(row.get('review_state'), fallback='not_reviewed')} "
+                f"({text(row.get('reason'), fallback='not rendered')})"
+                "</li>"
+                for row in omitted
+            )
+            omitted_html = f'<details class="omitted"><summary>Omitted Claims</summary><ul>{omitted_items}</ul></details>'
+        if not sections_html:
+            sections_html.append('<p class="muted">No reviewed claims are publishable yet.</p>')
+        cluster_blocks.append(
+            '<section class="cluster">'
+            f'<h2>{text(cluster.get("target_label"), fallback="Untitled Target")}</h2>'
+            '<div class="cluster-meta">'
+            f'Target: {text(cluster.get("cluster_uid"), fallback=cluster.get("target_id"))} | '
+            f'Reviewed claims: {text(cluster.get("reviewed_claim_count"), fallback="0")} / '
+            f'{text(cluster.get("claim_count"), fallback="0")}'
+            "</div>"
+            + "\n".join(sections_html)
+            + omitted_html
+            + "</section>"
+        )
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{text(payload.get("title"), fallback="Reviewed Narrative Publication")}</title>
+<style>
+:root {{
+  color: #20252f;
+  background: #f7f8fb;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}}
+body {{ margin: 0; padding: 2rem; }}
+main {{ max-width: 1040px; margin: 0 auto; }}
+header {{ border-bottom: 1px solid #d9dee8; margin-bottom: 1.5rem; padding-bottom: 1rem; }}
+h1 {{ font-size: 1.8rem; line-height: 1.2; margin: 0 0 .6rem; }}
+h2 {{ font-size: 1.2rem; margin: 0 0 .3rem; }}
+h3 {{ font-size: .95rem; margin: 1rem 0 .5rem; color: #304256; }}
+.meta, .cluster-meta, .claim-meta, .muted {{ color: #637083; font-size: .82rem; }}
+.counts {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; margin: 1rem 0 1.5rem; }}
+.count-card, .cluster, .claim {{ border: 1px solid #d9dee8; background: #fff; border-radius: 6px; }}
+.count-card {{ padding: .7rem; }}
+.count-card span {{ display: block; color: #637083; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; }}
+.count-card strong {{ display: block; font-size: 1.2rem; margin-top: .2rem; }}
+.cluster {{ margin: 1rem 0; padding: 1rem; }}
+.claim {{ padding: .8rem; margin: .65rem 0; }}
+.claim p {{ margin: .45rem 0; line-height: 1.45; }}
+.evidence {{ margin: .5rem 0 0; padding-left: 1.2rem; color: #415166; font-size: .84rem; }}
+.evidence span {{ color: #637083; font-weight: 700; margin-right: .35rem; }}
+.omitted {{ margin-top: .8rem; color: #637083; font-size: .84rem; }}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>{text(payload.get("title"), fallback="Reviewed Narrative Publication")}</h1>
+<div class="meta">Schema: {NARRATIVE_PUBLICATION_SCHEMA_VERSION} | Narrative: {text(payload.get("narrative_id"), fallback="unknown")} | State: {text(payload.get("publication_state"), fallback="unknown")} | Generated: {text(payload.get("created_at_utc"), fallback="unknown")}</div>
+</header>
+<section class="counts">
+{count_cards}
+</section>
+{''.join(cluster_blocks)}
+</main>
+</body>
+</html>
+"""
+
+
 def write_narrative_publication_artifacts(
     path: str | Path,
     *,
     json_name: str = "publication_summary.json",
     markdown_name: str = "publication_summary.md",
+    html_name: str = "publication_summary.html",
 ) -> dict[str, Any] | None:
     """Write deterministic reviewed narrative publication summaries.
 
@@ -4570,6 +4707,7 @@ def write_narrative_publication_artifacts(
     outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
     outputs["publication_json"] = str(outputs.get("publication_json") or json_name)
     outputs["publication_markdown"] = str(outputs.get("publication_markdown") or markdown_name)
+    outputs["publication_html"] = str(outputs.get("publication_html") or html_name)
     manifest["outputs"] = outputs
     manifest["publication_state_advertised"] = True
     manifest["publication_policy"] = {
@@ -4593,9 +4731,12 @@ def write_narrative_publication_artifacts(
     }
     json_path = _narrative_output_path(narrative_dir, manifest, "publication_json", json_name)
     markdown_path = _narrative_output_path(narrative_dir, manifest, "publication_markdown", markdown_name)
+    html_path = _narrative_output_path(narrative_dir, manifest, "publication_html", html_name)
     json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     markdown = _publication_markdown(payload)
     markdown_path.write_text(markdown, encoding="utf-8")
+    html_report = _publication_html(payload)
+    html_path.write_text(html_report, encoding="utf-8")
     return {
         "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
         "available": True,
@@ -4603,6 +4744,7 @@ def write_narrative_publication_artifacts(
         "paths": {
             "json": _rel(json_path, result_root),
             "markdown": _rel(markdown_path, result_root),
+            "html": _rel(html_path, result_root),
         },
         "counts": counts,
     }
@@ -11223,6 +11365,13 @@ def _add_narrative_output_artifacts(
             outputs.get("publication_markdown"),
             "markdown",
             "Reviewed narrative publication Markdown.",
+        ),
+        (
+            "publication_html",
+            "publication_html",
+            outputs.get("publication_html"),
+            "html",
+            "Reviewed narrative publication HTML report.",
         ),
     ]
     narrative_dir = Path(manifest_rel_path).parent

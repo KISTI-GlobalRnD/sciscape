@@ -695,15 +695,22 @@ def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
     assert publication["publication_state"] == "partial_review"
     payload = json.loads((root / "narrative" / "publication_summary.json").read_text(encoding="utf-8"))
     markdown = (root / "narrative" / "publication_summary.md").read_text(encoding="utf-8")
+    html_report = (root / "narrative" / "publication_summary.html").read_text(encoding="utf-8")
     assert payload["schema_version"] == NARRATIVE_PUBLICATION_SCHEMA_VERSION
     assert payload["counts"]["rendered_claims"] == 1
     assert payload["counts"]["rejected_claims"] == 1
     assert accepted_claim_id in markdown
     assert "Omitted Claims" in markdown
     assert rejected_claim_id in markdown
+    assert "<!doctype html>" in html_report
+    assert accepted_claim_id in html_report
+    assert "Omitted Claims" in html_report
+    assert rejected_claim_id in html_report
     manifest_after = build_result_manifest(root).to_dict()
     assert manifest_after["artifacts"]["narrative_publication_json"]["path"] == "narrative/publication_summary.json"
     assert manifest_after["artifacts"]["narrative_publication_markdown"]["path"] == "narrative/publication_summary.md"
+    assert manifest_after["artifacts"]["narrative_publication_html"]["path"] == "narrative/publication_summary.html"
+    assert manifest_after["artifacts"]["narrative_publication_html"]["format"] == "html"
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):
