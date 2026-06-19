@@ -357,6 +357,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "manifestNarrativeArtifactCards" in response.text
     assert "Narrative claim graph manifest" in response.text
     assert "Reviewed narrative publication" in response.text
+    assert "atlasNarrativePublicationArtifacts" in response.text
+    assert "renderAtlasNarrativePublicationLinks" in response.text
+    assert "View summary" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text
@@ -1985,6 +1988,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert (
         review_payload["result_manifest"]["artifacts"]["narrative_publication_json"]["path"]
         == "narrative/publication_summary.json"
+    )
+    assert (
+        review_payload["result_manifest"]["artifacts"]["narrative_publication_markdown"]["path"]
+        == "narrative/publication_summary.md"
     )
     assert review_payload["cluster"]["claims"][0]["review_state"] == "accepted"
     review_decisions = pd.read_parquet(output_dir / "narrative" / "review_decisions.parquet")

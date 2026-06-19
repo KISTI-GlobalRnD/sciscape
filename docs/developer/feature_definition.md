@@ -1088,6 +1088,8 @@ Success:
   the result manifest and downloads surface when present
 - reviewed narrative publication summaries render only accepted or not-required
   claims and list rejected, needs-revision, and pending claims as omitted rows
+- Atlas narrative review surfaces link to reviewed publication Markdown and JSON
+  artifacts when they have been written
 - generated narratives include prompt/model metadata when LLMs are used
 - narrative edits are recorded as review decisions and the latest decision is
   readable from the cluster narrative view

@@ -1563,6 +1563,27 @@ body {
   line-height: 1.35;
   margin-top: 0.1rem;
 }
+.atlas-narrative-publication {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+}
+.atlas-narrative-publication-link {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  line-height: 1;
+  padding: 0.22rem 0.34rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.atlas-narrative-publication-link:hover {
+  border-color: var(--teal);
+  color: var(--teal-dim);
+}
 .atlas-narrative-claims {
   display: grid;
   gap: 0.32rem;
@@ -5407,6 +5428,40 @@ function renderAtlasReviewPacket(node, model) {
     '</div>';
 }
 
+function atlasNarrativePublicationArtifacts() {
+  const manifest = currentResult && currentResult.result_manifest || {};
+  const artifacts = manifest.artifacts && typeof manifest.artifacts === 'object' ? manifest.artifacts : {};
+  const paths = {json: '', markdown: ''};
+  for (const entry of Object.entries(artifacts)) {
+    const key = String(entry[0] || '').toLowerCase();
+    const record = entry[1] || {};
+    if (!record || record.status === 'missing' || record.status === 'blocked') continue;
+    const path = String(record.path || '');
+    const role = String(record.role || '').toLowerCase();
+    if (role !== 'narrative_publication' && !key.includes('publication')) continue;
+    if (key.includes('markdown') || path.endsWith('.md')) paths.markdown = path;
+    else if (key.includes('json') || path.endsWith('.json')) paths.json = path;
+  }
+  return paths;
+}
+
+function renderAtlasNarrativePublicationLinks() {
+  if (!currentJobId) return '';
+  const paths = atlasNarrativePublicationArtifacts();
+  const links = [];
+  if (paths.markdown) {
+    links.push('<a class="atlas-narrative-publication-link" target="_blank" rel="noopener" href="' +
+      artifactUrl(currentJobId, 'view', paths.markdown) + '">View summary</a>');
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', paths.markdown) + '">MD</a>');
+  }
+  if (paths.json) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', paths.json) + '">JSON</a>');
+  }
+  return links.length ? '<div class="atlas-narrative-publication">' + links.join('') + '</div>' : '';
+}
+
 function renderAtlasNarrativeReview(node, model) {
   const section = model.sections && model.sections.narrative || atlasInspectorSection('narrative', 'Narrative review', 'hidden');
   const narrative = node && node.narrative;
@@ -5459,12 +5514,13 @@ function renderAtlasNarrativeReview(node, model) {
     formatAtlasCount(narrative.reviewed_claim_count || 0) + ' reviewed / ' +
     formatAtlasCount(narrative.pending_review_claim_count || 0) + ' pending';
   const statusHtml = renderAtlasNarrativeReviewStatus(clusterUid);
+  const publicationLinks = renderAtlasNarrativePublicationLinks();
   return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
     '<div class="atlas-narrative-panel ' + esc(state) + '">' +
       '<div class="atlas-narrative-head">' +
       '<div><div class="atlas-narrative-title">Claim graph ' + esc(state) + '</div>' +
       '<div class="atlas-narrative-note">' + esc(note) + '</div></div>' +
-      '<div class="atlas-review-state">' + esc(state) + '</div>' +
+      '<div><div class="atlas-review-state">' + esc(state) + '</div>' + publicationLinks + '</div>' +
       '</div>' +
       statusHtml +
       '<div class="atlas-narrative-claims">' + claims + '</div>' +

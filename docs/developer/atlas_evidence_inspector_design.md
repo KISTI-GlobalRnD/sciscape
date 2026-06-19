@@ -268,6 +268,9 @@ Current status:
   missing terms, missing works, hidden sections, QA warnings, or blocking states.
 - The Narrative review block writes claim decisions, displays pending/saved/failed
   feedback, and reads back the latest persisted decision for the selected claim.
+- When reviewed publication artifacts exist, the Narrative review block links to
+  the Markdown view and JSON/Markdown downloads from the same result manifest
+  artifact records used by the Download tab.
 
 Remaining implementation order:
 
