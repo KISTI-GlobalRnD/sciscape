@@ -21,7 +21,9 @@ from sciscape.artifacts import (
     write_evolution_synthetic_smoke_artifact,
     write_export_manifest,
     write_narrative_evidence_artifacts,
+    write_narrative_generation_prompt_batch,
     write_workspace_manifest,
+    run_narrative_generation_prompt_batch,
 )
 from sciscape.web.jobstore import JobStore
 
@@ -356,6 +358,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "/narrative/review" in response.text
     assert "publishAtlasNarrativePublication" in response.text
     assert "/narrative/publish" in response.text
+    assert "renderAtlasNarrativeGenerationSummary" in response.text
+    assert "/narrative/generation" in response.text
+    assert "Narrative generation provenance" in response.text
+    assert "narrative_generation_prompt" in response.text
     assert "manifestNarrativeArtifactCards" in response.text
     assert "Narrative claim graph manifest" in response.text
     assert "Reviewed narrative publication" in response.text
@@ -1699,6 +1705,20 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     write_cooccurrence_artifacts(output_dir)
     write_cluster_review_packet_artifact(output_dir)
     write_narrative_evidence_artifacts(output_dir)
+    write_narrative_generation_prompt_batch(
+        output_dir,
+        prompt_batch_id="web_prompt_batch",
+        prompt_ref="prompt:narrative:web-test",
+        max_claims=1,
+    )
+    run_narrative_generation_prompt_batch(
+        output_dir,
+        provider="echo",
+        model="echo-web",
+        model_run_id="web-echo-run",
+        max_jobs=1,
+        apply_updates=False,
+    )
     _write_cluster_sharded_run_sidecars(output_dir)
     monkeypatch.setattr(
         "sciscape.web.app._LOCAL_DATA_ROOTS",
@@ -1736,6 +1756,19 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert artifacts["narrative_claims"]["rows"] > 0
     assert artifacts["narrative_evidence_refs"]["path"] == "narrative/evidence_refs.parquet"
     assert artifacts["narrative_qa"]["path"] == "narrative/narrative_qa.json"
+    assert artifacts["narrative_generation_metadata"]["path"] == "narrative/generation_metadata.json"
+    assert (
+        artifacts["narrative_generation_prompt_manifest"]["path"]
+        == "narrative/generation_prompts/prompt_batch_manifest.json"
+    )
+    assert (
+        artifacts["narrative_generation_run_manifest"]["path"]
+        == "narrative/generation_outputs/generation_run_manifest.json"
+    )
+    assert (
+        artifacts["narrative_generation_claim_updates"]["path"]
+        == "narrative/generation_outputs/generated_claims.jsonl"
+    )
     assert job_payload["result"]["run_state"]["status"] == "failed"
     assert job_payload["result"]["run_state"]["shards"] == {"total": 3, "complete": 1, "failed": 1, "running": 1}
     assert job_payload["result"]["run_state"]["resume"]["supported"] is True
@@ -1821,6 +1854,16 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["narrative_summary"]["available"] is True
     assert job_payload["result"]["narrative_summary"]["feature_state"] == "beta"
     assert job_payload["result"]["narrative_summary"]["cluster_count"] == 1
+    narrative_generation = job_payload["result"]["narrative_summary"]["generation"]
+    assert narrative_generation["available"] is True
+    assert narrative_generation["state"] == "generated_candidates"
+    assert narrative_generation["review_gate"] == "candidate_outputs_not_applied"
+    assert narrative_generation["metadata"]["generation_mode"] == "deterministic_scaffold"
+    assert narrative_generation["prompt_batch"]["prompt_batch_id"] == "web_prompt_batch"
+    assert narrative_generation["prompt_batch"]["job_rows"] == 1
+    assert narrative_generation["run"]["model_run_id"] == "web-echo-run"
+    assert narrative_generation["run"]["generated_rows"] == 1
+    assert narrative_generation["run"]["applied"] is False
     assert job_payload["result"]["atlas"]["node_count"] == 1
     assert job_payload["result"]["atlas"]["nodes"][0]["label"] == "perovskite"
     assert job_payload["result"]["atlas"]["nodes"][0]["doc_count"] == 2
@@ -1946,8 +1989,24 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert narrative["schema_version"] == "sciscape_narrative_api_v1"
     assert narrative["available"] is True
     assert narrative["feature_state"] == "beta"
+    assert narrative["generation"]["state"] == "generated_candidates"
+    assert narrative["generation"]["prompt_batch"]["job_rows"] == 1
+    assert narrative["generation"]["run"]["generated_status_counts"] == {"succeeded": 1}
     assert narrative["clusters"][0]["cluster_uid"] == "cluster:0"
     assert narrative["clusters"][0]["claims"][0]["evidence"][0]["artifact_ref"]
+
+    generation_response = client.get(f"/api/jobs/{job_id}/narrative/generation")
+    assert generation_response.status_code == 200
+    generation_payload = generation_response.json()
+    assert generation_payload["schema_version"] == "sciscape_narrative_generation_api_v1"
+    assert generation_payload["available"] is True
+    assert generation_payload["state"] == "generated_candidates"
+    assert generation_payload["metadata"]["path"] == "narrative/generation_metadata.json"
+    assert generation_payload["metadata"]["llm_generation_used"] is False
+    assert generation_payload["prompt_batch"]["prompt_ref"] == "prompt:narrative:web-test"
+    assert generation_payload["prompt_batch"]["jobs_path"] == "narrative/generation_prompts/prompt_jobs.jsonl"
+    assert generation_payload["run"]["provider"] == "echo"
+    assert generation_payload["run"]["generated_claims_path"] == "narrative/generation_outputs/generated_claims.jsonl"
 
     cluster_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:0/narrative")
     assert cluster_narrative_response.status_code == 200

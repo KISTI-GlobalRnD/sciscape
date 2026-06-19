@@ -586,6 +586,9 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` The web API and Atlas Narrative review panel can explicitly refresh the
   reviewed publication artifacts after review decisions, reusing the same
   deterministic publication writer and result-manifest refresh path as the CLI.
+- `[x]` The web API and Atlas Narrative review panel expose generation
+  provenance, prompt-batch readiness, generated-candidate counts, and applied
+  state from manifest-backed artifacts without running a model from the app.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
   generation/report workflow is still not polished as a complete in-app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,

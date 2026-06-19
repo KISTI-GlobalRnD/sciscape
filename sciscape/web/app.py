@@ -656,6 +656,16 @@ async def get_job_narrative(job_id: str, limit: int = 80):
     return _load_narrative_payload_for_result(result, claim_limit=limit)
 
 
+@app.get("/api/jobs/{job_id}/narrative/generation")
+async def get_job_narrative_generation(job_id: str):
+    """Get narrative generation provenance and candidate-output readiness."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    return _load_narrative_generation_payload_for_result(result)
+
+
 @app.get("/api/jobs/{job_id}/narrative/publication")
 async def get_job_narrative_publication(job_id: str):
     """Get the reviewed narrative publication summary JSON for a completed job."""
@@ -1282,6 +1292,169 @@ def _narrative_publication_json_path_for_result(result: dict[str, Any]) -> Path 
     return fallback if fallback.exists() and fallback.is_file() else None
 
 
+def _result_relative_path(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except Exception:
+        return str(path)
+
+
+def _read_json_sidecar(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.exists() or not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _jsonl_status_counts(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.exists() or not path.is_file():
+        return {"rows": 0, "status_counts": {}}
+    rows = 0
+    status_counts: dict[str, int] = {}
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            rows += 1
+            try:
+                payload = json.loads(line)
+            except Exception:
+                payload = {}
+            status = str(payload.get("status") or "unknown") if isinstance(payload, dict) else "unknown"
+            status_counts[status] = status_counts.get(status, 0) + 1
+    except Exception:
+        return {"rows": rows, "status_counts": status_counts}
+    return {"rows": rows, "status_counts": status_counts}
+
+
+def _narrative_generation_paths_for_result(result: dict[str, Any]) -> dict[str, Path | None]:
+    root = _result_root_for_result(result)
+    paths: dict[str, Path | None] = {
+        "metadata": None,
+        "prompt_manifest": None,
+        "prompt_jobs": None,
+        "run_manifest": None,
+        "generated_claims": None,
+    }
+    if root is None:
+        return paths
+    manifest = _manifest_for_result(result)
+    artifacts = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
+    for key, record in artifacts.items():
+        if not isinstance(record, dict) or record.get("status") != "present":
+            continue
+        role = str(record.get("role") or "").lower()
+        path_text = str(record.get("path") or "")
+        path_lower = path_text.lower()
+        artifact_key = str(key or "").lower()
+        path = _path_inside_result_root(root, path_text)
+        if path is None or not path.exists() or not path.is_file():
+            continue
+        if role == "narrative_generation_metadata" or path_lower.endswith("generation_metadata.json"):
+            paths["metadata"] = path
+        elif role == "narrative_generation_prompt" or "generation_prompt" in artifact_key:
+            if path_lower.endswith("prompt_batch_manifest.json"):
+                paths["prompt_manifest"] = path
+            elif path_lower.endswith("prompt_jobs.jsonl"):
+                paths["prompt_jobs"] = path
+        elif role == "narrative_generation_run" or "generation_run" in artifact_key or "claim_updates" in artifact_key:
+            if path_lower.endswith("generation_run_manifest.json"):
+                paths["run_manifest"] = path
+            elif path_lower.endswith("generated_claims.jsonl"):
+                paths["generated_claims"] = path
+    fallbacks = {
+        "metadata": root / "narrative" / "generation_metadata.json",
+        "prompt_manifest": root / "narrative" / "generation_prompts" / "prompt_batch_manifest.json",
+        "prompt_jobs": root / "narrative" / "generation_prompts" / "prompt_jobs.jsonl",
+        "run_manifest": root / "narrative" / "generation_outputs" / "generation_run_manifest.json",
+        "generated_claims": root / "narrative" / "generation_outputs" / "generated_claims.jsonl",
+    }
+    for name, fallback in fallbacks.items():
+        if paths.get(name) is None and fallback.exists() and fallback.is_file():
+            paths[name] = fallback
+    return paths
+
+
+def _load_narrative_generation_payload_for_result(result: dict[str, Any]) -> dict[str, Any]:
+    root = _result_root_for_result(result)
+    if root is None:
+        return {
+            "schema_version": "sciscape_narrative_generation_api_v1",
+            "available": False,
+            "state": "no_result_root",
+        }
+    paths = _narrative_generation_paths_for_result(result)
+    metadata = _read_json_sidecar(paths.get("metadata"))
+    prompt_manifest = _read_json_sidecar(paths.get("prompt_manifest"))
+    run_manifest = _read_json_sidecar(paths.get("run_manifest"))
+    prompt_jobs = _jsonl_status_counts(paths.get("prompt_jobs"))
+    generated_claims = _jsonl_status_counts(paths.get("generated_claims"))
+    available = any(path is not None for path in paths.values())
+
+    state = "no_generation_artifacts"
+    if run_manifest:
+        state = "applied_model_updates" if bool(run_manifest.get("applied")) else "generated_candidates"
+    elif prompt_manifest:
+        state = "prompt_batch_ready"
+    elif metadata:
+        state = str(metadata.get("generation_mode") or "generation_metadata")
+    review_gate = "not_applicable"
+    if state == "generated_candidates":
+        review_gate = "candidate_outputs_not_applied"
+    elif state == "applied_model_updates" or bool(metadata.get("llm_generation_used")):
+        review_gate = "model_claims_require_review"
+
+    def rel(path: Path | None) -> str | None:
+        return _result_relative_path(root, path) if path is not None else None
+
+    return _json_safe(
+        {
+            "schema_version": "sciscape_narrative_generation_api_v1",
+            "available": available,
+            "state": state,
+            "review_gate": review_gate,
+            "metadata": {
+                "available": bool(metadata),
+                "path": rel(paths.get("metadata")),
+                "generation_mode": metadata.get("generation_mode"),
+                "text_origins": metadata.get("text_origins", []),
+                "llm_generation_used": bool(metadata.get("llm_generation_used")),
+                "model_generation": metadata.get("model_generation"),
+                "updated_claim_count": len(metadata.get("updated_claims", []) or []),
+                "created_at_utc": metadata.get("created_at_utc"),
+                "updated_at_utc": metadata.get("updated_at_utc"),
+            },
+            "prompt_batch": {
+                "available": bool(prompt_manifest),
+                "path": rel(paths.get("prompt_manifest")),
+                "jobs_path": rel(paths.get("prompt_jobs")),
+                "prompt_batch_id": prompt_manifest.get("prompt_batch_id"),
+                "prompt_ref": prompt_manifest.get("prompt_ref"),
+                "counts": prompt_manifest.get("counts", {}),
+                "job_rows": prompt_jobs.get("rows", 0),
+                "job_status_counts": prompt_jobs.get("status_counts", {}),
+                "created_at_utc": prompt_manifest.get("created_at_utc"),
+            },
+            "run": {
+                "available": bool(run_manifest),
+                "path": rel(paths.get("run_manifest")),
+                "generated_claims_path": rel(paths.get("generated_claims")),
+                "model_run_id": run_manifest.get("model_run_id"),
+                "provider": run_manifest.get("provider"),
+                "model": run_manifest.get("model"),
+                "applied": bool(run_manifest.get("applied")),
+                "counts": run_manifest.get("counts", {}),
+                "generated_rows": generated_claims.get("rows", 0),
+                "generated_status_counts": generated_claims.get("status_counts", {}),
+                "created_at_utc": run_manifest.get("created_at_utc"),
+            },
+        }
+    )
+
+
 def _narrative_output_path(narrative_dir: Path, manifest: dict[str, Any], key: str, default_name: str) -> Path:
     outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
     raw = str(outputs.get(key) or default_name)
@@ -1618,6 +1791,7 @@ def _load_narrative_payload_for_result(
         "warnings": validation.get("warnings", []),
         "blocking_issues": validation.get("blocking_issues", []),
         "clusters": cluster_views,
+        "generation": _load_narrative_generation_payload_for_result(result),
     }
     if cluster_uid is not None:
         payload["cluster"] = cluster_views[0] if cluster_views else None
@@ -1638,6 +1812,7 @@ def _attach_narrative_summary(result: dict[str, Any]) -> None:
         "cluster_count": len(payload.get("clusters", [])),
         "warning_count": len(payload.get("warnings", [])),
         "blocking_issue_count": len(payload.get("blocking_issues", [])),
+        "generation": payload.get("generation", {}),
     }
     atlas = result.get("atlas")
     if not isinstance(atlas, dict) or not isinstance(atlas.get("nodes"), list):

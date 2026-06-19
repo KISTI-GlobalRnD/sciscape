@@ -1113,6 +1113,9 @@ Success:
   artifacts before any provider is called
 - generation prompt batches can be executed through an explicit provider runner
   that writes generated claim-update JSONL before the safe apply step
+- generation metadata, prompt batches, and generated-candidate outputs can be
+  inspected through the web API and Atlas Narrative review panel without
+  invoking a provider from the app
 - model-assisted narrative claim updates preserve existing evidence links,
   reset generated claims to a review-required state, and refresh generation
   metadata plus QA before publication

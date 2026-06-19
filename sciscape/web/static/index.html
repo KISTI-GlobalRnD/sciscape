@@ -1612,6 +1612,32 @@ body {
   padding-top: 0.28rem;
   margin-top: 0.28rem;
 }
+.atlas-narrative-generation {
+  border: 1px solid rgba(197, 207, 224, 0.78);
+  border-radius: 4px;
+  background: rgba(248, 249, 252, 0.86);
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.42rem;
+}
+.atlas-narrative-generation-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+.atlas-narrative-generation-title {
+  color: var(--graphite);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.atlas-narrative-generation-links,
+.atlas-narrative-generation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
 .atlas-narrative-claims {
   display: grid;
   gap: 0.32rem;
@@ -3280,6 +3306,7 @@ let currentAtlasRenderPayload = null;
 let currentAtlasRenderJobId = '';
 let currentAtlasNarrativeReviewStatus = null;
 let currentAtlasPublicationPreview = null;
+let currentAtlasNarrativeGenerationPayload = null;
 let atlasDeckInstance = null;
 let atlasDeckRenderToken = 0;
 let currentAtlasDeckSettings = {edges: true, hierarchy: true, labels: true, minWeight: 0, labelLimit: 80};
@@ -5457,6 +5484,96 @@ function renderAtlasReviewPacket(node, model) {
     '</div>';
 }
 
+function atlasNarrativeGenerationPayload() {
+  if (currentAtlasNarrativeGenerationPayload) return currentAtlasNarrativeGenerationPayload;
+  const summary = currentResult && currentResult.narrative_summary && currentResult.narrative_summary.generation;
+  return summary && typeof summary === 'object' ? summary : null;
+}
+
+function renderAtlasNarrativeGenerationSummary() {
+  if (!currentJobId) return '';
+  const payload = atlasNarrativeGenerationPayload();
+  if (!payload || payload.available === false) return '';
+  const metadata = payload.metadata || {};
+  const prompt = payload.prompt_batch || {};
+  const run = payload.run || {};
+  const mode = metadata.generation_mode || payload.state || 'unknown';
+  const promptJobs = Number(prompt.job_rows || prompt.counts && prompt.counts.jobs || 0);
+  const generated = Number(run.generated_rows || run.counts && run.counts.jobs_succeeded || 0);
+  const chips = [
+    'state ' + String(payload.state || 'unknown').replace(/_/g, ' '),
+    'mode ' + String(mode).replace(/_/g, ' '),
+    'prompt jobs ' + formatAtlasCount(Number.isFinite(promptJobs) ? promptJobs : 0),
+    'generated ' + formatAtlasCount(Number.isFinite(generated) ? generated : 0),
+    run.available ? (run.applied ? 'applied' : 'not applied') : 'no run',
+  ].map(text => '<span class="atlas-mini-pill">' + esc(text) + '</span>').join('');
+  const links = [
+    '<button type="button" class="atlas-narrative-publication-link" onclick="loadAtlasNarrativeGenerationSummary()">Refresh</button>'
+  ];
+  if (metadata.path) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', metadata.path) + '">Metadata</a>');
+  }
+  if (prompt.path) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', prompt.path) + '">Prompt manifest</a>');
+  }
+  if (prompt.jobs_path) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', prompt.jobs_path) + '">Prompt jobs</a>');
+  }
+  if (run.path) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', run.path) + '">Run manifest</a>');
+  }
+  if (run.generated_claims_path) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', run.generated_claims_path) + '">Generated claims</a>');
+  }
+  return '<div class="atlas-narrative-generation">' +
+    '<div class="atlas-narrative-generation-head">' +
+      '<div class="atlas-narrative-generation-title">Narrative generation provenance</div>' +
+      '<div class="atlas-narrative-generation-links">' + links.join('') + '</div>' +
+    '</div>' +
+    '<div class="atlas-narrative-generation-chips">' + chips + '</div>' +
+  '</div>';
+}
+
+async function loadAtlasNarrativeGenerationSummary() {
+  if (!currentJobId) return;
+  const clusterUid = String(currentAtlasNodeUid || '');
+  currentAtlasNarrativeReviewStatus = {
+    clusterUid,
+    state: 'pending',
+    message: 'loading generation provenance',
+  };
+  if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+  try {
+    const response = await fetch('/api/jobs/' + currentJobId + '/narrative/generation');
+    const payload = await response.json();
+    if (!response.ok || payload.error) throw new Error(payload.error || 'generation provenance unavailable');
+    currentAtlasNarrativeGenerationPayload = payload;
+    if (currentResult) {
+      currentResult.narrative_summary = currentResult.narrative_summary || {};
+      currentResult.narrative_summary.generation = payload;
+    }
+    currentAtlasNarrativeReviewStatus = {
+      clusterUid,
+      state: 'saved',
+      message: 'generation provenance loaded',
+    };
+    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+  } catch (err) {
+    currentAtlasNarrativeReviewStatus = {
+      clusterUid,
+      state: 'failed',
+      message: 'generation provenance failed: ' + (err && err.message ? err.message : 'unknown error'),
+    };
+    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+    console.warn(err);
+  }
+}
+
 function atlasNarrativePublicationArtifacts() {
   const manifest = currentResult && currentResult.result_manifest || {};
   const artifacts = manifest.artifacts && typeof manifest.artifacts === 'object' ? manifest.artifacts : {};
@@ -5673,6 +5790,7 @@ function renderAtlasNarrativeReview(node, model) {
     formatAtlasCount(narrative.reviewed_claim_count || 0) + ' reviewed / ' +
     formatAtlasCount(narrative.pending_review_claim_count || 0) + ' pending';
   const statusHtml = renderAtlasNarrativeReviewStatus(clusterUid);
+  const generationSummary = renderAtlasNarrativeGenerationSummary();
   const publicationLinks = renderAtlasNarrativePublicationLinks();
   const publicationPreview = renderAtlasNarrativePublicationPreview(clusterUid);
   return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
@@ -5683,6 +5801,7 @@ function renderAtlasNarrativeReview(node, model) {
       '<div><div class="atlas-review-state">' + esc(state) + '</div>' + publicationLinks + '</div>' +
       '</div>' +
       statusHtml +
+      generationSummary +
       publicationPreview +
       '<div class="atlas-narrative-claims">' + claims + '</div>' +
     '</div>';
@@ -6410,6 +6529,7 @@ function showResults(result) {
   currentResult = result;
   window._currentJobId = currentJobId;
   currentAtlasPublicationPreview = null;
+  currentAtlasNarrativeGenerationPayload = null;
   const panel = document.getElementById('results');
   panel.classList.add('active');
   applyResultFeatureAvailability(result);
@@ -6718,6 +6838,9 @@ function manifestNarrativeArtifactCards(result, jobId, seenPaths) {
     const isNarrativeArtifact = inNarrativeTree && (
       role === 'narrative'
       || role === 'narrative_table'
+      || role === 'narrative_generation_metadata'
+      || role === 'narrative_generation_prompt'
+      || role === 'narrative_generation_run'
       || role === 'narrative_publication'
       || (role === 'qa' && String(key).startsWith('narrative'))
     );
