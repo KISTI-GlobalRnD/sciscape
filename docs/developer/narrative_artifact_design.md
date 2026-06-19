@@ -232,6 +232,16 @@ Required fields:
 | `sciscape_version` | string | package version |
 | `created_at_utc` | string | creation timestamp |
 
+Model-assisted claim text must pass through
+`apply_narrative_generation_updates(...)` or an equivalent writer that preserves
+the existing claim/evidence link table. The writer may update `claim_text` and
+`text_origin` for declared claim ids, but must not rewrite evidence refs or
+claim-evidence links. Updated model-generated claims reset to `not_reviewed`
+or `needs_revision`; publication renderers should continue to omit them until a
+review decision accepts or marks them not required. The writer must record
+provider, model, model run id, prompt reference, optional prompt digest, updated
+claim ids, and transform steps in `generation_metadata.json`.
+
 ## Narrative Targets Table
 
 `narrative_targets.parquet` stores the entities that may receive narrative
@@ -635,9 +645,13 @@ rewriting narrative text.
 6. `[~]` Add a quality-gate flag that rejects unsupported normal claims.
    Result-root validation now blocks unsupported normal claims; a dedicated CLI
    flag can still make this explicit in release checks.
-7. `[~]` Add narrative review UI or optional generation hooks.
-   Atlas now exposes claim-level review actions and save/failure feedback; stable
-   narrative generation hooks remain pending.
+7. `[x]` Add `apply_narrative_generation_updates` as the safe model-assisted
+   claim-text update hook that preserves evidence links and refreshes generation
+   metadata plus QA.
+8. `[~]` Add narrative review UI and stable generation runner integration.
+   Atlas now exposes claim-level review actions and save/failure feedback; the
+   safe model-assisted update hook exists, but prompt execution and batch runner
+   integration remain pending.
 
 ## Acceptance Criteria
 

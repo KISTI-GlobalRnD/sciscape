@@ -3972,6 +3972,29 @@ def _narrative_source_id(role: str) -> str:
     return _safe_id(f"source_{role}", fallback="source")
 
 
+def _write_narrative_qa_sidecar(
+    narrative_dir: Path,
+    manifest: Mapping[str, Any],
+    validation: NarrativeArtifactValidationResult,
+) -> Path:
+    qa_path = _narrative_output_path(narrative_dir, dict(manifest), "qa", "narrative_qa.json")
+    qa = {
+        "schema_version": NARRATIVE_QA_SCHEMA_VERSION,
+        "narrative_id": validation.narrative_id,
+        "status": validation.status,
+        "checks": validation.checks,
+        "counts": validation.counts,
+        "claim_counts": validation.claim_counts,
+        "unsupported_claims": [],
+        "warnings": validation.warnings,
+        "blocking_issues": validation.blocking_issues,
+        "feature_state": validation.feature_state,
+        "created_at_utc": _utc_now(),
+    }
+    qa_path.write_text(json.dumps(qa, indent=2, sort_keys=True), encoding="utf-8")
+    return qa_path
+
+
 def _review_packet_for_narrative(path: str | Path, artifacts: ResultArtifacts) -> tuple[Path | None, dict[str, Any] | None, list[dict[str, Any]]]:
     warnings: list[dict[str, Any]] = []
     packet_path = artifacts.review_packet_paths[0] if artifacts.review_packet_paths else None
@@ -4300,21 +4323,7 @@ def write_narrative_evidence_artifacts(
     generation_metadata_path = target_dir / outputs["generation_metadata"]
     generation_metadata_path.write_text(json.dumps(generation_metadata, indent=2, sort_keys=True), encoding="utf-8")
     validation = validate_narrative_artifact(manifest_path)
-    qa = {
-        "schema_version": NARRATIVE_QA_SCHEMA_VERSION,
-        "narrative_id": narrative_id,
-        "status": validation.status,
-        "checks": validation.checks,
-        "counts": validation.counts,
-        "claim_counts": validation.claim_counts,
-        "unsupported_claims": [],
-        "warnings": validation.warnings,
-        "blocking_issues": validation.blocking_issues,
-        "feature_state": validation.feature_state,
-        "created_at_utc": _utc_now(),
-    }
-    qa_path = target_dir / outputs["qa"]
-    qa_path.write_text(json.dumps(qa, indent=2, sort_keys=True), encoding="utf-8")
+    qa_path = _write_narrative_qa_sidecar(target_dir, manifest, validation)
     validation = validate_narrative_artifact(manifest_path)
     return {
         "schema_version": NARRATIVE_MANIFEST_SCHEMA_VERSION,
@@ -4324,6 +4333,209 @@ def write_narrative_evidence_artifacts(
         "validation": validation.to_dict(),
         "counts": validation.counts,
         "feature_state": validation.feature_state,
+    }
+
+
+def apply_narrative_generation_updates(
+    path: str | Path,
+    *,
+    claim_updates: Iterable[Mapping[str, Any]],
+    model_generation: Mapping[str, Any],
+    prompt_ref: str | None = None,
+    prompt_digest: str | None = None,
+    parameters: Mapping[str, Any] | None = None,
+    reset_review_state: str = "not_reviewed",
+) -> dict[str, Any]:
+    """Apply externally generated claim text while preserving evidence links."""
+
+    narrative_dir, manifest_path = _narrative_dir_and_manifest(path)
+    if not manifest_path.exists():
+        return {"available": False, "error": "missing narrative_manifest.json"}
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"available": False, "error": f"could not read narrative manifest: {exc}"}
+    if not isinstance(manifest, dict):
+        return {"available": False, "error": "narrative manifest must be a JSON object"}
+    if not isinstance(model_generation, Mapping):
+        return {"available": False, "error": "model_generation metadata is required"}
+    model_generation_payload = dict(model_generation)
+    effective_prompt_ref = str(prompt_ref or model_generation_payload.get("prompt_ref") or "").strip()
+    missing_model_fields = [
+        key
+        for key in ("provider", "model", "model_run_id")
+        if not str(model_generation_payload.get(key) or "").strip()
+    ]
+    if not effective_prompt_ref:
+        missing_model_fields.append("prompt_ref")
+    if missing_model_fields:
+        return {
+            "available": False,
+            "error": "model_generation metadata is incomplete",
+            "missing_fields": missing_model_fields,
+        }
+    updates = [dict(row) for row in claim_updates if isinstance(row, Mapping)]
+    if not updates:
+        return {"available": False, "error": "claim_updates is empty"}
+    update_by_claim: dict[str, str] = {}
+    duplicate_claims: set[str] = set()
+    invalid_updates: list[dict[str, str]] = []
+    for update in updates:
+        claim_id = str(update.get("claim_id") or "").strip()
+        claim_text = _publication_text(update.get("claim_text"))
+        if not claim_id or not claim_text:
+            invalid_updates.append({"claim_id": claim_id, "reason": "claim_id and claim_text are required"})
+            continue
+        if claim_id in update_by_claim:
+            duplicate_claims.add(claim_id)
+            continue
+        update_by_claim[claim_id] = claim_text
+    if invalid_updates or duplicate_claims:
+        return {
+            "available": False,
+            "error": "claim_updates contains invalid rows",
+            "invalid_updates": invalid_updates,
+            "duplicate_claim_ids": sorted(duplicate_claims),
+        }
+
+    claims_path = _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet")
+    links_path = _narrative_output_path(narrative_dir, manifest, "claim_evidence_links", "claim_evidence_links.parquet")
+    metadata_path = _narrative_output_path(narrative_dir, manifest, "generation_metadata", "generation_metadata.json")
+    if not claims_path.exists():
+        return {"available": False, "error": "missing narrative claims table"}
+    claims = pd.read_parquet(claims_path)
+    if "claim_id" not in claims.columns or "claim_text" not in claims.columns:
+        return {"available": False, "error": "claims table must include claim_id and claim_text"}
+    existing_claim_ids = set(claims["claim_id"].dropna().map(str).tolist())
+    missing_claim_ids = sorted(set(update_by_claim) - existing_claim_ids)
+    if missing_claim_ids:
+        return {"available": False, "error": "claim_updates reference unknown claims", "missing_claim_ids": missing_claim_ids}
+    links_before = pd.read_parquet(links_path) if links_path.exists() else pd.DataFrame()
+
+    reset_review_state = str(reset_review_state or "not_reviewed")
+    allowed_reset_states = {"not_reviewed", "needs_revision"}
+    if reset_review_state not in allowed_reset_states:
+        return {
+            "available": False,
+            "error": f"unsupported reset_review_state: {reset_review_state}",
+            "allowed_reset_states": sorted(allowed_reset_states),
+        }
+    applied_claims: list[dict[str, Any]] = []
+    for claim_id, claim_text in update_by_claim.items():
+        mask = claims["claim_id"].map(str) == claim_id
+        old_text = str(claims.loc[mask, "claim_text"].iloc[0])
+        claims.loc[mask, "claim_text"] = claim_text
+        claims.loc[mask, "text_origin"] = "model_generated"
+        if "review_state" in claims.columns:
+            claims.loc[mask, "review_state"] = reset_review_state
+        applied_claims.append(
+            {
+                "claim_id": claim_id,
+                "target_id": str(claims.loc[mask, "target_id"].iloc[0]) if "target_id" in claims.columns else "",
+                "old_claim_text": old_text,
+                "new_claim_text": claim_text,
+                "review_state": reset_review_state,
+            }
+        )
+    claims.to_parquet(claims_path, index=False)
+    links_after = pd.read_parquet(links_path) if links_path.exists() else pd.DataFrame()
+    link_signature_columns = ["claim_id", "evidence_ref_id", "evidence_role"]
+
+    def _link_signature(frame: pd.DataFrame) -> list[tuple[str, str, str]]:
+        if frame.empty or not set(link_signature_columns).issubset(frame.columns):
+            return []
+        return sorted(
+            tuple(str(row.get(column) or "") for column in link_signature_columns)
+            for row in frame[link_signature_columns].to_dict("records")
+        )
+
+    if len(links_before) != len(links_after) or _link_signature(links_before) != _link_signature(links_after):
+        return {
+            "available": False,
+            "error": "claim evidence links changed during generation update",
+            "before_links": int(len(links_before)),
+            "after_links": int(len(links_after)),
+        }
+
+    generation_metadata: dict[str, Any] = {}
+    if metadata_path.exists():
+        try:
+            loaded_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if isinstance(loaded_metadata, dict):
+                generation_metadata = loaded_metadata
+        except Exception:
+            generation_metadata = {}
+    created_at = _utc_now()
+    model_generation_payload["prompt_ref"] = effective_prompt_ref
+    if prompt_digest is not None:
+        model_generation_payload["prompt_digest"] = str(prompt_digest)
+    model_generation_payload.setdefault("created_at_utc", created_at)
+    model_generation_payload["applied_claim_count"] = len(applied_claims)
+    text_origins = sorted(set(claims["text_origin"].fillna("").map(str).tolist()) - {""})
+    transforms = [row for row in generation_metadata.get("transforms", []) if isinstance(row, Mapping)]
+    transforms.append(
+        {
+            "step": "apply_model_generated_claim_text",
+            "claim_count": len(applied_claims),
+            "review_state": reset_review_state,
+            "preserve_claim_evidence_links": True,
+        }
+    )
+    generation_metadata.update(
+        {
+            "schema_version": NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION,
+            "narrative_id": str(manifest.get("narrative_id") or generation_metadata.get("narrative_id") or ""),
+            "generation_mode": "model_assisted",
+            "text_origins": text_origins,
+            "llm_generation_used": True,
+            "model_generation": model_generation_payload,
+            "prompt_ref": effective_prompt_ref,
+            "prompt_digest": str(prompt_digest) if prompt_digest is not None else generation_metadata.get("prompt_digest"),
+            "parameters": {**dict(generation_metadata.get("parameters") or {}), **dict(parameters or {})},
+            "transforms": transforms,
+            "updated_claims": applied_claims,
+            "sciscape_version": SCISCAPE_VERSION,
+            "updated_at_utc": created_at,
+        }
+    )
+    generation_metadata.setdefault("created_at_utc", created_at)
+    metadata_path.write_text(json.dumps(generation_metadata, indent=2, sort_keys=True), encoding="utf-8")
+
+    text_policy = manifest.get("text_policy") if isinstance(manifest.get("text_policy"), dict) else {}
+    existing_allowed_origins = text_policy.get("allowed_origins", [])
+    if not isinstance(existing_allowed_origins, list):
+        existing_allowed_origins = []
+    allowed_origins = sorted(set([*existing_allowed_origins, "deterministic_template", "model_generated"]))
+    text_policy.update(
+        {
+            "allowed_origins": allowed_origins,
+            "llm_generation_allowed": True,
+            "require_generation_metadata_when_model_generated": True,
+            "model_generated_review_state": reset_review_state,
+        }
+    )
+    manifest["text_policy"] = text_policy
+    manifest["model_generation"] = model_generation_payload
+    manifest["updated_at_utc"] = created_at
+    transforms_manifest = [row for row in manifest.get("transforms", []) if isinstance(row, Mapping)]
+    transforms_manifest.append({"step": "apply_model_generated_claim_text", "claim_count": len(applied_claims)})
+    manifest["transforms"] = transforms_manifest
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    validation = validate_narrative_artifact(manifest_path)
+    qa_path = _write_narrative_qa_sidecar(narrative_dir, manifest, validation)
+    publication = None
+    if bool(manifest.get("publication_state_advertised")) or _narrative_output_path(narrative_dir, manifest, "publication_json", "publication_summary.json").exists():
+        publication = write_narrative_publication_artifacts(manifest_path)
+    return {
+        "available": True,
+        "applied_count": len(applied_claims),
+        "claim_ids": sorted(update_by_claim),
+        "claims_path": _rel(claims_path, _narrative_result_root(narrative_dir)),
+        "generation_metadata_path": _rel(metadata_path, _narrative_result_root(narrative_dir)),
+        "qa_path": _rel(qa_path, _narrative_result_root(narrative_dir)),
+        "validation": validation.to_dict(),
+        "publication": publication,
     }
 
 
@@ -13874,6 +14086,7 @@ __all__ = [
     "RunState",
     "TemporalArtifactValidationResult",
     "WorkspaceValidationResult",
+    "apply_narrative_generation_updates",
     "build_atlas_payload_from_report_data",
     "build_atlas_render_payload",
     "build_report_data_contract",

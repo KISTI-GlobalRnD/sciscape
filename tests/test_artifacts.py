@@ -36,6 +36,7 @@ from sciscape.artifacts import (
     TEMPORAL_QA_SCHEMA_VERSION,
     WORKSPACE_MANIFEST_SCHEMA_VERSION,
     WORKSPACE_QA_SCHEMA_VERSION,
+    apply_narrative_generation_updates,
     build_atlas_payload_from_report_data,
     build_atlas_render_payload,
     build_result_manifest,
@@ -678,6 +679,60 @@ def test_validate_narrative_artifact_accepts_model_metadata_sidecar(tmp_path):
 
     assert validation["status"] != "blocked"
     assert not any(issue["code"] == "narrative_model_metadata_missing" for issue in validation["blocking_issues"])
+
+
+def test_apply_narrative_generation_updates_preserves_evidence_links(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    written = write_narrative_evidence_artifacts(root)
+    assert written is not None
+    claims_path = root / "narrative" / "claims.parquet"
+    links_path = root / "narrative" / "claim_evidence_links.parquet"
+    claims_before = pd.read_parquet(claims_path)
+    links_before = pd.read_parquet(links_path)
+    claim_id = str(claims_before.iloc[0]["claim_id"])
+    generated_text = "Model-assisted narrative text grounded in the original evidence refs."
+
+    applied = apply_narrative_generation_updates(
+        root,
+        claim_updates=[{"claim_id": claim_id, "claim_text": generated_text}],
+        model_generation={
+            "provider": "test-provider",
+            "model": "test-model",
+            "model_run_id": "run-001",
+        },
+        prompt_ref="prompt:narrative_claim_rewrite:v1",
+        prompt_digest="sha256:test",
+        parameters={"temperature": 0.0},
+    )
+
+    assert applied["available"] is True
+    assert applied["applied_count"] == 1
+    claims_after = pd.read_parquet(claims_path)
+    links_after = pd.read_parquet(links_path)
+    updated = claims_after[claims_after["claim_id"].map(str) == claim_id].iloc[0]
+    assert updated["claim_text"] == generated_text
+    assert updated["text_origin"] == "model_generated"
+    assert updated["review_state"] == "not_reviewed"
+    assert links_after[["claim_id", "evidence_ref_id", "evidence_role"]].to_dict("records") == links_before[
+        ["claim_id", "evidence_ref_id", "evidence_role"]
+    ].to_dict("records")
+    metadata = json.loads((root / "narrative" / "generation_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["generation_mode"] == "model_assisted"
+    assert metadata["llm_generation_used"] is True
+    assert metadata["model_generation"]["provider"] == "test-provider"
+    assert metadata["model_generation"]["prompt_ref"] == "prompt:narrative_claim_rewrite:v1"
+    assert metadata["parameters"]["temperature"] == 0.0
+    assert metadata["updated_claims"][0]["claim_id"] == claim_id
+    manifest = json.loads((root / "narrative" / "narrative_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["text_policy"]["llm_generation_allowed"] is True
+    assert "model_generated" in manifest["text_policy"]["allowed_origins"]
+    validation = validate_narrative_artifact(root).to_dict()
+    assert validation["status"] != "blocked"
+    assert validation["claim_counts"]["model_generated"] == 1
+    qa = json.loads((root / "narrative" / "narrative_qa.json").read_text(encoding="utf-8"))
+    assert qa["claim_counts"]["model_generated"] == 1
 
 
 def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):

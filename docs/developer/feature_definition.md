@@ -1100,6 +1100,9 @@ Success:
 - reviewed narrative publication bundles include publication summaries,
   generation metadata, QA, review decisions, and claim/evidence tables
 - generated narratives include prompt/model metadata when LLMs are used
+- model-assisted narrative claim updates preserve existing evidence links,
+  reset generated claims to a review-required state, and refresh generation
+  metadata plus QA before publication
 - deterministic narrative scaffolds include generation metadata that records
   source artifacts, transform steps, and scaffold parameters
 - narrative edits are recorded as review decisions and the latest decision is
