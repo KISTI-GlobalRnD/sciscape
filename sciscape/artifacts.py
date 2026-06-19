@@ -47,6 +47,7 @@ NARRATIVE_CLAIM_EVIDENCE_LINKS_SCHEMA_VERSION = "sciscape_narrative_claim_eviden
 NARRATIVE_SECTIONS_SCHEMA_VERSION = "sciscape_narrative_sections_v1"
 NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION = "sciscape_narrative_review_decisions_v1"
 NARRATIVE_QA_SCHEMA_VERSION = "sciscape_narrative_qa_v1"
+NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION = "sciscape_narrative_generation_metadata_v1"
 NARRATIVE_PUBLICATION_SCHEMA_VERSION = "sciscape_narrative_publication_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
@@ -3769,6 +3770,7 @@ def validate_narrative_artifact(path: str | Path) -> NarrativeArtifactValidation
         "sections": _narrative_output_path(narrative_dir, manifest, "sections", "narrative_sections.parquet"),
         "reviews": _narrative_output_path(narrative_dir, manifest, "reviews", "review_decisions.parquet"),
         "qa": _narrative_output_path(narrative_dir, manifest, "qa", "narrative_qa.json"),
+        "generation_metadata": _narrative_output_path(narrative_dir, manifest, "generation_metadata", "generation_metadata.json"),
     }
     targets = _read_narrative_table(paths["targets"], required=REQUIRED_NARRATIVE_TARGET_COLUMNS, schema_version=NARRATIVE_TARGETS_SCHEMA_VERSION, artifact="targets", warnings=warnings, blocking_issues=blocking_issues)
     claims = _read_narrative_table(paths["claims"], required=REQUIRED_NARRATIVE_CLAIM_COLUMNS, schema_version=NARRATIVE_CLAIMS_SCHEMA_VERSION, artifact="claims", warnings=warnings, blocking_issues=blocking_issues)
@@ -3802,6 +3804,21 @@ def validate_narrative_artifact(path: str | Path) -> NarrativeArtifactValidation
             if duplicates:
                 blocking_issues.append(_narrative_issue(f"duplicate_narrative_{name}", "blocking", f"{duplicates} duplicate narrative {column} values were found.", artifact=name))
 
+    generation_metadata: dict[str, Any] = {}
+    if paths["generation_metadata"].exists():
+        try:
+            loaded_generation_metadata = json.loads(paths["generation_metadata"].read_text(encoding="utf-8"))
+            if isinstance(loaded_generation_metadata, dict):
+                generation_metadata = loaded_generation_metadata
+                if generation_metadata.get("schema_version") != NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION:
+                    warnings.append(_narrative_issue("unsupported_narrative_generation_metadata_schema", "warning", "Unsupported narrative generation metadata schema.", artifact="generation_metadata"))
+            else:
+                warnings.append(_narrative_issue("invalid_narrative_generation_metadata_shape", "warning", "Narrative generation metadata must be a JSON object.", artifact="generation_metadata"))
+        except Exception as exc:
+            warnings.append(_narrative_issue("invalid_narrative_generation_metadata_json", "warning", f"Could not read narrative generation metadata: {exc}", artifact="generation_metadata"))
+    elif isinstance(manifest.get("outputs"), Mapping) and manifest["outputs"].get("generation_metadata"):
+        warnings.append(_narrative_issue("missing_narrative_generation_metadata", "warning", "Narrative generation metadata output is declared but missing.", artifact="generation_metadata"))
+
     unresolved_target_refs = unresolved_section_refs = invalid_confidence = 0
     unsupported_normal_claims = model_metadata_missing = supported_claims_without_required_links = 0
     if claims is not None:
@@ -3817,7 +3834,7 @@ def validate_narrative_artifact(path: str | Path) -> NarrativeArtifactValidation
             claim_type = str(row.get("claim_type") or "").lower()
             if support_state in {"unsupported", "contradicted"} and claim_type not in {"quality_caveat", "limitation"}:
                 unsupported_normal_claims += 1
-            if str(row.get("text_origin") or "") == "model_generated" and not manifest.get("model_generation"):
+            if str(row.get("text_origin") or "") == "model_generated" and not (manifest.get("model_generation") or generation_metadata.get("model_generation")):
                 model_metadata_missing += 1
             if support_state == "supported":
                 claim_links = links[links["claim_id"].map(str) == claim_id] if links is not None and "claim_id" in links.columns else pd.DataFrame()
@@ -4038,6 +4055,7 @@ def write_narrative_evidence_artifacts(
         "claim_evidence_links": "claim_evidence_links.parquet",
         "sections": "narrative_sections.parquet",
         "qa": "narrative_qa.json",
+        "generation_metadata": "generation_metadata.json",
     }
     packet_rel = _review_packet_portable_rel(
         packet_path or artifacts.result_root / "review" / "cluster_review_packet.json",
@@ -4219,6 +4237,15 @@ def write_narrative_evidence_artifacts(
         table_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_parquet(table_path, index=False)
 
+    transform_steps = [
+        {"step": "load_cluster_review_packet"},
+        {"step": "collect_narrative_targets"},
+        {"step": "collect_evidence_refs"},
+        {"step": "build_deterministic_claim_scaffold"},
+        {"step": "link_claim_evidence"},
+        {"step": "validate_claim_support"},
+    ]
+    created_at = _utc_now()
     manifest = {
         "schema_version": NARRATIVE_MANIFEST_SCHEMA_VERSION,
         "narrative_id": narrative_id,
@@ -4239,20 +4266,38 @@ def write_narrative_evidence_artifacts(
             *[dict(row) for row in packet.get("source_artifacts") or [] if isinstance(row, Mapping)],
         ],
         "rule_sets": [],
-        "transforms": [
-            {"step": "load_cluster_review_packet"},
-            {"step": "collect_narrative_targets"},
-            {"step": "collect_evidence_refs"},
-            {"step": "build_deterministic_claim_scaffold"},
-            {"step": "link_claim_evidence"},
-            {"step": "validate_claim_support"},
-        ],
+        "transforms": transform_steps,
         "outputs": outputs,
-        "created_at_utc": _utc_now(),
+        "created_at_utc": created_at,
         "warnings": warnings,
     }
     manifest_path = target_dir / "narrative_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    generation_metadata = {
+        "schema_version": NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION,
+        "narrative_id": narrative_id,
+        "generation_mode": "deterministic_scaffold",
+        "text_origins": ["deterministic_template"],
+        "llm_generation_used": False,
+        "model_generation": None,
+        "prompt": None,
+        "prompt_ref": None,
+        "prompt_digest": None,
+        "source_manifest": _rel(manifest_path, artifacts.result_root),
+        "source_packet": packet_rel,
+        "source_artifacts": manifest["source_artifacts"],
+        "parameters": {
+            "max_targets": int(max_targets),
+            "max_terms_per_claim": int(max_terms_per_claim),
+            "max_works_per_claim": int(max_works_per_claim),
+            "max_relations_per_claim": int(max_relations_per_claim),
+        },
+        "transforms": transform_steps,
+        "sciscape_version": SCISCAPE_VERSION,
+        "created_at_utc": created_at,
+    }
+    generation_metadata_path = target_dir / outputs["generation_metadata"]
+    generation_metadata_path.write_text(json.dumps(generation_metadata, indent=2, sort_keys=True), encoding="utf-8")
     validation = validate_narrative_artifact(manifest_path)
     qa = {
         "schema_version": NARRATIVE_QA_SCHEMA_VERSION,
@@ -11346,6 +11391,17 @@ def _add_narrative_output_artifacts(
             schema_version=schema_version,
             description=description,
         )
+    generation_metadata_path = paths.get("generation_metadata")
+    if generation_metadata_path:
+        key = "narrative_generation_metadata" if not suffix else f"narrative_{suffix}_generation_metadata"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_generation_metadata",
+            path=str(generation_metadata_path),
+            required_for=["narrative"],
+            schema_version=NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION,
+            description="Narrative generation provenance and model metadata.",
+        )
     try:
         manifest = json.loads((root / manifest_rel_path).read_text(encoding="utf-8"))
     except Exception:
@@ -13642,6 +13698,7 @@ __all__ = [
     "NARRATIVE_CLAIMS_SCHEMA_VERSION",
     "NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION",
     "NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION",
+    "NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION",
     "NARRATIVE_MANIFEST_SCHEMA_VERSION",
     "NARRATIVE_PUBLICATION_SCHEMA_VERSION",
     "NARRATIVE_QA_SCHEMA_VERSION",

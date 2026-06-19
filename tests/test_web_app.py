@@ -364,6 +364,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "View summary" in response.text
     assert "Preview" in response.text
     assert "Reviewed narrative publication HTML report" in response.text
+    assert "Narrative generation metadata" in response.text
     assert "renderAtlasReviewQueue" in response.text
     assert "atlasReviewQueueRows" in response.text
     assert "atlasFilteredReviewRows" in response.text

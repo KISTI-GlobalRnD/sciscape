@@ -26,6 +26,7 @@ from sciscape.artifacts import (
     MATRIX_QA_SCHEMA_VERSION,
     MATRIX_VALUES_SCHEMA_VERSION,
     NARRATIVE_CLAIMS_SCHEMA_VERSION,
+    NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION,
     NARRATIVE_MANIFEST_SCHEMA_VERSION,
     NARRATIVE_PUBLICATION_SCHEMA_VERSION,
     NARRATIVE_QA_SCHEMA_VERSION,
@@ -577,6 +578,13 @@ def test_write_narrative_evidence_artifacts_creates_claim_graph_from_review_pack
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["schema_version"] == NARRATIVE_MANIFEST_SCHEMA_VERSION
     assert manifest["text_policy"]["llm_generation_allowed"] is False
+    assert manifest["outputs"]["generation_metadata"] == "generation_metadata.json"
+    generation_metadata = json.loads((root / "narrative" / "generation_metadata.json").read_text(encoding="utf-8"))
+    assert generation_metadata["schema_version"] == NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION
+    assert generation_metadata["generation_mode"] == "deterministic_scaffold"
+    assert generation_metadata["llm_generation_used"] is False
+    assert generation_metadata["model_generation"] is None
+    assert generation_metadata["parameters"]["max_targets"] == 500
     qa = json.loads(qa_path.read_text(encoding="utf-8"))
     assert qa["schema_version"] == NARRATIVE_QA_SCHEMA_VERSION
     assert qa["feature_state"] == "beta"
@@ -608,6 +616,8 @@ def test_write_narrative_evidence_artifacts_creates_claim_graph_from_review_pack
     assert artifacts["narrative_claims"]["path"] == "narrative/claims.parquet"
     assert artifacts["narrative_claims"]["role"] == "narrative_table"
     assert artifacts["narrative_claims"]["rows"] == validation["counts"]["claims"]
+    assert artifacts["narrative_generation_metadata"]["path"] == "narrative/generation_metadata.json"
+    assert artifacts["narrative_generation_metadata"]["schema_version"] == NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION
     assert artifacts["narrative_evidence_refs"]["path"] == "narrative/evidence_refs.parquet"
     assert artifacts["narrative_claim_evidence_links"]["path"] == "narrative/claim_evidence_links.parquet"
     assert artifacts["narrative_sections"]["path"] == "narrative/narrative_sections.parquet"
@@ -634,6 +644,40 @@ def test_validate_narrative_artifact_blocks_unsupported_normal_claim(tmp_path):
     contract = validate_result_root(root).to_dict()
     assert contract["result_state"] == "blocked"
     assert any(warning["code"] == "narrative_unsupported_normal_claims" for warning in contract["warnings"])
+
+
+def test_validate_narrative_artifact_accepts_model_metadata_sidecar(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    written = write_narrative_evidence_artifacts(root)
+    assert written is not None
+    claims_path = root / "narrative" / "claims.parquet"
+    metadata_path = root / "narrative" / "generation_metadata.json"
+    claims = pd.read_parquet(claims_path)
+    claims.loc[0, "text_origin"] = "model_generated"
+    claims.to_parquet(claims_path, index=False)
+
+    blocked = validate_narrative_artifact(root).to_dict()
+
+    assert blocked["status"] == "blocked"
+    assert any(issue["code"] == "narrative_model_metadata_missing" for issue in blocked["blocking_issues"])
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["llm_generation_used"] = True
+    metadata["text_origins"] = ["deterministic_template", "model_generated"]
+    metadata["model_generation"] = {
+        "provider": "test",
+        "model": "test-model",
+        "model_run_id": "run-test",
+        "prompt_ref": "prompt:test",
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
+
+    validation = validate_narrative_artifact(root).to_dict()
+
+    assert validation["status"] != "blocked"
+    assert not any(issue["code"] == "narrative_model_metadata_missing" for issue in validation["blocking_issues"])
 
 
 def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):

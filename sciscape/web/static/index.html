@@ -6620,6 +6620,7 @@ function narrativeArtifactIcon(key, record) {
   if (artifactKey.includes('claim') || path.endsWith('claims.parquet')) return 'CLM';
   if (artifactKey.includes('evidence_source') || path.endsWith('evidence_sources.parquet')) return 'SRC';
   if (artifactKey.includes('evidence_ref') || path.endsWith('evidence_refs.parquet')) return 'EVD';
+  if (artifactKey.includes('generation') || path.endsWith('generation_metadata.json')) return 'GEN';
   if (artifactKey.includes('section') || path.endsWith('narrative_sections.parquet')) return 'SEC';
   if (artifactKey.includes('review') || path.endsWith('review_decisions.parquet')) return 'REV';
   if (path.endsWith('narrative_manifest.json')) return 'NAR';
@@ -6640,6 +6641,7 @@ function narrativeArtifactLabel(key, record) {
   if (artifactKey.includes('claim') || path.endsWith('claims.parquet')) return 'Narrative claims';
   if (artifactKey.includes('evidence_source') || path.endsWith('evidence_sources.parquet')) return 'Narrative evidence sources';
   if (artifactKey.includes('evidence_ref') || path.endsWith('evidence_refs.parquet')) return 'Narrative evidence references';
+  if (artifactKey.includes('generation') || path.endsWith('generation_metadata.json')) return 'Narrative generation metadata';
   if (artifactKey.includes('section') || path.endsWith('narrative_sections.parquet')) return 'Narrative sections';
   if (artifactKey.includes('review') || path.endsWith('review_decisions.parquet')) return 'Narrative review decisions';
   return 'Narrative artifact';

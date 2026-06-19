@@ -1071,6 +1071,7 @@ Artifacts:
 - `narrative/narrative_sections.parquet`
 - `narrative/review_decisions.parquet`
 - `narrative/narrative_qa.json`
+- `narrative/generation_metadata.json`
 - `narrative/publication_summary.json`
 - `narrative/publication_summary.md`
 - `narrative/publication_summary.html`
@@ -1093,6 +1094,8 @@ Success:
   and JSON artifacts when they have been written, and can preview the reviewed
   publication JSON in the inspector
 - generated narratives include prompt/model metadata when LLMs are used
+- deterministic narrative scaffolds include generation metadata that records
+  source artifacts, transform steps, and scaffold parameters
 - narrative edits are recorded as review decisions and the latest decision is
   readable from the cluster narrative view
 - cluster narrative views expose reviewed and pending claim counts
