@@ -242,6 +242,12 @@ review decision accepts or marks them not required. The writer must record
 provider, model, model run id, prompt reference, optional prompt digest, updated
 claim ids, and transform steps in `generation_metadata.json`.
 
+The CLI batch path is `sciscape narrative apply-generated <result_root>
+<updates_file>`. The update file may be a JSON object with `claim_updates`, a
+JSON array of claim updates, or JSONL rows. This path imports already generated
+claim text and routes it through the same evidence-preserving writer; it does
+not execute prompts or call model providers.
+
 ## Narrative Targets Table
 
 `narrative_targets.parquet` stores the entities that may receive narrative
@@ -650,8 +656,8 @@ rewriting narrative text.
    metadata plus QA.
 8. `[~]` Add narrative review UI and stable generation runner integration.
    Atlas now exposes claim-level review actions and save/failure feedback; the
-   safe model-assisted update hook exists, but prompt execution and batch runner
-   integration remain pending.
+   safe model-assisted update hook exists, and the CLI can apply JSON/JSONL
+   generated claim batches. Prompt execution remains pending.
 
 ## Acceptance Criteria
 

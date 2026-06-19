@@ -18,6 +18,7 @@ Usage:
     sciscape matrix    wrap-term-cooccurrence <result_root> [options]
     sciscape matrix    export <result_or_matrix> [options]
     sciscape bundle    vosviewer <result_root> [options]
+    sciscape narrative apply-generated <result_root> <updates_file> [options]
     sciscape web       [options]
     sciscape gui
 
@@ -38,6 +39,7 @@ Examples:
     sciscape matrix wrap-term-cooccurrence result
     sciscape matrix export result --matrix-id term_cooccurrence_default --format csv-triplets
     sciscape bundle vosviewer result --ensure-term-exports
+    sciscape narrative apply-generated result generated_claims.json --provider openai --model gpt-5 --model-run-id run_001 --prompt-ref prompt:narrative:v1
 """
 
 from __future__ import annotations
@@ -613,6 +615,32 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print written bundle paths as JSON",
     )
+
+    # ---- narrative ----
+    nv = sub.add_parser("narrative", help="Apply or validate evidence-backed narrative artifacts")
+    nv_sub = nv.add_subparsers(dest="narrative_command", required=True)
+    napply = nv_sub.add_parser(
+        "apply-generated",
+        help="Apply model-generated claim text through the evidence-preserving narrative update hook",
+    )
+    napply.add_argument("result_root", type=Path, help="SciScape result root or narrative_manifest.json path")
+    napply.add_argument(
+        "updates_file",
+        type=Path,
+        help="JSON with claim_updates or JSONL rows with claim_id and claim_text",
+    )
+    napply.add_argument("--provider", type=str, default=None, help="Model provider recorded in generation metadata")
+    napply.add_argument("--model", type=str, default=None, help="Model name recorded in generation metadata")
+    napply.add_argument("--model-run-id", type=str, default=None, help="Stable model run ID")
+    napply.add_argument("--prompt-ref", type=str, default=None, help="Stable prompt template or artifact reference")
+    napply.add_argument("--prompt-digest", type=str, default=None, help="Optional digest of the prompt payload")
+    napply.add_argument(
+        "--reset-review-state",
+        choices=["not_reviewed", "needs_revision"],
+        default="not_reviewed",
+        help="Review state assigned to model-generated claims (default: not_reviewed)",
+    )
+    napply.add_argument("--json", action="store_true", help="Print update result as JSON")
 
     # ---- query (OpenAlex) ----
     qa = sub.add_parser("query", help="Query OpenAlex → fetch → edges → landscape (all-in-one)")
@@ -1816,6 +1844,76 @@ def _run_bundle(args: argparse.Namespace) -> None:
         print(f"  Manifest → {written['manifest_path']}")
 
 
+def _read_narrative_generation_updates(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise FileNotFoundError(path)
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".jsonl":
+        rows = [json.loads(line) for line in text.splitlines() if line.strip()]
+        return {"claim_updates": rows}
+    payload = json.loads(text)
+    if isinstance(payload, list):
+        return {"claim_updates": payload}
+    if isinstance(payload, dict):
+        return payload
+    raise ValueError("updates file must be a JSON object, JSON array, or JSONL rows")
+
+
+def _run_narrative(args: argparse.Namespace) -> None:
+    if args.narrative_command != "apply-generated":
+        raise SystemExit(f"Unsupported narrative command: {args.narrative_command}")
+
+    from sciscape.artifacts import apply_narrative_generation_updates
+
+    try:
+        payload = _read_narrative_generation_updates(args.updates_file)
+        claim_updates = payload.get("claim_updates")
+        model_generation = dict(payload.get("model_generation") or {})
+        if args.provider:
+            model_generation["provider"] = args.provider
+        if args.model:
+            model_generation["model"] = args.model
+        if args.model_run_id:
+            model_generation["model_run_id"] = args.model_run_id
+        prompt_ref = args.prompt_ref or payload.get("prompt_ref") or model_generation.get("prompt_ref")
+        prompt_digest = args.prompt_digest or payload.get("prompt_digest")
+        parameters = payload.get("parameters") if isinstance(payload.get("parameters"), dict) else None
+        written = apply_narrative_generation_updates(
+            args.result_root,
+            claim_updates=claim_updates if isinstance(claim_updates, list) else [],
+            model_generation=model_generation,
+            prompt_ref=str(prompt_ref) if prompt_ref else None,
+            prompt_digest=str(prompt_digest) if prompt_digest else None,
+            parameters=parameters,
+            reset_review_state=args.reset_review_state,
+        )
+    except Exception as exc:
+        print(f"Could not apply narrative generation updates: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if not written.get("available"):
+        print(f"Could not apply narrative generation updates: {written.get('error', 'unknown error')}", file=sys.stderr)
+        if written.get("missing_fields"):
+            print(f"  Missing fields: {', '.join(map(str, written['missing_fields']))}", file=sys.stderr)
+        if written.get("missing_claim_ids"):
+            print(f"  Missing claim IDs: {', '.join(map(str, written['missing_claim_ids']))}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(written, indent=2, sort_keys=True, default=str))
+        return
+
+    validation = written.get("validation") if isinstance(written.get("validation"), dict) else {}
+    claim_ids = written.get("claim_ids") if isinstance(written.get("claim_ids"), list) else []
+    print(f"Narrative generation updates applied: {written.get('applied_count', 0)} claims")
+    print(f"  status={validation.get('status', 'unknown')}, feature_state={validation.get('feature_state', 'unknown')}")
+    print(f"  Claims → {written.get('claims_path')}")
+    print(f"  Generation metadata → {written.get('generation_metadata_path')}")
+    print(f"  QA → {written.get('qa_path')}")
+    if claim_ids:
+        print(f"  Updated claim IDs: {', '.join(map(str, claim_ids[:10]))}")
+
+
 def _run_query(args: argparse.Namespace) -> None:
     from sciscape.openalex import run_openalex_pipeline, OpenAlexPipelineConfig
 
@@ -1889,6 +1987,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_matrix(args)
     elif args.command == "bundle":
         _run_bundle(args)
+    elif args.command == "narrative":
+        _run_narrative(args)
     elif args.command == "query":
         _run_query(args)
     elif args.command == "web":

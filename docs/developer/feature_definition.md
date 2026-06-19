@@ -1103,6 +1103,9 @@ Success:
 - model-assisted narrative claim updates preserve existing evidence links,
   reset generated claims to a review-required state, and refresh generation
   metadata plus QA before publication
+- model-assisted narrative claim updates can be applied from JSON or JSONL
+  batch outputs through the CLI, but prompt execution remains a separate
+  auditable generation step
 - deterministic narrative scaffolds include generation metadata that records
   source artifacts, transform steps, and scaffold parameters
 - narrative edits are recorded as review decisions and the latest decision is

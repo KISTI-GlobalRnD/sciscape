@@ -7,7 +7,16 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from sciscape.artifacts import validate_evolution_artifact, validate_export_manifest, validate_matrix_artifact
+from sciscape.artifacts import (
+    build_report_data_contract,
+    validate_evolution_artifact,
+    validate_export_manifest,
+    validate_matrix_artifact,
+    validate_narrative_artifact,
+    write_cluster_review_packet_artifact,
+    write_cooccurrence_artifacts,
+    write_narrative_evidence_artifacts,
+)
 from sciscape.cli import (
     _build_parser,
     _run_bundle,
@@ -17,6 +26,7 @@ from sciscape.cli import (
     _run_evolution_from_slice_membership,
     _run_evolution_from_slice_reclustering,
     _run_matrix,
+    _run_narrative,
     _run_query,
     _run_visualize,
 )
@@ -47,6 +57,47 @@ def _write_cli_matrix_result_root(root: Path) -> Path:
     return root
 
 
+def _write_cli_narrative_result_root(root: Path) -> Path:
+    landscape = root / "landscape"
+    report = landscape / "report"
+    report.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "uid": ["D0", "D1"],
+            "title": ["Perovskite passivation", "Stable perovskite devices"],
+            "abstract": [
+                "Interface passivation improves perovskite stability.",
+                "Passivation layers improve device durability.",
+            ],
+            "pubyear": [2021, 2022],
+        }
+    ).to_parquet(root / "abstracts.parquet", index=False)
+    pd.DataFrame({"uid1": ["D0"], "uid2": ["D1"], "rel_sum2": [2.0]}).to_parquet(root / "edges.parquet", index=False)
+    pd.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).to_parquet(landscape / "membership.parquet", index=False)
+    pd.DataFrame(
+        {
+            "cluster_id": [0, 0],
+            "term": ["perovskite solar cells", "interface passivation"],
+            "score": [0.9, 0.8],
+            "frequency": [2, 1],
+        }
+    ).to_parquet(landscape / "keywords.parquet", index=False)
+    report_data = {
+        "0": {
+            "label": "perovskite solar cells",
+            "keywords": [{"term": "perovskite solar cells"}, {"term": "interface passivation"}],
+            "network_edges": [{"source": "perovskite solar cells", "target": "interface passivation", "weight": 1}],
+            "cooccurrence_table": [{"source": "perovskite solar cells", "target": "interface passivation", "count": 1}],
+        },
+    }
+    report_data["_sciscape"] = build_report_data_contract(report_data)
+    (report / "data.json").write_text(json.dumps(report_data), encoding="utf-8")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    write_narrative_evidence_artifacts(root)
+    return root
+
+
 # ---------------------------------------------------------------------------
 # Parser construction
 # ---------------------------------------------------------------------------
@@ -72,6 +123,7 @@ class TestBuildParser:
             "evolution",
             "matrix",
             "bundle",
+            "narrative",
             "gui",
         ],
     )
@@ -114,6 +166,21 @@ class TestBuildParser:
             return ["matrix", "wrap-term-cooccurrence", "result"]
         if cmd == "bundle":
             return ["bundle", "vosviewer", "result"]
+        if cmd == "narrative":
+            return [
+                "narrative",
+                "apply-generated",
+                "result",
+                "updates.json",
+                "--provider",
+                "test",
+                "--model",
+                "test-model",
+                "--model-run-id",
+                "run-001",
+                "--prompt-ref",
+                "prompt:test",
+            ]
         if cmd == "gui":
             return ["gui"]
         raise ValueError(cmd)
@@ -712,6 +779,122 @@ class TestBundleArgs:
         assert payload["bundle_path"].endswith("exports/vosviewer_bundle/vosviewer_bundle.zip")
         assert payload["inventory_path"].endswith("exports/vosviewer_bundle/vosviewer_bundle_inventory.json")
         assert payload["manifest_path"].endswith("exports/vosviewer_bundle/export_manifest.json")
+
+
+# ---------------------------------------------------------------------------
+# Narrative subcommand
+# ---------------------------------------------------------------------------
+
+class TestNarrativeArgs:
+    def test_apply_generated_parse(self, parser):
+        args = parser.parse_args([
+            "narrative",
+            "apply-generated",
+            "result",
+            "updates.json",
+            "--provider",
+            "test-provider",
+            "--model",
+            "test-model",
+            "--model-run-id",
+            "run-001",
+            "--prompt-ref",
+            "prompt:narrative:v1",
+            "--prompt-digest",
+            "sha256:test",
+            "--reset-review-state",
+            "needs_revision",
+            "--json",
+        ])
+
+        assert args.command == "narrative"
+        assert args.narrative_command == "apply-generated"
+        assert args.result_root == Path("result")
+        assert args.updates_file == Path("updates.json")
+        assert args.provider == "test-provider"
+        assert args.model == "test-model"
+        assert args.model_run_id == "run-001"
+        assert args.prompt_ref == "prompt:narrative:v1"
+        assert args.prompt_digest == "sha256:test"
+        assert args.reset_review_state == "needs_revision"
+        assert args.json is True
+
+    def test_run_narrative_apply_generated_json(self, parser, tmp_path, capsys):
+        root = _write_cli_narrative_result_root(tmp_path / "result")
+        claims = pd.read_parquet(root / "narrative" / "claims.parquet")
+        claim_id = str(claims.iloc[0]["claim_id"])
+        updates_path = tmp_path / "updates.json"
+        updates_path.write_text(
+            json.dumps(
+                {
+                    "claim_updates": [
+                        {
+                            "claim_id": claim_id,
+                            "claim_text": "Generated claim text grounded in existing evidence.",
+                        }
+                    ],
+                    "parameters": {"temperature": 0.0},
+                }
+            ),
+            encoding="utf-8",
+        )
+        args = parser.parse_args([
+            "narrative",
+            "apply-generated",
+            str(root),
+            str(updates_path),
+            "--provider",
+            "test-provider",
+            "--model",
+            "test-model",
+            "--model-run-id",
+            "run-001",
+            "--prompt-ref",
+            "prompt:narrative:v1",
+            "--json",
+        ])
+
+        _run_narrative(args)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["available"] is True
+        assert payload["applied_count"] == 1
+        updated_claims = pd.read_parquet(root / "narrative" / "claims.parquet")
+        updated = updated_claims[updated_claims["claim_id"].map(str) == claim_id].iloc[0]
+        assert updated["text_origin"] == "model_generated"
+        assert updated["review_state"] == "not_reviewed"
+        validation = validate_narrative_artifact(root).to_dict()
+        assert validation["status"] != "blocked"
+        assert validation["claim_counts"]["model_generated"] == 1
+
+    def test_run_narrative_apply_generated_jsonl(self, parser, tmp_path, capsys):
+        root = _write_cli_narrative_result_root(tmp_path / "result")
+        claim_id = str(pd.read_parquet(root / "narrative" / "claims.parquet").iloc[0]["claim_id"])
+        updates_path = tmp_path / "updates.jsonl"
+        updates_path.write_text(
+            json.dumps({"claim_id": claim_id, "claim_text": "JSONL generated claim text."}) + "\n",
+            encoding="utf-8",
+        )
+        args = parser.parse_args([
+            "narrative",
+            "apply-generated",
+            str(root),
+            str(updates_path),
+            "--provider",
+            "test-provider",
+            "--model",
+            "test-model",
+            "--model-run-id",
+            "run-002",
+            "--prompt-ref",
+            "prompt:narrative:v1",
+        ])
+
+        _run_narrative(args)
+
+        out = capsys.readouterr().out
+        assert "Narrative generation updates applied: 1 claims" in out
+        assert "status=" in out
 
 
 # ---------------------------------------------------------------------------

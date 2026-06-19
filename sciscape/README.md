@@ -29,7 +29,7 @@ sciscape/
 │   └── ...                  #   vectorization → scoring → normalization → ...
 ├── adapters/                # WoS, Scopus, OpenAlex, BibTeX 입력 변환
 ├── landscape.py             # 엔드투엔드 파이프라인
-├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | visualize | viewer | export | rule-export | web | gui
+├── cli.py                   # CLI: query | cluster | keywords | convert | landscape | visualize | viewer | matrix | bundle | narrative | web | gui
 └── gui.py                   # Tkinter GUI
 ```
 
