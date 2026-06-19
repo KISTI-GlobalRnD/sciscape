@@ -51,7 +51,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, readiness reasons, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 94% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, slice-local membership-to-evolution builder/writer/CLI bridge, default slice-local reclustering runner/writer/CLI bridge, optional materialized reclustering membership checkpoint, slice-reclustering progress sidecar, bounded slice-reclustering workers, incremental slice-membership part checkpoints, slice-level reclustering failure diagnostics, manifest-level transition matching diagnostics, web transition-matching diagnostics panel, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus, keyboard-selectable map/list rows, compact/full Evolution loading profiles with truncation and row-coverage readouts, map shown/total/hidden coverage counts | larger-scale layout polish and map workflow |
-| F12 | Evidence-backed narratives | `[~]` | 78% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, auditable generation prompt batch writer/CLI, model-assisted claim update hook, model-generated claim batch apply CLI, generation metadata artifact, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback, latest-review readback, cluster review progress counts, review save/failure feedback, reviewed JSON/Markdown/HTML publication summary artifacts, reviewed publication cluster index, reviewed publication zip bundle | provider execution runner and polished reviewed publication/report workflow |
+| F12 | Evidence-backed narratives | `[~]` | 82% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, auditable generation prompt batch writer/CLI, provider execution runner CLI, model-assisted claim update hook, model-generated claim batch apply CLI, generation metadata artifact, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback, latest-review readback, cluster review progress counts, review save/failure feedback, reviewed JSON/Markdown/HTML publication summary artifacts, reviewed publication cluster index, reviewed publication zip bundle | polished reviewed generation/report workflow |
 | F13 | Validation and QA | `[x]` | 87% | artifact contract, result validation, quality gate, feature-scoped warnings, keyword artifact checks, matrix/temporal/evolution/narrative artifact validators, evolution matching-diagnostics manifest checks | strict checks for remaining app feature exposure |
 | F14 | Report, export, interoperability | `[~]` | 99% | HTML reports/viewer, dashboard export, GEXF, GraphML, VOSviewer-style map/network, VOSviewer thesaurus/rule-set export, VOSviewer-style term co-occurrence export, VOSviewer web bundle download, co-occurrence table export, CLI rule-export, CLI matrix artifact wrapper, matrix artifact file downloads, manifest-backed matrix CSV/Parquet/summary exports, VOSviewer-compatible term matrix network export, static data, export manifest design, writer/validator, QA sidecars, result-manifest export inventories, normalized export selection/subset summaries, web subset-filtered graph exports | additional target-specific matrix exports and UI polish |
 | F15 | Institutional analytics | `[d]` | 0% | target definition only | intentionally deferred after analyst workbench maturity |
@@ -520,7 +520,7 @@ map remains gated on stronger interaction polish and larger-scale layout work.
 
 ### F12. Evidence-Backed Narratives
 
-Status: `[~]` Partial. Rough completeness: 78%.
+Status: `[~]` Partial. Rough completeness: 82%.
 
 - `[~]` Narrative is named in the feature definition and artifact feature
   inference can detect narrative-like payloads.
@@ -541,9 +541,12 @@ Status: `[~]` Partial. Rough completeness: 78%.
 - `[x]` `sciscape narrative render-prompts` can render provider-neutral JSONL
   prompt jobs from validated claim/evidence artifacts, including claim ids,
   prompt digests, target context, and evidence refs.
+- `[x]` `sciscape narrative run-prompts` can execute rendered prompt jobs through
+  an explicit provider runner, write generated claim-update JSONL and a run
+  manifest, and optionally apply successful rows through the safe update hook.
 - `[x]` `sciscape narrative apply-generated` can apply JSON or JSONL generated
   claim updates through that safe writer hook, making batch model outputs
-  auditable without adding prompt execution to the CLI yet.
+  auditable after prompt execution.
 - `[x]` Narrative claim graph validation checks targets, sections, evidence
   sources, evidence refs, claim links, unsupported normal claims, model-generated
   metadata, source artifact paths, and generation metadata schema.
@@ -577,8 +580,8 @@ Status: `[~]` Partial. Rough completeness: 78%.
 - `[x]` Reviewed publication outputs can be packaged as
   `publication_bundle.zip` with the publication summaries, narrative manifest,
   QA, generation metadata, review decisions, and claim/evidence tables.
-- `[ ]` There is no stable provider execution runner or end-to-end generation
-  pipeline.
+- `[~]` Provider execution is now available as a CLI runner, but the reviewed
+  generation/report workflow is still not polished as a complete app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,
   cluster index, and zip bundle, but not yet a polished generated report
   workflow.
@@ -587,8 +590,7 @@ Review: the evidence-reference contract now has a deterministic writer,
 generation metadata, validator, API surface, first Atlas review block, and
 artifact-backed review decision writeback, so narrative can be treated as an
 inspectable beta surface. It should not be presented as a complete generation
-feature until a stable provider execution runner, generation contract, and the
-reviewed publication workflow are finalized.
+feature until the reviewed generation and publication workflow is finalized.
 
 ### F13. Validation And QA
 

@@ -51,6 +51,7 @@ NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION = "sciscape_narrative_review_decisions
 NARRATIVE_QA_SCHEMA_VERSION = "sciscape_narrative_qa_v1"
 NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION = "sciscape_narrative_generation_metadata_v1"
 NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION = "sciscape_narrative_generation_prompt_batch_v1"
+NARRATIVE_GENERATION_RUN_SCHEMA_VERSION = "sciscape_narrative_generation_run_v1"
 NARRATIVE_PUBLICATION_SCHEMA_VERSION = "sciscape_narrative_publication_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
@@ -4527,6 +4528,272 @@ def write_narrative_generation_prompt_batch(
         "prompt_manifest_path": _rel(prompt_manifest_path, result_root),
         "jobs_path": _rel(jobs_path, result_root),
         "validation": validation.to_dict(),
+    }
+
+
+def _narrative_prompt_batch_paths(path: str | Path) -> tuple[Path, Path]:
+    candidate = Path(path).expanduser()
+    if candidate.exists():
+        candidate = candidate.resolve()
+    if candidate.is_file():
+        if candidate.suffix.lower() == ".jsonl":
+            return candidate.parent / "prompt_batch_manifest.json", candidate
+        return candidate, candidate.parent / "prompt_jobs.jsonl"
+    for base in (
+        candidate,
+        candidate / "narrative" / "generation_prompts",
+        candidate / "generation_prompts",
+    ):
+        manifest_path = base / "prompt_batch_manifest.json"
+        if manifest_path.exists():
+            return manifest_path, base / "prompt_jobs.jsonl"
+    return candidate / "narrative" / "generation_prompts" / "prompt_batch_manifest.json", candidate / "narrative" / "generation_prompts" / "prompt_jobs.jsonl"
+
+
+def _narrative_prompt_result_root(prompt_manifest_path: Path) -> Path:
+    prompt_dir = prompt_manifest_path.parent
+    if prompt_dir.name == "generation_prompts" and prompt_dir.parent.name == "narrative":
+        return prompt_dir.parent.parent
+    return prompt_dir.parent
+
+
+def _json_object_from_model_response(text: str) -> dict[str, Any] | None:
+    content = str(text or "").strip()
+    if not content:
+        return None
+    if content.startswith("```"):
+        content = re.sub(r"^```[\w-]*\s*", "", content, count=1)
+        content = re.sub(r"\s*```$", "", content, count=1).strip()
+    candidates = [content]
+    start = content.find("{")
+    end = content.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(content[start : end + 1])
+    for candidate in candidates:
+        try:
+            payload = json.loads(candidate)
+        except Exception:
+            continue
+        if isinstance(payload, Mapping):
+            return dict(payload)
+    return None
+
+
+def _run_openai_narrative_prompt(
+    prompt: str,
+    *,
+    model: str,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    temperature: float = 0.0,
+    timeout: float = 120.0,
+) -> str:
+    try:
+        from openai import OpenAI  # type: ignore
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise ImportError("openai package is required for provider='openai'. Install with `pip install .[llm]`.") from exc
+
+    kwargs: dict[str, Any] = {}
+    if api_key:
+        kwargs["api_key"] = api_key
+    if base_url:
+        kwargs["base_url"] = base_url
+    client = OpenAI(**kwargs)
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=float(temperature),
+        timeout=float(timeout),
+    )
+    return str(response.choices[0].message.content or "").strip()
+
+
+def run_narrative_generation_prompt_batch(
+    path: str | Path,
+    *,
+    provider: str = "echo",
+    model: str = "echo",
+    model_run_id: str | None = None,
+    output_dir: str | Path | None = None,
+    max_jobs: int | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    temperature: float = 0.0,
+    timeout: float = 120.0,
+    apply_updates: bool = False,
+    reset_review_state: str = "not_reviewed",
+) -> dict[str, Any]:
+    """Run narrative prompt jobs and write generated claim updates.
+
+    The default ``echo`` provider is deterministic and network-free. It exists
+    to validate the artifact flow. ``openai`` is optional and uses the package's
+    ``llm`` extra.
+    """
+
+    prompt_manifest_path, jobs_path = _narrative_prompt_batch_paths(path)
+    if not prompt_manifest_path.exists():
+        return {"available": False, "error": "missing prompt_batch_manifest.json"}
+    if not jobs_path.exists():
+        return {"available": False, "error": "missing prompt_jobs.jsonl"}
+    try:
+        prompt_manifest = json.loads(prompt_manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"available": False, "error": f"could not read prompt batch manifest: {exc}"}
+    if not isinstance(prompt_manifest, Mapping):
+        return {"available": False, "error": "prompt batch manifest must be a JSON object"}
+
+    result_root = _narrative_prompt_result_root(prompt_manifest_path)
+    target_dir = Path(output_dir).expanduser().resolve() if output_dir is not None else result_root / "narrative" / "generation_outputs"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    updates_path = target_dir / "generated_claims.jsonl"
+    run_manifest_path = target_dir / "generation_run_manifest.json"
+    jobs: list[dict[str, Any]] = []
+    for line in jobs_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except Exception:
+            continue
+        if isinstance(row, Mapping):
+            jobs.append(dict(row))
+    if max_jobs is not None:
+        jobs = jobs[: max(0, int(max_jobs))]
+    provider = str(provider or "echo").strip().lower()
+    if provider not in {"echo", "openai"}:
+        return {"available": False, "error": f"unsupported provider: {provider}", "allowed_providers": ["echo", "openai"]}
+    if provider == "openai" and str(model or "").strip() in {"", "echo"}:
+        return {"available": False, "error": "provider='openai' requires an explicit --model value"}
+    model_run_id = str(model_run_id or f"{provider}_{_utc_now().replace(':', '').replace('+', '_')}")
+    output_rows: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    for index, job in enumerate(jobs, start=1):
+        claim_id = str(job.get("claim_id") or "").strip()
+        if not claim_id:
+            failures.append({"job_index": index, "job_id": str(job.get("job_id") or ""), "error": "missing claim_id"})
+            continue
+        try:
+            if provider == "echo":
+                raw_response = json.dumps(
+                    {
+                        "claim_id": claim_id,
+                        "claim_text": _publication_text(job.get("current_claim_text"), fallback=f"Generated claim for {claim_id}."),
+                    },
+                    sort_keys=True,
+                )
+            else:
+                raw_response = _run_openai_narrative_prompt(
+                    str(job.get("prompt") or ""),
+                    model=model,
+                    api_key=api_key,
+                    base_url=base_url,
+                    temperature=temperature,
+                    timeout=timeout,
+                )
+            parsed = _json_object_from_model_response(raw_response)
+            claim_text = _publication_text(parsed.get("claim_text") if parsed else None)
+            parsed_claim_id = str(parsed.get("claim_id") if parsed else claim_id).strip()
+            if not claim_text:
+                raise ValueError("model response did not include claim_text")
+            if parsed_claim_id and parsed_claim_id != claim_id:
+                raise ValueError(f"model response claim_id mismatch: {parsed_claim_id} != {claim_id}")
+            output_rows.append(
+                {
+                    "schema_version": NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
+                    "prompt_batch_id": str(job.get("prompt_batch_id") or prompt_manifest.get("prompt_batch_id") or ""),
+                    "job_id": str(job.get("job_id") or ""),
+                    "claim_id": claim_id,
+                    "claim_text": claim_text,
+                    "provider": provider,
+                    "model": model,
+                    "model_run_id": model_run_id,
+                    "prompt_ref": str(job.get("prompt_ref") or prompt_manifest.get("prompt_ref") or ""),
+                    "prompt_digest": str(job.get("prompt_digest") or ""),
+                    "raw_response": raw_response,
+                    "status": "succeeded",
+                }
+            )
+        except Exception as exc:
+            failures.append({"job_index": index, "job_id": str(job.get("job_id") or ""), "claim_id": claim_id, "error": str(exc)})
+            output_rows.append(
+                {
+                    "schema_version": NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
+                    "prompt_batch_id": str(job.get("prompt_batch_id") or prompt_manifest.get("prompt_batch_id") or ""),
+                    "job_id": str(job.get("job_id") or ""),
+                    "claim_id": claim_id,
+                    "claim_text": "",
+                    "provider": provider,
+                    "model": model,
+                    "model_run_id": model_run_id,
+                    "prompt_ref": str(job.get("prompt_ref") or prompt_manifest.get("prompt_ref") or ""),
+                    "prompt_digest": str(job.get("prompt_digest") or ""),
+                    "raw_response": "",
+                    "status": "failed",
+                    "error": str(exc),
+                }
+            )
+    with updates_path.open("w", encoding="utf-8") as handle:
+        for row in output_rows:
+            handle.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+    succeeded_rows = [row for row in output_rows if row.get("status") == "succeeded"]
+    created_at = _utc_now()
+    output_digest = "sha256:" + hashlib.sha256(updates_path.read_bytes()).hexdigest()
+    apply_result = None
+    if apply_updates and succeeded_rows:
+        source_manifest = str(prompt_manifest.get("source_manifest") or "narrative/narrative_manifest.json")
+        apply_path = result_root / source_manifest
+        apply_result = apply_narrative_generation_updates(
+            apply_path if apply_path.exists() else result_root,
+            claim_updates=succeeded_rows,
+            model_generation={
+                "provider": provider,
+                "model": model,
+                "model_run_id": model_run_id,
+                "prompt_batch_id": str(prompt_manifest.get("prompt_batch_id") or ""),
+                "generation_run_manifest": _rel(run_manifest_path, result_root),
+                "generated_claims": _rel(updates_path, result_root),
+            },
+            prompt_ref=str(prompt_manifest.get("prompt_ref") or ""),
+            prompt_digest=output_digest,
+            parameters={"temperature": float(temperature), "timeout": float(timeout), "provider_runner": provider},
+            reset_review_state=reset_review_state,
+        )
+    run_manifest = {
+        "schema_version": NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
+        "prompt_batch_id": str(prompt_manifest.get("prompt_batch_id") or ""),
+        "model_run_id": model_run_id,
+        "provider": provider,
+        "model": model,
+        "source_prompt_manifest": _rel(prompt_manifest_path, result_root),
+        "source_prompt_jobs": _rel(jobs_path, result_root),
+        "outputs": {
+            "generated_claims_jsonl": _rel(updates_path, result_root),
+            "run_manifest": _rel(run_manifest_path, result_root),
+        },
+        "counts": {
+            "jobs_input": len(jobs),
+            "jobs_succeeded": len(succeeded_rows),
+            "jobs_failed": len(failures),
+        },
+        "output_digest": output_digest,
+        "applied": bool(apply_updates and apply_result and apply_result.get("available")),
+        "apply_result": apply_result,
+        "failures": failures,
+        "created_at_utc": created_at,
+    }
+    run_manifest_path.write_text(json.dumps(run_manifest, indent=2, sort_keys=True, default=str), encoding="utf-8")
+    return {
+        "schema_version": NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
+        "available": True,
+        "model_run_id": model_run_id,
+        "provider": provider,
+        "model": model,
+        "generated_count": len(succeeded_rows),
+        "failed_count": len(failures),
+        "updates_path": _rel(updates_path, result_root),
+        "run_manifest_path": _rel(run_manifest_path, result_root),
+        "applied": bool(run_manifest["applied"]),
+        "apply_result": apply_result,
     }
 
 
@@ -12018,6 +12285,29 @@ def _add_narrative_output_artifacts(
             schema_version=NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
             description="Narrative model-generation prompt jobs JSONL.",
         )
+    run_dir = narrative_dir / "generation_outputs"
+    run_manifest = run_dir / "generation_run_manifest.json"
+    generated_claims = run_dir / "generated_claims.jsonl"
+    if (root / run_manifest).exists():
+        key = "narrative_generation_run_manifest" if not suffix else f"narrative_{suffix}_generation_run_manifest"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_generation_run",
+            path=run_manifest.as_posix(),
+            required_for=["narrative"],
+            schema_version=NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
+            description="Narrative model-generation execution run manifest.",
+        )
+    if (root / generated_claims).exists():
+        key = "narrative_generation_claim_updates" if not suffix else f"narrative_{suffix}_generation_claim_updates"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_generation_run",
+            path=generated_claims.as_posix(),
+            required_for=["narrative"],
+            schema_version=NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
+            description="Generated narrative claim updates JSONL.",
+        )
 
 
 def _is_cluster_sharded_keyword_manifest(payload: Mapping[str, Any] | None) -> bool:
@@ -14272,6 +14562,7 @@ __all__ = [
     "NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION",
     "NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION",
     "NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION",
+    "NARRATIVE_GENERATION_RUN_SCHEMA_VERSION",
     "NARRATIVE_MANIFEST_SCHEMA_VERSION",
     "NARRATIVE_PUBLICATION_SCHEMA_VERSION",
     "NARRATIVE_QA_SCHEMA_VERSION",
@@ -14319,6 +14610,7 @@ __all__ = [
     "read_result_manifest",
     "read_workspace_manifest",
     "register_result_in_workspace",
+    "run_narrative_generation_prompt_batch",
     "validate_keyword_rule_artifact",
     "validate_cluster_review_packet_artifact",
     "validate_matrix_artifact",

@@ -28,6 +28,7 @@ from sciscape.artifacts import (
     NARRATIVE_CLAIMS_SCHEMA_VERSION,
     NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION,
     NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
+    NARRATIVE_GENERATION_RUN_SCHEMA_VERSION,
     NARRATIVE_MANIFEST_SCHEMA_VERSION,
     NARRATIVE_PUBLICATION_SCHEMA_VERSION,
     NARRATIVE_QA_SCHEMA_VERSION,
@@ -47,6 +48,7 @@ from sciscape.artifacts import (
     infer_result_artifacts,
     load_result_manifest,
     register_result_in_workspace,
+    run_narrative_generation_prompt_batch,
     validate_cluster_review_packet_artifact,
     validate_evolution_artifact,
     validate_export_manifest,
@@ -775,6 +777,52 @@ def test_write_narrative_generation_prompt_batch_exports_auditable_jobs(tmp_path
     assert artifacts["narrative_generation_prompt_manifest"]["path"] == "narrative/generation_prompts/prompt_batch_manifest.json"
     assert artifacts["narrative_generation_prompt_jobs"]["path"] == "narrative/generation_prompts/prompt_jobs.jsonl"
     assert artifacts["narrative_generation_prompt_manifest"]["schema_version"] == NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION
+
+
+def test_run_narrative_generation_prompt_batch_echo_writes_updates_and_can_apply(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    written = write_narrative_evidence_artifacts(root)
+    assert written is not None
+    prompt_batch = write_narrative_generation_prompt_batch(root, max_claims=1)
+    assert prompt_batch["available"] is True
+
+    run = run_narrative_generation_prompt_batch(
+        root,
+        provider="echo",
+        model="echo-model",
+        model_run_id="echo-run-001",
+        max_jobs=1,
+        apply_updates=True,
+    )
+
+    assert run["available"] is True
+    assert run["schema_version"] == NARRATIVE_GENERATION_RUN_SCHEMA_VERSION
+    assert run["generated_count"] == 1
+    assert run["failed_count"] == 0
+    assert run["applied"] is True
+    updates_path = root / run["updates_path"]
+    run_manifest_path = root / run["run_manifest_path"]
+    output_rows = [json.loads(line) for line in updates_path.read_text(encoding="utf-8").splitlines()]
+    run_manifest = json.loads(run_manifest_path.read_text(encoding="utf-8"))
+    assert output_rows[0]["schema_version"] == NARRATIVE_GENERATION_RUN_SCHEMA_VERSION
+    assert output_rows[0]["provider"] == "echo"
+    assert output_rows[0]["status"] == "succeeded"
+    assert output_rows[0]["claim_text"]
+    assert run_manifest["counts"]["jobs_succeeded"] == 1
+    assert run_manifest["applied"] is True
+    assert run_manifest["apply_result"]["available"] is True
+    claims = pd.read_parquet(root / "narrative" / "claims.parquet")
+    updated = claims[claims["claim_id"].map(str) == output_rows[0]["claim_id"]].iloc[0]
+    assert updated["text_origin"] == "model_generated"
+    assert updated["review_state"] == "not_reviewed"
+
+    result_manifest = build_result_manifest(root).to_dict()
+    artifacts = result_manifest["artifacts"]
+    assert artifacts["narrative_generation_run_manifest"]["path"] == "narrative/generation_outputs/generation_run_manifest.json"
+    assert artifacts["narrative_generation_claim_updates"]["path"] == "narrative/generation_outputs/generated_claims.jsonl"
+    assert artifacts["narrative_generation_run_manifest"]["schema_version"] == NARRATIVE_GENERATION_RUN_SCHEMA_VERSION
 
 
 def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):

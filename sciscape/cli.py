@@ -19,6 +19,7 @@ Usage:
     sciscape matrix    export <result_or_matrix> [options]
     sciscape bundle    vosviewer <result_root> [options]
     sciscape narrative render-prompts <result_root> [options]
+    sciscape narrative run-prompts <result_root_or_prompt_manifest> [options]
     sciscape narrative apply-generated <result_root> <updates_file> [options]
     sciscape web       [options]
     sciscape gui
@@ -41,6 +42,7 @@ Examples:
     sciscape matrix export result --matrix-id term_cooccurrence_default --format csv-triplets
     sciscape bundle vosviewer result --ensure-term-exports
     sciscape narrative render-prompts result --prompt-ref prompt:narrative:v1
+    sciscape narrative run-prompts result --provider echo --model echo --apply
     sciscape narrative apply-generated result generated_claims.json --provider openai --model gpt-5 --model-run-id run_001 --prompt-ref prompt:narrative:v1
 """
 
@@ -645,6 +647,28 @@ def _build_parser() -> argparse.ArgumentParser:
     nprompt.add_argument("--max-claims", type=int, default=1000)
     nprompt.add_argument("--max-evidence-refs", type=int, default=8)
     nprompt.add_argument("--json", action="store_true", help="Print written prompt batch paths as JSON")
+    nrun = nv_sub.add_parser(
+        "run-prompts",
+        help="Run rendered narrative prompt jobs and write generated claim-update JSONL",
+    )
+    nrun.add_argument("prompt_batch", type=Path, help="Result root, prompt_batch_manifest.json, or prompt_jobs.jsonl")
+    nrun.add_argument("--provider", choices=["echo", "openai"], default="echo")
+    nrun.add_argument("--model", type=str, default="echo")
+    nrun.add_argument("--model-run-id", type=str, default=None)
+    nrun.add_argument("--output-dir", type=Path, default=None)
+    nrun.add_argument("--max-jobs", type=int, default=None)
+    nrun.add_argument("--api-key", type=str, default=None, help="Provider API key; omit to use provider defaults/env")
+    nrun.add_argument("--base-url", type=str, default=None, help="OpenAI-compatible base URL for provider=openai")
+    nrun.add_argument("--temperature", type=float, default=0.0)
+    nrun.add_argument("--timeout", type=float, default=120.0)
+    nrun.add_argument("--apply", action="store_true", help="Apply generated updates through the safe narrative update hook")
+    nrun.add_argument(
+        "--reset-review-state",
+        choices=["not_reviewed", "needs_revision"],
+        default="not_reviewed",
+        help="Review state assigned when --apply is used (default: not_reviewed)",
+    )
+    nrun.add_argument("--json", action="store_true", help="Print generation run result as JSON")
     napply = nv_sub.add_parser(
         "apply-generated",
         help="Apply model-generated claim text through the evidence-preserving narrative update hook",
@@ -1914,6 +1938,43 @@ def _run_narrative(args: argparse.Namespace) -> None:
         print(f"Narrative generation prompts written: {written.get('jobs', 0)} jobs")
         print(f"  Prompt manifest → {written.get('prompt_manifest_path')}")
         print(f"  Prompt jobs → {written.get('jobs_path')}")
+        return
+
+    if args.narrative_command == "run-prompts":
+        from sciscape.artifacts import run_narrative_generation_prompt_batch
+
+        try:
+            written = run_narrative_generation_prompt_batch(
+                args.prompt_batch,
+                provider=args.provider,
+                model=args.model,
+                model_run_id=args.model_run_id,
+                output_dir=args.output_dir,
+                max_jobs=args.max_jobs,
+                api_key=args.api_key,
+                base_url=args.base_url,
+                temperature=args.temperature,
+                timeout=args.timeout,
+                apply_updates=args.apply,
+                reset_review_state=args.reset_review_state,
+            )
+        except Exception as exc:
+            print(f"Could not run narrative generation prompts: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if not written.get("available"):
+            print(f"Could not run narrative generation prompts: {written.get('error', 'unknown error')}", file=sys.stderr)
+            sys.exit(1)
+        if args.json:
+            print(json.dumps(written, indent=2, sort_keys=True, default=str))
+            return
+        print(
+            "Narrative generation prompts completed: "
+            f"{written.get('generated_count', 0)} generated, {written.get('failed_count', 0)} failed"
+        )
+        print(f"  Run manifest → {written.get('run_manifest_path')}")
+        print(f"  Generated updates → {written.get('updates_path')}")
+        if written.get("applied"):
+            print("  Applied through safe narrative update hook")
         return
 
     if args.narrative_command != "apply-generated":

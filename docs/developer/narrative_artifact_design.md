@@ -256,6 +256,14 @@ digest, current scaffold claim, target context, and evidence refs. This is an
 auditable provider-neutral input package; it does not call a model and does not
 modify `claims.parquet`.
 
+The provider execution path is `sciscape narrative run-prompts <result_root>`.
+It reads the prompt batch, writes
+`narrative/generation_outputs/generation_run_manifest.json` and
+`narrative/generation_outputs/generated_claims.jsonl`, and can optionally call
+the safe apply hook with `--apply`. The default `echo` provider is deterministic
+and network-free for workflow validation; `openai` uses the optional `llm`
+extra. Generated rows are still candidates until review accepts them.
+
 ## Narrative Targets Table
 
 `narrative_targets.parquet` stores the entities that may receive narrative
@@ -664,9 +672,10 @@ rewriting narrative text.
    metadata plus QA.
 8. `[~]` Add narrative review UI and stable generation runner integration.
    Atlas now exposes claim-level review actions and save/failure feedback; the
-   CLI can render JSONL prompt batches and apply JSON/JSONL generated claim
-   batches through the safe model-assisted update hook. Provider execution
-   remains pending.
+   CLI can render JSONL prompt batches, execute them through an explicit
+   provider runner, and apply JSON/JSONL generated claim batches through the
+   safe model-assisted update hook. The polished reviewed generation/report app
+   workflow remains pending.
 
 ## Acceptance Criteria
 

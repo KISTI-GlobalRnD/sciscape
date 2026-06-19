@@ -1074,6 +1074,8 @@ Artifacts:
 - `narrative/generation_metadata.json`
 - `narrative/generation_prompts/prompt_batch_manifest.json`
 - `narrative/generation_prompts/prompt_jobs.jsonl`
+- `narrative/generation_outputs/generation_run_manifest.json`
+- `narrative/generation_outputs/generated_claims.jsonl`
 - `narrative/publication_summary.json`
 - `narrative/publication_summary.md`
 - `narrative/publication_summary.html`
@@ -1104,6 +1106,8 @@ Success:
 - generated narratives include prompt/model metadata when LLMs are used
 - generation prompt batches can be rendered from validated claim/evidence
   artifacts before any provider is called
+- generation prompt batches can be executed through an explicit provider runner
+  that writes generated claim-update JSONL before the safe apply step
 - model-assisted narrative claim updates preserve existing evidence links,
   reset generated claims to a review-required state, and refresh generation
   metadata plus QA before publication

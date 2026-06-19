@@ -843,6 +843,36 @@ class TestNarrativeArgs:
         assert args.reset_review_state == "needs_revision"
         assert args.json is True
 
+    def test_run_prompts_parse(self, parser):
+        args = parser.parse_args([
+            "narrative",
+            "run-prompts",
+            "result",
+            "--provider",
+            "echo",
+            "--model",
+            "echo-model",
+            "--model-run-id",
+            "run-001",
+            "--max-jobs",
+            "3",
+            "--apply",
+            "--reset-review-state",
+            "needs_revision",
+            "--json",
+        ])
+
+        assert args.command == "narrative"
+        assert args.narrative_command == "run-prompts"
+        assert args.prompt_batch == Path("result")
+        assert args.provider == "echo"
+        assert args.model == "echo-model"
+        assert args.model_run_id == "run-001"
+        assert args.max_jobs == 3
+        assert args.apply is True
+        assert args.reset_review_state == "needs_revision"
+        assert args.json is True
+
     def test_run_narrative_render_prompts_json(self, parser, tmp_path, capsys):
         root = _write_cli_narrative_result_root(tmp_path / "result")
         args = parser.parse_args([
@@ -869,6 +899,43 @@ class TestNarrativeArgs:
         assert jobs[0]["prompt_batch_id"] == "cli_prompt_batch"
         assert jobs[0]["prompt_ref"] == "prompt:narrative:v1"
         assert jobs[0]["claim_id"]
+
+    def test_run_narrative_run_prompts_json(self, parser, tmp_path, capsys):
+        root = _write_cli_narrative_result_root(tmp_path / "result")
+        render_args = parser.parse_args([
+            "narrative",
+            "render-prompts",
+            str(root),
+            "--max-claims",
+            "1",
+        ])
+        _run_narrative(render_args)
+        capsys.readouterr()
+        args = parser.parse_args([
+            "narrative",
+            "run-prompts",
+            str(root),
+            "--provider",
+            "echo",
+            "--model",
+            "echo-model",
+            "--model-run-id",
+            "run-001",
+            "--max-jobs",
+            "1",
+            "--apply",
+            "--json",
+        ])
+
+        _run_narrative(args)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["available"] is True
+        assert payload["generated_count"] == 1
+        assert payload["failed_count"] == 0
+        assert payload["applied"] is True
+        assert (root / payload["updates_path"]).exists()
+        assert (root / payload["run_manifest_path"]).exists()
 
     def test_run_narrative_apply_generated_json(self, parser, tmp_path, capsys):
         root = _write_cli_narrative_result_root(tmp_path / "result")
