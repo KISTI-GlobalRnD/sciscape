@@ -248,6 +248,14 @@ JSON array of claim updates, or JSONL rows. This path imports already generated
 claim text and routes it through the same evidence-preserving writer; it does
 not execute prompts or call model providers.
 
+The prompt rendering path is `sciscape narrative render-prompts <result_root>`.
+It writes `narrative/generation_prompts/prompt_batch_manifest.json` and
+`narrative/generation_prompts/prompt_jobs.jsonl` from existing claim/evidence
+tables. Each JSONL row carries a stable `claim_id`, prompt reference, prompt
+digest, current scaffold claim, target context, and evidence refs. This is an
+auditable provider-neutral input package; it does not call a model and does not
+modify `claims.parquet`.
+
 ## Narrative Targets Table
 
 `narrative_targets.parquet` stores the entities that may receive narrative
@@ -656,8 +664,9 @@ rewriting narrative text.
    metadata plus QA.
 8. `[~]` Add narrative review UI and stable generation runner integration.
    Atlas now exposes claim-level review actions and save/failure feedback; the
-   safe model-assisted update hook exists, and the CLI can apply JSON/JSONL
-   generated claim batches. Prompt execution remains pending.
+   CLI can render JSONL prompt batches and apply JSON/JSONL generated claim
+   batches through the safe model-assisted update hook. Provider execution
+   remains pending.
 
 ## Acceptance Criteria
 

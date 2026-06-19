@@ -1072,6 +1072,8 @@ Artifacts:
 - `narrative/review_decisions.parquet`
 - `narrative/narrative_qa.json`
 - `narrative/generation_metadata.json`
+- `narrative/generation_prompts/prompt_batch_manifest.json`
+- `narrative/generation_prompts/prompt_jobs.jsonl`
 - `narrative/publication_summary.json`
 - `narrative/publication_summary.md`
 - `narrative/publication_summary.html`
@@ -1100,6 +1102,8 @@ Success:
 - reviewed narrative publication bundles include publication summaries,
   generation metadata, QA, review decisions, and claim/evidence tables
 - generated narratives include prompt/model metadata when LLMs are used
+- generation prompt batches can be rendered from validated claim/evidence
+  artifacts before any provider is called
 - model-assisted narrative claim updates preserve existing evidence links,
   reset generated claims to a review-required state, and refresh generation
   metadata plus QA before publication

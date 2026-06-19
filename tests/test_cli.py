@@ -169,15 +169,8 @@ class TestBuildParser:
         if cmd == "narrative":
             return [
                 "narrative",
-                "apply-generated",
+                "render-prompts",
                 "result",
-                "updates.json",
-                "--provider",
-                "test",
-                "--model",
-                "test-model",
-                "--model-run-id",
-                "run-001",
                 "--prompt-ref",
                 "prompt:test",
             ]
@@ -786,6 +779,37 @@ class TestBundleArgs:
 # ---------------------------------------------------------------------------
 
 class TestNarrativeArgs:
+    def test_render_prompts_parse(self, parser):
+        args = parser.parse_args([
+            "narrative",
+            "render-prompts",
+            "result",
+            "--prompt-batch-id",
+            "batch-001",
+            "--prompt-ref",
+            "prompt:narrative:v1",
+            "--prompt-version",
+            "v1",
+            "--include-review-state",
+            "not_required",
+            "--max-claims",
+            "12",
+            "--max-evidence-refs",
+            "4",
+            "--json",
+        ])
+
+        assert args.command == "narrative"
+        assert args.narrative_command == "render-prompts"
+        assert args.result_root == Path("result")
+        assert args.prompt_batch_id == "batch-001"
+        assert args.prompt_ref == "prompt:narrative:v1"
+        assert args.prompt_version == "v1"
+        assert args.include_review_state == ["not_required"]
+        assert args.max_claims == 12
+        assert args.max_evidence_refs == 4
+        assert args.json is True
+
     def test_apply_generated_parse(self, parser):
         args = parser.parse_args([
             "narrative",
@@ -818,6 +842,33 @@ class TestNarrativeArgs:
         assert args.prompt_digest == "sha256:test"
         assert args.reset_review_state == "needs_revision"
         assert args.json is True
+
+    def test_run_narrative_render_prompts_json(self, parser, tmp_path, capsys):
+        root = _write_cli_narrative_result_root(tmp_path / "result")
+        args = parser.parse_args([
+            "narrative",
+            "render-prompts",
+            str(root),
+            "--prompt-batch-id",
+            "cli_prompt_batch",
+            "--prompt-ref",
+            "prompt:narrative:v1",
+            "--max-claims",
+            "1",
+            "--json",
+        ])
+
+        _run_narrative(args)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["available"] is True
+        assert payload["jobs"] == 1
+        jobs_path = root / payload["jobs_path"]
+        jobs = [json.loads(line) for line in jobs_path.read_text(encoding="utf-8").splitlines()]
+        assert len(jobs) == 1
+        assert jobs[0]["prompt_batch_id"] == "cli_prompt_batch"
+        assert jobs[0]["prompt_ref"] == "prompt:narrative:v1"
+        assert jobs[0]["claim_id"]
 
     def test_run_narrative_apply_generated_json(self, parser, tmp_path, capsys):
         root = _write_cli_narrative_result_root(tmp_path / "result")

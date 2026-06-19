@@ -18,6 +18,7 @@ Usage:
     sciscape matrix    wrap-term-cooccurrence <result_root> [options]
     sciscape matrix    export <result_or_matrix> [options]
     sciscape bundle    vosviewer <result_root> [options]
+    sciscape narrative render-prompts <result_root> [options]
     sciscape narrative apply-generated <result_root> <updates_file> [options]
     sciscape web       [options]
     sciscape gui
@@ -39,6 +40,7 @@ Examples:
     sciscape matrix wrap-term-cooccurrence result
     sciscape matrix export result --matrix-id term_cooccurrence_default --format csv-triplets
     sciscape bundle vosviewer result --ensure-term-exports
+    sciscape narrative render-prompts result --prompt-ref prompt:narrative:v1
     sciscape narrative apply-generated result generated_claims.json --provider openai --model gpt-5 --model-run-id run_001 --prompt-ref prompt:narrative:v1
 """
 
@@ -619,6 +621,30 @@ def _build_parser() -> argparse.ArgumentParser:
     # ---- narrative ----
     nv = sub.add_parser("narrative", help="Apply or validate evidence-backed narrative artifacts")
     nv_sub = nv.add_subparsers(dest="narrative_command", required=True)
+    nprompt = nv_sub.add_parser(
+        "render-prompts",
+        help="Render auditable prompt jobs from an evidence-backed narrative claim graph",
+    )
+    nprompt.add_argument("result_root", type=Path, help="SciScape result root or narrative_manifest.json path")
+    nprompt.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory for prompt batch files (default: narrative/generation_prompts)",
+    )
+    nprompt.add_argument("--prompt-batch-id", type=str, default="narrative_claim_generation_default")
+    nprompt.add_argument("--prompt-ref", type=str, default="prompt:narrative_claim_rewrite:v1")
+    nprompt.add_argument("--prompt-version", type=str, default="v1")
+    nprompt.add_argument(
+        "--include-review-state",
+        action="append",
+        choices=["not_required", "not_reviewed", "needs_revision", "accepted", "rejected"],
+        default=None,
+        help="Review state to include; repeat for multiple states (default: not_required, not_reviewed, needs_revision)",
+    )
+    nprompt.add_argument("--max-claims", type=int, default=1000)
+    nprompt.add_argument("--max-evidence-refs", type=int, default=8)
+    nprompt.add_argument("--json", action="store_true", help="Print written prompt batch paths as JSON")
     napply = nv_sub.add_parser(
         "apply-generated",
         help="Apply model-generated claim text through the evidence-preserving narrative update hook",
@@ -1860,6 +1886,36 @@ def _read_narrative_generation_updates(path: Path) -> dict[str, object]:
 
 
 def _run_narrative(args: argparse.Namespace) -> None:
+    if args.narrative_command == "render-prompts":
+        from sciscape.artifacts import write_narrative_generation_prompt_batch
+
+        try:
+            written = write_narrative_generation_prompt_batch(
+                args.result_root,
+                output_dir=args.output_dir,
+                prompt_batch_id=args.prompt_batch_id,
+                prompt_ref=args.prompt_ref,
+                prompt_version=args.prompt_version,
+                include_review_states=args.include_review_state,
+                max_claims=args.max_claims,
+                max_evidence_refs=args.max_evidence_refs,
+            )
+        except Exception as exc:
+            print(f"Could not render narrative generation prompts: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if not written.get("available"):
+            print(f"Could not render narrative generation prompts: {written.get('error', 'unknown error')}", file=sys.stderr)
+            if written.get("missing_paths"):
+                print(f"  Missing paths: {', '.join(map(str, written['missing_paths']))}", file=sys.stderr)
+            sys.exit(1)
+        if args.json:
+            print(json.dumps(written, indent=2, sort_keys=True, default=str))
+            return
+        print(f"Narrative generation prompts written: {written.get('jobs', 0)} jobs")
+        print(f"  Prompt manifest → {written.get('prompt_manifest_path')}")
+        print(f"  Prompt jobs → {written.get('jobs_path')}")
+        return
+
     if args.narrative_command != "apply-generated":
         raise SystemExit(f"Unsupported narrative command: {args.narrative_command}")
 

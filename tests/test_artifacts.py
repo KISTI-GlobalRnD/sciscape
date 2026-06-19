@@ -27,6 +27,7 @@ from sciscape.artifacts import (
     MATRIX_VALUES_SCHEMA_VERSION,
     NARRATIVE_CLAIMS_SCHEMA_VERSION,
     NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION,
+    NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
     NARRATIVE_MANIFEST_SCHEMA_VERSION,
     NARRATIVE_PUBLICATION_SCHEMA_VERSION,
     NARRATIVE_QA_SCHEMA_VERSION,
@@ -66,6 +67,7 @@ from sciscape.artifacts import (
     write_matrix_artifact,
     write_matrix_from_term_cooccurrence,
     write_narrative_evidence_artifacts,
+    write_narrative_generation_prompt_batch,
     write_narrative_publication_artifacts,
     write_slice_local_membership_evolution_artifacts,
     write_slice_reclustering_evolution_artifacts,
@@ -733,6 +735,46 @@ def test_apply_narrative_generation_updates_preserves_evidence_links(tmp_path):
     assert validation["claim_counts"]["model_generated"] == 1
     qa = json.loads((root / "narrative" / "narrative_qa.json").read_text(encoding="utf-8"))
     assert qa["claim_counts"]["model_generated"] == 1
+
+
+def test_write_narrative_generation_prompt_batch_exports_auditable_jobs(tmp_path):
+    root = _write_valid_result_root(tmp_path / "result")
+    write_cooccurrence_artifacts(root)
+    write_cluster_review_packet_artifact(root)
+    written = write_narrative_evidence_artifacts(root)
+    assert written is not None
+
+    prompt_batch = write_narrative_generation_prompt_batch(
+        root,
+        prompt_batch_id="test_prompt_batch",
+        prompt_ref="prompt:narrative:test",
+        max_claims=2,
+        max_evidence_refs=2,
+    )
+
+    assert prompt_batch["available"] is True
+    assert prompt_batch["schema_version"] == NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION
+    assert prompt_batch["jobs"] == 2
+    manifest_path = root / prompt_batch["prompt_manifest_path"]
+    jobs_path = root / prompt_batch["jobs_path"]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    jobs = [json.loads(line) for line in jobs_path.read_text(encoding="utf-8").splitlines()]
+    assert manifest["schema_version"] == NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION
+    assert manifest["prompt_batch_id"] == "test_prompt_batch"
+    assert manifest["counts"]["jobs"] == 2
+    assert manifest["outputs"]["jobs_jsonl"] == "narrative/generation_prompts/prompt_jobs.jsonl"
+    assert {row["schema_version"] for row in jobs} == {NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION}
+    assert all(row["claim_id"] for row in jobs)
+    assert all(row["prompt_digest"].startswith("sha256:") for row in jobs)
+    assert all(row["expected_output"]["claim_text"] == "string" for row in jobs)
+    assert all(row["evidence_refs"] for row in jobs)
+    assert "Return JSON only" in jobs[0]["prompt"]
+
+    result_manifest = build_result_manifest(root).to_dict()
+    artifacts = result_manifest["artifacts"]
+    assert artifacts["narrative_generation_prompt_manifest"]["path"] == "narrative/generation_prompts/prompt_batch_manifest.json"
+    assert artifacts["narrative_generation_prompt_jobs"]["path"] == "narrative/generation_prompts/prompt_jobs.jsonl"
+    assert artifacts["narrative_generation_prompt_manifest"]["schema_version"] == NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION
 
 
 def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):

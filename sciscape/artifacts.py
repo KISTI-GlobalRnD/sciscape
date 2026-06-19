@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import json
 import math
 import re
@@ -49,6 +50,7 @@ NARRATIVE_SECTIONS_SCHEMA_VERSION = "sciscape_narrative_sections_v1"
 NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION = "sciscape_narrative_review_decisions_v1"
 NARRATIVE_QA_SCHEMA_VERSION = "sciscape_narrative_qa_v1"
 NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION = "sciscape_narrative_generation_metadata_v1"
+NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION = "sciscape_narrative_generation_prompt_batch_v1"
 NARRATIVE_PUBLICATION_SCHEMA_VERSION = "sciscape_narrative_publication_v1"
 MATRIX_MANIFEST_SCHEMA_VERSION = "sciscape_matrix_manifest_v1"
 MATRIX_VALUES_SCHEMA_VERSION = "sciscape_matrix_values_sparse_triplet_v1"
@@ -4333,6 +4335,198 @@ def write_narrative_evidence_artifacts(
         "validation": validation.to_dict(),
         "counts": validation.counts,
         "feature_state": validation.feature_state,
+    }
+
+
+def _narrative_prompt_text(
+    *,
+    instruction: str,
+    target_label: str,
+    claim: Mapping[str, Any],
+    section: Mapping[str, Any],
+    evidence_rows: list[Mapping[str, Any]],
+) -> str:
+    evidence_lines = []
+    for row in evidence_rows:
+        evidence_lines.append(
+            "- "
+            + f"[{_publication_text(row.get('evidence_ref_id'))}] "
+            + _publication_text(row.get("evidence_label"), fallback=row.get("evidence_ref_id"))
+            + f" | type={_publication_text(row.get('evidence_type'), fallback='unknown')}"
+            + f" | locator={_publication_text(row.get('locator'), fallback='aggregate')}"
+            + f" | aggregate_only={bool(row.get('aggregate_only', False))}"
+        )
+    evidence_text = "\n".join(evidence_lines) if evidence_lines else "- No evidence refs attached."
+    return "\n".join(
+        [
+            instruction.strip(),
+            "",
+            "Return JSON only with this shape:",
+            '{"claim_id": "<same claim_id>", "claim_text": "<rewritten claim>"}',
+            "",
+            "Rules:",
+            "- Preserve the claim_id exactly.",
+            "- Keep the rewritten claim limited to the supplied evidence.",
+            "- Do not add causal, institutional, policy, or field-evolution claims unless the evidence explicitly supports them.",
+            "- If the evidence is aggregate-only or weak, write a cautious claim.",
+            "- Do not mention missing evidence as if it were evidence.",
+            "",
+            f"Target: {target_label}",
+            f"Section: {_publication_text(section.get('section_title'), fallback=claim.get('section_id'))}",
+            f"Claim type: {_publication_text(claim.get('claim_type'))}",
+            f"Claim ID: {_publication_text(claim.get('claim_id'))}",
+            f"Current claim: {_publication_text(claim.get('claim_text'))}",
+            "",
+            "Evidence:",
+            evidence_text,
+            "",
+        ]
+    )
+
+
+def write_narrative_generation_prompt_batch(
+    path: str | Path,
+    *,
+    output_dir: str | Path | None = None,
+    prompt_batch_id: str = "narrative_claim_generation_default",
+    prompt_ref: str = "prompt:narrative_claim_rewrite:v1",
+    prompt_version: str = "v1",
+    instruction: str | None = None,
+    include_review_states: Iterable[str] | None = None,
+    max_claims: int = 1000,
+    max_evidence_refs: int = 8,
+) -> dict[str, Any]:
+    """Write auditable prompt jobs for model-assisted narrative claim rewrites."""
+
+    narrative_dir, manifest_path = _narrative_dir_and_manifest(path)
+    if not manifest_path.exists():
+        return {"available": False, "error": "missing narrative_manifest.json"}
+    validation = validate_narrative_artifact(manifest_path)
+    if validation.status == "blocked":
+        return {
+            "available": False,
+            "error": "narrative artifact validation is blocked",
+            "validation": validation.to_dict(),
+        }
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"available": False, "error": f"could not read narrative manifest: {exc}"}
+    if not isinstance(manifest, Mapping):
+        return {"available": False, "error": "narrative manifest must be a JSON object"}
+
+    result_root = _narrative_result_root(narrative_dir)
+    target_dir = Path(output_dir).expanduser().resolve() if output_dir is not None else narrative_dir / "generation_prompts"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    jobs_path = target_dir / "prompt_jobs.jsonl"
+    prompt_manifest_path = target_dir / "prompt_batch_manifest.json"
+    targets_path = _narrative_output_path(narrative_dir, manifest, "targets", "narrative_targets.parquet")
+    claims_path = _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet")
+    refs_path = _narrative_output_path(narrative_dir, manifest, "evidence_refs", "evidence_refs.parquet")
+    links_path = _narrative_output_path(narrative_dir, manifest, "claim_evidence_links", "claim_evidence_links.parquet")
+    sections_path = _narrative_output_path(narrative_dir, manifest, "sections", "narrative_sections.parquet")
+    required_paths = [targets_path, claims_path, refs_path, links_path, sections_path]
+    missing = [_rel(item, result_root) or str(item) for item in required_paths if not item.exists()]
+    if missing:
+        return {"available": False, "error": "missing narrative tables", "missing_paths": missing}
+
+    targets = _publication_records(pd.read_parquet(targets_path))
+    claims = _publication_records(pd.read_parquet(claims_path))
+    refs = _publication_records(pd.read_parquet(refs_path))
+    links = _publication_records(pd.read_parquet(links_path))
+    sections = _publication_records(pd.read_parquet(sections_path))
+    target_by_id = {str(row.get("target_id") or ""): row for row in targets}
+    section_by_id = {str(row.get("section_id") or ""): row for row in sections}
+    refs_by_id = {str(row.get("evidence_ref_id") or ""): row for row in refs}
+    links_by_claim: dict[str, list[dict[str, Any]]] = {}
+    for link in links:
+        links_by_claim.setdefault(str(link.get("claim_id") or ""), []).append(link)
+
+    states = set(include_review_states or ["not_required", "not_reviewed", "needs_revision"])
+    states = {str(state).strip() for state in states if str(state).strip()}
+    prompt_instruction = instruction or "Rewrite this SciScape cluster narrative claim for clarity while preserving its evidence boundaries."
+    selected_jobs: list[dict[str, Any]] = []
+    max_claims = max(1, int(max_claims))
+    max_evidence_refs = max(1, int(max_evidence_refs))
+    for claim in sorted(claims, key=lambda row: _publication_sort_value(row, "sort_order")):
+        claim_id = str(claim.get("claim_id") or "")
+        review_state = str(claim.get("review_state") or "not_reviewed")
+        if review_state not in states:
+            continue
+        if len(selected_jobs) >= max_claims:
+            break
+        target = target_by_id.get(str(claim.get("target_id") or ""), {})
+        section = section_by_id.get(str(claim.get("section_id") or ""), {})
+        evidence_rows = []
+        for link in sorted(links_by_claim.get(claim_id, []), key=lambda row: _publication_sort_value(row, "sort_order"))[:max_evidence_refs]:
+            ref_id = str(link.get("evidence_ref_id") or "")
+            ref = dict(refs_by_id.get(ref_id, {}))
+            ref["evidence_role"] = link.get("evidence_role")
+            evidence_rows.append(ref)
+        target_label = _publication_text(target.get("target_label"), fallback=target.get("target_key") or claim.get("target_id"))
+        prompt = _narrative_prompt_text(
+            instruction=prompt_instruction,
+            target_label=target_label,
+            claim=claim,
+            section=section,
+            evidence_rows=evidence_rows,
+        )
+        prompt_digest = "sha256:" + hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        selected_jobs.append(
+            {
+                "schema_version": NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
+                "prompt_batch_id": prompt_batch_id,
+                "job_id": _safe_id(f"{prompt_batch_id}_{claim_id}", fallback=f"prompt_job_{len(selected_jobs) + 1}"),
+                "prompt_ref": prompt_ref,
+                "prompt_version": prompt_version,
+                "prompt_digest": prompt_digest,
+                "claim_id": claim_id,
+                "target_id": str(claim.get("target_id") or ""),
+                "cluster_uid": str(target.get("target_key") or target.get("cluster_uid") or ""),
+                "claim_type": str(claim.get("claim_type") or ""),
+                "review_state": review_state,
+                "text_origin": str(claim.get("text_origin") or ""),
+                "support_state": str(claim.get("support_state") or ""),
+                "current_claim_text": _publication_text(claim.get("claim_text")),
+                "evidence_refs": evidence_rows,
+                "prompt": prompt,
+                "expected_output": {"claim_id": claim_id, "claim_text": "string"},
+            }
+        )
+
+    with jobs_path.open("w", encoding="utf-8") as handle:
+        for job in selected_jobs:
+            handle.write(json.dumps(job, sort_keys=True, default=str) + "\n")
+
+    created_at = _utc_now()
+    prompt_manifest = {
+        "schema_version": NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
+        "prompt_batch_id": prompt_batch_id,
+        "narrative_id": str(manifest.get("narrative_id") or ""),
+        "prompt_ref": prompt_ref,
+        "prompt_version": prompt_version,
+        "source_manifest": _rel(manifest_path, result_root),
+        "source_validation_status": validation.status,
+        "selection_policy": {
+            "include_review_states": sorted(states),
+            "max_claims": max_claims,
+            "max_evidence_refs": max_evidence_refs,
+            "excluded_review_states": sorted({"accepted", "rejected"} - states),
+        },
+        "outputs": {"jobs_jsonl": _rel(jobs_path, result_root)},
+        "counts": {"jobs": len(selected_jobs), "claims_available": len(claims)},
+        "expected_update_format": "JSON or JSONL rows with claim_id and claim_text for sciscape narrative apply-generated",
+        "created_at_utc": created_at,
+    }
+    prompt_manifest_path.write_text(json.dumps(prompt_manifest, indent=2, sort_keys=True), encoding="utf-8")
+    return {
+        "schema_version": NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
+        "available": True,
+        "prompt_batch_id": prompt_batch_id,
+        "jobs": len(selected_jobs),
+        "prompt_manifest_path": _rel(prompt_manifest_path, result_root),
+        "jobs_path": _rel(jobs_path, result_root),
+        "validation": validation.to_dict(),
     }
 
 
@@ -11801,6 +11995,29 @@ def _add_narrative_output_artifacts(
             schema_version=NARRATIVE_PUBLICATION_SCHEMA_VERSION if format_label == "json" else None,
             description=description,
         )
+    prompt_dir = narrative_dir / "generation_prompts"
+    prompt_manifest = prompt_dir / "prompt_batch_manifest.json"
+    prompt_jobs = prompt_dir / "prompt_jobs.jsonl"
+    if (root / prompt_manifest).exists():
+        key = "narrative_generation_prompt_manifest" if not suffix else f"narrative_{suffix}_generation_prompt_manifest"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_generation_prompt",
+            path=prompt_manifest.as_posix(),
+            required_for=["narrative"],
+            schema_version=NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
+            description="Narrative model-generation prompt batch manifest.",
+        )
+    if (root / prompt_jobs).exists():
+        key = "narrative_generation_prompt_jobs" if not suffix else f"narrative_{suffix}_generation_prompt_jobs"
+        records[_unique_artifact_key(records, key)] = _artifact_record(
+            root=root,
+            role="narrative_generation_prompt",
+            path=prompt_jobs.as_posix(),
+            required_for=["narrative"],
+            schema_version=NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION,
+            description="Narrative model-generation prompt jobs JSONL.",
+        )
 
 
 def _is_cluster_sharded_keyword_manifest(payload: Mapping[str, Any] | None) -> bool:
@@ -14054,6 +14271,7 @@ __all__ = [
     "NARRATIVE_EVIDENCE_REFS_SCHEMA_VERSION",
     "NARRATIVE_EVIDENCE_SOURCES_SCHEMA_VERSION",
     "NARRATIVE_GENERATION_METADATA_SCHEMA_VERSION",
+    "NARRATIVE_GENERATION_PROMPT_BATCH_SCHEMA_VERSION",
     "NARRATIVE_MANIFEST_SCHEMA_VERSION",
     "NARRATIVE_PUBLICATION_SCHEMA_VERSION",
     "NARRATIVE_QA_SCHEMA_VERSION",
@@ -14113,6 +14331,7 @@ __all__ = [
     "write_edge_evidence_samples",
     "write_cluster_review_packet_artifact",
     "write_narrative_evidence_artifacts",
+    "write_narrative_generation_prompt_batch",
     "write_narrative_publication_artifacts",
     "write_cooccurrence_artifacts",
     "write_keyword_rule_artifacts",
