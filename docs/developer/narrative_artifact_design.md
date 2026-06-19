@@ -67,6 +67,7 @@ Narrative artifacts should live under:
   publication_summary.json
   publication_summary.md
   publication_summary.html
+  publication_bundle.zip
 ```
 
 For a landscape-scoped result, the same directory may live under:
@@ -192,7 +193,8 @@ Example:
     "generation_metadata": "generation_metadata.json",
     "publication_json": "publication_summary.json",
     "publication_markdown": "publication_summary.md",
-    "publication_html": "publication_summary.html"
+    "publication_html": "publication_summary.html",
+    "publication_bundle": "publication_bundle.zip"
   },
   "created_at_utc": "2026-06-03T00:00:00+00:00",
   "warnings": []
@@ -581,8 +583,8 @@ The writer should:
 8. write `review_decisions.parquet` only when review state exists;
 9. generate `narrative_manifest.json`;
 10. generate `narrative_qa.json`;
-11. write publication summary JSON/Markdown only from accepted or
-    not-required reviewed claims;
+11. write publication summary JSON/Markdown/HTML and the publication bundle
+    only from accepted or not-required reviewed claims;
 12. return paths, counts, warnings, and QA status.
 
 The first implementation should not call an LLM. Later generators may update

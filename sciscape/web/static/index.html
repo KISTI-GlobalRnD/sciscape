@@ -5460,7 +5460,7 @@ function renderAtlasReviewPacket(node, model) {
 function atlasNarrativePublicationArtifacts() {
   const manifest = currentResult && currentResult.result_manifest || {};
   const artifacts = manifest.artifacts && typeof manifest.artifacts === 'object' ? manifest.artifacts : {};
-  const paths = {json: '', markdown: '', html: ''};
+  const paths = {json: '', markdown: '', html: '', bundle: ''};
   for (const entry of Object.entries(artifacts)) {
     const key = String(entry[0] || '').toLowerCase();
     const record = entry[1] || {};
@@ -5468,7 +5468,8 @@ function atlasNarrativePublicationArtifacts() {
     const path = String(record.path || '');
     const role = String(record.role || '').toLowerCase();
     if (role !== 'narrative_publication' && !key.includes('publication')) continue;
-    if (key.includes('html') || path.endsWith('.html')) paths.html = path;
+    if (key.includes('bundle') || path.endsWith('.zip')) paths.bundle = path;
+    else if (key.includes('html') || path.endsWith('.html')) paths.html = path;
     else if (key.includes('markdown') || path.endsWith('.md')) paths.markdown = path;
     else if (key.includes('json') || path.endsWith('.json')) paths.json = path;
   }
@@ -5493,6 +5494,10 @@ function renderAtlasNarrativePublicationLinks() {
     links.push('<button type="button" class="atlas-narrative-publication-link" onclick="loadAtlasNarrativePublicationPreview()">Preview</button>');
     links.push('<a class="atlas-narrative-publication-link" href="' +
       artifactUrl(currentJobId, 'download', paths.json) + '">JSON</a>');
+  }
+  if (paths.bundle) {
+    links.push('<a class="atlas-narrative-publication-link" href="' +
+      artifactUrl(currentJobId, 'download', paths.bundle) + '">Bundle</a>');
   }
   return links.length ? '<div class="atlas-narrative-publication">' + links.join('') + '</div>' : '';
 }
@@ -6630,6 +6635,7 @@ function narrativeArtifactIcon(key, record) {
 function narrativeArtifactLabel(key, record) {
   const artifactKey = String(key || '').toLowerCase();
   const path = String(record && record.path || '').toLowerCase();
+  if (artifactKey.includes('bundle') || path.endsWith('publication_bundle.zip')) return 'Reviewed narrative publication bundle';
   if (artifactKey.includes('html') || path.endsWith('publication_summary.html')) return 'Reviewed narrative publication HTML report';
   if (artifactKey.includes('markdown') || path.endsWith('publication_summary.md')) return 'Reviewed narrative publication Markdown';
   if (artifactKey.includes('json') || path.endsWith('publication_summary.json')) return 'Reviewed narrative publication JSON';

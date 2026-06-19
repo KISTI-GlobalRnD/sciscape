@@ -737,6 +737,8 @@ def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
     assert publication["available"] is True
     assert publication["schema_version"] == NARRATIVE_PUBLICATION_SCHEMA_VERSION
     assert publication["publication_state"] == "partial_review"
+    assert publication["paths"]["bundle"] == "narrative/publication_bundle.zip"
+    assert "narrative/publication_summary.html" in publication["bundle_members"]
     payload = json.loads((root / "narrative" / "publication_summary.json").read_text(encoding="utf-8"))
     markdown = (root / "narrative" / "publication_summary.md").read_text(encoding="utf-8")
     html_report = (root / "narrative" / "publication_summary.html").read_text(encoding="utf-8")
@@ -750,11 +752,26 @@ def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
     assert accepted_claim_id in html_report
     assert "Omitted Claims" in html_report
     assert rejected_claim_id in html_report
+    with zipfile.ZipFile(root / "narrative" / "publication_bundle.zip") as archive:
+        names = set(archive.namelist())
+    assert {
+        "narrative/narrative_manifest.json",
+        "narrative/narrative_qa.json",
+        "narrative/generation_metadata.json",
+        "narrative/publication_summary.json",
+        "narrative/publication_summary.md",
+        "narrative/publication_summary.html",
+        "narrative/review_decisions.parquet",
+        "narrative/claims.parquet",
+        "narrative/evidence_refs.parquet",
+    }.issubset(names)
     manifest_after = build_result_manifest(root).to_dict()
     assert manifest_after["artifacts"]["narrative_publication_json"]["path"] == "narrative/publication_summary.json"
     assert manifest_after["artifacts"]["narrative_publication_markdown"]["path"] == "narrative/publication_summary.md"
     assert manifest_after["artifacts"]["narrative_publication_html"]["path"] == "narrative/publication_summary.html"
     assert manifest_after["artifacts"]["narrative_publication_html"]["format"] == "html"
+    assert manifest_after["artifacts"]["narrative_publication_bundle"]["path"] == "narrative/publication_bundle.zip"
+    assert manifest_after["artifacts"]["narrative_publication_bundle"]["format"] == "zip"
 
 
 def test_write_keyword_rule_artifacts_promotes_cleaning_manifest_and_quality_refs(tmp_path):

@@ -269,10 +269,11 @@ Current status:
 - The Narrative review block writes claim decisions, displays pending/saved/failed
   feedback, and reads back the latest persisted decision for the selected claim.
 - When reviewed publication artifacts exist, the Narrative review block links to
-  the HTML report, Markdown view, and JSON/Markdown downloads from the same
-  result manifest artifact records used by the Download tab. The inspector can
-  also fetch `/api/jobs/{job_id}/narrative/publication` to preview the reviewed
-  JSON summary without leaving the selected cluster context.
+  the HTML report, Markdown view, JSON/Markdown downloads, and reviewed
+  publication bundle from the same result manifest artifact records used by the
+  Download tab. The inspector can also fetch
+  `/api/jobs/{job_id}/narrative/publication` to preview the reviewed JSON summary
+  without leaving the selected cluster context.
 
 Remaining implementation order:
 

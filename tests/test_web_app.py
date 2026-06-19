@@ -363,6 +363,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "loadAtlasNarrativePublicationPreview" in response.text
     assert "View summary" in response.text
     assert "Preview" in response.text
+    assert "Bundle" in response.text
     assert "Reviewed narrative publication HTML report" in response.text
     assert "Narrative generation metadata" in response.text
     assert "renderAtlasReviewQueue" in response.text
@@ -1991,6 +1992,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert review_payload["publication"]["paths"]["json"] == "narrative/publication_summary.json"
     assert review_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
     assert review_payload["publication"]["paths"]["html"] == "narrative/publication_summary.html"
+    assert review_payload["publication"]["paths"]["bundle"] == "narrative/publication_bundle.zip"
     assert (
         review_payload["result_manifest"]["artifacts"]["narrative_publication_json"]["path"]
         == "narrative/publication_summary.json"
@@ -2002,6 +2004,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert (
         review_payload["result_manifest"]["artifacts"]["narrative_publication_html"]["path"]
         == "narrative/publication_summary.html"
+    )
+    assert (
+        review_payload["result_manifest"]["artifacts"]["narrative_publication_bundle"]["path"]
+        == "narrative/publication_bundle.zip"
     )
     assert review_payload["cluster"]["claims"][0]["review_state"] == "accepted"
     review_decisions = pd.read_parquet(output_dir / "narrative" / "review_decisions.parquet")
@@ -2046,6 +2052,14 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert publication_html_response.status_code == 200
     assert "<!doctype html>" in publication_html_response.text
     assert claim_id in publication_html_response.text
+    publication_bundle_response = client.get(f"/api/jobs/{job_id}/download/narrative/publication_bundle.zip")
+    assert publication_bundle_response.status_code == 200
+    bundle_path = output_dir / "narrative" / "publication_bundle.zip"
+    assert bundle_path.exists()
+    with zipfile.ZipFile(bundle_path) as archive:
+        bundle_names = set(archive.namelist())
+    assert "narrative/publication_summary.html" in bundle_names
+    assert "narrative/generation_metadata.json" in bundle_names
 
     cluster_narrative_after_review_response = client.get(
         f"/api/jobs/{job_id}/clusters/cluster:0/narrative"

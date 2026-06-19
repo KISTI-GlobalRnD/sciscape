@@ -1075,6 +1075,7 @@ Artifacts:
 - `narrative/publication_summary.json`
 - `narrative/publication_summary.md`
 - `narrative/publication_summary.html`
+- `narrative/publication_bundle.zip`
 
 Feature flag rule:
 
@@ -1093,6 +1094,8 @@ Success:
 - Atlas narrative review surfaces link to reviewed publication Markdown, HTML,
   and JSON artifacts when they have been written, and can preview the reviewed
   publication JSON in the inspector
+- reviewed narrative publication bundles include publication summaries,
+  generation metadata, QA, review decisions, and claim/evidence tables
 - generated narratives include prompt/model metadata when LLMs are used
 - deterministic narrative scaffolds include generation metadata that records
   source artifacts, transform steps, and scaffold parameters

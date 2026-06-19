@@ -7,6 +7,7 @@ import json
 import math
 import re
 import shlex
+import zipfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -4587,12 +4588,39 @@ h3 {{ font-size: .95rem; margin: 1rem 0 .5rem; color: #304256; }}
 """
 
 
+def _write_narrative_publication_bundle(
+    bundle_path: Path,
+    *,
+    result_root: Path,
+    files: Iterable[Path],
+) -> list[str]:
+    bundle_path.parent.mkdir(parents=True, exist_ok=True)
+    bundle_resolved = bundle_path.resolve()
+    included: list[str] = []
+    seen: set[str] = set()
+    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for raw_path in files:
+            path = Path(raw_path)
+            if not path.exists() or not path.is_file() or path.resolve() == bundle_resolved:
+                continue
+            archive_name = _rel(path, result_root)
+            if not archive_name or Path(archive_name).is_absolute():
+                archive_name = path.name
+            if archive_name in seen:
+                continue
+            seen.add(archive_name)
+            archive.write(path, archive_name)
+            included.append(archive_name)
+    return included
+
+
 def write_narrative_publication_artifacts(
     path: str | Path,
     *,
     json_name: str = "publication_summary.json",
     markdown_name: str = "publication_summary.md",
     html_name: str = "publication_summary.html",
+    bundle_name: str = "publication_bundle.zip",
 ) -> dict[str, Any] | None:
     """Write deterministic reviewed narrative publication summaries.
 
@@ -4753,6 +4781,7 @@ def write_narrative_publication_artifacts(
     outputs["publication_json"] = str(outputs.get("publication_json") or json_name)
     outputs["publication_markdown"] = str(outputs.get("publication_markdown") or markdown_name)
     outputs["publication_html"] = str(outputs.get("publication_html") or html_name)
+    outputs["publication_bundle"] = str(outputs.get("publication_bundle") or bundle_name)
     manifest["outputs"] = outputs
     manifest["publication_state_advertised"] = True
     manifest["publication_policy"] = {
@@ -4777,11 +4806,28 @@ def write_narrative_publication_artifacts(
     json_path = _narrative_output_path(narrative_dir, manifest, "publication_json", json_name)
     markdown_path = _narrative_output_path(narrative_dir, manifest, "publication_markdown", markdown_name)
     html_path = _narrative_output_path(narrative_dir, manifest, "publication_html", html_name)
+    bundle_path = _narrative_output_path(narrative_dir, manifest, "publication_bundle", bundle_name)
     json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     markdown = _publication_markdown(payload)
     markdown_path.write_text(markdown, encoding="utf-8")
     html_report = _publication_html(payload)
     html_path.write_text(html_report, encoding="utf-8")
+    bundle_files = [
+        manifest_path,
+        json_path,
+        markdown_path,
+        html_path,
+        _narrative_output_path(narrative_dir, manifest, "generation_metadata", "generation_metadata.json"),
+        _narrative_output_path(narrative_dir, manifest, "qa", "narrative_qa.json"),
+        _narrative_output_path(narrative_dir, manifest, "targets", "narrative_targets.parquet"),
+        _narrative_output_path(narrative_dir, manifest, "claims", "claims.parquet"),
+        _narrative_output_path(narrative_dir, manifest, "evidence_sources", "evidence_sources.parquet"),
+        _narrative_output_path(narrative_dir, manifest, "evidence_refs", "evidence_refs.parquet"),
+        _narrative_output_path(narrative_dir, manifest, "claim_evidence_links", "claim_evidence_links.parquet"),
+        _narrative_output_path(narrative_dir, manifest, "sections", "narrative_sections.parquet"),
+        _narrative_output_path(narrative_dir, manifest, "reviews", "review_decisions.parquet"),
+    ]
+    bundle_members = _write_narrative_publication_bundle(bundle_path, result_root=result_root, files=bundle_files)
     return {
         "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
         "available": True,
@@ -4790,7 +4836,9 @@ def write_narrative_publication_artifacts(
             "json": _rel(json_path, result_root),
             "markdown": _rel(markdown_path, result_root),
             "html": _rel(html_path, result_root),
+            "bundle": _rel(bundle_path, result_root),
         },
+        "bundle_members": bundle_members,
         "counts": counts,
     }
 
@@ -11428,6 +11476,13 @@ def _add_narrative_output_artifacts(
             outputs.get("publication_html"),
             "html",
             "Reviewed narrative publication HTML report.",
+        ),
+        (
+            "publication_bundle",
+            "publication_bundle",
+            outputs.get("publication_bundle"),
+            "zip",
+            "Reviewed narrative publication bundle.",
         ),
     ]
     narrative_dir = Path(manifest_rel_path).parent
