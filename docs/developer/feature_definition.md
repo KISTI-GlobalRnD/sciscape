@@ -1134,6 +1134,8 @@ Success:
   remain outside the compact visible claim set
 - Atlas Narrative review panels can switch claim scope between compact,
   review-required, and all loaded claims for the selected cluster
+- Atlas Narrative review claim scope is preserved in URL state so focused
+  publication-review views can be shared or restored
 - reviewed publication summaries expose machine-readable readiness that
   distinguishes partial reviewed reports from full publication readiness
 - job and narrative API summaries expose compact reviewed publication state,

@@ -5842,10 +5842,12 @@ function atlasNarrativeOrderedClaims(narrative) {
     .map(row => row.claim);
 }
 
+function atlasNarrativeNormalizeClaimScope(scope) {
+  return ['compact', 'review', 'all'].includes(scope) ? scope : 'compact';
+}
+
 function atlasNarrativeClaimScope() {
-  return ['compact', 'review', 'all'].includes(currentAtlasNarrativeClaimScope)
-    ? currentAtlasNarrativeClaimScope
-    : 'compact';
+  return atlasNarrativeNormalizeClaimScope(currentAtlasNarrativeClaimScope);
 }
 
 function atlasNarrativeClaimIsReviewRequired(claim) {
@@ -5862,7 +5864,8 @@ function atlasNarrativeVisibleClaims(orderedClaims) {
 }
 
 function selectAtlasNarrativeClaimScope(scope, clusterUid) {
-  currentAtlasNarrativeClaimScope = ['compact', 'review', 'all'].includes(scope) ? scope : 'compact';
+  currentAtlasNarrativeClaimScope = atlasNarrativeNormalizeClaimScope(scope);
+  syncAtlasUrlState();
   refreshAtlasNarrativeInspector(clusterUid || currentAtlasNodeUid || '');
 }
 
@@ -6717,6 +6720,10 @@ function applyAtlasUrlState(atlas) {
   if (['all', 'ready', 'review', 'blocked'].includes(reviewParam)) {
     currentAtlasReviewFilter = reviewParam;
   }
+  const claimScopeParam = params.get('atlas_claim_scope');
+  if (claimScopeParam !== null) {
+    currentAtlasNarrativeClaimScope = atlasNarrativeNormalizeClaimScope(claimScopeParam);
+  }
   const layerParam = params.get('atlas_layers');
   if (layerParam !== null) {
     const layers = new Set(layerParam.split(',').map(item => item.trim()).filter(Boolean));
@@ -6769,6 +6776,9 @@ function syncAtlasUrlState() {
     else url.searchParams.delete('atlas_focus');
     if (currentAtlasReviewFilter && currentAtlasReviewFilter !== 'all') url.searchParams.set('atlas_review', currentAtlasReviewFilter);
     else url.searchParams.delete('atlas_review');
+    const claimScope = atlasNarrativeClaimScope();
+    if (claimScope !== 'compact') url.searchParams.set('atlas_claim_scope', claimScope);
+    else url.searchParams.delete('atlas_claim_scope');
     const deckSettings = atlasDeckSettings();
     const activeLayers = ['edges', 'hierarchy', 'labels'].filter(key => deckSettings[key]);
     if (activeLayers.length < 3) url.searchParams.set('atlas_layers', activeLayers.length ? activeLayers.join(',') : 'none');

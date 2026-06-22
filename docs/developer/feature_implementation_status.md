@@ -602,6 +602,8 @@ Status: `[~]` Partial. Rough completeness: 82%.
   blockers remain outside the compact visible claim set.
 - `[x]` Atlas Narrative review panels can switch claim scope between compact,
   review-required, and all loaded claims for the selected cluster.
+- `[x]` Atlas Narrative review claim scope is preserved in URL state so focused
+  publication-review views can be shared or restored.
 - `[x]` Reviewed publication JSON, Markdown, HTML, CLI output, and Atlas preview
   expose publication readiness, separating partial reviewed report rendering
   from full publication readiness.
