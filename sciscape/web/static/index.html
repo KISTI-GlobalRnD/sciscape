@@ -5700,11 +5700,47 @@ function atlasNarrativePublicationReadinessLabel(readiness) {
   return state ? state + ' publication readiness' : 'readiness unknown';
 }
 
+function atlasNarrativePublicationAction() {
+  const publication = atlasNarrativePublicationSummaryPayload();
+  if (!publication || publication.available === false) {
+    return {
+      label: 'Publish report',
+      title: 'Write reviewed publication artifacts from current review decisions',
+    };
+  }
+  const readiness = publication.publication_readiness || {};
+  if (readiness.ready_for_full_publication) {
+    return {
+      label: 'Refresh full report',
+      title: 'All claims are reviewed; refresh full reviewed publication artifacts',
+    };
+  }
+  const state = String(readiness.state || '').replace('_', ' ');
+  if (state === 'partial') {
+    return {
+      label: 'Refresh partial report',
+      title: 'Some claims still require review; refresh the current reviewed report artifacts',
+    };
+  }
+  if (state === 'blocked') {
+    return {
+      label: 'Retry report publish',
+      title: 'Publication is blocked; retry after resolving review blockers',
+    };
+  }
+  return {
+    label: 'Refresh report',
+    title: 'Refresh reviewed publication artifacts',
+  };
+}
+
 function renderAtlasNarrativePublicationLinks() {
   if (!currentJobId) return '';
   const paths = atlasNarrativePublicationArtifacts();
+  const action = atlasNarrativePublicationAction();
   const links = [
-    '<button type="button" class="atlas-narrative-publication-link" onclick="publishAtlasNarrativePublication()">Publish report</button>'
+    '<button type="button" class="atlas-narrative-publication-link" title="' +
+      escAttr(action.title) + '" onclick="publishAtlasNarrativePublication()">' + esc(action.label) + '</button>'
   ];
   if (paths.html) {
     links.push('<a class="atlas-narrative-publication-link" target="_blank" rel="noopener" href="' +

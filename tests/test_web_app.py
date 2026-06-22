@@ -375,6 +375,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlasNarrativePublicationSummaryPayload" in response.text
     assert "renderAtlasNarrativePublicationSummary" in response.text
     assert "Reviewed publication readiness" in response.text
+    assert "atlasNarrativePublicationAction" in response.text
+    assert "Refresh partial report" in response.text
+    assert "Refresh full report" in response.text
     assert "renderAtlasNarrativePublicationLinks" in response.text
     assert "renderAtlasNarrativePublicationPreview" in response.text
     assert "loadAtlasNarrativePublicationPreview" in response.text

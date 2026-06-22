@@ -603,6 +603,9 @@ Status: `[~]` Partial. Rough completeness: 82%.
   state, readiness, counts, and artifact path when publication artifacts exist.
 - `[x]` Atlas Narrative review panels render compact reviewed publication
   readiness from job summary state before users open the full preview.
+- `[x]` Atlas Narrative publish actions use reviewed publication readiness to
+  distinguish first publish, partial report refresh, full report refresh, and
+  blocked retry states.
 - `[x]` Atlas review, generated-candidate apply, result load, and publication
   refresh actions invalidate or refresh stale reviewed publication previews.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
