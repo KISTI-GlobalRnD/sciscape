@@ -5500,6 +5500,7 @@ function renderAtlasNarrativeGenerationSummary() {
   const mode = metadata.generation_mode || payload.state || 'unknown';
   const promptJobs = Number(prompt.job_rows || prompt.counts && prompt.counts.jobs || 0);
   const generated = Number(run.generated_rows || run.counts && run.counts.jobs_succeeded || 0);
+  const canApply = payload.state === 'generated_candidates' && Number.isFinite(generated) && generated > 0;
   const chips = [
     'state ' + String(payload.state || 'unknown').replace(/_/g, ' '),
     'mode ' + String(mode).replace(/_/g, ' '),
@@ -5510,6 +5511,9 @@ function renderAtlasNarrativeGenerationSummary() {
   const links = [
     '<button type="button" class="atlas-narrative-publication-link" onclick="loadAtlasNarrativeGenerationSummary()">Refresh</button>'
   ];
+  if (canApply) {
+    links.push('<button type="button" class="atlas-narrative-publication-link" onclick="applyAtlasNarrativeGeneratedCandidates()">Apply candidates</button>');
+  }
   if (metadata.path) {
     links.push('<a class="atlas-narrative-publication-link" href="' +
       artifactUrl(currentJobId, 'download', metadata.path) + '">Metadata</a>');
@@ -5568,6 +5572,57 @@ async function loadAtlasNarrativeGenerationSummary() {
       clusterUid,
       state: 'failed',
       message: 'generation provenance failed: ' + (err && err.message ? err.message : 'unknown error'),
+    };
+    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+    console.warn(err);
+  }
+}
+
+async function applyAtlasNarrativeGeneratedCandidates() {
+  if (!currentJobId) return;
+  if (!window.confirm('Apply generated narrative candidates and mark them not reviewed?')) return;
+  const clusterUid = String(currentAtlasNodeUid || '');
+  currentAtlasNarrativeReviewStatus = {
+    clusterUid,
+    state: 'pending',
+    message: 'applying generated candidates',
+  };
+  if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+  try {
+    const response = await fetch('/api/jobs/' + currentJobId + '/narrative/apply-generated', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({reset_review_state: 'not_reviewed'})
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error || payload.available === false) {
+      throw new Error(payload.error || 'generated candidate apply failed');
+    }
+    currentAtlasNarrativeGenerationPayload = payload.generation || null;
+    if (currentResult) {
+      if (payload.result_manifest) currentResult.result_manifest = payload.result_manifest;
+      currentResult.narrative_summary = payload.narrative_summary || currentResult.narrative_summary || {};
+      updateDownloads(currentResult);
+    }
+    const clusters = payload.narrative && Array.isArray(payload.narrative.clusters) ? payload.narrative.clusters : [];
+    if (currentAtlasPayload && Array.isArray(currentAtlasPayload.nodes)) {
+      clusters.forEach(cluster => {
+        const node = currentAtlasPayload.nodes.find(row => String(row.cluster_uid || '') === String(cluster.cluster_uid || ''));
+        if (node) node.narrative = cluster;
+      });
+    }
+    currentAtlasPublicationPreview = null;
+    currentAtlasNarrativeReviewStatus = {
+      clusterUid,
+      state: 'saved',
+      message: 'generated candidates applied for review',
+    };
+    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+  } catch (err) {
+    currentAtlasNarrativeReviewStatus = {
+      clusterUid,
+      state: 'failed',
+      message: 'candidate apply failed: ' + (err && err.message ? err.message : 'unknown error'),
     };
     if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
     console.warn(err);

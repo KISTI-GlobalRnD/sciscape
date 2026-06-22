@@ -27,6 +27,7 @@ from starlette.responses import StreamingResponse
 
 from sciscape.artifacts import (
     NARRATIVE_REVIEW_DECISIONS_SCHEMA_VERSION,
+    apply_narrative_generation_updates,
     build_atlas_payload_from_report_data,
     build_atlas_render_payload,
     infer_result_artifacts,
@@ -110,6 +111,10 @@ class NarrativeReviewRequest(BaseModel):
     decision_type: str
     reviewer: str | None = "web"
     reason: str | None = None
+
+
+class NarrativeApplyGeneratedRequest(BaseModel):
+    reset_review_state: str = "not_reviewed"
 
 
 _RESUME_PARALLEL_BACKENDS = {"auto", "loky", "threading", "sequential"}
@@ -664,6 +669,46 @@ async def get_job_narrative_generation(job_id: str):
         return {"available": False, "error": "job not done"}
     result = job.get("result") if isinstance(job.get("result"), dict) else {}
     return _load_narrative_generation_payload_for_result(result)
+
+
+@app.post("/api/jobs/{job_id}/narrative/apply-generated")
+async def apply_job_narrative_generated(
+    job_id: str,
+    req: NarrativeApplyGeneratedRequest | None = None,
+):
+    """Apply generated narrative candidates through the safe review-gated writer."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return {"available": False, "error": "job not done"}
+    result = job.get("result") if isinstance(job.get("result"), dict) else {}
+    request = req or NarrativeApplyGeneratedRequest()
+    application = _apply_narrative_generated_candidates(
+        result,
+        reset_review_state=str(request.reset_review_state or "not_reviewed"),
+    )
+    if application.get("error"):
+        return application
+    root = _result_root_for_result(result)
+    if root is not None:
+        try:
+            _refresh_job_result_manifest(job_id, result, root, mode="local_result")
+        except Exception:
+            pass
+    _attach_report_atlas(result)
+    _attach_narrative_summary(result)
+    job["result"] = result
+    _jobs.persist(job_id)
+    narrative = _load_narrative_payload_for_result(result, claim_limit=40)
+    return _json_safe(
+        {
+            "available": True,
+            "application": application,
+            "generation": narrative.get("generation"),
+            "narrative": narrative,
+            "narrative_summary": result.get("narrative_summary"),
+            "result_manifest": result.get("result_manifest"),
+        }
+    )
 
 
 @app.get("/api/jobs/{job_id}/narrative/publication")
@@ -1330,6 +1375,26 @@ def _jsonl_status_counts(path: Path | None) -> dict[str, Any]:
     return {"rows": rows, "status_counts": status_counts}
 
 
+def _read_jsonl_objects(path: Path | None) -> list[dict[str, Any]]:
+    if path is None or not path.exists() or not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return []
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except Exception:
+            continue
+        if isinstance(payload, dict):
+            rows.append(payload)
+    return rows
+
+
 def _narrative_generation_paths_for_result(result: dict[str, Any]) -> dict[str, Path | None]:
     root = _result_root_for_result(result)
     paths: dict[str, Path | None] = {
@@ -1453,6 +1518,84 @@ def _load_narrative_generation_payload_for_result(result: dict[str, Any]) -> dic
             },
         }
     )
+
+
+def _apply_narrative_generated_candidates(
+    result: dict[str, Any],
+    *,
+    reset_review_state: str = "not_reviewed",
+) -> dict[str, Any]:
+    root = _result_root_for_result(result)
+    if root is None:
+        return {"available": False, "error": "job result has no result root"}
+    manifest_path = _narrative_manifest_path_for_result(result)
+    if manifest_path is None:
+        return {"available": False, "error": "no narrative claim graph artifact"}
+    paths = _narrative_generation_paths_for_result(result)
+    generated_claims_path = paths.get("generated_claims")
+    if generated_claims_path is None:
+        return {"available": False, "error": "no generated narrative claim candidates"}
+    rows = _read_jsonl_objects(generated_claims_path)
+    claim_updates = [
+        row
+        for row in rows
+        if str(row.get("status") or "succeeded") == "succeeded"
+        and str(row.get("claim_id") or "").strip()
+        and str(row.get("claim_text") or "").strip()
+    ]
+    if not claim_updates:
+        return {"available": False, "error": "no successful generated narrative claim candidates"}
+    run_manifest_path = paths.get("run_manifest")
+    run_manifest = _read_json_sidecar(run_manifest_path)
+    prompt_manifest = _read_json_sidecar(paths.get("prompt_manifest"))
+    first_update = claim_updates[0]
+    model_generation = {
+        "provider": run_manifest.get("provider") or first_update.get("provider"),
+        "model": run_manifest.get("model") or first_update.get("model"),
+        "model_run_id": run_manifest.get("model_run_id") or first_update.get("model_run_id"),
+        "prompt_batch_id": run_manifest.get("prompt_batch_id") or first_update.get("prompt_batch_id"),
+        "generation_run_manifest": _result_relative_path(root, run_manifest_path)
+        if run_manifest_path is not None
+        else None,
+        "generated_claims": _result_relative_path(root, generated_claims_path),
+    }
+    prompt_ref = (
+        first_update.get("prompt_ref")
+        or prompt_manifest.get("prompt_ref")
+        or model_generation.get("prompt_ref")
+    )
+    prompt_digest = (
+        run_manifest.get("output_digest")
+        or first_update.get("prompt_digest")
+        or prompt_manifest.get("prompt_digest")
+    )
+    written = apply_narrative_generation_updates(
+        manifest_path,
+        claim_updates=claim_updates,
+        model_generation=model_generation,
+        prompt_ref=str(prompt_ref) if prompt_ref else None,
+        prompt_digest=str(prompt_digest) if prompt_digest else None,
+        parameters={
+            "source": "web_apply_generated",
+            "candidate_rows": len(claim_updates),
+        },
+        reset_review_state=reset_review_state,
+    )
+    if not written.get("available"):
+        return _json_safe(written)
+    if run_manifest_path is not None and run_manifest:
+        applied_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        counts = run_manifest.get("counts") if isinstance(run_manifest.get("counts"), dict) else {}
+        counts["web_applied_claims"] = int(written.get("applied_count") or 0)
+        run_manifest["counts"] = counts
+        run_manifest["applied"] = True
+        run_manifest["applied_at_utc"] = applied_at
+        run_manifest["apply_result"] = written
+        run_manifest_path.write_text(
+            json.dumps(_json_safe(run_manifest), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    return _json_safe(written)
 
 
 def _narrative_output_path(narrative_dir: Path, manifest: dict[str, Any], key: str, default_name: str) -> Path:

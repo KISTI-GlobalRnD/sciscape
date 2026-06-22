@@ -589,6 +589,10 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` The web API and Atlas Narrative review panel expose generation
   provenance, prompt-batch readiness, generated-candidate counts, and applied
   state from manifest-backed artifacts without running a model from the app.
+- `[x]` Existing generated-candidate JSONL rows can be applied from the web
+  API/Atlas panel through the same evidence-preserving writer as
+  `sciscape narrative apply-generated`; applied claims reset to a review-required
+  state and are not publishable until reviewed.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
   generation/report workflow is still not polished as a complete in-app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,

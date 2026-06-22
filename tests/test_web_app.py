@@ -360,6 +360,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "/narrative/publish" in response.text
     assert "renderAtlasNarrativeGenerationSummary" in response.text
     assert "/narrative/generation" in response.text
+    assert "applyAtlasNarrativeGeneratedCandidates" in response.text
+    assert "/narrative/apply-generated" in response.text
+    assert "Apply candidates" in response.text
     assert "Narrative generation provenance" in response.text
     assert "narrative_generation_prompt" in response.text
     assert "manifestNarrativeArtifactCards" in response.text
@@ -2008,12 +2011,53 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert generation_payload["run"]["provider"] == "echo"
     assert generation_payload["run"]["generated_claims_path"] == "narrative/generation_outputs/generated_claims.jsonl"
 
+    apply_generated_response = client.post(
+        f"/api/jobs/{job_id}/narrative/apply-generated",
+        json={"reset_review_state": "not_reviewed"},
+    )
+    assert apply_generated_response.status_code == 200
+    apply_generated_payload = apply_generated_response.json()
+    assert apply_generated_payload["available"] is True
+    assert apply_generated_payload["application"]["available"] is True
+    assert apply_generated_payload["application"]["applied_count"] == 1
+    assert apply_generated_payload["generation"]["state"] == "applied_model_updates"
+    assert apply_generated_payload["generation"]["review_gate"] == "model_claims_require_review"
+    assert apply_generated_payload["generation"]["metadata"]["llm_generation_used"] is True
+    assert apply_generated_payload["generation"]["metadata"]["updated_claim_count"] == 1
+    assert apply_generated_payload["generation"]["run"]["applied"] is True
+    assert (
+        apply_generated_payload["result_manifest"]["artifacts"]["narrative_generation_metadata"]["path"]
+        == "narrative/generation_metadata.json"
+    )
+    claims_after_generated_apply = pd.read_parquet(output_dir / "narrative" / "claims.parquet")
+    model_generated_claims = claims_after_generated_apply[
+        claims_after_generated_apply["text_origin"].map(str) == "model_generated"
+    ]
+    assert len(model_generated_claims) == 1
+    assert model_generated_claims["review_state"].tolist() == ["not_reviewed"]
+    run_manifest_after_apply = json.loads(
+        (output_dir / "narrative" / "generation_outputs" / "generation_run_manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert run_manifest_after_apply["applied"] is True
+    assert run_manifest_after_apply["apply_result"]["applied_count"] == 1
+
+    generation_after_apply_response = client.get(f"/api/jobs/{job_id}/narrative/generation")
+    assert generation_after_apply_response.status_code == 200
+    generation_after_apply = generation_after_apply_response.json()
+    assert generation_after_apply["state"] == "applied_model_updates"
+    assert generation_after_apply["run"]["applied"] is True
+    assert generation_after_apply["metadata"]["llm_generation_used"] is True
+
     cluster_narrative_response = client.get(f"/api/jobs/{job_id}/clusters/cluster:0/narrative")
     assert cluster_narrative_response.status_code == 200
     cluster_narrative = cluster_narrative_response.json()
     assert cluster_narrative["target_found"] is True
     assert cluster_narrative["cluster"]["cluster_uid"] == "cluster:0"
     assert cluster_narrative["cluster"]["claim_count"] >= 3
+    assert cluster_narrative["cluster"]["claims"][0]["text_origin"] == "model_generated"
+    assert cluster_narrative["cluster"]["claims"][0]["review_state"] == "not_reviewed"
     claim_id = cluster_narrative["cluster"]["claims"][0]["claim_id"]
 
     invalid_review_response = client.post(

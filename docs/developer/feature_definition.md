@@ -1122,6 +1122,10 @@ Success:
 - model-assisted narrative claim updates can be applied from JSON or JSONL
   batch outputs through the CLI, but prompt execution remains a separate
   auditable generation step
+- model-assisted narrative claim candidates can be applied from existing
+  manifest-backed generated JSONL outputs through the web API and Atlas
+  Narrative review panel, but applied claims remain review-required until a
+  reviewer accepts them
 - deterministic narrative scaffolds include generation metadata that records
   source artifacts, transform steps, and scaffold parameters
 - narrative edits are recorded as review decisions and the latest decision is

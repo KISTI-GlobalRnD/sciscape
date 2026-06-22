@@ -248,6 +248,12 @@ JSON array of claim updates, or JSONL rows. This path imports already generated
 claim text and routes it through the same evidence-preserving writer; it does
 not execute prompts or call model providers.
 
+The web apply path is `POST /api/jobs/{job_id}/narrative/apply-generated`.
+It only consumes existing manifest-backed `generated_claims.jsonl` rows and
+uses the same evidence-preserving writer as the CLI. Applied claims are reset to
+`not_reviewed` or `needs_revision`, so publication renderers continue to omit
+them until review accepts or marks them not required.
+
 The prompt rendering path is `sciscape narrative render-prompts <result_root>`.
 It writes `narrative/generation_prompts/prompt_batch_manifest.json` and
 `narrative/generation_prompts/prompt_jobs.jsonl` from existing claim/evidence
