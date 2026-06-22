@@ -1867,6 +1867,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["narrative_summary"]["available"] is True
     assert job_payload["result"]["narrative_summary"]["feature_state"] == "beta"
     assert job_payload["result"]["narrative_summary"]["cluster_count"] == 1
+    assert job_payload["result"]["narrative_summary"]["publication"]["available"] is False
     narrative_generation = job_payload["result"]["narrative_summary"]["generation"]
     assert narrative_generation["available"] is True
     assert narrative_generation["state"] == "generated_candidates"
@@ -2004,6 +2005,7 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert narrative["schema_version"] == "sciscape_narrative_api_v1"
     assert narrative["available"] is True
     assert narrative["feature_state"] == "beta"
+    assert narrative["publication_summary"]["available"] is False
     assert narrative["generation"]["state"] == "generated_candidates"
     assert narrative["generation"]["prompt_batch"]["job_rows"] == 1
     assert narrative["generation"]["run"]["generated_status_counts"] == {"succeeded": 1}
@@ -2108,6 +2110,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert review_payload["review_decision"]["reviewer"] == "tester"
     assert review_payload["review_validation"]["blocking_issues"] == []
     assert review_payload["publication"]["available"] is True
+    assert review_payload["publication_summary"]["available"] is True
+    assert review_payload["publication_summary"]["publication_readiness"]["state"] == "partial"
+    assert review_payload["publication_summary"]["path"] == "narrative/publication_summary.json"
     assert review_payload["publication"]["paths"]["json"] == "narrative/publication_summary.json"
     assert review_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
     assert review_payload["publication"]["paths"]["html"] == "narrative/publication_summary.html"
@@ -2173,6 +2178,13 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert publication_api_payload["publication_readiness"]["state"] == "partial"
     assert publication_api_payload["publication_readiness"]["can_render_reviewed_report"] is True
     assert publication_api_payload["publication_readiness"]["ready_for_full_publication"] is False
+    narrative_after_publication_response = client.get(f"/api/jobs/{job_id}/narrative")
+    assert narrative_after_publication_response.status_code == 200
+    narrative_after_publication = narrative_after_publication_response.json()
+    assert narrative_after_publication["publication_summary"]["available"] is True
+    assert narrative_after_publication["publication_summary"]["publication_readiness"] == publication_api_payload[
+        "publication_readiness"
+    ]
     assert publication_api_payload["cluster_index"][0]["cluster_uid"] == "cluster:0"
     assert publication_api_payload["cluster_index"][0]["anchor"] == "cluster-0"
     assert publication_api_payload["cluster_index"][0]["rendered_claim_count"] >= 1

@@ -1337,6 +1337,30 @@ def _narrative_publication_json_path_for_result(result: dict[str, Any]) -> Path 
     return fallback if fallback.exists() and fallback.is_file() else None
 
 
+def _load_narrative_publication_summary_for_result(result: dict[str, Any]) -> dict[str, Any]:
+    publication_path = _narrative_publication_json_path_for_result(result)
+    if publication_path is None:
+        return {"available": False, "reason": "no reviewed narrative publication artifact"}
+    try:
+        payload = json.loads(publication_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"available": False, "error": f"could not read narrative publication: {exc}"}
+    root = _result_root_for_result(result)
+    rel_path = _result_relative_path(root, publication_path) if root is not None else str(publication_path)
+    clusters = payload.get("clusters") if isinstance(payload.get("clusters"), list) else []
+    cluster_index = payload.get("cluster_index") if isinstance(payload.get("cluster_index"), list) else []
+    return {
+        "available": True,
+        "schema_version": payload.get("schema_version"),
+        "publication_state": payload.get("publication_state"),
+        "publication_readiness": payload.get("publication_readiness", {}),
+        "counts": payload.get("counts", {}),
+        "cluster_count": len(clusters),
+        "cluster_index_count": len(cluster_index),
+        "path": rel_path,
+    }
+
+
 def _result_relative_path(root: Path, path: Path) -> str:
     try:
         return path.resolve().relative_to(root.resolve()).as_posix()
@@ -1945,6 +1969,7 @@ def _load_narrative_payload_for_result(
         "blocking_issues": validation.get("blocking_issues", []),
         "clusters": cluster_views,
         "generation": _load_narrative_generation_payload_for_result(result),
+        "publication_summary": _load_narrative_publication_summary_for_result(result),
     }
     if cluster_uid is not None:
         payload["cluster"] = cluster_views[0] if cluster_views else None
@@ -1966,6 +1991,7 @@ def _attach_narrative_summary(result: dict[str, Any]) -> None:
         "warning_count": len(payload.get("warnings", [])),
         "blocking_issue_count": len(payload.get("blocking_issues", [])),
         "generation": payload.get("generation", {}),
+        "publication": payload.get("publication_summary", {}),
     }
     atlas = result.get("atlas")
     if not isinstance(atlas, dict) or not isinstance(atlas.get("nodes"), list):
