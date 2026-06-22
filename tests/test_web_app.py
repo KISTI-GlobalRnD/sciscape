@@ -370,11 +370,14 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Reviewed narrative publication" in response.text
     assert "atlasNarrativePublicationArtifacts" in response.text
     assert "resetAtlasNarrativePublicationPreview" in response.text
+    assert "refreshAtlasNarrativePublicationPreview" in response.text
+    assert "atlasNarrativePublicationReadinessLabel" in response.text
     assert "renderAtlasNarrativePublicationLinks" in response.text
     assert "renderAtlasNarrativePublicationPreview" in response.text
     assert "loadAtlasNarrativePublicationPreview" in response.text
     assert "publication_readiness" in response.text
     assert "ready for full publication" in response.text
+    assert "partial reviewed report" in response.text
     assert "review still required" in response.text
     assert "View summary" in response.text
     assert "Preview" in response.text

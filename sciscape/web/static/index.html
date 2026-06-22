@@ -5661,6 +5661,20 @@ function resetAtlasNarrativePublicationPreview() {
   currentAtlasPublicationPreview = null;
 }
 
+async function refreshAtlasNarrativePublicationPreview() {
+  resetAtlasNarrativePublicationPreview();
+  await loadAtlasNarrativePublicationPreview();
+}
+
+function atlasNarrativePublicationReadinessLabel(readiness) {
+  if (!readiness || typeof readiness !== 'object') return 'readiness unknown';
+  if (readiness.ready_for_full_publication) return 'ready for full publication';
+  const state = String(readiness.state || '').replace('_', ' ');
+  if (state === 'partial') return 'partial reviewed report';
+  if (state === 'blocked') return 'publication blocked';
+  return state ? state + ' publication readiness' : 'readiness unknown';
+}
+
 function renderAtlasNarrativePublicationLinks() {
   if (!currentJobId) return '';
   const paths = atlasNarrativePublicationArtifacts();
@@ -5791,13 +5805,13 @@ async function publishAtlasNarrativePublication() {
       currentResult.result_manifest = payload.result_manifest;
       updateDownloads(currentResult);
     }
-    resetAtlasNarrativePublicationPreview();
+    const readiness = payload.publication && payload.publication.publication_readiness || {};
     currentAtlasNarrativeReviewStatus = {
       clusterUid,
       state: 'saved',
-      message: 'reviewed report published',
+      message: 'reviewed report published: ' + atlasNarrativePublicationReadinessLabel(readiness),
     };
-    if (clusterUid) refreshAtlasNarrativeInspector(clusterUid);
+    await refreshAtlasNarrativePublicationPreview();
   } catch (err) {
     currentAtlasNarrativeReviewStatus = {
       clusterUid,
@@ -5895,6 +5909,7 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
   if (!currentJobId || !clusterUid || !claimId) return;
   const decisionLabel = String(decisionType || '').replace('_', ' ');
   const reviewReason = 'atlas inspector review action: ' + decisionLabel;
+  const hadPublicationPreview = Boolean(currentAtlasPublicationPreview && currentAtlasPublicationPreview.path);
   currentAtlasNarrativeReviewStatus = {
     clusterUid,
     claimId,
@@ -5923,8 +5938,11 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
       currentResult.result_manifest = payload.result_manifest;
       updateDownloads(currentResult);
     }
-    resetAtlasNarrativePublicationPreview();
-    refreshAtlasNarrativeInspector(clusterUid);
+    if (hadPublicationPreview) await refreshAtlasNarrativePublicationPreview();
+    else {
+      resetAtlasNarrativePublicationPreview();
+      refreshAtlasNarrativeInspector(clusterUid);
+    }
   } catch (err) {
     currentAtlasNarrativeReviewStatus = {
       clusterUid,
