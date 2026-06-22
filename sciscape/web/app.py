@@ -761,6 +761,7 @@ async def publish_job_narrative(job_id: str):
             "available": True,
             "publication": publication,
             "result_manifest": result.get("result_manifest"),
+            "narrative_summary": result.get("narrative_summary"),
         }
     )
 
@@ -801,6 +802,7 @@ async def review_cluster_narrative_claim(job_id: str, cluster_uid: str, req: Nar
     payload["review_validation"] = written.get("validation")
     payload["publication"] = publication
     payload["result_manifest"] = result.get("result_manifest")
+    payload["narrative_summary"] = result.get("narrative_summary")
     return payload
 
 

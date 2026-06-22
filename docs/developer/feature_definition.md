@@ -1132,6 +1132,8 @@ Success:
   distinguishes partial reviewed reports from full publication readiness
 - job and narrative API summaries expose compact reviewed publication state,
   readiness, counts, and artifact path when publication artifacts exist
+- Atlas Narrative review panels render compact reviewed publication readiness
+  from job summary state before users open the full preview
 - Atlas review, generated-candidate apply, result load, and publication refresh
   actions invalidate or refresh stale reviewed publication previews
 - deterministic narrative scaffolds include generation metadata that records

@@ -5657,6 +5657,31 @@ function atlasNarrativePublicationArtifacts() {
   return paths;
 }
 
+function atlasNarrativePublicationSummaryPayload() {
+  const publication = currentResult && currentResult.narrative_summary && currentResult.narrative_summary.publication;
+  return publication && typeof publication === 'object' ? publication : null;
+}
+
+function renderAtlasNarrativePublicationSummary() {
+  const publication = atlasNarrativePublicationSummaryPayload();
+  if (!publication || publication.available === false) return '';
+  const readiness = publication.publication_readiness || {};
+  const counts = publication.counts || {};
+  const chips = [
+    'readiness ' + atlasNarrativePublicationReadinessLabel(readiness),
+    'state ' + String(publication.publication_state || 'unknown').replace(/_/g, ' '),
+    formatAtlasCount(counts.rendered_claims || 0) + ' rendered',
+    formatAtlasCount(counts.pending_claims || 0) + ' pending',
+    formatAtlasCount(counts.rejected_claims || 0) + ' rejected',
+  ].map(text => '<span class="atlas-mini-pill">' + esc(text) + '</span>').join('');
+  return '<div class="atlas-narrative-generation">' +
+    '<div class="atlas-narrative-generation-head">' +
+      '<div class="atlas-narrative-generation-title">Reviewed publication readiness</div>' +
+    '</div>' +
+    '<div class="atlas-narrative-generation-chips">' + chips + '</div>' +
+  '</div>';
+}
+
 function resetAtlasNarrativePublicationPreview() {
   currentAtlasPublicationPreview = null;
 }
@@ -5803,6 +5828,7 @@ async function publishAtlasNarrativePublication() {
     }
     if (currentResult && payload.result_manifest) {
       currentResult.result_manifest = payload.result_manifest;
+      if (payload.narrative_summary) currentResult.narrative_summary = payload.narrative_summary;
       updateDownloads(currentResult);
     }
     const readiness = payload.publication && payload.publication.publication_readiness || {};
@@ -5876,6 +5902,7 @@ function renderAtlasNarrativeReview(node, model) {
     formatAtlasCount(narrative.pending_review_claim_count || 0) + ' pending';
   const statusHtml = renderAtlasNarrativeReviewStatus(clusterUid);
   const generationSummary = renderAtlasNarrativeGenerationSummary();
+  const publicationSummary = renderAtlasNarrativePublicationSummary();
   const publicationLinks = renderAtlasNarrativePublicationLinks();
   const publicationPreview = renderAtlasNarrativePublicationPreview(clusterUid);
   return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
@@ -5887,6 +5914,7 @@ function renderAtlasNarrativeReview(node, model) {
       '</div>' +
       statusHtml +
       generationSummary +
+      publicationSummary +
       publicationPreview +
       '<div class="atlas-narrative-claims">' + claims + '</div>' +
     '</div>';
@@ -5936,6 +5964,7 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
     if (node && payload.cluster) node.narrative = payload.cluster;
     if (currentResult && payload.result_manifest) {
       currentResult.result_manifest = payload.result_manifest;
+      if (payload.narrative_summary) currentResult.narrative_summary = payload.narrative_summary;
       updateDownloads(currentResult);
     }
     if (hadPublicationPreview) await refreshAtlasNarrativePublicationPreview();

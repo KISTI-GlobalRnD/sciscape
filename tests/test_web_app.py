@@ -372,6 +372,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "resetAtlasNarrativePublicationPreview" in response.text
     assert "refreshAtlasNarrativePublicationPreview" in response.text
     assert "atlasNarrativePublicationReadinessLabel" in response.text
+    assert "atlasNarrativePublicationSummaryPayload" in response.text
+    assert "renderAtlasNarrativePublicationSummary" in response.text
+    assert "Reviewed publication readiness" in response.text
     assert "renderAtlasNarrativePublicationLinks" in response.text
     assert "renderAtlasNarrativePublicationPreview" in response.text
     assert "loadAtlasNarrativePublicationPreview" in response.text
@@ -2113,6 +2116,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert review_payload["publication_summary"]["available"] is True
     assert review_payload["publication_summary"]["publication_readiness"]["state"] == "partial"
     assert review_payload["publication_summary"]["path"] == "narrative/publication_summary.json"
+    assert review_payload["narrative_summary"]["publication"]["available"] is True
+    assert review_payload["narrative_summary"]["publication"]["publication_readiness"]["state"] == "partial"
     assert review_payload["publication"]["paths"]["json"] == "narrative/publication_summary.json"
     assert review_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
     assert review_payload["publication"]["paths"]["html"] == "narrative/publication_summary.html"
@@ -2163,6 +2168,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert publish_payload["publication"]["paths"]["markdown"] == "narrative/publication_summary.md"
     assert publish_payload["publication"]["paths"]["html"] == "narrative/publication_summary.html"
     assert publish_payload["publication"]["paths"]["bundle"] == "narrative/publication_bundle.zip"
+    assert publish_payload["narrative_summary"]["publication"]["available"] is True
+    assert publish_payload["narrative_summary"]["publication"]["publication_readiness"]["state"] == "partial"
     assert (
         publish_payload["result_manifest"]["artifacts"]["narrative_publication_html"]["path"]
         == "narrative/publication_summary.html"
