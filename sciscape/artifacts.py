@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -1256,6 +1257,90 @@ def _cluster_parent_uid(cluster: Mapping[str, Any]) -> str | None:
     return None
 
 
+_ATLAS_KEYWORD_PRESERVE_FIELDS = (
+    "score",
+    "frequency",
+    "doc_coverage",
+    "raw_score",
+    "quality_score",
+    "quality_multiplier",
+    "quality_flags",
+    "keyword_label_tier",
+    "keyword_scope",
+    "keyword_cluster_count",
+    "keyword_cluster_ratio",
+    "cross_cluster_count",
+    "representative_score",
+    "representative_role",
+    "representative_flags",
+    "network_score",
+    "network_role",
+    "network_flags",
+    "abbreviation_status",
+    "abbreviation_target",
+    "abbreviation_confidence",
+    "abbreviation_source",
+    "abbreviation_ambiguity_type",
+)
+
+_ATLAS_KEYWORD_RICH_ALIASES = (
+    ("tf", ("tf", "term_count", "frequency"), "int"),
+    ("df", ("df", "term_doc_count", "doc_coverage"), "int"),
+    ("log_odds", ("log_odds", "bayesian_log_odds"), "float"),
+    ("cluster_spread", ("cluster_spread", "keyword_cluster_ratio", "cross_cluster_ratio"), "float"),
+    ("ngram_n", ("ngram_n", "ngram_length", "ngram"), "ngram"),
+    ("rep_role", ("rep_role", "representative_role"), "str"),
+    ("tier", ("tier", "keyword_label_tier"), "str"),
+    ("scope", ("scope", "keyword_scope"), "str"),
+)
+
+
+def _keyword_first_value(keyword: Mapping[str, Any], keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        if key not in keyword:
+            continue
+        value = keyword.get(key)
+        if value is None:
+            continue
+        missing = pd.isna(value)
+        if isinstance(missing, (bool, np.bool_)) and missing:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        return value
+    return None
+
+
+def _coerce_keyword_ngram(value: Any) -> int | None:
+    ngram = _coerce_int(value)
+    if ngram is not None:
+        return ngram
+    text = str(value or "").strip().lower().replace("-", "_")
+    named = {
+        "uni": 1,
+        "unigram": 1,
+        "one_gram": 1,
+        "bi": 2,
+        "bigram": 2,
+        "two_gram": 2,
+        "tri": 3,
+        "trigram": 3,
+        "three_gram": 3,
+    }
+    return named.get(text)
+
+
+def _coerce_keyword_rich_value(value: Any, value_type: str) -> Any:
+    if value_type == "int":
+        return _coerce_int(value)
+    if value_type == "float":
+        return _coerce_float(value)
+    if value_type == "ngram":
+        return _coerce_keyword_ngram(value)
+    text = str(value or "").strip()
+    return text or None
+
+
 def _cluster_keywords(cluster: Mapping[str, Any], *, limit: int = 8) -> list[dict[str, Any]]:
     keywords = cluster.get("keywords")
     if not isinstance(keywords, list):
@@ -1269,9 +1354,15 @@ def _cluster_keywords(cluster: Mapping[str, Any], *, limit: int = 8) -> list[dic
         if not term:
             continue
         row: dict[str, Any] = {"term": term, "rank": rank}
-        for key in ("score", "frequency", "doc_coverage", "keyword_label_tier", "keyword_scope"):
-            if key in keyword:
-                row[key] = keyword[key]
+        for key in _ATLAS_KEYWORD_PRESERVE_FIELDS:
+            value = _keyword_first_value(keyword, (key,))
+            if value is not None:
+                row[key] = value
+        for output_key, source_keys, value_type in _ATLAS_KEYWORD_RICH_ALIASES:
+            value = _keyword_first_value(keyword, source_keys)
+            rich_value = _coerce_keyword_rich_value(value, value_type)
+            if rich_value is not None:
+                row[output_key] = rich_value
         rows.append(row)
         if len(rows) >= limit:
             break

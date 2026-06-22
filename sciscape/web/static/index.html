@@ -6366,10 +6366,33 @@ function atlasKeywordMeta(keyword, index) {
   if (typeof keyword === 'string') return 'rank ' + formatAtlasCount(index + 1);
   const parts = ['rank ' + formatAtlasCount(keyword.rank || index + 1)];
   if (keyword.score !== undefined && keyword.score !== null) parts.push('score ' + formatAtlasWeight(keyword.score));
-  if (keyword.frequency !== undefined && keyword.frequency !== null) parts.push('freq ' + formatAtlasCount(keyword.frequency));
-  if (keyword.tier) parts.push(String(keyword.tier));
-  if (keyword.scope) parts.push(String(keyword.scope));
+  const tf = atlasKeywordFirst(keyword, ['tf', 'frequency']);
+  const df = atlasKeywordFirst(keyword, ['df', 'doc_coverage']);
+  const logOdds = atlasKeywordFirst(keyword, ['log_odds', 'bayesian_log_odds']);
+  const spread = atlasKeywordFirst(keyword, ['cluster_spread', 'keyword_cluster_ratio']);
+  const ngram = atlasKeywordFirst(keyword, ['ngram_n', 'ngram']);
+  const repRole = atlasKeywordFirst(keyword, ['rep_role', 'representative_role']);
+  const tier = atlasKeywordFirst(keyword, ['tier', 'keyword_label_tier']);
+  const scope = atlasKeywordFirst(keyword, ['scope', 'keyword_scope']);
+  if (tf !== null) parts.push('tf ' + formatAtlasCount(tf));
+  if (df !== null) parts.push('df ' + formatAtlasCount(df));
+  if (logOdds !== null) parts.push('log odds ' + formatAtlasWeight(logOdds));
+  if (spread !== null) parts.push('spread ' + formatAtlasWeight(spread));
+  if (ngram !== null) parts.push('n-gram ' + formatAtlasCount(ngram));
+  if (repRole !== null) parts.push('rep ' + String(repRole));
+  if (tier !== null) parts.push(String(tier));
+  if (scope !== null) parts.push(String(scope));
   return parts.join(' / ');
+}
+
+function atlasKeywordFirst(keyword, keys) {
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(keyword, key)) continue;
+    const value = keyword[key];
+    if (value === undefined || value === null || value === '') continue;
+    return value;
+  }
+  return null;
 }
 
 function renderAtlasQALimitations(model) {

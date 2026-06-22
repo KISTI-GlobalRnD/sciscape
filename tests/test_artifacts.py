@@ -2016,7 +2016,13 @@ def test_report_data_contract_embeds_minimal_atlas_nodes():
                     "term": "perovskite solar cells",
                     "score": 0.91,
                     "frequency": 7,
+                    "doc_coverage": 5,
+                    "log_odds": 1.75,
+                    "keyword_cluster_ratio": 0.125,
+                    "ngram": "trigram",
+                    "representative_role": "term_evidence",
                     "keyword_label_tier": "primary_phrase",
+                    "keyword_scope": "cluster_specific",
                 }
             ],
         }
@@ -2041,6 +2047,14 @@ def test_report_data_contract_embeds_minimal_atlas_nodes():
     assert node["y"] == -0.5
     assert node["keywords"][0]["rank"] == 1
     assert node["keywords"][0]["term"] == "perovskite solar cells"
+    assert node["keywords"][0]["tf"] == 7
+    assert node["keywords"][0]["df"] == 5
+    assert node["keywords"][0]["log_odds"] == 1.75
+    assert node["keywords"][0]["cluster_spread"] == 0.125
+    assert node["keywords"][0]["ngram_n"] == 3
+    assert node["keywords"][0]["rep_role"] == "term_evidence"
+    assert node["keywords"][0]["tier"] == "primary_phrase"
+    assert node["keywords"][0]["scope"] == "cluster_specific"
     assert contract["atlas"]["nodes"][0]["cluster_uid"] == "cluster:7"
 
 
@@ -3027,6 +3041,11 @@ def test_report_export_writes_atlas_payload_to_data_json(tmp_path):
             "term": ["perovskite solar cells", "interface passivation", "graph neural networks"],
             "score": [0.9, 0.8, 0.95],
             "frequency": [2, 1, 2],
+            "doc_coverage": [2, 1, 2],
+            "bayesian_log_odds": [1.2, 0.4, 1.8],
+            "keyword_cluster_ratio": [0.2, 0.1, 0.15],
+            "ngram_n": [3, 2, 3],
+            "representative_role": ["term_evidence", "diversity_fill", "term_evidence"],
         }
     )
 
@@ -3038,6 +3057,13 @@ def test_report_export_writes_atlas_payload_to_data_json(tmp_path):
     assert contract["atlas"]["node_count"] == 2
     assert [node["cluster_uid"] for node in contract["atlas"]["nodes"]] == ["cluster:0", "cluster:1"]
     assert contract["atlas"]["nodes"][0]["keyword_count"] == 2
+    keyword = contract["atlas"]["nodes"][0]["keywords"][0]
+    assert keyword["tf"] == 2
+    assert keyword["df"] == 2
+    assert keyword["log_odds"] == 1.2
+    assert keyword["cluster_spread"] == 0.2
+    assert keyword["ngram_n"] == 3
+    assert keyword["rep_role"] == "term_evidence"
 
 
 def test_report_export_writes_bundle_export_manifest(tmp_path):

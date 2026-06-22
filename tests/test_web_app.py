@@ -348,6 +348,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasEvidenceProfile" in response.text
     assert "buildAtlasInspectorEvidenceModel" in response.text
     assert "renderAtlasInspectorModelSummary" in response.text
+    assert "atlasKeywordFirst" in response.text
+    assert "log odds" in response.text
+    assert "cluster_spread" in response.text
     assert "atlasReviewReadiness" in response.text
     assert "renderAtlasReviewChecklist" in response.text
     assert "atlasReviewPacket" in response.text

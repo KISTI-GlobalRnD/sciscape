@@ -785,6 +785,17 @@ Required cleaned keyword fields:
 - `rule_ids`
 - `review_status`
 
+Recommended representative keyword signal fields:
+
+- `tf` or `frequency`
+- `df` or `doc_coverage`
+- `log_odds`
+- `cluster_spread` or `keyword_cluster_ratio`
+- `ngram_n` or `ngram`
+- `rep_role` or `representative_role`
+- `keyword_label_tier`
+- `keyword_scope`
+
 Feature flag rule:
 
 - `keyword=true` when keyword table or report keywords exist.

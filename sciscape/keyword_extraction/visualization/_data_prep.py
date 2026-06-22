@@ -35,6 +35,16 @@ def _keyword_score_col(df: pd.DataFrame) -> str:
     return "quality_score" if "quality_score" in df.columns else "score"
 
 
+def _coerce_optional_int(value: object) -> int | None:
+    missing = pd.isna(value)
+    if isinstance(missing, (bool, np.bool_)) and missing:
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
 _LABEL_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
@@ -543,8 +553,30 @@ def prepare_cluster_data(
                 "frequency": int(r["frequency"]),
                 "doc_coverage": int(r.get("doc_coverage", r["frequency"])),
             }
+            kw["tf"] = _coerce_optional_int(r["tf"]) if "tf" in r.index else kw["frequency"]
+            kw["df"] = _coerce_optional_int(r["df"]) if "df" in r.index else kw["doc_coverage"]
+            if kw["tf"] is None:
+                kw["tf"] = kw["frequency"]
+            if kw["df"] is None:
+                kw["df"] = kw["doc_coverage"]
             if score_col != "score" and "score" in r.index:
                 kw["raw_score"] = round(float(r["score"]), 6)
+            for log_odds_col in ("log_odds", "bayesian_log_odds"):
+                if log_odds_col in r.index and pd.notna(r[log_odds_col]):
+                    kw[log_odds_col] = round(float(r[log_odds_col]), 6)
+            if "cluster_spread" in r.index and pd.notna(r["cluster_spread"]):
+                kw["cluster_spread"] = round(float(r["cluster_spread"]), 6)
+            ngram_int = _coerce_optional_int(r["ngram_n"]) if "ngram_n" in r.index else None
+            if ngram_int is not None:
+                kw["ngram_n"] = ngram_int
+            elif "ngram" in r.index and pd.notna(r["ngram"]):
+                ngram_value = r["ngram"]
+                try:
+                    kw["ngram_n"] = int(ngram_value)
+                except (TypeError, ValueError):
+                    ngram_text = str(ngram_value).strip()
+                    if ngram_text:
+                        kw["ngram"] = ngram_text
             if "quality_score" in r.index and pd.notna(r["quality_score"]):
                 kw["quality_score"] = round(float(r["quality_score"]), 6)
             if "representative_score" in r.index and pd.notna(r["representative_score"]):

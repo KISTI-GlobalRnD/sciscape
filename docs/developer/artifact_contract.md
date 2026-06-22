@@ -68,7 +68,7 @@ writers should emit `result_manifest.json`.
 | `abstracts.parquet` | `uid`, `title`, `abstract`, `pubyear` | Powers overview, evidence, and temporal availability. |
 | `edges.parquet` or `combined_edges.parquet` | `uid1`, `uid2`, numeric weight column | Weight candidates include `rel_sum2`, `weight`, `score`, `similarity`, `cosine`, `edge_weight`, and `*_weight`. |
 | `landscape/membership.parquet` | `uid`, `cluster` or `cluster_*` | Powers cluster map, evidence joins, and level inference. |
-| `landscape/keywords.parquet` | `cluster_id`, `term` | Powers keyword, term network, and keyword QA checks. |
+| `landscape/keywords.parquet` | `cluster_id`, `term` | Powers keyword, term network, and keyword QA checks. Optional rank/scoring fields such as `score`, `tf`, `df`, `log_odds`, `cluster_spread`, `ngram_n`, and `rep_role` should be preserved when available. |
 | `landscape/edge_evidence_samples.json` | `source_uid`, `target_uid`, bounded `samples` | Powers raw work-pair evidence for Atlas neighbor relations when generated. |
 | `landscape/term_cooccurrence.parquet` | `schema_version`, `cluster_uid`, `cluster_level`, `cluster_id`, `source`, `target`, `weight`, `relation` | Stable P1.5 term co-occurrence table artifact. |
 | `landscape/term_cooccurrence_map.json` | `schema_version`, `edge_count`, `term_count`, `cluster_count`, `terms` | Term lookup map paired with `term_cooccurrence.parquet`. |
@@ -223,7 +223,7 @@ fields:
 | `keyword_count` | yes | Number of representative keyword rows attached to the cluster. |
 | `child_count` | no | Direct child count when hierarchy exists. |
 | `x`, `y` | no | Optional layout coordinates. |
-| `keywords` | no | Representative terms with rank/score/count when available. |
+| `keywords` | no | Representative terms with rank/score/count and optional rich term signals when available. |
 | `representative_works` | no | Compact supporting works with `uid`, `title`, optional `year`, and optional `cited_by_count`. |
 | `representative_work_count` | no | Count of joined records behind the bounded representative work list. |
 | `badges` | no | QC or review warnings with severity. |
@@ -232,6 +232,14 @@ If required identity fields are not available, the UI may still show
 keyword/report tables, but it should not advertise an Atlas Map-quality cluster
 map. If `doc_count` is null, the map can still show identity and keyword
 structure, but Scale and related metric lenses should be disabled or caveated.
+
+Representative keyword rows may be compact, but should not discard available
+term evidence. The Atlas payload preserves legacy `frequency` and
+`doc_coverage` while also normalizing display aliases for `tf`, `df`,
+`log_odds`, `cluster_spread`, `ngram_n`, `rep_role`, `tier`, and `scope` when
+those fields or compatible source columns exist. These fields are optional so
+older reports remain valid, but new writers should include them when the
+keyword pipeline can compute them.
 
 When `membership.parquet` is available, Atlas payload generation should enrich
 nodes with `doc_count`, `doc_count_source`, `parent_uid`, `child_count`, and a

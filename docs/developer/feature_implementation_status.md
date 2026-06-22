@@ -47,7 +47,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F05 | Network construction | `[x]` | 75% | DC/BC/CC builders, edge combination, filters, OpenAlex citation edges | first-class entity networks and richer evidence artifacts |
 | F06 | Matrix builder | `[~]` | 55% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper, CLI wrapper command, manifest-backed matrix file downloads, CSV/Parquet/summary matrix exports, VOSviewer-compatible term matrix network export | matrix-builder app mode and interactive matrix workflows |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
-| F08 | Keyword extraction, labels, cleaning | `[~]` | 85% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
+| F08 | Keyword extraction, labels, cleaning | `[~]` | 86% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs, rich Atlas term signal preservation | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
 | F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, readiness reasons, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 94% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, slice-local membership-to-evolution builder/writer/CLI bridge, default slice-local reclustering runner/writer/CLI bridge, optional materialized reclustering membership checkpoint, slice-reclustering progress sidecar, bounded slice-reclustering workers, incremental slice-membership part checkpoints, slice-level reclustering failure diagnostics, manifest-level transition matching diagnostics, web transition-matching diagnostics panel, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus, keyboard-selectable map/list rows, compact/full Evolution loading profiles with truncation and row-coverage readouts, map shown/total/hidden coverage counts | larger-scale layout polish and map workflow |
@@ -262,7 +262,7 @@ operator controls and large-run safety.
 
 ### F08. Keyword Extraction, Labels, And Cleaning
 
-Status: `[~]` Partial. Rough completeness: 84%.
+Status: `[~]` Partial. Rough completeness: 86%.
 
 - `[x]` Keyword extraction pipeline exists.
 - `[x]` Quality annotation, artifact filtering, representative scoring,
@@ -287,6 +287,9 @@ Status: `[~]` Partial. Rough completeness: 84%.
   jobs with optional worker/backend overrides; aggregate global stats and final
   keyword files are rebuilt from all available shard outputs to avoid partial
   overwrite.
+- `[x]` Report data, Atlas payloads, and the Atlas inspector preserve compact
+  rich term signals such as `tf`, `df`, `log_odds`, `cluster_spread`, `ngram_n`,
+  `rep_role`, `tier`, and `scope` when the keyword pipeline provides them.
 - `[~]` Label merge and LLM labeling endpoints exist, but the full review loop is
   not yet a polished app workflow.
 - `[ ]` Editable cleaning workflow, workspace-level reusable rule registry,
