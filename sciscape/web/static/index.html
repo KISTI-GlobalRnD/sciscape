@@ -1612,6 +1612,32 @@ body {
   padding-top: 0.28rem;
   margin-top: 0.28rem;
 }
+.atlas-narrative-debt {
+  border: 1px solid rgba(231, 162, 72, 0.34);
+  border-radius: 4px;
+  background: rgba(255, 248, 236, 0.82);
+  display: grid;
+  gap: 0.26rem;
+  padding: 0.42rem;
+}
+.atlas-narrative-debt-title {
+  color: var(--graphite);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.atlas-narrative-debt-note {
+  color: var(--steel);
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.atlas-narrative-debt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
 .atlas-narrative-generation {
   border: 1px solid rgba(197, 207, 224, 0.78);
   border-radius: 4px;
@@ -1645,9 +1671,19 @@ body {
 .atlas-narrative-claim {
   min-width: 0;
   border: 1px solid rgba(197, 207, 224, 0.78);
+  border-left: 3px solid rgba(197, 207, 224, 0.78);
   border-radius: 4px;
   background: rgba(248, 249, 252, 0.78);
   padding: 0.42rem 0.46rem;
+}
+.atlas-narrative-claim.review-required {
+  border-left-color: var(--amber);
+}
+.atlas-narrative-claim.omitted {
+  border-left-color: var(--coral);
+}
+.atlas-narrative-claim.ready {
+  border-left-color: var(--teal);
 }
 .atlas-narrative-claim-head {
   display: flex;
@@ -5734,6 +5770,88 @@ function atlasNarrativePublicationAction() {
   };
 }
 
+function atlasNarrativeClaimReviewState(claim) {
+  return String(claim && claim.review_state || 'not_reviewed');
+}
+
+function atlasNarrativeClaimReviewClass(reviewState) {
+  if (reviewState === 'not_reviewed' || reviewState === 'needs_revision') return 'review-required';
+  if (reviewState === 'rejected') return 'omitted';
+  return 'ready';
+}
+
+function atlasNarrativeClaimReviewPriority(claim) {
+  const state = atlasNarrativeClaimReviewState(claim);
+  const modelGenerated = String(claim && claim.text_origin || '') === 'model_generated';
+  if (modelGenerated && (state === 'not_reviewed' || state === 'needs_revision')) return 0;
+  if (state === 'not_reviewed') return 1;
+  if (state === 'needs_revision') return 2;
+  if (state === 'rejected') return 3;
+  return 4;
+}
+
+function atlasNarrativeOrderedClaims(narrative) {
+  const claims = Array.isArray(narrative && narrative.claims) ? narrative.claims : [];
+  return claims.map((claim, index) => ({claim, index}))
+    .sort((a, b) =>
+      atlasNarrativeClaimReviewPriority(a.claim) - atlasNarrativeClaimReviewPriority(b.claim) ||
+      a.index - b.index
+    )
+    .map(row => row.claim);
+}
+
+function atlasNarrativeReviewDebt(narrative) {
+  const claims = Array.isArray(narrative && narrative.claims) ? narrative.claims : [];
+  const debt = {
+    reviewRequired: 0,
+    notReviewed: 0,
+    needsRevision: 0,
+    rejected: 0,
+    modelGeneratedPending: 0,
+    firstReviewClaim: null,
+    firstOmittedClaim: null,
+  };
+  claims.forEach(claim => {
+    const state = atlasNarrativeClaimReviewState(claim);
+    const modelGenerated = String(claim && claim.text_origin || '') === 'model_generated';
+    if (state === 'not_reviewed' || state === 'needs_revision') {
+      debt.reviewRequired += 1;
+      if (!debt.firstReviewClaim) debt.firstReviewClaim = claim;
+      if (state === 'not_reviewed') debt.notReviewed += 1;
+      if (state === 'needs_revision') debt.needsRevision += 1;
+      if (modelGenerated) debt.modelGeneratedPending += 1;
+    } else if (state === 'rejected') {
+      debt.rejected += 1;
+      if (!debt.firstOmittedClaim) debt.firstOmittedClaim = claim;
+    }
+  });
+  return debt;
+}
+
+function renderAtlasNarrativeReviewDebt(narrative) {
+  const debt = atlasNarrativeReviewDebt(narrative);
+  if (!debt.reviewRequired && !debt.rejected) return '';
+  const first = debt.firstReviewClaim || debt.firstOmittedClaim || {};
+  const state = atlasNarrativeClaimReviewState(first).replace('_', ' ');
+  const text = String(first.claim_text || first.claim_id || first.claim_type || 'claim').trim();
+  const note = debt.firstReviewClaim
+    ? 'Next publication blocker: ' + state + ' / ' + text
+    : 'Rejected claims are omitted from the reviewed report: ' + text;
+  const chips = [
+    formatAtlasCount(debt.reviewRequired) + ' review required',
+    formatAtlasCount(debt.notReviewed) + ' not reviewed',
+    formatAtlasCount(debt.needsRevision) + ' needs revision',
+    formatAtlasCount(debt.modelGeneratedPending) + ' generated pending',
+    formatAtlasCount(debt.rejected) + ' rejected omitted',
+    'blockers shown first',
+  ].map(text => '<span class="atlas-mini-pill">' + esc(text) + '</span>').join('');
+  return '<div class="atlas-narrative-debt">' +
+    '<div class="atlas-narrative-debt-title">Publication review debt</div>' +
+    '<div class="atlas-narrative-debt-note" title="' + escAttr(note) + '">' + esc(note) + '</div>' +
+    '<div class="atlas-narrative-debt-chips">' + chips + '</div>' +
+  '</div>';
+}
+
 function renderAtlasNarrativePublicationLinks() {
   if (!currentJobId) return '';
   const paths = atlasNarrativePublicationArtifacts();
@@ -5898,7 +6016,8 @@ function renderAtlasNarrativeReview(node, model) {
   const state = narrative.state || section.state || 'beta';
   const clusterUid = String(node && node.cluster_uid || narrative.cluster_uid || '');
   const encodeReviewArg = value => encodeURIComponent(String(value || '')).replace(/'/g, '%27');
-  const claims = narrative.claims.slice(0, 4).map(claim => {
+  const orderedClaims = atlasNarrativeOrderedClaims(narrative);
+  const claims = orderedClaims.slice(0, 4).map(claim => {
     const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
     const evidenceLabel = evidence.length
       ? evidence.slice(0, 2).map(ref =>
@@ -5919,7 +6038,7 @@ function renderAtlasNarrativeReview(node, model) {
         encodeReviewArg(clusterUid) + '\'), decodeURIComponent(\'' + encodeReviewArg(claimId) + '\'), \'' + decision + '\')">' +
         esc(decision.replace('_', ' ')) + '</button>'
     ).join('');
-    return '<div class="atlas-narrative-claim">' +
+    return '<div class="atlas-narrative-claim ' + esc(atlasNarrativeClaimReviewClass(reviewState)) + '">' +
       '<div class="atlas-narrative-claim-head">' +
         '<span class="atlas-mini-pill">' + esc(claim.claim_type || 'claim') + '</span>' +
         '<span class="atlas-mini-pill">' + esc(claim.support_state || 'unknown') + '</span>' +
@@ -5941,6 +6060,7 @@ function renderAtlasNarrativeReview(node, model) {
   const publicationSummary = renderAtlasNarrativePublicationSummary();
   const publicationLinks = renderAtlasNarrativePublicationLinks();
   const publicationPreview = renderAtlasNarrativePublicationPreview(clusterUid);
+  const reviewDebt = renderAtlasNarrativeReviewDebt(narrative);
   return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
     '<div class="atlas-narrative-panel ' + esc(state) + '">' +
       '<div class="atlas-narrative-head">' +
@@ -5951,6 +6071,7 @@ function renderAtlasNarrativeReview(node, model) {
       statusHtml +
       generationSummary +
       publicationSummary +
+      reviewDebt +
       publicationPreview +
       '<div class="atlas-narrative-claims">' + claims + '</div>' +
     '</div>';

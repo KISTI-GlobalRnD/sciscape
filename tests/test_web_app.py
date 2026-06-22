@@ -431,6 +431,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "model_generated_pending_claim_count" in response.text
     assert "model-generated claims need review" in response.text
     assert "model-generated review required" in response.text
+    assert "atlasNarrativeReviewDebt" in response.text
+    assert "Publication review debt" in response.text
+    assert "Next publication blocker" in response.text
+    assert "blockers shown first" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
@@ -2080,6 +2084,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert cluster_narrative["cluster"]["model_generated_pending_claim_count"] == 1
     assert cluster_narrative["cluster"]["claims"][0]["text_origin"] == "model_generated"
     assert cluster_narrative["cluster"]["claims"][0]["review_state"] == "not_reviewed"
+    assert any(
+        claim["review_state"] in {"not_reviewed", "needs_revision"}
+        for claim in cluster_narrative["cluster"]["claims"]
+    )
     claim_id = cluster_narrative["cluster"]["claims"][0]["claim_id"]
 
     invalid_review_response = client.post(

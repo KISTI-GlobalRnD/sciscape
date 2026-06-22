@@ -1128,6 +1128,8 @@ Success:
   reviewer accepts them
 - Atlas review readiness and the review queue surface narrative review debt,
   including pending model-generated claims, before publication
+- Atlas Narrative review panels summarize publication review debt and show
+  blocker claims before already-ready claims
 - reviewed publication summaries expose machine-readable readiness that
   distinguishes partial reviewed reports from full publication readiness
 - job and narrative API summaries expose compact reviewed publication state,
