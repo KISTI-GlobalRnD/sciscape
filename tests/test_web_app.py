@@ -422,6 +422,10 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "not_required" in response.text
     assert "currentAtlasNarrativeReviewStatus" in response.text
     assert "renderAtlasNarrativeReviewStatus" in response.text
+    assert "atlasNarrativeReviewDomId" in response.text
+    assert "atlasNarrativeReviewInputValue" in response.text
+    assert "atlas-narrative-review-inputs" in response.text
+    assert "optional review note" in response.text
     assert "review saved:" in response.text
     assert "review failed:" in response.text
     assert "latest review:" in response.text

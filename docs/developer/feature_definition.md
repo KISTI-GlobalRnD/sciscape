@@ -1128,6 +1128,8 @@ Success:
   reviewer accepts them
 - Atlas review readiness and the review queue surface narrative review debt,
   including pending model-generated claims, before publication
+- Atlas narrative review decisions can include reviewer identifiers and
+  claim-specific reasons from the review panel
 - Atlas Narrative review panels summarize publication review debt and show
   blocker claims before already-ready claims
 - Atlas Narrative review panels disclose when additional publication blockers

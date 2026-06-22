@@ -1752,6 +1752,38 @@ body {
   gap: 0.24rem;
   margin-top: 0.32rem;
 }
+.atlas-narrative-review-inputs {
+  display: grid;
+  gap: 0.24rem;
+  margin-top: 0.32rem;
+}
+.atlas-narrative-review-field {
+  display: grid;
+  gap: 0.12rem;
+}
+.atlas-narrative-review-field span {
+  color: var(--silver);
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.atlas-narrative-review-field input,
+.atlas-narrative-review-field textarea {
+  border: 1px solid rgba(197, 207, 224, 0.82);
+  border-radius: 4px;
+  color: var(--graphite);
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  line-height: 1.35;
+  min-width: 0;
+  padding: 0.24rem 0.3rem;
+  width: 100%;
+}
+.atlas-narrative-review-field textarea {
+  min-height: 2.4rem;
+  resize: vertical;
+}
 .atlas-narrative-action {
   border: 1px solid rgba(197, 207, 224, 0.82);
   border-radius: 4px;
@@ -5855,6 +5887,16 @@ function atlasNarrativeClaimIsReviewRequired(claim) {
   return state === 'not_reviewed' || state === 'needs_revision';
 }
 
+function atlasNarrativeReviewDomId(claimId) {
+  const value = String(claimId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return value || 'claim';
+}
+
+function atlasNarrativeReviewInputValue(prefix, claimId) {
+  const el = document.getElementById(prefix + atlasNarrativeReviewDomId(claimId));
+  return el ? String(el.value || '').trim() : '';
+}
+
 function atlasNarrativeVisibleClaims(orderedClaims) {
   const claims = Array.isArray(orderedClaims) ? orderedClaims : [];
   const scope = atlasNarrativeClaimScope();
@@ -6162,6 +6204,9 @@ function renderAtlasNarrativeReview(node, model) {
     const claimId = String(claim.claim_id || '');
     const reviewState = String(claim.review_state || 'not_reviewed');
     const latestReview = claim.latest_review && typeof claim.latest_review === 'object' ? claim.latest_review : null;
+    const reviewDomId = atlasNarrativeReviewDomId(claimId);
+    const reviewerValue = latestReview && latestReview.reviewer ? String(latestReview.reviewer) : 'web';
+    const reasonPlaceholder = latestReview && latestReview.reason ? String(latestReview.reason) : 'optional review note';
     const latestReviewLabel = latestReview ? [
       'latest review: ' + String(latestReview.decision_type || reviewState).replace('_', ' '),
       latestReview.reviewer ? 'by ' + latestReview.reviewer : '',
@@ -6183,6 +6228,12 @@ function renderAtlasNarrativeReview(node, model) {
       '<div class="atlas-narrative-claim-text">' + esc(claim.claim_text || '') + '</div>' +
       '<div class="atlas-narrative-evidence" title="' + escAttr(evidenceLabel) + '">' + esc(evidenceLabel) + '</div>' +
       (latestReviewLabel ? '<div class="atlas-narrative-evidence" title="' + escAttr(latestReviewLabel) + '">' + esc(latestReviewLabel) + '</div>' : '') +
+      '<div class="atlas-narrative-review-inputs">' +
+        '<label class="atlas-narrative-review-field"><span>Reviewer</span><input id="atlas-narrative-reviewer-' + escAttr(reviewDomId) +
+          '" value="' + escAttr(reviewerValue) + '" autocomplete="off"></label>' +
+        '<label class="atlas-narrative-review-field"><span>Reason</span><textarea id="atlas-narrative-reason-' + escAttr(reviewDomId) +
+          '" rows="2" placeholder="' + escAttr(reasonPlaceholder) + '"></textarea></label>' +
+      '</div>' +
       '<div class="atlas-narrative-actions">' + actionButtons + '</div>' +
     '</div>';
   }).join('');
@@ -6232,7 +6283,9 @@ function refreshAtlasNarrativeInspector(clusterUid) {
 async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
   if (!currentJobId || !clusterUid || !claimId) return;
   const decisionLabel = String(decisionType || '').replace('_', ' ');
-  const reviewReason = 'atlas inspector review action: ' + decisionLabel;
+  const reviewer = atlasNarrativeReviewInputValue('atlas-narrative-reviewer-', claimId) || 'web';
+  const enteredReason = atlasNarrativeReviewInputValue('atlas-narrative-reason-', claimId);
+  const reviewReason = enteredReason || 'atlas inspector review action: ' + decisionLabel;
   const hadPublicationPreview = Boolean(currentAtlasPublicationPreview && currentAtlasPublicationPreview.path);
   currentAtlasNarrativeReviewStatus = {
     clusterUid,
@@ -6245,7 +6298,7 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
     const response = await fetch('/api/jobs/' + currentJobId + '/clusters/' + encodeURIComponent(clusterUid) + '/narrative/review', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({claim_id: claimId, decision_type: decisionType, reviewer: 'web', reason: reviewReason})
+      body: JSON.stringify({claim_id: claimId, decision_type: decisionType, reviewer, reason: reviewReason})
     });
     const payload = await response.json();
     if (!response.ok || payload.error) throw new Error(payload.error || 'narrative review failed');

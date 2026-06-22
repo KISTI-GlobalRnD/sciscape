@@ -596,6 +596,8 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` Atlas review readiness and the filterable review queue surface narrative
   review debt, including pending model-generated claims, as review blockers
   before publication.
+- `[x]` Atlas narrative review decisions can include reviewer identifiers and
+  claim-specific reasons from the review panel.
 - `[x]` Atlas Narrative review panels summarize publication review debt and show
   blocker claims before already-ready claims.
 - `[x]` Atlas Narrative review panels disclose when additional publication
