@@ -1132,6 +1132,8 @@ Success:
   blocker claims before already-ready claims
 - Atlas Narrative review panels disclose when additional publication blockers
   remain outside the compact visible claim set
+- Atlas Narrative review panels can switch claim scope between compact,
+  review-required, and all loaded claims for the selected cluster
 - reviewed publication summaries expose machine-readable readiness that
   distinguishes partial reviewed reports from full publication readiness
 - job and narrative API summaries expose compact reviewed publication state,

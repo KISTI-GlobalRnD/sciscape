@@ -438,6 +438,11 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasNarrativeClaimDisplaySummary" in response.text
     assert "additional publication blockers remain outside this compact claim preview" in response.text
     assert "hidden blockers" in response.text
+    assert "currentAtlasNarrativeClaimScope" in response.text
+    assert "selectAtlasNarrativeClaimScope" in response.text
+    assert "renderAtlasNarrativeClaimScopeControls" in response.text
+    assert "Review required" in response.text
+    assert "All loaded" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
