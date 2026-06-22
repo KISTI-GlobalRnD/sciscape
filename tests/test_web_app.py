@@ -369,6 +369,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Narrative claim graph manifest" in response.text
     assert "Reviewed narrative publication" in response.text
     assert "atlasNarrativePublicationArtifacts" in response.text
+    assert "resetAtlasNarrativePublicationPreview" in response.text
     assert "renderAtlasNarrativePublicationLinks" in response.text
     assert "renderAtlasNarrativePublicationPreview" in response.text
     assert "loadAtlasNarrativePublicationPreview" in response.text

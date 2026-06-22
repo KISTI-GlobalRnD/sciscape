@@ -599,6 +599,8 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` Reviewed publication JSON, Markdown, HTML, CLI output, and Atlas preview
   expose publication readiness, separating partial reviewed report rendering
   from full publication readiness.
+- `[x]` Atlas review, generated-candidate apply, result load, and publication
+  refresh actions invalidate stale reviewed publication previews.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
   generation/report workflow is still not polished as a complete in-app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,

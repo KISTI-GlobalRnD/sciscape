@@ -5620,7 +5620,7 @@ async function applyAtlasNarrativeGeneratedCandidates() {
         if (node) node.narrative = cluster;
       });
     }
-    currentAtlasPublicationPreview = null;
+    resetAtlasNarrativePublicationPreview();
     currentAtlasNarrativeReviewStatus = {
       clusterUid,
       state: 'saved',
@@ -5655,6 +5655,10 @@ function atlasNarrativePublicationArtifacts() {
     else if (key.includes('json') || path.endsWith('.json')) paths.json = path;
   }
   return paths;
+}
+
+function resetAtlasNarrativePublicationPreview() {
+  currentAtlasPublicationPreview = null;
 }
 
 function renderAtlasNarrativePublicationLinks() {
@@ -5787,7 +5791,7 @@ async function publishAtlasNarrativePublication() {
       currentResult.result_manifest = payload.result_manifest;
       updateDownloads(currentResult);
     }
-    currentAtlasPublicationPreview = null;
+    resetAtlasNarrativePublicationPreview();
     currentAtlasNarrativeReviewStatus = {
       clusterUid,
       state: 'saved',
@@ -5919,6 +5923,7 @@ async function submitAtlasNarrativeReview(clusterUid, claimId, decisionType) {
       currentResult.result_manifest = payload.result_manifest;
       updateDownloads(currentResult);
     }
+    resetAtlasNarrativePublicationPreview();
     refreshAtlasNarrativeInspector(clusterUid);
   } catch (err) {
     currentAtlasNarrativeReviewStatus = {
@@ -6595,7 +6600,7 @@ function showResults(result) {
   if (!result) return;
   currentResult = result;
   window._currentJobId = currentJobId;
-  currentAtlasPublicationPreview = null;
+  resetAtlasNarrativePublicationPreview();
   currentAtlasNarrativeGenerationPayload = null;
   const panel = document.getElementById('results');
   panel.classList.add('active');

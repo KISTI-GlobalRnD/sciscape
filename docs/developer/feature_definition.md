@@ -1130,6 +1130,8 @@ Success:
   including pending model-generated claims, before publication
 - reviewed publication summaries expose machine-readable readiness that
   distinguishes partial reviewed reports from full publication readiness
+- Atlas review, generated-candidate apply, result load, and publication refresh
+  actions invalidate stale reviewed publication previews
 - deterministic narrative scaffolds include generation metadata that records
   source artifacts, transform steps, and scaffold parameters
 - narrative edits are recorded as review decisions and the latest decision is
