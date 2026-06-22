@@ -598,6 +598,8 @@ Status: `[~]` Partial. Rough completeness: 82%.
   before publication.
 - `[x]` Atlas Narrative review panels summarize publication review debt and show
   blocker claims before already-ready claims.
+- `[x]` Atlas Narrative review panels disclose when additional publication
+  blockers remain outside the compact visible claim set.
 - `[x]` Reviewed publication JSON, Markdown, HTML, CLI output, and Atlas preview
   expose publication readiness, separating partial reviewed report rendering
   from full publication readiness.

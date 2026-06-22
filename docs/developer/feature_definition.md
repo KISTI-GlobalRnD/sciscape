@@ -1130,6 +1130,8 @@ Success:
   including pending model-generated claims, before publication
 - Atlas Narrative review panels summarize publication review debt and show
   blocker claims before already-ready claims
+- Atlas Narrative review panels disclose when additional publication blockers
+  remain outside the compact visible claim set
 - reviewed publication summaries expose machine-readable readiness that
   distinguishes partial reviewed reports from full publication readiness
 - job and narrative API summaries expose compact reviewed publication state,

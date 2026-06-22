@@ -1685,6 +1685,23 @@ body {
 .atlas-narrative-claim.ready {
   border-left-color: var(--teal);
 }
+.atlas-narrative-claim-summary {
+  border: 1px dashed rgba(197, 207, 224, 0.92);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--steel);
+  display: grid;
+  gap: 0.24rem;
+  font-family: var(--font-mono);
+  font-size: 0.53rem;
+  line-height: 1.35;
+  padding: 0.34rem 0.42rem;
+}
+.atlas-narrative-claim-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
 .atlas-narrative-claim-head {
   display: flex;
   flex-wrap: wrap;
@@ -5852,6 +5869,31 @@ function renderAtlasNarrativeReviewDebt(narrative) {
   '</div>';
 }
 
+function renderAtlasNarrativeClaimDisplaySummary(orderedClaims, visibleCount) {
+  const total = Array.isArray(orderedClaims) ? orderedClaims.length : 0;
+  if (!total || total <= visibleCount) return '';
+  const hidden = orderedClaims.slice(visibleCount);
+  const hiddenReviewRequired = hidden.filter(claim => {
+    const state = atlasNarrativeClaimReviewState(claim);
+    return state === 'not_reviewed' || state === 'needs_revision';
+  }).length;
+  const hiddenRejected = hidden.filter(claim => atlasNarrativeClaimReviewState(claim) === 'rejected').length;
+  const hiddenCount = Math.max(0, total - visibleCount);
+  const note = hiddenReviewRequired
+    ? formatAtlasCount(hiddenReviewRequired) + ' additional publication blockers remain outside this compact claim preview.'
+    : formatAtlasCount(hiddenCount) + ' additional claims remain outside this compact claim preview.';
+  const chips = [
+    'showing ' + formatAtlasCount(visibleCount) + ' prioritized',
+    formatAtlasCount(hiddenCount) + ' more claims',
+    formatAtlasCount(hiddenReviewRequired) + ' hidden blockers',
+    formatAtlasCount(hiddenRejected) + ' hidden rejected',
+  ].map(text => '<span class="atlas-mini-pill">' + esc(text) + '</span>').join('');
+  return '<div class="atlas-narrative-claim-summary">' +
+    '<div>' + esc(note) + '</div>' +
+    '<div class="atlas-narrative-claim-summary-chips">' + chips + '</div>' +
+  '</div>';
+}
+
 function renderAtlasNarrativePublicationLinks() {
   if (!currentJobId) return '';
   const paths = atlasNarrativePublicationArtifacts();
@@ -6017,7 +6059,8 @@ function renderAtlasNarrativeReview(node, model) {
   const clusterUid = String(node && node.cluster_uid || narrative.cluster_uid || '');
   const encodeReviewArg = value => encodeURIComponent(String(value || '')).replace(/'/g, '%27');
   const orderedClaims = atlasNarrativeOrderedClaims(narrative);
-  const claims = orderedClaims.slice(0, 4).map(claim => {
+  const visibleClaims = orderedClaims.slice(0, 4);
+  const claims = visibleClaims.map(claim => {
     const evidence = Array.isArray(claim.evidence) ? claim.evidence : [];
     const evidenceLabel = evidence.length
       ? evidence.slice(0, 2).map(ref =>
@@ -6061,6 +6104,7 @@ function renderAtlasNarrativeReview(node, model) {
   const publicationLinks = renderAtlasNarrativePublicationLinks();
   const publicationPreview = renderAtlasNarrativePublicationPreview(clusterUid);
   const reviewDebt = renderAtlasNarrativeReviewDebt(narrative);
+  const claimDisplaySummary = renderAtlasNarrativeClaimDisplaySummary(orderedClaims, visibleClaims.length);
   return '<div class="atlas-section-title">Narrative review ' + atlasSectionStatePill(section) + '</div>' +
     '<div class="atlas-narrative-panel ' + esc(state) + '">' +
       '<div class="atlas-narrative-head">' +
@@ -6074,6 +6118,7 @@ function renderAtlasNarrativeReview(node, model) {
       reviewDebt +
       publicationPreview +
       '<div class="atlas-narrative-claims">' + claims + '</div>' +
+      claimDisplaySummary +
     '</div>';
 }
 

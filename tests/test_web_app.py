@@ -435,6 +435,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "Publication review debt" in response.text
     assert "Next publication blocker" in response.text
     assert "blockers shown first" in response.text
+    assert "renderAtlasNarrativeClaimDisplaySummary" in response.text
+    assert "additional publication blockers remain outside this compact claim preview" in response.text
+    assert "hidden blockers" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
