@@ -1766,8 +1766,16 @@ def _cluster_narrative_view(
     aggregate_only_refs = 0
     review_count = 0
     reviewed_claim_count = 0
+    model_generated_claim_count = 0
+    model_generated_pending_claim_count = 0
     for claim in target_claims:
         claim_id = str(claim.get("claim_id") or "")
+        text_origin = str(claim.get("text_origin") or "")
+        review_state = str(claim.get("review_state") or "not_reviewed")
+        if text_origin == "model_generated":
+            model_generated_claim_count += 1
+            if review_state in {"not_reviewed", "needs_revision"}:
+                model_generated_pending_claim_count += 1
         target_claim_key = f"{target_id}\x1f{claim_id}"
         claim_reviews = reviews_by_claim.get(target_claim_key) or reviews_by_claim.get(claim_id, [])
         latest_review = claim_reviews[-1] if claim_reviews else None
@@ -1806,8 +1814,8 @@ def _cluster_narrative_view(
                 "support_state": claim.get("support_state"),
                 "confidence": claim.get("confidence"),
                 "evidence_ref_count": claim.get("evidence_ref_count"),
-                "text_origin": claim.get("text_origin"),
-                "review_state": claim.get("review_state"),
+                "text_origin": text_origin,
+                "review_state": review_state,
                 "review_count": len(claim_reviews),
                 "latest_review": latest_review,
                 "warning_flags": claim.get("warning_flags"),
@@ -1833,6 +1841,8 @@ def _cluster_narrative_view(
         "review_count": int(review_count),
         "reviewed_claim_count": int(reviewed_claim_count),
         "pending_review_claim_count": max(0, len(target_claims) - reviewed_claim_count),
+        "model_generated_claim_count": int(model_generated_claim_count),
+        "model_generated_pending_claim_count": int(model_generated_pending_claim_count),
         "aggregate_only_ref_count": int(aggregate_only_refs),
         "sections": section_rows,
         "claims": claim_rows,

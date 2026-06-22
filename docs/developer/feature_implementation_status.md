@@ -593,6 +593,9 @@ Status: `[~]` Partial. Rough completeness: 82%.
   API/Atlas panel through the same evidence-preserving writer as
   `sciscape narrative apply-generated`; applied claims reset to a review-required
   state and are not publishable until reviewed.
+- `[x]` Atlas review readiness and the filterable review queue surface narrative
+  review debt, including pending model-generated claims, as review blockers
+  before publication.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
   generation/report workflow is still not polished as a complete in-app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,

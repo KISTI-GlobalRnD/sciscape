@@ -5371,6 +5371,10 @@ function atlasReviewReadiness(node, model) {
   const neighbors = Array.isArray(node && node.neighbors) ? node.neighbors : [];
   const sampleRelations = neighbors.filter(neighbor => atlasNeighborSamples(neighbor).length).length;
   const aggregateRelations = neighbors.filter(neighbor => !atlasNeighborSamples(neighbor).length).length;
+  const narrative = node && node.narrative && typeof node.narrative === 'object' ? node.narrative : null;
+  const narrativePending = atlasNumeric(narrative && narrative.pending_review_claim_count);
+  const modelGeneratedPending = atlasNumeric(narrative && narrative.model_generated_pending_claim_count);
+  const modelGeneratedClaims = atlasNumeric(narrative && narrative.model_generated_claim_count);
   const warnings = Array.isArray(model.warnings) ? model.warnings : [];
   const sectionStates = coreSectionKeys.map(key =>
     sections[key] && sections[key].state || 'hidden'
@@ -5382,13 +5386,16 @@ function atlasReviewReadiness(node, model) {
   if (!keywordCount && !keywords.length) missing.push('terms');
   if (!works.length) missing.push('works');
   if (!neighbors.length) missing.push('relations');
-  const needsReview = missing.length > 0 || warnings.length > 0 || sectionStates.includes('hidden');
+  const hasNarrativeReviewDebt = narrative && (narrativePending > 0 || modelGeneratedPending > 0);
+  const needsReview = missing.length > 0 || warnings.length > 0 || sectionStates.includes('hidden') || hasNarrativeReviewDebt;
   const reasons = [];
   if (model.result_state === 'blocked') reasons.push('result blocked');
   blockedSections.forEach(key => reasons.push(key + ' blocked'));
   missing.forEach(key => reasons.push('missing ' + key));
   if (warnings.length) reasons.push(formatAtlasCount(warnings.length) + ' QA warnings');
   if (hiddenSections.length) reasons.push('hidden ' + hiddenSections.join('/'));
+  if (modelGeneratedPending > 0) reasons.push(formatAtlasCount(modelGeneratedPending) + ' model-generated claims need review');
+  else if (narrativePending > 0) reasons.push(formatAtlasCount(narrativePending) + ' narrative claims need review');
   const state = blocked ? 'blocked' : needsReview ? 'review' : 'ready';
   const note = blocked
     ? reasons.join(' / ') || 'blocking validation issue'
@@ -5399,11 +5406,13 @@ function atlasReviewReadiness(node, model) {
     ['terms', keywords.length ? formatAtlasCount(keywords.length) + ' embedded / ' + formatAtlasCount(keywordCount || keywords.length) + ' counted' : formatAtlasCount(keywordCount) + ' counted'],
     ['works', works.length ? formatAtlasCount(works.length) + ' shown / ' + formatAtlasCount(workCount || works.length) + ' joined' : 'not joined'],
     ['relations', formatAtlasCount(neighbors.length) + ' neighbors / ' + formatAtlasCount(sampleRelations) + ' sampled'],
+    ['narrative', narrative ? formatAtlasCount(narrativePending) + ' pending / ' + formatAtlasCount(modelGeneratedClaims) + ' generated' : 'not available'],
     ['QA', warnings.length ? formatAtlasCount(warnings.length) + ' warnings' : 'no warnings'],
   ];
   const flags = [];
   if (sampleRelations) flags.push(formatAtlasCount(sampleRelations) + ' sample-backed');
   if (aggregateRelations) flags.push(formatAtlasCount(aggregateRelations) + ' aggregate-only');
+  if (modelGeneratedPending > 0) flags.push('model-generated review required');
   if (!flags.length) flags.push('no relation evidence');
   return {state, note, rows, flags, reasons};
 }

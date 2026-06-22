@@ -1126,6 +1126,8 @@ Success:
   manifest-backed generated JSONL outputs through the web API and Atlas
   Narrative review panel, but applied claims remain review-required until a
   reviewer accepts them
+- Atlas review readiness and the review queue surface narrative review debt,
+  including pending model-generated claims, before publication
 - deterministic narrative scaffolds include generation metadata that records
   source artifacts, transform steps, and scaffold parameters
 - narrative edits are recorded as review decisions and the latest decision is

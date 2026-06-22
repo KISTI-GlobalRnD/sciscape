@@ -415,6 +415,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlas inspector review action:" in response.text
     assert "reviewed_claim_count" in response.text
     assert "pending_review_claim_count" in response.text
+    assert "model_generated_pending_claim_count" in response.text
+    assert "model-generated claims need review" in response.text
+    assert "model-generated review required" in response.text
     assert "atlas_review" in response.text
     assert "Cluster reading" in response.text
     assert "renderAtlasMeaningLayer" in response.text
@@ -1874,6 +1877,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_work_count"] == 2
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["title"] == "Stable perovskite device"
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["state"] == "beta"
+    assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["model_generated_claim_count"] == 0
+    assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["model_generated_pending_claim_count"] == 0
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["claims"][0]["evidence"]
     assert job_payload["result"]["atlas_render_summary"]["schema_version"] == "sciscape_atlas_render_payload_v1"
     assert job_payload["result"]["atlas_render_summary"]["engine_family"] == "deck.gl"
@@ -2056,6 +2061,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert cluster_narrative["target_found"] is True
     assert cluster_narrative["cluster"]["cluster_uid"] == "cluster:0"
     assert cluster_narrative["cluster"]["claim_count"] >= 3
+    assert cluster_narrative["cluster"]["model_generated_claim_count"] == 1
+    assert cluster_narrative["cluster"]["model_generated_pending_claim_count"] == 1
     assert cluster_narrative["cluster"]["claims"][0]["text_origin"] == "model_generated"
     assert cluster_narrative["cluster"]["claims"][0]["review_state"] == "not_reviewed"
     claim_id = cluster_narrative["cluster"]["claims"][0]["claim_id"]
@@ -2192,6 +2199,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert cluster_after_review["review_count"] == 1
     assert cluster_after_review["reviewed_claim_count"] == 1
     assert cluster_after_review["pending_review_claim_count"] == cluster_after_review["claim_count"] - 1
+    assert cluster_after_review["model_generated_claim_count"] == 1
+    assert cluster_after_review["model_generated_pending_claim_count"] == 0
     assert cluster_after_review["claims"][0]["review_state"] == "accepted"
     assert cluster_after_review["claims"][0]["review_count"] == 1
     latest_review = cluster_after_review["claims"][0]["latest_review"]
