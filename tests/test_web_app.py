@@ -372,6 +372,9 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "renderAtlasNarrativePublicationLinks" in response.text
     assert "renderAtlasNarrativePublicationPreview" in response.text
     assert "loadAtlasNarrativePublicationPreview" in response.text
+    assert "publication_readiness" in response.text
+    assert "ready for full publication" in response.text
+    assert "review still required" in response.text
     assert "View summary" in response.text
     assert "Preview" in response.text
     assert "Bundle" in response.text
@@ -2163,6 +2166,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     publication_api_payload = publication_api_response.json()
     assert publication_api_payload["available"] is True
     assert publication_api_payload["counts"]["rendered_claims"] >= 1
+    assert publication_api_payload["publication_readiness"]["state"] == "partial"
+    assert publication_api_payload["publication_readiness"]["can_render_reviewed_report"] is True
+    assert publication_api_payload["publication_readiness"]["ready_for_full_publication"] is False
     assert publication_api_payload["cluster_index"][0]["cluster_uid"] == "cluster:0"
     assert publication_api_payload["cluster_index"][0]["anchor"] == "cluster-0"
     assert publication_api_payload["cluster_index"][0]["rendered_claim_count"] >= 1

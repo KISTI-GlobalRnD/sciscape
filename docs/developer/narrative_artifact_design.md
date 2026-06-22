@@ -86,6 +86,12 @@ claim count, omitted claim count, pending review count, and cluster-level
 publication state. Markdown and HTML reports should render this index before
 the full claim sections.
 
+Reviewed publication summaries also include `publication_readiness`. This
+machine-readable block separates whether a reviewed report can be rendered from
+whether every claim is ready for full publication. Partial reports may render
+accepted or not-required claims, but `ready_for_full_publication` remains false
+while any pending or needs-revision claim remains.
+
 ## Schema Versions
 
 Use explicit schema names:

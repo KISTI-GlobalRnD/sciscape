@@ -5706,8 +5706,11 @@ function renderAtlasNarrativePublicationPreview(clusterUid) {
   const payload = preview.payload || {};
   const cluster = atlasPublicationPreviewCluster(payload, clusterUid);
   const counts = payload.counts || {};
+  const readiness = payload.publication_readiness || {};
   const chips = [
+    'readiness ' + String(readiness.state || 'unknown').replace('_', ' '),
     'state ' + String(payload.publication_state || 'unknown').replace('_', ' '),
+    readiness.ready_for_full_publication ? 'ready for full publication' : 'review still required',
     formatAtlasCount(counts.rendered_claims || 0) + ' rendered',
     formatAtlasCount(counts.pending_claims || 0) + ' pending',
     formatAtlasCount(counts.rejected_claims || 0) + ' rejected',

@@ -1009,12 +1009,16 @@ class TestNarrativeArgs:
         assert payload["paths"]["markdown"] == "narrative/publication_summary.md"
         assert payload["paths"]["html"] == "narrative/publication_summary.html"
         assert payload["paths"]["bundle"] == "narrative/publication_bundle.zip"
+        assert payload["publication_readiness"]["state"] == "partial"
+        assert payload["publication_readiness"]["can_render_reviewed_report"] is True
+        assert payload["publication_readiness"]["ready_for_full_publication"] is False
         assert (root / "narrative" / "publication_summary.json").exists()
         assert (root / "narrative" / "publication_summary.md").exists()
         assert (root / "narrative" / "publication_summary.html").exists()
         assert (root / "narrative" / "publication_bundle.zip").exists()
         summary = json.loads((root / "narrative" / "publication_summary.json").read_text(encoding="utf-8"))
         assert summary["counts"]["rendered_claims"] == 1
+        assert summary["publication_readiness"] == payload["publication_readiness"]
 
     def test_run_narrative_apply_generated_json(self, parser, tmp_path, capsys):
         root = _write_cli_narrative_result_root(tmp_path / "result")

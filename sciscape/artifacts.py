@@ -5062,13 +5062,53 @@ def _publication_review_state(
     return str(claim.get("review_state") or "not_reviewed").strip() or "not_reviewed", None
 
 
+def _publication_readiness(publication_state: str, counts: Mapping[str, Any]) -> dict[str, Any]:
+    rendered = int(_coerce_int(counts.get("rendered_claims")) or 0)
+    pending = int(_coerce_int(counts.get("pending_claims")) or 0)
+    needs_revision = int(_coerce_int(counts.get("needs_revision_claims")) or 0)
+    rejected = int(_coerce_int(counts.get("rejected_claims")) or 0)
+    review_required = pending + needs_revision
+    omitted = review_required + rejected
+    can_render = rendered > 0
+    ready_for_full_publication = can_render and publication_state == "reviewed" and review_required == 0
+    if ready_for_full_publication:
+        state = "ready"
+    elif can_render:
+        state = "partial"
+    else:
+        state = "blocked"
+    reasons: list[str] = []
+    if not can_render:
+        reasons.append("no accepted or not-required claims")
+    if review_required:
+        reasons.append(f"{review_required} claims need review")
+    if rejected:
+        reasons.append(f"{rejected} rejected claims omitted")
+    if not reasons:
+        reasons.append("all rendered claims reviewed")
+    return {
+        "state": state,
+        "publication_state": publication_state,
+        "can_render_reviewed_report": bool(can_render),
+        "ready_for_full_publication": bool(ready_for_full_publication),
+        "rendered_claim_count": rendered,
+        "review_required_claim_count": review_required,
+        "omitted_claim_count": omitted,
+        "reasons": reasons,
+    }
+
+
 def _publication_markdown(payload: Mapping[str, Any]) -> str:
+    readiness = payload.get("publication_readiness") if isinstance(payload.get("publication_readiness"), Mapping) else {}
     lines = [
         f"# {_publication_text(payload.get('title'), fallback='Reviewed Narrative Publication')}",
         "",
         f"- Schema: {NARRATIVE_PUBLICATION_SCHEMA_VERSION}",
         f"- Narrative: {_publication_text(payload.get('narrative_id'), fallback='unknown')}",
         f"- Publication state: {_publication_text(payload.get('publication_state'), fallback='unknown')}",
+        f"- Publication readiness: {_publication_text(readiness.get('state'), fallback='unknown')}",
+        "- Ready for full publication: "
+        + ("yes" if bool(readiness.get("ready_for_full_publication")) else "no"),
         f"- Generated: {_publication_text(payload.get('created_at_utc'), fallback='unknown')}",
         "",
         "## Review Summary",
@@ -5154,6 +5194,7 @@ def _publication_html(payload: Mapping[str, Any]) -> str:
     def text(value: Any, *, fallback: str = "") -> str:
         return html.escape(_publication_text(value, fallback=fallback), quote=True)
 
+    readiness = payload.get("publication_readiness") if isinstance(payload.get("publication_readiness"), Mapping) else {}
     counts = payload.get("counts") if isinstance(payload.get("counts"), Mapping) else {}
     count_keys = (
         "targets",
@@ -5305,7 +5346,7 @@ h3 {{ font-size: .95rem; margin: 1rem 0 .5rem; color: #304256; }}
 <main>
 <header>
 <h1>{text(payload.get("title"), fallback="Reviewed Narrative Publication")}</h1>
-<div class="meta">Schema: {NARRATIVE_PUBLICATION_SCHEMA_VERSION} | Narrative: {text(payload.get("narrative_id"), fallback="unknown")} | State: {text(payload.get("publication_state"), fallback="unknown")} | Generated: {text(payload.get("created_at_utc"), fallback="unknown")}</div>
+<div class="meta">Schema: {NARRATIVE_PUBLICATION_SCHEMA_VERSION} | Narrative: {text(payload.get("narrative_id"), fallback="unknown")} | State: {text(payload.get("publication_state"), fallback="unknown")} | Readiness: {text(readiness.get("state"), fallback="unknown")} | Full publication: {"yes" if bool(readiness.get("ready_for_full_publication")) else "no"} | Generated: {text(payload.get("created_at_utc"), fallback="unknown")}</div>
 </header>
 <section class="counts">
 {count_cards}
@@ -5537,6 +5578,7 @@ def write_narrative_publication_artifacts(
         publication_state = "partial_review"
     else:
         publication_state = "reviewed"
+    publication_readiness = _publication_readiness(publication_state, counts)
     outputs = manifest.get("outputs") if isinstance(manifest.get("outputs"), dict) else {}
     outputs["publication_json"] = str(outputs.get("publication_json") or json_name)
     outputs["publication_markdown"] = str(outputs.get("publication_markdown") or markdown_name)
@@ -5557,6 +5599,7 @@ def write_narrative_publication_artifacts(
         "narrative_id": manifest.get("narrative_id"),
         "title": "Reviewed Narrative Publication",
         "publication_state": publication_state,
+        "publication_readiness": publication_readiness,
         "source_manifest": _rel(manifest_path, result_root),
         "counts": counts,
         "cluster_index": cluster_index,
@@ -5593,6 +5636,7 @@ def write_narrative_publication_artifacts(
         "schema_version": NARRATIVE_PUBLICATION_SCHEMA_VERSION,
         "available": True,
         "publication_state": publication_state,
+        "publication_readiness": publication_readiness,
         "paths": {
             "json": _rel(json_path, result_root),
             "markdown": _rel(markdown_path, result_root),

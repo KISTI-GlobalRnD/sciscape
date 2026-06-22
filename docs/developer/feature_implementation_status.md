@@ -596,6 +596,9 @@ Status: `[~]` Partial. Rough completeness: 82%.
 - `[x]` Atlas review readiness and the filterable review queue surface narrative
   review debt, including pending model-generated claims, as review blockers
   before publication.
+- `[x]` Reviewed publication JSON, Markdown, HTML, CLI output, and Atlas preview
+  expose publication readiness, separating partial reviewed report rendering
+  from full publication readiness.
 - `[~]` Provider execution is now available as a CLI runner, but the reviewed
   generation/report workflow is still not polished as a complete in-app mode.
 - `[~]` Reviewed narrative publication now has an initial static HTML report,

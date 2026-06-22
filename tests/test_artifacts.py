@@ -890,6 +890,11 @@ def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
     assert payload["schema_version"] == NARRATIVE_PUBLICATION_SCHEMA_VERSION
     assert payload["counts"]["rendered_claims"] == 1
     assert payload["counts"]["rejected_claims"] == 1
+    assert payload["publication_readiness"]["state"] == "partial"
+    assert payload["publication_readiness"]["can_render_reviewed_report"] is True
+    assert payload["publication_readiness"]["ready_for_full_publication"] is False
+    assert payload["publication_readiness"]["review_required_claim_count"] >= 1
+    assert publication["publication_readiness"] == payload["publication_readiness"]
     indexed_target = next(row for row in payload["cluster_index"] if row["target_id"] == target_id)
     rendered_cluster = next(row for row in payload["clusters"] if row["target_id"] == target_id)
     assert indexed_target["anchor"].startswith("cluster-")
@@ -898,11 +903,15 @@ def test_write_narrative_publication_artifacts_render_reviewed_claims(tmp_path):
     assert rendered_cluster["publication_state"] == "partial_review"
     assert rendered_cluster["rendered_claim_count"] == 1
     assert "## Cluster Index" in markdown
+    assert "Publication readiness: partial" in markdown
+    assert "Ready for full publication: no" in markdown
     assert accepted_claim_id in markdown
     assert "Omitted Claims" in markdown
     assert rejected_claim_id in markdown
     assert "<!doctype html>" in html_report
     assert "Cluster Index" in html_report
+    assert "Readiness: partial" in html_report
+    assert "Full publication: no" in html_report
     assert f'href="#{indexed_target["anchor"]}"' in html_report
     assert f'id="{indexed_target["anchor"]}"' in html_report
     assert accepted_claim_id in html_report
