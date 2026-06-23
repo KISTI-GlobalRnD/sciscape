@@ -226,6 +226,8 @@ fields:
 | `keywords` | no | Representative terms with rank/score/count and optional rich term signals when available. |
 | `representative_works` | no | Compact supporting works with `uid`, `title`, optional `year`, optional `cited_by_count`, and optional citation metadata. |
 | `representative_work_count` | no | Count of joined records behind the bounded representative work list. |
+| `top_sources` | no | Bounded source/venue distribution rows with `source`, `count`, and `share` when record source fields are available. |
+| `source_count` | no | Distinct source/venue count behind `top_sources`. |
 | `badges` | no | QC or review warnings with severity. |
 
 If required identity fields are not available, the UI may still show
@@ -257,6 +259,10 @@ When DOI, source, author, or URL fields are present, representative works may
 also carry `doi_url`, `citation_key`, and compact `bibtex` strings so a selected
 cluster can be cited or copied from the local Atlas inspector without changing
 the underlying record table.
+When source or venue fields are present in the records table, Atlas payload
+generation may also add bounded `top_sources` plus `source_count` for a compact
+source facet. This is a descriptive facet over joined records, not a normalized
+venue entity model.
 
 Legacy report data often stores leaf clusters as anonymous `cluster:*` entries
 even when `membership.parquet` contains `cluster_micro` and `cluster_nano`.

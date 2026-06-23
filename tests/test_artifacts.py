@@ -2160,6 +2160,11 @@ def test_atlas_payload_enriches_doc_counts_and_cluster_edges_from_artifacts(tmp_
     assert nodes["cluster:0"]["representative_works"][0]["citation_key"] == "D1"
     assert "@article{D1" in nodes["cluster:0"]["representative_works"][0]["bibtex"]
     assert "doi = {10.1000/d1}" in nodes["cluster:0"]["representative_works"][0]["bibtex"]
+    assert nodes["cluster:0"]["source_count"] == 1
+    assert nodes["cluster:0"]["source_facet_source"] == "membership:cluster+abstracts"
+    assert nodes["cluster:0"]["top_sources"] == [
+        {"source": "Journal A", "count": 2, "share": 1.0}
+    ]
 
 
 def test_atlas_payload_attaches_edge_evidence_samples_from_sidecar(tmp_path):

@@ -6506,9 +6506,13 @@ function renderAtlasPinButton(node) {
 function renderAtlasEvidenceProfile(node) {
   const keywords = Array.isArray(node.keywords) ? node.keywords : [];
   const works = Array.isArray(node.representative_works) ? node.representative_works : [];
+  const sources = Array.isArray(node.top_sources) ? node.top_sources : [];
   const lineage = Array.isArray(node.lineage) ? node.lineage : [];
   const neighbors = Array.isArray(node.neighbors) ? node.neighbors : [];
   const badges = Array.isArray(node.badges) ? node.badges : [];
+  const sourceLabel = sources.length
+    ? sources.slice(0, 3).map(row => String(row.source || 'source') + ' (' + formatAtlasCount(row.count) + ')').join(' / ')
+    : 'no source facet joined';
   const rows = [
     atlasEvidenceRow(
       'Record join',
@@ -6524,6 +6528,11 @@ function renderAtlasEvidenceProfile(node) {
       'Representative works',
       works.length > 0,
       works.length ? formatAtlasCount(works.length) + ' shown of ' + formatAtlasCount(node.representative_work_count || works.length) + ' / ' + (node.representative_works_source || 'embedded') : 'no joined works'
+    ),
+    atlasEvidenceRow(
+      'Source facet',
+      sources.length > 0,
+      sources.length ? formatAtlasCount(node.source_count || sources.length) + ' sources / ' + sourceLabel : sourceLabel
     ),
     atlasEvidenceRow(
       'Lineage',

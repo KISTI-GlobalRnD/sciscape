@@ -161,6 +161,7 @@ Content:
   present;
 - optional `doi_url`, `citation_key`, and compact `bibtex` values for copying
   selected-cluster citation evidence;
+- optional `top_sources` and `source_count` for a compact source/venue facet;
 - `representative_work_count`;
 - source label such as `membership:cluster+abstracts`.
 
@@ -250,6 +251,8 @@ Current status:
   inspector state is written back to the result root.
 - Representative works preserve compact citation metadata and expose DOI/BibTeX
   actions when the payload contains enough source fields.
+- The evidence profile can show a bounded source facet from joined record
+  source/venue fields without claiming a normalized venue entity model.
 - Homepage smoke tests assert that the builder and section renderers are exposed.
 - The P1 Atlas smoke gate asserts stable co-occurrence and evidence states, plus
   payload-backed neighbor rows with aggregate relation fields, shared-term

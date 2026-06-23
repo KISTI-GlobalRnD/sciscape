@@ -353,6 +353,7 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "cluster_spread" in response.text
     assert "copyAtlasBibtex" in response.text
     assert "atlas-work-action" in response.text
+    assert "Source facet" in response.text
     assert "atlasReviewReadiness" in response.text
     assert "renderAtlasReviewChecklist" in response.text
     assert "atlasReviewPacket" in response.text
@@ -1918,6 +1919,10 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["doi_url"] == "https://doi.org/10.2000/d1"
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["citation_key"] == "D1"
     assert "@article{D1" in job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["bibtex"]
+    assert job_payload["result"]["atlas"]["nodes"][0]["source_count"] == 1
+    assert job_payload["result"]["atlas"]["nodes"][0]["top_sources"] == [
+        {"source": "Energy Letters", "count": 2, "share": 1.0}
+    ]
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["state"] == "beta"
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["model_generated_claim_count"] == 0
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["model_generated_pending_claim_count"] == 0

@@ -9,6 +9,7 @@ import math
 import re
 import shlex
 import zipfile
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1237,6 +1238,47 @@ def _atlas_work_authors(value: Any) -> str | None:
         return " and ".join(part for part in parts if part) or None
     text = _plain_atlas_text(value)
     return text or None
+
+
+_ATLAS_SOURCE_COLUMNS = (
+    "source_display_name",
+    "source",
+    "journal",
+    "venue",
+    "container_title",
+    "host_venue",
+)
+
+
+def _atlas_source_from_row(row: pd.Series) -> str | None:
+    value = _first_nonempty(row, _ATLAS_SOURCE_COLUMNS)
+    if value is None:
+        return None
+    if isinstance(value, Mapping):
+        value = value.get("display_name") or value.get("name") or value.get("source") or ""
+    text = _plain_atlas_text(value)
+    return text or None
+
+
+def _atlas_top_sources_from_group(group: pd.DataFrame, *, limit: int = 5) -> list[dict[str, Any]]:
+    counts: Counter[str] = Counter()
+    for _, row in group.iterrows():
+        source = _atlas_source_from_row(row)
+        if source:
+            counts[source] += 1
+    total = sum(counts.values())
+    if total <= 0:
+        return []
+    rows: list[dict[str, Any]] = []
+    for source, count in sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))[:limit]:
+        rows.append(
+            {
+                "source": source,
+                "count": int(count),
+                "share": round(float(count) / float(total), 6),
+            }
+        )
+    return rows
 
 
 def _atlas_clean_doi(value: Any) -> str | None:
@@ -2478,6 +2520,13 @@ def _apply_atlas_representative_works(
             if node is None:
                 continue
             node["representative_work_count"] = int(len(group))
+            source_values = [_atlas_source_from_row(row) for _, row in group.iterrows()]
+            source_values = [source for source in source_values if source]
+            top_sources = _atlas_top_sources_from_group(group)
+            if top_sources:
+                node["top_sources"] = top_sources
+                node["source_count"] = len(set(source_values))
+                node["source_facet_source"] = f"membership:{column}+abstracts"
             if node.get("representative_works"):
                 continue
             rows: list[dict[str, Any]] = []
