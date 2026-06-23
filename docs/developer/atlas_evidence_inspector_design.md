@@ -159,6 +159,8 @@ Content:
 
 - `node.representative_works` with title, year, citation count, DOI/source when
   present;
+- optional `doi_url`, `citation_key`, and compact `bibtex` values for copying
+  selected-cluster citation evidence;
 - `representative_work_count`;
 - source label such as `membership:cluster+abstracts`.
 
@@ -246,6 +248,8 @@ Current status:
   hierarchy, works, and QA sections as stable, beta, hidden, or blocked.
 - Representative works and neighbor rows remain payload-backed only; no
   inspector state is written back to the result root.
+- Representative works preserve compact citation metadata and expose DOI/BibTeX
+  actions when the payload contains enough source fields.
 - Homepage smoke tests assert that the builder and section renderers are exposed.
 - The P1 Atlas smoke gate asserts stable co-occurrence and evidence states, plus
   payload-backed neighbor rows with aggregate relation fields, shared-term

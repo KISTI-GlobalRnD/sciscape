@@ -224,7 +224,7 @@ fields:
 | `child_count` | no | Direct child count when hierarchy exists. |
 | `x`, `y` | no | Optional layout coordinates. |
 | `keywords` | no | Representative terms with rank/score/count and optional rich term signals when available. |
-| `representative_works` | no | Compact supporting works with `uid`, `title`, optional `year`, and optional `cited_by_count`. |
+| `representative_works` | no | Compact supporting works with `uid`, `title`, optional `year`, optional `cited_by_count`, and optional citation metadata. |
 | `representative_work_count` | no | Count of joined records behind the bounded representative work list. |
 | `badges` | no | QC or review warnings with severity. |
 
@@ -253,6 +253,10 @@ Atlas payload generation may also add bounded `representative_works` for each
 cluster. This is intentionally display-scale evidence: it proves that cluster
 identity can be traced back to records, but it is not a substitute for the full
 abstract table or future sampled edge-evidence artifacts.
+When DOI, source, author, or URL fields are present, representative works may
+also carry `doi_url`, `citation_key`, and compact `bibtex` strings so a selected
+cluster can be cited or copied from the local Atlas inspector without changing
+the underlying record table.
 
 Legacy report data often stores leaf clusters as anonymous `cluster:*` entries
 even when `membership.parquet` contains `cluster_micro` and `cluster_nano`.

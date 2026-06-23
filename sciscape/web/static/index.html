@@ -2142,6 +2142,27 @@ body {
   font-family: var(--font-mono);
   font-size: 0.56rem;
 }
+.atlas-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.32rem;
+}
+.atlas-work-action {
+  border: 1px solid var(--fog);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--steel);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  padding: 0.14rem 0.34rem;
+  text-decoration: none;
+}
+.atlas-work-action:hover {
+  border-color: var(--silver);
+  color: var(--ink);
+}
 .atlas-child-list {
   display: grid;
   gap: 0.3rem;
@@ -6583,13 +6604,45 @@ function renderAtlasRepresentativeWorks(works, section) {
       meta.push(formatAtlasCount(work.cited_by_count) + ' cites');
     }
     if (work.uid) meta.push(String(work.uid));
+    const actions = [];
+    const doiUrl = work.doi_url || (work.doi ? 'https://doi.org/' + String(work.doi).replace(/^doi:\s*/i, '') : '');
+    if (doiUrl) {
+      actions.push('<a class="atlas-work-action" href="' + escAttr(doiUrl) + '" target="_blank" rel="noopener noreferrer">DOI</a>');
+    }
+    if (work.bibtex) {
+      actions.push('<button class="atlas-work-action" type="button" onclick="copyAtlasBibtex(decodeURIComponent(\'' + encodeURIComponent(String(work.bibtex)) + '\'))">BibTeX</button>');
+    }
     return '<div class="atlas-work-row">' +
       '<div class="atlas-work-title">' + esc(title) + '</div>' +
       (meta.length ? '<div class="atlas-work-meta">' + meta.slice(0, 3).map(item => '<span>' + esc(item) + '</span>').join('') + '</div>' : '') +
+      (actions.length ? '<div class="atlas-work-actions">' + actions.join('') + '</div>' : '') +
     '</div>';
   }).join('');
   return '<div class="atlas-section-title">Representative works ' + atlasSectionStatePill(section || atlasInspectorSection('works', 'Representative works', 'stable')) +
     '</div><div class="atlas-work-list">' + rows + '</div>';
+}
+
+async function copyAtlasBibtex(bibtex) {
+  if (!bibtex) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(bibtex);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = bibtex;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    const status = document.getElementById('export-status');
+    if (status) status.textContent = 'BibTeX copied!';
+  } catch (err) {
+    console.warn(err);
+  }
 }
 
 function renderAtlasLineage(node) {

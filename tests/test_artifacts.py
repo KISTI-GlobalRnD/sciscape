@@ -115,6 +115,9 @@ def _write_valid_result_root(root: Path) -> Path:
             ],
             "pubyear": [2021, 2022, 2021, 2022],
             "cited_by_count": [5, 8, 3, 10],
+            "doi": ["10.1000/d0", "10.1000/d1", "10.1000/d2", "10.1000/d3"],
+            "source_display_name": ["Journal A", "Journal A", "Journal B", "Journal B"],
+            "authors": ["Kim and Lee", "Park and Choi", "Smith and Jones", "Garcia and Patel"],
         }
     ).to_parquet(root / "abstracts.parquet", index=False)
     pd.DataFrame(
@@ -2153,6 +2156,10 @@ def test_atlas_payload_enriches_doc_counts_and_cluster_edges_from_artifacts(tmp_
     assert nodes["cluster:0"]["representative_works"][0]["uid"] == "D1"
     assert nodes["cluster:0"]["representative_works"][0]["title"] == "Perovskite device stability"
     assert nodes["cluster:0"]["representative_works"][0]["cited_by_count"] == 8
+    assert nodes["cluster:0"]["representative_works"][0]["doi_url"] == "https://doi.org/10.1000/d1"
+    assert nodes["cluster:0"]["representative_works"][0]["citation_key"] == "D1"
+    assert "@article{D1" in nodes["cluster:0"]["representative_works"][0]["bibtex"]
+    assert "doi = {10.1000/d1}" in nodes["cluster:0"]["representative_works"][0]["bibtex"]
 
 
 def test_atlas_payload_attaches_edge_evidence_samples_from_sidecar(tmp_path):

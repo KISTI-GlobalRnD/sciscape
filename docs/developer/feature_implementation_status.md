@@ -48,7 +48,7 @@ until their artifact contracts, UI surfaces, and validation checks are added.
 | F06 | Matrix builder | `[~]` | 55% | sparse matrix internals, co-occurrence helpers, artifact feature detection, matrix artifact design, general matrix writer/validator, term co-occurrence wrapper, CLI wrapper command, manifest-backed matrix file downloads, CSV/Parquet/summary matrix exports, VOSviewer-compatible term matrix network export | matrix-builder app mode and interactive matrix workflows |
 | F07 | Clustering and hierarchy | `[x]` | 85% | Rust CPM/Leiden path, hierarchy, landscape, membership artifacts | app-level parameter workflow and expensive-run guardrails |
 | F08 | Keyword extraction, labels, cleaning | `[~]` | 86% | pipeline, quality filters, abbreviation handling, term network, scaling docs, keyword rule artifacts, cluster-sharded progress/resume sidecar exposure, selected shard rerun option in CLI and web, bounded web resume worker/backend overrides, downloadable shard outputs, rich Atlas term signal preservation | editable replay workflow, imported thesaurus adapters, and full large-run benchmark |
-| F09 | Atlas map, evidence, cluster reading | `[~]` | 93% | atlas payload builder, neighbors, representative works, web endpoints, evidence inspector model, review checklist, readiness reasons, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
+| F09 | Atlas map, evidence, cluster reading | `[~]` | 94% | atlas payload builder, neighbors, representative works with citation copy metadata, web endpoints, evidence inspector model, review checklist, readiness reasons, persisted cluster review packet, filterable review queue, render payload adapter, split atlas-render endpoints, deck.gl prototype, layer controls, render/perf/interaction/inspector smoke gates | complete evidence review workflow |
 | F10 | Term network and co-occurrence visualization | `[~]` | 91% | term network module, endpoint, stable co-occurrence table/map artifacts, manifest-backed co-occurrence table export, VOSviewer-style term co-occurrence export, Term view export links, QA readouts, threshold presets | map polish and layout UX |
 | F11 | Temporal and evolution | `[~]` | 94% | temporal keyword utilities, burst/trend helpers, feature detection, temporal/evolution artifact designs, temporal writer/validator, standalone membership-projection evolution analysis module, evolution writer/validator, optional state-membership sidecar, synthetic evolution smoke, explicit document-overlap transition evidence builder/writer, CLI document-overlap transition derivation, periodized slice-membership evidence builder/CLI, one-shot membership-to-evolution artifact writer/CLI, slice-local membership-to-evolution builder/writer/CLI bridge, default slice-local reclustering runner/writer/CLI bridge, optional materialized reclustering membership checkpoint, slice-reclustering progress sidecar, bounded slice-reclustering workers, incremental slice-membership part checkpoints, slice-level reclustering failure diagnostics, manifest-level transition matching diagnostics, web transition-matching diagnostics panel, artifact-backed web Evolution lens, bounded state-membership API/download exposure, lineage-time map payload/UI, state selection/detail panel, URL-restorable Evolution focus state, client-side lineage/neighborhood map focus, keyboard-selectable map/list rows, compact/full Evolution loading profiles with truncation and row-coverage readouts, map shown/total/hidden coverage counts | larger-scale layout polish and map workflow |
 | F12 | Evidence-backed narratives | `[~]` | 84% | narrative feature detection, target definition, evidence-reference artifact design, cluster review packet writer/validator, deterministic claim graph writer, auditable generation prompt batch writer/CLI, provider execution runner CLI, model-assisted claim update hook, model-generated claim batch apply CLI, generation metadata artifact, claim/evidence validator, result-manifest beta/block exposure, job/cluster narrative API, Atlas narrative review block, review-decision writeback, latest-review readback, cluster review progress counts, review save/failure feedback, reviewed JSON/Markdown/HTML publication summary artifacts, reviewed publication CLI, reviewed publication cluster index, reviewed publication zip bundle | polished in-app reviewed generation/report workflow |
@@ -300,7 +300,7 @@ control surface is still incomplete.
 
 ### F09. Atlas Map, Evidence, And Cluster Reading
 
-Status: `[~]` Partial. Rough completeness: 93%.
+Status: `[~]` Partial. Rough completeness: 94%.
 
 - `[x]` Atlas payload can be built from report and membership artifacts.
 - `[x]` Hierarchy lineage, doc counts, labels, representative works, and neighbor
@@ -321,6 +321,9 @@ Status: `[~]` Partial. Rough completeness: 93%.
   identity, meaning, relations, hierarchy, works, and QA.
 - `[x]` The web inspector can render artifact-backed narrative claim/evidence
   rows for selected clusters when a narrative claim graph exists.
+- `[x]` Representative work rows preserve compact citation metadata and expose
+  DOI/BibTeX actions in the Atlas inspector when records contain DOI/source
+  fields.
 - `[x]` `/api/jobs/{job_id}/narrative` and
   `/api/jobs/{job_id}/clusters/{cluster_uid}/narrative` expose narrative
   claim/evidence rows for review surfaces.

@@ -351,6 +351,8 @@ def test_web_homepage_exposes_query_analysis_controls():
     assert "atlasKeywordFirst" in response.text
     assert "log odds" in response.text
     assert "cluster_spread" in response.text
+    assert "copyAtlasBibtex" in response.text
+    assert "atlas-work-action" in response.text
     assert "atlasReviewReadiness" in response.text
     assert "renderAtlasReviewChecklist" in response.text
     assert "atlasReviewPacket" in response.text
@@ -1678,6 +1680,8 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
             "title": ["Perovskite passivation", "Stable perovskite device"],
             "abstract": ["Passivation improves stability.", "Perovskite devices are stable."],
             "pubyear": [2021, 2022],
+            "doi": ["10.2000/d0", "10.2000/d1"],
+            "source_display_name": ["Energy Letters", "Energy Letters"],
         }
     ).to_parquet(output_dir / "abstracts.parquet", index=False)
     pd.DataFrame({"uid": ["D0", "D1"], "cluster": [0, 0]}).to_parquet(
@@ -1911,6 +1915,9 @@ def test_open_local_data_registers_completed_job(monkeypatch, tmp_path):
     assert job_payload["result"]["atlas"]["nodes"][0]["doc_count_source"] == "membership:cluster"
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_work_count"] == 2
     assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["title"] == "Stable perovskite device"
+    assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["doi_url"] == "https://doi.org/10.2000/d1"
+    assert job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["citation_key"] == "D1"
+    assert "@article{D1" in job_payload["result"]["atlas"]["nodes"][0]["representative_works"][0]["bibtex"]
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["state"] == "beta"
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["model_generated_claim_count"] == 0
     assert job_payload["result"]["atlas"]["nodes"][0]["narrative"]["model_generated_pending_claim_count"] == 0

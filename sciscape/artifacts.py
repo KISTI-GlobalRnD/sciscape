@@ -1222,6 +1222,90 @@ def _plain_atlas_text(value: Any) -> str:
     return text
 
 
+def _atlas_work_authors(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, Mapping):
+                name = item.get("display_name") or item.get("name") or item.get("author")
+                if name is not None and str(name).strip():
+                    parts.append(_plain_atlas_text(name))
+            elif str(item).strip():
+                parts.append(_plain_atlas_text(item))
+        return " and ".join(part for part in parts if part) or None
+    text = _plain_atlas_text(value)
+    return text or None
+
+
+def _atlas_clean_doi(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    text = re.sub(r"^https?://(dx\.)?doi\.org/", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^doi:\s*", "", text, flags=re.IGNORECASE)
+    return text.strip() or None
+
+
+def _atlas_bibtex_key(uid: Any, title: Any, year: Any) -> str:
+    raw = str(uid or "").strip()
+    if not raw:
+        title_words = re.findall(r"[A-Za-z0-9]+", str(title or ""))
+        raw = "".join(title_words[:3]) or "sciscape_work"
+        year_value = _coerce_int(year)
+        if year_value is not None:
+            raw = f"{raw}{year_value}"
+    if "/" in raw:
+        raw = raw.rstrip("/").split("/")[-1]
+    key = re.sub(r"[^A-Za-z0-9:_-]+", "", raw)
+    return key or "sciscape_work"
+
+
+def _atlas_bibtex_value(value: Any) -> str:
+    text = _plain_atlas_text(value)
+    return text.replace("\\", "").replace("{", "").replace("}", "").strip()
+
+
+def _atlas_bibtex_for_work(work: Mapping[str, Any]) -> str | None:
+    key = work.get("citation_key")
+    if not key:
+        return None
+    fields: list[tuple[str, Any]] = []
+    for field, source_key in (
+        ("title", "title"),
+        ("author", "authors"),
+        ("year", "year"),
+        ("journal", "source_display_name"),
+        ("doi", "doi"),
+        ("url", "url"),
+    ):
+        value = work.get(source_key)
+        if value is not None and str(value).strip():
+            fields.append((field, value))
+    if not fields:
+        return None
+    body = ",\n".join(f"  {field} = {{{_atlas_bibtex_value(value)}}}" for field, value in fields)
+    return f"@article{{{key},\n{body}\n}}"
+
+
+def _finalize_atlas_work_citation(row: dict[str, Any]) -> dict[str, Any]:
+    doi = _atlas_clean_doi(row.get("doi"))
+    if doi:
+        row["doi"] = doi
+        row["doi_url"] = f"https://doi.org/{doi}"
+    url = str(row.get("url") or "").strip()
+    if not url and doi:
+        url = row["doi_url"]
+    if url:
+        row["url"] = url
+    row["citation_key"] = _atlas_bibtex_key(row.get("uid"), row.get("title"), row.get("year"))
+    bibtex = _atlas_bibtex_for_work(row)
+    if bibtex:
+        row["bibtex"] = bibtex
+    return row
+
+
 def _cluster_label(cluster: Mapping[str, Any], cluster_id: int | str) -> str:
     for key in ("label", "short_label", "overview_title", "name"):
         value = cluster.get(key)
@@ -1436,10 +1520,15 @@ def _cluster_representative_works(cluster: Mapping[str, Any], *, limit: int = 3)
         citations = _coerce_int(work.get("cited_by_count") or work.get("citation_count") or work.get("citations"))
         if citations is not None:
             row["cited_by_count"] = citations
-        for key in ("doi", "source", "source_display_name"):
+        authors = _atlas_work_authors(work.get("authors") or work.get("author") or work.get("author_string"))
+        if authors:
+            row["authors"] = authors
+        for key in ("doi", "source", "source_display_name", "url", "landing_page_url", "openalex_url"):
             value = work.get(key)
             if value is not None and str(value).strip():
-                row[key] = str(value).strip()
+                out_key = "url" if key in {"landing_page_url", "openalex_url"} else key
+                row[out_key] = str(value).strip()
+        _finalize_atlas_work_citation(row)
         rows.append(row)
         if len(rows) >= limit:
             break
@@ -2294,7 +2383,12 @@ def _first_nonempty(row: pd.Series, columns: tuple[str, ...]) -> Any:
         if column not in row:
             continue
         value = row[column]
-        if value is not None and not pd.isna(value) and str(value).strip():
+        if value is None:
+            continue
+        missing = pd.isna(value)
+        if isinstance(missing, (bool, np.bool_)) and missing:
+            continue
+        if str(value).strip():
             return value
     return None
 
@@ -2315,11 +2409,15 @@ def _atlas_work_from_row(row: pd.Series, rank: int) -> dict[str, Any] | None:
     citations = _coerce_int(_first_nonempty(row, ("cited_by_count", "citation_count", "citations")))
     if citations is not None:
         work["cited_by_count"] = citations
-    for source_key in ("doi", "source", "source_display_name"):
+    authors = _atlas_work_authors(_first_nonempty(row, ("authors", "author", "author_string")))
+    if authors:
+        work["authors"] = authors
+    for source_key in ("doi", "source", "source_display_name", "url", "landing_page_url", "openalex_url"):
         value = _first_nonempty(row, (source_key,))
         if value is not None:
-            work[source_key] = str(value)
-    return work
+            out_key = "url" if source_key in {"landing_page_url", "openalex_url"} else source_key
+            work[out_key] = str(value)
+    return _finalize_atlas_work_citation(work)
 
 
 def _apply_atlas_representative_works(
